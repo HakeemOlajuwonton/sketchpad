@@ -420,7 +420,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v259</a> &mdash; THE VERSION OPENS THE CHANGELOG — the banner number is a link to what is new, and the text of it has not moved</span></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v260</a> &mdash; POINCARÉ SAYS WHAT IT DRAWS — Motif 5 snaps to 6/6 when chosen, every refusal is on the canvas, 1 and 2 are pinwheels with no inside, auto hatch shades only what can be seen to alternate, and the help reads in plain words</span></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <div class="tabs" id="tabs"></div>
@@ -4797,38 +4797,29 @@ function poincareTiles(P,Q,wx,wy,minS,budget,emit){
    user tile loaded from JSON lands in exactly the same shape. */
 var POINTILES=[
   {name:'none', model:'none'},
-  /* A lobed margin: out, in, out. Symmetric about x=0.5, so it reads the same
-     from either tile and the edge direction cannot matter. */
-  {name:'leaf', model:'pgon',
+  /* 1 AND 2 ARE ORNAMENT AND ARE NAMED FOR WHAT THEY DRAW (v260). The p-gon
+     model authors ONE curve and derives the rest by the half-turn and rho_C,
+     so the best it can make is a p-fold pinwheel of that curve -- never a leaf
+     and never a fish. v253-v259 called them `leaf` and `fish` and put veins, an
+     eye and fins inside, which drew a stick figure floating in a wobbly polygon
+     at a different angle in every tile. The CURVES are unchanged, byte for
+     byte; only the names and the insides went. The knob values did not move,
+     so a preset naming Motif 1 or 2 draws the same outline it always did.
+     The old insides live on as poincheck.js fixtures, loaded at Motif 6, so
+     the p-gon model's inside route is still driven. */
+  /* Lobes: out, in, out. */
+  {name:'pinwheel lobes', model:'pgon',
    /* THE FIRST HALF ONLY, vertex -> midpoint. The second half is the exact
       hyperbolic half-turn of this about M_a, so the whole edge is invariant
       under that half-turn BY CONSTRUCTION -- which is the one property a
       "point-symmetric" curve in Euclidean side-local units does not have, and
       the 4.8% residual v252 measured. The midpoint is pinned at y = 0; v252's
       leaf had 0.09 there and could not be. */
-   half:[[0,0],[0.12,0.10],[0.24,0.05],[0.34,0.20],[0.44,0.12],[0.5,0]],
-   /* A midrib and four veins off it. */
-   detail:[{closed:false,pts:[[0.0,-0.72],[0.0,-0.24],[0.0,0.22],[0.0,0.66]]},
-     {closed:false,pts:[[0.0,-0.30],[0.34,-0.04]]},
-     {closed:false,pts:[[0.0,-0.30],[-0.34,-0.04]]},
-     {closed:false,pts:[[0.0,0.12],[0.30,0.40]]},
-     {closed:false,pts:[[0.0,0.12],[-0.30,0.40]]}]},
-  /* Asymmetric, the Escher "traffic flow" case: a head on one half and a tail
-     on the other. Because it is NOT symmetric the drawn direction is visible,
-     which is why `canonEdge` below fixes it by coordinate rather than by which
-     tile happened to reach the edge first. */
-  {name:'fish', model:'pgon',
+   half:[[0,0],[0.12,0.10],[0.24,0.05],[0.34,0.20],[0.44,0.12],[0.5,0]]},
+  /* One bulge, so the half-turn makes an S of every edge. */
+  {name:'pinwheel S', model:'pgon',
    /* The spec's own half, and the one poinproto_v1.js measures at 4e-15. */
-   half:[[0,0],[0.10,0.13],[0.22,0.16],[0.36,0.06],[0.5,0]],
-   /* An eye, a backbone nose-to-tail, and three fins. Tile-local: the
-      fundamental polygon at circumradius 1, vertex 0 at angle pi/p -- the
-      same frame poincareTiles builds V in. */
-   detail:[{closed:true,pts:[[0.425,0.3],[0.4088,0.35],[0.3663,0.3808],[0.3137,0.3808],[0.2712,0.35],[0.255,0.3],[0.2712,0.25],[0.3137,0.2192],[0.3663,0.2192],[0.4088,0.25]]},
-     {closed:false,pts:[[0.46,0.10],[0.18,0.20],[-0.18,0.16],[-0.46,-0.02],
-                        [-0.68,-0.20]]},
-     {closed:false,pts:[[0.02,0.17],[-0.06,0.44]]},
-     {closed:false,pts:[[-0.22,0.12],[-0.34,0.40]]},
-     {closed:false,pts:[[-0.30,-0.06],[-0.46,-0.34]]}]},
+   half:[[0,0],[0.10,0.13],[0.22,0.16],[0.36,0.06],[0.5,0]]},
   /* ---- THE KITE MODELS (Job 3) -----------------------------------------
      The tile is 1/p of the polygon -- C, the edge midpoint, the vertex, the
      next edge midpoint -- and it is the model that can hold a real silhouette,
@@ -5774,8 +5765,8 @@ function buildPoincare(p){
      the file uses. */
   var pad=(p.pad||0)/100;
   var discR=Math.min(PGW,PGH)/2-pad, cx=PGW/2, cy=PGH/2;
-  POININFO=''; POINSTATS={tiles:0,arcs:0,verts:0,capped:false};
-  if(!(discR>0)){ POININFO='margin leaves no disc'; return out; }
+  POININFO=''; POINSTATS={tiles:0,arcs:0,verts:0,capped:false,notice:[]};
+  if(!(discR>0)){ POININFO='margin leaves no disc'; POINSTATS.notice=[POININFO]; return out; }
   /* CHORD HEIGHT, NOT A VERTEX COUNT. An arc split into n segments stands
      r(1-cos(dth/2)) off its own chord, so the n that keeps that under TOL mm
      falls out of the radius and the sweep. A fixed number is wrong at both
@@ -5808,7 +5799,7 @@ function buildPoincare(p){
   if((P-2)*(Q-2)<=4){
     POININFO='{'+P+','+Q+'} is flat or spherical — (p−2)(q−2) = '+
              ((P-2)*(Q-2))+', hyperbolic needs > 4';
-    POINSTATS={tiles:0,arcs:0,verts:rim.length,capped:false};
+    POINSTATS={tiles:0,arcs:0,verts:rim.length,capped:false,notice:[POININFO]};
     return out;
   }
   /* Min tile is stored at scale 10, so /10 is millimetres and /PAGEMM is
@@ -5831,6 +5822,12 @@ function buildPoincare(p){
      without one loaded. */
   var ti=Math.max(0,Math.min(POINTILES.length,Math.round(p.tile||0)));
   var TILE=(ti===POINTILES.length)?POINUSER:POINTILES[ti];
+  /* `ti` is REUSED as the detail pass's tile index further down (one var,
+     hoisted), so the notice reads the motif slot from here. */
+  var TSLOT=ti;
+  /* Counts in words, for the notices: "three tiles meet at each corner". */
+  var POINNUM=['zero','one','two','three','four','five','six','seven','eight',
+               'nine','ten','eleven','twelve'];
   /* THE MODEL, AND WHY THE EDGE PARAMETER IS GONE. v252 authored one curve for
      a WHOLE edge and offset it in the final frame; v253 authors the FIRST HALF
      in the fundamental frame and derives the rest by isometry. So `EDGE` and
@@ -5857,7 +5854,7 @@ function buildPoincare(p){
        quarter-turn happens to exist. */
     BASE=(TILE&&TILE.base)?TILE.base:null;
     if(!(P===Q&&P%2===0))
-      TBAD='monstera needs p = q, p even \u2014 {6,6} {8,8} {10,10} {12,12}';
+      TBAD='monstera needs equal, even Sides and Meeting \u2014 6/6, 8/8, 10/10 or 12/12';
     else TBAD=tileEdgeBad(BASE);
     if(TBAD) BASE=null;
   } else if(MODEL==='kite'){
@@ -6274,7 +6271,7 @@ function buildPoincare(p){
      and 4 and p is even by its own precondition, so it always does. None of
      that is assumed -- poinKiteColour builds the graph from the drawn sides
      and CHECKS the colouring against every adjacency. */
-  var KCOL=null, KHATCH=null, KEVERY=false;
+  var KCOL=null, KHATCH=null, KEVERY=false, HNOTE='';
   if(HNK>0 && KLIST.length && KPOLY){
     var kc2=poinKiteColour(KLIST.map(function(e){ return e.keys; }));
     if(HSH===2){ KEVERY=true; }
@@ -6282,7 +6279,14 @@ function buildPoincare(p){
     else if(HSH===1) HBAD='{'+P+','+Q+'} has no two-colouring of the KITES — '+
                           (P%2?'p':'q')+' is odd, so the kites round a '+
                           (P%2?'centre':'vertex')+' make an odd cycle';
-    else KEVERY=true;
+    /* AUTO SHADES ONLY WHAT CAN BE SEEN TO ALTERNATE (v260). Until v259 it fell
+       back to EVERY kite here, each hatched at its own angle, and a pattern
+       that follows structure nobody can see reads as noise. Nothing, and one
+       line on the canvas saying why and what to turn instead. */
+    else HNOTE='{'+P+','+Q+'}: '+(P%2?(POINNUM[P]+' kites meet at each centre')
+                                     :(Q%2?(POINNUM[Q]+' kites meet at each corner')
+                                          :'the kites do not alternate'))+
+               ', so no two-colouring \u2014 Hatch shape 2 shades every kite';
     if(KCOL||KEVERY){
       KHATCH=poinKiteHatch(KPOLY,HNK+1,Math.PI/5);
       HMODE='kites';
@@ -6293,9 +6297,15 @@ function buildPoincare(p){
        TILES, and the triangles two-colour whatever it says. */
     if(HSH!==2) COL=poinTwoColour(r);
     if(COL) HMODE='tiles';
+    else if(HSH===2){ HMODE='triangles'; HPAR=poinChainParity(r); }
     else if(HSH===1) HBAD='{'+P+','+Q+'} has no two-colouring — q is odd, so the tiles '+
                   'round a vertex make an odd cycle';
-    else { HMODE='triangles'; HPAR=poinChainParity(r); }
+    /* AUTO NO LONGER FALLS THROUGH TO THE TRIANGLES (v260). They are cut along
+       mirror lines the drawing never shows -- 2p slices a tile, each at its own
+       angle -- so shading them by default read as arbitrary marks. They are
+       one knob away, and the notice names the knob. */
+    else HNOTE='{'+P+','+Q+'}: '+POINNUM[Q]+' tiles meet at each corner, so no '+
+               'two-colouring \u2014 Hatch shape 2 shades triangles';
   }
   /* the motif's deepest inward excursion, measured off the authored edge */
   /* THE WHOLE EDGE'S DEEPEST EXCURSION, READ OFF THE HALF. The second half is
@@ -6502,6 +6512,18 @@ function buildPoincare(p){
   POINSTATS.tile=MOT?(TILE.name||'tile'):'none';
   POINSTATS.model=MOT?(TILE.model||'pgon'):'none';
   POINSTATS.motif=nmot; POINSTATS.kites=NKITE;
+  /* THE CANVAS NOTICE (v260). Every refusal also goes on the preview, one
+     short line each, because the stat line under the canvas is where nobody
+     looks: Motif 5 at {7,3} drew the plain tiling with its reason in grey
+     text, and read as a dead knob value. PREVIEW ONLY -- draw() paints these
+     over the disc; they are not paths, so they reach neither the SVG nor the
+     path count, exactly like the page outline and the mm grid. */
+  var NOTE=[];
+  if(TBAD) NOTE.push(TSLOT===POINTILES.length&&!TILE?('Motif '+TSLOT+': '+TBAD)
+                                                    :('Motif '+TSLOT+' refused: '+TBAD));
+  if(HBAD) NOTE.push('No hatch: '+HBAD);
+  if(HNOTE) NOTE.push('No hatch \u2014 '+HNOTE);
+  POINSTATS.notice=NOTE;
   POININFO='{'+P+','+Q+'} · '+r.tiles.length.toLocaleString()+' tiles · '+
            r.edges.toLocaleString()+' arcs'+
            (MOT?(' · motif '+(TILE.name||'tile')+' ('+(TILE.model||'pgon')+')'+
@@ -6509,11 +6531,10 @@ function buildPoincare(p){
            (ndet?(' · '+ndet.toLocaleString()+' detail in '+dtiles+' tiles'):'')+
            (nhat?(' · '+nhat.toLocaleString()+' hatch: '+
                   (HMODE==='kites'
-                    ? ('kites'+(KCOL?' (alternating)'
-                                  :(HSH===2?' (every kite — asked for)'
-                                           :' (every kite — they do not two-colour)')))
-                    : (HT?(HSH===0?'triangles (q odd — tiles cannot two-colour)':'triangles'):'tiles'))):'')+
+                    ? ('kites'+(KCOL?' (alternating)':' (every kite — asked for)'))
+                    : (HT?'triangles':'tiles'))):'')+
            (HBAD?(' · HATCH UNAVAILABLE: '+HBAD):'')+
+           (HNOTE?(' · NO HATCH: '+HNOTE):'')+
            (TBAD?(' · MOTIF REJECTED: '+TBAD):'')+
            (r.capped?' · BUDGET REACHED, rim is thinned':'')+
            (CAP2?' · BUDGET REACHED':'');
@@ -18036,6 +18057,29 @@ function draw(){
     ctx.beginPath(); ctx.arc(nx,ny,15,0,TAU); ctx.stroke();
     ctx.restore();
   }
+  /* POINCARÉ REFUSALS ON THE CANVAS (v260), one short line each, centred on
+     the disc. Painted here and nowhere else: it is not a path, so like the
+     grid and the bed outline it never reaches the export or the path count. */
+  var PNOTE=(mode==='poin'&&!ENGERR&&POINSTATS&&POINSTATS.notice)?POINSTATS.notice:null;
+  if(PNOTE&&PNOTE.length){
+    ctx.save();
+    var nfs=Math.max(11,Math.round(W/52)), nw=0, nk;
+    ctx.font='600 '+nfs+'px system-ui,sans-serif';
+    for(nk=0;nk<PNOTE.length;nk++) nw=Math.max(nw,ctx.measureText(PNOTE[nk]).width||0);
+    if(nw>W*0.9){
+      nfs=Math.max(9,Math.floor(nfs*W*0.9/nw)); nw=0;
+      ctx.font='600 '+nfs+'px system-ui,sans-serif';
+      for(nk=0;nk<PNOTE.length;nk++) nw=Math.max(nw,ctx.measureText(PNOTE[nk]).width||0);
+    }
+    var ncx=TX(PGW/2), ncy=TY(PGH/2), nlh=nfs*1.5, nbh=nlh*PNOTE.length+nfs*0.5;
+    ctx.globalAlpha=0.92; ctx.fillStyle='#fbf8f3';
+    ctx.fillRect(ncx-nw/2-nfs*0.7, ncy-nbh/2, nw+nfs*1.4, nbh);
+    ctx.globalAlpha=1; ctx.fillStyle='#b03a2e';
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    for(nk=0;nk<PNOTE.length;nk++)
+      ctx.fillText(PNOTE[nk], ncx, ncy-nbh/2+nfs*0.25+nlh*(nk+0.5));
+    ctx.restore();
+  }
   /* POINTS AND METRES COME FROM THE FULL GEOMETRY, NOT THE DRAWN COPY.
      These used to accumulate inside the stroke loop, which walks groupsDraw --
      the DECIMATED copy. v92's commit claimed the stat read the full geometry;
@@ -18117,6 +18161,7 @@ function draw(){
      build to clear it, and a stale tile count beside a Truchet would be worse
      than no count at all. It is also the only place a REFUSED {p,q} says so. */
   if(mode==='poin' && POININFO) txt+=' \u00b7 '+POININFO;
+  if(mode==='poin' && POINSNAP) txt+=' \u00b7 '+POINSNAP;
   if(mode==='stat' && STATINFO) txt+=' \u00b7 '+STATINFO;
   if(mode==='fan'){
     var fv=vals(), wnd=fv.loops+fv.prec/100;
@@ -18391,16 +18436,42 @@ function mountTabs(){
    engine without an entry is untouched. Poincaré is the only entry: its tile
    is a FILE, and a file needs buttons. */
 var ENGEXTRA={};
+/* THE SECOND HOOK: a knob moved BY HAND. mkRow's setter runs only on the
+   person's own input -- slider, number box, wheel, reset -- and never on
+   restore(), a preset slot or Variations, which write STATE directly. So an
+   engine that must react to a choice (Poincaré's Motif 5 snapping Sides and
+   Meeting) reacts here and cannot fire on a restore. */
+var ENGSET={};
 function mount(){
   var box=document.getElementById('sliders'); box.innerHTML='';
   SPEC[mode][1].forEach(function(sp){ mkRow(box,sp,'sl_',
     function(k){return STATE.eng[mode][k];},
-    function(k,v){STATE.eng[mode][k]=v; liveBack(k);}); });
+    function(k,v){STATE.eng[mode][k]=v; liveBack(k);
+                  if(ENGSET[mode]) ENGSET[mode](k,v);}); });
   if(ENGEXTRA[mode]) ENGEXTRA[mode](box);
   mountVarySel();
   draw();
 }
+/* MOTIF 5 SNAPS, BY HAND ONLY (v260). Choosing the monstera at a {p,q} it
+   cannot tile sets Sides and Meeting to 6 and 6 and says so on the stat line.
+   ONLY from ENGSET: a restored {7,3} + monstera preset keeps its 7 and 3 and
+   shows the refusal instead, because a preset that silently rewrites its own
+   knobs is worse than one that refuses. Any later hand change clears it. */
+var POINSNAP='';
+ENGSET.poin=function(k,v){
+  POINSNAP='';
+  if(k!=='tile') return;
+  var T=POINTILES[Math.round(v)];
+  if(!T||T.model!=='bilateral') return;
+  var E=STATE.eng.poin, P=Math.round(E.sides), Q=Math.round(E.meet);
+  if(P===Q && P%2===0 && P>=6) return;
+  E.sides=6; E.meet=6;
+  ['sides','meet'].forEach(function(key){
+    var sp=specOf(SPEC.poin[1],key); if(sp) repaintRow('sl_',sp,6); });
+  POINSNAP=T.name+' needs equal, even Sides and Meeting \u2014 set to 6 and 6';
+};
 ENGEXTRA.poin=function(box){
+  POINSNAP='';
   var d=document.createElement('div');
   d.className='engx'; d.id='poinx';
   var lab=document.createElement('div');
@@ -18739,14 +18810,14 @@ var HELP={
 'truchet.tmin':'Tiles that would come out smaller than this on paper are left out entirely. Under a pen 0.3 mm wide, anything under about 1 mm is a dot of ink.',
 'truchet.thead':'Which way roamers face when Quarter turns is off: up, right, down, left. Upright tiles ignore it; radial tiles look the same either way.',
 /* Poincare disc */
-'poin.hatch':'How many parallel lines shade each shaded shape. It is a DETAIL layer -- a tile-local family, carried by the same group element as a motif’s veins -- so the spacing shrinks with the tiles instead of staying a fixed screen texture, and it obeys the Detail cutoff like any other inside. WHAT gets shaded is Hatch shape’s business, not this knob’s: alternate tiles where the tiles can be two-coloured, and otherwise alternate triangles of the tile’s own kaleidoscope, which two-colour at every q.',
-'poin.hshape':'WHICH SHAPE CARRIES THE HATCH. At 0 auto it shades alternate TILES when they can be two-coloured and alternate kaleidoscope TRIANGLES when they cannot — which is the default {7,3}, and every other odd q. At 1 tiles it is tiles or nothing: walk the q tiles round a vertex and you cross q edges to get back where you started, so an odd q is an odd cycle, no two-colouring of the tiles exists at all, and the stat line says so rather than shading two neighbours alike. At 2 triangles it is always triangles. The triangles are the tile cut along its own mirrors, 2p of them, centre to a vertex and centre to an edge midpoint; two of them sharing a side differ by exactly one reflection, so they two-colour whatever q is. Shading them reads as a pinwheel inside each tile rather than as a chequerboard of tiles. ON A KITE MODEL \u2014 Motif 3, 4 or 5 \u2014 THE UNIT IS THE KITE, not the tile and not the triangle, because the kite is what the motif is authored in and shading anything else makes the alternation cut across the drawing rather than follow it. The three values mean the same three things there: 0 alternates when the kites two-colour and shades every kite when they cannot, 1 alternates or REFUSES by name, 2 is every kite whatever the geometry says. WHETHER THE KITES TWO-COLOUR FOLLOWS FROM p AND q: the cycles are p round a centre, q round a vertex and 4 round an edge midpoint, so the kite model alternates exactly when p and q are BOTH even \u2014 {6,4} does and the default {7,3} cannot \u2014 while the bilateral model always can, since p is even by its own precondition. None of that is assumed: the colouring is computed from the sides the drawing actually shares and then CHECKED against every adjacency, the same rule the tile route follows, because a colouring that is believed is one that is wrong at an odd cycle without saying so.',
-'poin.detmin':'The smallest tile that still gets its INSIDE drawn, by longest edge. A motif\u2019s interior -- a fish\u2019s eye and backbone, a leaf\u2019s veins -- is what makes it read as that thing rather than as a wiggly cell, but at the rim the tiles shrink past the point where any of it survives the pen. Above this size a tile is drawn in full; below it, outline only.',
-'poin.tile':'Which shape the tiles are. 0 is the plain {p,q} polygon. 1 and 2 are the P-GON model: one curve is authored for the first HALF of an edge and the whole tiling follows from it, so the best it can be is a p-fold pinwheel \u2014 handsome, and it cannot hold a fish. 3 and 4 are the KITE model, where the tile is a p-th of the polygon and TWO curves are authored, neither needing any symmetry: that is the one that can carry a real silhouette. 5 is the MONSTERA, the BILATERAL model: ONE side is authored and the other three are the quarter-turn about the edge midpoint and the mirror of both, and it has a GROUP OF ITS OWN \u2014 it does not go through the polygon tiling at all. It exists only for p = q with p EVEN, which inside this knob\u2019s range is {6,6} {8,8} {10,10} {12,12}, and REFUSES anywhere else by name rather than quietly drawing something else. Odd p is the case worth knowing about: the quarter-turn exists there and the tiling still fails, with sides claimed three and four times, so the refusal is on p = q AND p even and not on whether the map exists. 6 IS YOUR OWN TILE and it is empty until you load one \u2014 Load tile takes a file, Use tile from tile maker takes whatever the tile maker last handed over, Unload tile empties it again, and at 6 with nothing in it you get the plain tiling and a line saying so. A loaded tile goes to 6 and NOWHERE ELSE: until v256 it won over every value above 0, so loading one silently changed what leaf and fish meant and a saved preset naming Motif 2 drew someone else\u2019s tile. It travels with the preset, so a slot restores the drawing and not just the knob. Loading sets Sides and Meeting to whatever the file\u2019s author was looking at and says so; after that the knobs are live, because the curves are side-local and adapt. EVERY TILE IS THE SAME TILE, measured \u2014 each drawn tile mapped back through its own group element lands on the first one to about 1e-12 of the circumradius. Until v253 it did not: one tile in seven of the default {7,3} was off by more than a tenth of its size, because the motif was a Euclidean offset applied AFTER an isometry. 1 and 2 keep their names, so a saved preset still means leaf and fish, but they DRAW DIFFERENTLY now \u2014 that was the defect. A TILE THAT CANNOT TILE IS REFUSED BY NAME rather than drawn: it has to be a simple closed outline that does not overlap its neighbours, and that is checked on the built-ins too \u2014 which is how v255\u2019s own monstera was caught cutting through its own mirror near the polygon centre. Detail cutoff decides which tiles are big enough to carry the inside; on a kite it is measured on the KITE, so near the cutoff some kites of a tile carry it and others do not.',
-'poin.sides':'How many sides each tile has — the p of a {p,q} tiling. Seven is Escher’s Circle Limit I. This is a corner angle, not a shape choice: the tile’s corners are 2π/q wide whatever p is, so raising p makes each tile a broader, flatter polygon and lowers how many of them reach the rim. It only tiles the hyperbolic plane when (p−2)(q−2) is greater than 4; {6,3}, {4,4} and {3,6} are the flat ones and everything below them is a sphere, and all of those refuse with a line on the stat bar rather than drawing something else.',
-'poin.meet':'How many tiles meet at every corner — the q of a {p,q} tiling. This is the one that makes the drawing hyperbolic: three squares at a corner is a cube, four is a flat grid, five or more is a saddle that only fits inside a disc. Raising it packs more tiles into the same disc and drives the rim finer much faster than raising Sides does, so it is the knob to move first when the rim comes out as a ring of solid ink.',
-'poin.mintile':'The smallest tile worth drawing, as the length of its longest edge on the sheet. The tiling is infinite and the tiles shrink to nothing at the rim, so something has to stop the search, and stopping on a real millimetre is the only cutoff that means the same thing on A5 and on A2. Below about twice the pen width the rim stops reading as tiles and starts reading as a solid ring — that is the failure to watch for, and it costs plot time as well as ink.',
-'poin.drift':'Slides the whole tiling sideways INSIDE its own geometry, so a different part of the infinite plane comes to the middle. It is not a pan: the tiling is rigid hyperbolically and elastic to our eyes, so the side you move toward opens out and the far side compresses into the rim. At 95 the magnification across the disc is roughly twentyfold. The search runs on the drifted tiling, so the cutoff always measures what is actually on the paper.',
+'poin.hatch':'How many lines shade each shaded shape; 0 is off. The lines shrink with the tiles toward the rim, and Detail cutoff decides which shapes are big enough to get them. Which shapes are shaded is Hatch shape’s job.',
+'poin.hshape':'Which shapes get shaded. 0 auto: alternate tiles, or alternate kites on Motif 3–5, only where they can alternate — Meeting even, and on 3 and 4 Sides even too. Where they cannot, nothing is shaded and the canvas says why. 1: the same, but it refuses out loud. 2: every triangle slice of each tile, or every kite on 3–5 — works at any Sides and Meeting.',
+'poin.detmin':'The smallest tile, or kite, that still gets its inside (a fish’s eye, a leaf’s veins) and its hatch, by its longest edge on the paper. Smaller ones are outline only, so the rim does not clog with ink.',
+'poin.tile':'The shape of each tile. 0 plain polygons. 1 pinwheel lobes and 2 pinwheel S: a wavy edge that turns round each tile — ornament, with no inside. 3 kite fish and 4 kite leaf: each tile cut into kites, with an inside drawn in the big ones. 5 monstera needs Sides and Meeting equal and even: 6/6, 8/8, 10/10 or 12/12. 6 is your own tile — Load tile, or Use tile from tile maker, first.',
+'poin.sides':'How many sides each tile has. 7 is Escher’s Circle Limit I. More sides makes broader tiles, and fewer of them. Some pairs leave nothing to tile — 6 sides with Meeting 3, 4 with 4, 3 with 6, and anything smaller: the rim is drawn alone and the canvas says so.',
+'poin.meet':'How many tiles meet at each corner. The higher it is, the faster the tiles shrink toward the rim — turn this down first when the rim comes out as a solid ring. An even Meeting lets alternate tiles be shaded; an odd one cannot.',
+'poin.mintile':'The smallest tile drawn at all, by its longest edge on the paper. The tiling never ends, so this is where it stops. Keep it above about twice the pen width, or the rim turns into a solid ring of ink and costs plot time.',
+'poin.drift':'Brings a different part of the endless tiling to the middle. It is not a pan: the side you move toward opens out and the far side squeezes into the rim — at 95 the middle is about twenty times larger. Drift angle sets the direction.',
 'poin.dang':'Which way Drift goes, counterclockwise from three o’clock. Inert at Drift 0.',
 'poin.pad':'Margin between the disc and the sheet edge. The disc takes its radius from the SHORT axis, so on a wide sheet it stays a circle with paper either side rather than stretching into an ellipse.',
 /* Iso station */
