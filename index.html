@@ -420,7 +420,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v260</a> &mdash; POINCARÉ SAYS WHAT IT DRAWS — Motif 5 snaps to 6/6 when chosen, every refusal is on the canvas, 1 and 2 are pinwheels with no inside, auto hatch shades only what can be seen to alternate, and the help reads in plain words</span></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v261</a> &mdash; STREET — a perspective street canyon with the camera standing in it: lots and box-stack buildings along a curving street, a pinhole camera with a near plane, and an order computed from separating planes and checked against ray truth</span></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <div class="tabs" id="tabs"></div>
@@ -2080,6 +2080,28 @@ var SPEC={
     ['lod','LOD cutoff',0,60,1,5,[10,' mm']],
     ['budg','Size budget',10,200,5,45,[1,' k points']],
     ['occ','Occlusion gap',0,80,1,5,[10,' mm']]]],
+  /* STREET, queue row 30. ONLY THE KNOBS THIS ROW READS ARE DECLARED -- the
+     spec's §7 lists forty, and rows 31-33 add the rest with the layers that
+     read them, so no knob here is dead. Ranges and defaults are §7's verbatim.
+     `budg` IS ONE OF THEM: knobaudit found it DEAD at row 30, because the budget
+     mechanism of §4 steps `dnear`/`dfar`, which are row 31's.
+     THE FRACTIONAL STEPS (0.5 m, 0.25 m, 0.1 m, 0.5°) ARE THE FIRST IN THE FILE
+     with a display scale of 1, and mkRow shows as many decimals as the step
+     has -- until this engine every such knob was an integer, and a 7.5 m road
+     would have read "8". `occ` is a legitimate key here: this engine hides
+     itself, so weaveGroups stays off for it. */
+  strt:['Street',[
+    ['len','Street length',60,600,10,220,[1,' m']],['bend','Bend',0,60,1,12,[1,'°/100 m']],
+    ['width','Road width',4,24,0.5,7,[1,' m']],['pave','Pavement',0,6,0.25,2.5,[1,' m']],
+    ['lotmin','Lot min',3,20,0.5,5,[1,' m']],['lotmax','Lot max',4,40,0.5,11,[1,' m']],
+    ['alley','Alley chance',0,60,1,14,[100,'%']],['floors','Storeys',1,40,1,9],
+    ['canyon','Canyon rise',0,100,1,30,[100,'%']],['stepb','Step-back',0,60,1,18,[100,'%']],
+    ['canti','Cantilever',0,60,1,14,[100,'%']],
+    ['cams','Camera along',0,90,1,12,[100,'%']],['camx','Camera side',-100,100,1,-10,[100,'%']],
+    ['camz','Camera height',0.2,80,0.1,1.6,[1,' m']],['look','Look ahead',5,300,1,60,[1,' m']],
+    ['pitch','Pitch',-45,45,0.5,6,[1,'°']],['fov','Field of view',25,120,1,72,[1,'°']],
+    ['lod','LOD cutoff',0,60,1,4,[10,' mm']],
+    ['occ','Gap',0,30,1,4,[10,' mm']]]],
   chuck:['Geometric chuck',[
     ['loops','Loops',20,600,10,60],['res','Pts / loop',12,200,4,48],
     ['p','Orbit p',1,8,1,1],['q','Orbit q',-8,-1,1,-6],
@@ -15756,7 +15778,7 @@ function buildIsoImg(p){
 
 var ENG={record:buildRecord, flow:buildFlow, growth:buildGrowth, contour:buildContour, ridge:buildRidge,
          pack:buildPack, voronoi:buildVoronoi, truchet:buildTruchet, maze:buildMaze, hilbert:buildHilbert,
-         rows:buildRows, poin:buildPoincare, flag:buildFlag, stat:buildStation,
+         rows:buildRows, poin:buildPoincare, flag:buildFlag, stat:buildStation, strt:buildStreet,
          harmo:buildHarmo, chladni:buildChladni, moire:buildMoire, disc:buildChladniDisc, fan:buildFan,
   string:buildString, fermat:buildFermat, logsp:buildLogSpiral, chuck:buildChuck,
          apoll:buildApollonian, wave:buildWave, sform:buildSuper,
@@ -17278,6 +17300,677 @@ function buildStation(p){
   return out;
 }
 
+/* ---------- STREET : a perspective street canyon, the camera inside it -------
+   Spec docs/specs/2026-09-28-sketchpad-street-engine.md, queue rows 30-33. This
+   is row 30: the layout, the camera, the order and the box stacks. Structure
+   only, one ink.
+
+   WORLD: metres, x east, y north, z up. The street is a plan-view spline; lots
+   are cut along both pavements and each gets a convex ENVELOPE; the carriageway
+   is cut into 4 m ROAD SLABS. Envelopes and slabs are the CONTAINERS, and the
+   whole order argument rests on them being disjoint convex prisms -- so that is
+   CHECKED here in plan with a separating-axis test, not assumed from the
+   construction. A lot that would overlap anything is pushed back or dropped,
+   and STRTSTATS says how many.
+
+   THE ORDER IS COMPUTED, NOT KEYED (spec §3.3). Iso and the station are exact
+   by a painter's theorem on a lattice; a camera standing in the street has no
+   such theorem. Two levels:
+     - CONTAINERS: every container is a vertical prism over a convex plan
+       polygon, so two of them overlap on screen only where some plan ray from
+       the eye meets both. For those pairs a separating line is found among
+       their edge normals and the one on the eye's side goes first. For
+       disjoint convex sets in the PLANE, "some ray from the eye meets A before
+       B" is acyclic, and with the ray filter the graph IS that relation -- so
+       the container order has no cycles by construction, and the count says
+       so every build rather than trusting it.
+     - PARTS within a container: the same test in 3D over the parts' face
+       planes, restricted to pairs whose screen boxes overlap. A cycle there is
+       broken by SPLITTING a part at the plane through its centroid normal to
+       the view direction, never by falling back to a sort key; what cannot be
+       broken is counted as `cycles` and strtcheck.js fails on it.
+   Then each part's lines are clipped against the silhouettes already committed
+   (hlrConvex, unchanged) and its own silhouette is pushed.
+
+   DEPTH RIDES ON THE `z` EXPANDO, not in the tuple. The spec asks for zc and a
+   normalised depth as the third and fourth elements; the pipeline has carried
+   depth on a per-vertex `z` array since v222, because every stage that rebuilds
+   a path copies a vertex as [x,y] and a tuple element would be lost silently.
+   `z` is 1 - (zc-near)/(far-near), large = near, the polarity every reader
+   agrees on; `zc` carries the raw metres. hlrConvex publishes no depth, so it is
+   put back by walking each fragment onto its source segment, where 1/zc is
+   exactly linear on screen. */
+var STRTINFO='';
+var STRTSTATS={lots:0,conts:0,parts:0,paths:0,points:0,cycles:0};
+/* THE MEASUREMENT SURFACE. strtcheck.js cannot check an occluder by re-deriving
+   its order -- that asks the engine whether it agrees with itself -- so the
+   tally hands over DATA: the camera, a projector, every committed part's face
+   planes, and every pre-occlusion line with the part it belongs to. The gate
+   ray-casts those itself. Mirrored in enginetest/extract.js's `parts`. */
+var STRTTALLY={cam:null,project:null,parts:[],pre:[],sil:[],conts:[],lots:[],slabs:[]};
+function buildStreet(p){
+  var LEN=Math.max(60,+p.len||220), BEND=Math.max(0,+p.bend||0);
+  var WID=Math.max(4,+p.width||7), PAVE=Math.max(0,isFinite(p.pave)?+p.pave:2.5);
+  var LOTMIN=Math.max(3,+p.lotmin||5), LOTMAX=Math.max(LOTMIN,+p.lotmax||11);
+  var ALLEY=(p.alley||0)/100, FLOORS=Math.max(1,Math.round(p.floors||9));
+  var CANYON=(p.canyon||0)/100, STEPB=(p.stepb||0)/100, CANTI=(p.canti||0)/100;
+  var CAMS=(isFinite(p.cams)?+p.cams:12)/100, CAMX=(isFinite(p.camx)?+p.camx:-10)/100;
+  var CAMZ=Math.max(0.2,isFinite(p.camz)?+p.camz:1.6);
+  var LOOK=Math.max(5,+p.look||60), PITCH=(isFinite(p.pitch)?+p.pitch:6)*Math.PI/180;
+  var FOV=Math.max(25,Math.min(120,isFinite(p.fov)?+p.fov:72))*Math.PI/180;
+  var LODMM=Math.max(0,(isFinite(p.lod)?+p.lod:4)/10);
+  var GAP=((p.occ||0)/10)/PAGEMM;
+  /* Fixed, not knobs. PAD is the drawable margin in page units (the station's);
+     NEAR the near plane in metres (spec §3.2); KERB the kerb height. */
+  var PAD=0.06, NEAR=0.25, KERB=0.15, DS=0.5, ZTOP=200;
+  var HALFW=WID/2, KOFF=HALFW+0.3, PBACK=HALFW+PAVE;
+  var out=[], i, j, k;
+  STRTINFO=''; STRTSTATS={lots:0,conts:0,parts:0,paths:0,points:0,cycles:0};
+  STRTTALLY={cam:null,project:null,parts:[],pre:[],sil:[],conts:[],lots:[],slabs:[]};
+
+  /* ---- substreams: the splitmix finaliser iso's cellRnd uses, keyed on
+     (a, b, salt). Every layer salts its own, so turning one layer on or off
+     never moves another's numbers (spec §2.5). */
+  var SALT_SPLINE=11, SALT_LOT=23, SALT_BLD=37;
+  function sub(a,b,salt){
+    var s=(rnd(a*7919+b*104729+salt*1299709+17)*4294967296)>>>0;
+    return function(){
+      s=(s+0x9E3779B9)>>>0;
+      var t=s;
+      t=Math.imul(t^(t>>>15),0x85EBCA6B)>>>0;
+      t=Math.imul(t^(t>>>13),0xC2B2AE35)>>>0;
+      return ((t^(t>>>16))>>>0)/4294967296;
+    };
+  }
+
+  /* ---- §2.1 the spline. Stations every 0.5 m. A straight run, then arcs
+     whose curvature is `bend` degrees per 100 m times a draw in [0.35,1] with a
+     random sign. THE HEADING IS HELD WITHIN +-70 DEGREES of where it started,
+     by choosing the sign that turns back once it is past 40: a street that
+     closed on itself would put one side's lots through the other's, and the
+     whole order argument needs them disjoint. Generated past LEN so the look
+     target always has road under it. */
+  var NS=Math.ceil((LEN+LOOK+40)/DS)+1;
+  var SX=new Float64Array(NS), SY=new Float64Array(NS), SH=new Float64Array(NS);
+  {
+    var rs=sub(0,0,SALT_SPLINE), kap=0, left=15+rs()*25, hd=0, kmax=BEND*Math.PI/180/100;
+    SX[0]=0; SY[0]=0; SH[0]=0;
+    for(i=1;i<NS;i++){
+      left-=DS;
+      if(left<=0){
+        var sg=rs()<0.5?-1:1;
+        if(hd>40*Math.PI/180) sg=-1; else if(hd<-40*Math.PI/180) sg=1;
+        kap=sg*(0.35+0.65*rs())*kmax; left=25+rs()*45;
+      }
+      var h1=hd+kap*DS;
+      if(Math.abs(h1)>70*Math.PI/180){ kap=0; h1=hd; }
+      var hm=(hd+h1)/2;
+      SX[i]=SX[i-1]+Math.cos(hm)*DS; SY[i]=SY[i-1]+Math.sin(hm)*DS;
+      SH[i]=h1; hd=h1;
+    }
+  }
+  /* A point at arc s on side sd (+1 left, -1 right) at lateral offset o,
+     height z. Positions and headings interpolate linearly between stations,
+     so two lots that share an arc position share their side line EXACTLY. */
+  function frame(s){
+    var u=s/DS, i0=Math.max(0,Math.min(NS-2,Math.floor(u))), f=u-i0;
+    var x=SX[i0]+(SX[i0+1]-SX[i0])*f, y=SY[i0]+(SY[i0+1]-SY[i0])*f;
+    var h=SH[i0]+(SH[i0+1]-SH[i0])*f;
+    if(u<0){ x=SX[0]+Math.cos(SH[0])*s; y=SY[0]+Math.sin(SH[0])*s; h=SH[0]; }
+    return [x,y,Math.cos(h),Math.sin(h)];
+  }
+  function P3(s,sd,o,z){ var F=frame(s); return [F[0]-F[3]*sd*o, F[1]+F[2]*sd*o, z]; }
+
+  /* ---- plan-polygon helpers, used for the disjointness CHECK and the order */
+  function polyOverlap(A,B){
+    var polys=[A,B], pi, e;
+    for(pi=0;pi<2;pi++){
+      var Q=polys[pi];
+      for(e=0;e<Q.length;e++){
+        var a=Q[e], b=Q[(e+1)%Q.length], nx=b[1]-a[1], ny=a[0]-b[0];
+        var L=Math.hypot(nx,ny); if(L<1e-12) continue; nx/=L; ny/=L;
+        var a0=1e18,a1=-1e18,b0=1e18,b1=-1e18, m;
+        for(m=0;m<A.length;m++){ var t=A[m][0]*nx+A[m][1]*ny; if(t<a0)a0=t; if(t>a1)a1=t; }
+        for(m=0;m<B.length;m++){ var t2=B[m][0]*nx+B[m][1]*ny; if(t2<b0)b0=t2; if(t2>b1)b1=t2; }
+        if(a1<=b0+1e-7 || b1<=a0+1e-7) return false;
+      }
+    }
+    return true;
+  }
+  function convex(Q){
+    var sgn=0, e;
+    for(e=0;e<Q.length;e++){
+      var a=Q[e], b=Q[(e+1)%Q.length], c=Q[(e+2)%Q.length];
+      var cr=(b[0]-a[0])*(c[1]-b[1])-(b[1]-a[1])*(c[0]-b[0]);
+      if(Math.abs(cr)<1e-12) continue;
+      if(sgn===0) sgn=cr>0?1:-1; else if((cr>0?1:-1)!==sgn) return false;
+    }
+    return sgn!==0;
+  }
+  function bbox2(Q){ var b=[1e18,1e18,-1e18,-1e18]; Q.forEach(function(q){
+    if(q[0]<b[0])b[0]=q[0]; if(q[1]<b[1])b[1]=q[1]; if(q[0]>b[2])b[2]=q[0]; if(q[1]>b[3])b[3]=q[1]; });
+    return b; }
+  function bbHit(a,b){ return !(a[2]<b[0]||b[2]<a[0]||a[3]<b[1]||b[3]<a[1]); }
+
+  /* ---- §2.3 road slabs: 4 m of carriageway, kerb and the first 0.3 m of
+     pavement, one per side of the centreline. */
+  var conts=[], slabsBySide={'1':[],'-1':[]};
+  [1,-1].forEach(function(sd){
+    for(var sa=0;sa<LEN-1e-9;sa+=4){
+      var sb=Math.min(LEN,sa+4);
+      var Q=[P3(sa,sd,0,0),P3(sb,sd,0,0),P3(sb,sd,KOFF,0),P3(sa,sd,KOFF,0)].map(function(v){return [v[0],v[1]];});
+      var C={kind:'slab', side:sd, s0:sa, s1:sb, poly:Q, bb:bbox2(Q), parts:[]};
+      conts.push(C); slabsBySide[sd].push(C);
+      STRTTALLY.slabs.push({side:sd, s0:sa, s1:sb, poly:Q});
+    }
+  });
+
+  /* ---- §2.2 lots, walked along the pavement's BACK edge by its own arc
+     length. The lot's numbers come from its own substream keyed on
+     (side, index), so a lot is the same lot whatever LEN is. */
+  var lots=[], dropped=0, pushed=0;
+  [1,-1].forEach(function(sd){
+    var cum=[0], m;
+    var nb=Math.floor(LEN/DS);
+    var prev=P3(0,sd,PBACK,0);
+    for(m=1;m<=nb;m++){
+      var cur=P3(m*DS,sd,PBACK,0);
+      cum.push(cum[m-1]+Math.hypot(cur[0]-prev[0],cur[1]-prev[1])); prev=cur;
+    }
+    function arcOfBack(b){
+      var lo=0, hi=cum.length-1;
+      if(b>=cum[hi]) return hi*DS;
+      while(hi-lo>1){ var md=(lo+hi)>>1; if(cum[md]<=b) lo=md; else hi=md; }
+      var sgl=cum[hi]-cum[lo];
+      return (lo+(sgl>0?(b-cum[lo])/sgl:0))*DS;
+    }
+    var cursor=0, li=0;
+    for(li=0;li<400;li++){
+      var R=sub(sd<0?2:1,li,SALT_LOT);
+      var wl=LOTMIN+R()*(LOTMAX-LOTMIN), ua=R(), aw=1.2+R()*1.3, depth=8+R()*12;
+      var b0=cursor, b1=cursor+wl;
+      if(b1>cum[cum.length-1]) break;
+      cursor=b1+(ua<ALLEY?aw:0);
+      var s0=arcOfBack(b0), s1=arcOfBack(b1);
+      var BK=PBACK+depth, d=0, env=null, ok=false, t;
+      /* THE ENVELOPE FRONT is 0.3 m short of the kerb, pushed back by `d`
+         until the slabs it could touch are clear of it. On the inner side of a
+         bend a 4 m slab chord bulges past the arc by a couple of centimetres;
+         on the outer side a long lot chord does. Measured by SAT, not by
+         reasoning about which. */
+      for(t=0;t<80;t++){
+        var FE=KOFF+d;
+        env=[P3(s0,sd,FE,0),P3(s1,sd,FE,0),P3(s1,sd,BK,0),P3(s0,sd,BK,0)].map(function(v){return [v[0],v[1]];});
+        if(FE>=BK-4 || !convex(env)){ env=null; break; }
+        var hit=false, eb=bbox2(env), sl=slabsBySide[sd], q;
+        for(q=0;q<sl.length;q++){
+          if(sl[q].s1<s0-4.5||sl[q].s0>s1+4.5) continue;
+          if(bbHit(eb,sl[q].bb) && polyOverlap(env,sl[q].poly)){ hit=true; break; }
+        }
+        if(!hit){ ok=true; break; }
+        d+=0.05;
+      }
+      if(!ok||!env){ dropped++; continue; }
+      if(d>0) pushed++;
+      var ebb=bbox2(env), clash=false, o2;
+      for(o2=0;o2<conts.length;o2++){
+        var C2=conts[o2];
+        if(!bbHit(ebb,C2.bb)) continue;
+        if(C2.kind==='slab' && C2.side===sd) continue;         /* checked above */
+        if(polyOverlap(env,C2.poly)){ clash=true; break; }
+      }
+      if(clash){ dropped++; continue; }
+      var LOT={kind:'lot', side:sd, idx:li, s0:s0, s1:s1, poly:env, bb:ebb, parts:[],
+               fe:KOFF+d, back:BK, depth:depth, blocks:[]};
+      conts.push(LOT); lots.push(LOT);
+    }
+  });
+
+  /* ---- §2.4 the box stack. Every storey draws the SAME number of values
+     whatever the knobs say, so moving Step-back or Cantilever changes which
+     storeys move and never which numbers the next storey reads. */
+  lots.forEach(function(L){
+    var R=sub(L.side<0?2:1,L.idx,SALT_BLD);
+    var nBase=R()<0.35?2:1, baseH=3.6+R()*0.9;
+    var sfrac=((L.s0+L.s1)/2)/LEN;
+    var nMid=Math.max(1,Math.round(FLOORS*(0.45+0.55*R())*(1+CANYON*sfrac*1.5)));
+    var midH=2.8+R()*0.4;
+    var F0=Math.max(PBACK,L.fe), front=F0, back=L.back, z=KERB, st=[], n;
+    for(n=0;n<nBase+nMid;n++){
+      var u1=R(), u2=R(), u3=R(), u4=R();
+      var h=(n<nBase)?baseH:midH;
+      if(n>=nBase && u1<STEPB) front=Math.min(back-4, front+0.6+u2*1.4);
+      var fr=front;
+      if(n>=nBase && u3<CANTI) fr=Math.max(L.fe, front-(0.4+u4*0.8));
+      st.push({z0:z, z1:z+h, fr:fr}); z+=h;
+    }
+    /* storeys with the same street face merge into one block, and the
+       storey boundaries inside it become floor lines on its faces */
+    var bl=null;
+    st.forEach(function(S){
+      if(bl && Math.abs(bl.fr-S.fr)<1e-9){ bl.floors.push(bl.z1); bl.z1=S.z1; }
+      else { bl={z0:S.z0, z1:S.z1, fr:S.fr, bk:back, floors:[]}; L.blocks.push(bl); }
+    });
+    L.height=z;
+  });
+
+  /* ---- the camera, §3.1 --------------------------------------------------- */
+  var sC=CAMS*LEN;
+  var CE=P3(sC,1,CAMX*HALFW,CAMZ), TG=P3(sC+LOOK,1,0,CAMZ);
+  var fx=TG[0]-CE[0], fy=TG[1]-CE[1], fl=Math.hypot(fx,fy)||1;
+  fx/=fl; fy/=fl;
+  var FW=[fx*Math.cos(PITCH), fy*Math.cos(PITCH), Math.sin(PITCH)];
+  var RT=[FW[1], -FW[0], 0], rl=Math.hypot(RT[0],RT[1])||1;
+  RT=[RT[0]/rl, RT[1]/rl, 0];
+  var UP=[RT[1]*FW[2]-RT[2]*FW[1], RT[2]*FW[0]-RT[0]*FW[2], RT[0]*FW[1]-RT[1]*FW[0]];
+  var FF=1/Math.tan(FOV/2);
+  var HW=(PGW-2*PAD)/2, HH=(PGH-2*PAD)/2;
+  function cam(P){
+    var vx=P[0]-CE[0], vy=P[1]-CE[1], vz=P[2]-CE[2];
+    return [vx*RT[0]+vy*RT[1]+vz*RT[2], vx*UP[0]+vy*UP[1]+vz*UP[2], vx*FW[0]+vy*FW[1]+vz*FW[2]];
+  }
+  /* PAGE MAPPING IS FIXED, not fitted: sx in [-1,1] spans the drawable width
+     and sy takes the same scale. A camera that zoomed to its content would
+     move every time a building grew. */
+  function scr(c){ return [PGW/2+FF*c[0]/c[2]*HW, PGH/2-FF*c[1]/c[2]*HW]; }
+  function project(P){ var c=cam(P); return c[2]>1e-12?scr(c):null; }
+  STRTTALLY.cam={C:CE, f:FW, r:RT, u:UP, F:FF, near:NEAR, pad:PAD, hw:HW, hh:HH};
+  STRTTALLY.project=project;
+
+  /* ---- parts: convex polytopes with their face planes and their LINES.
+     A line is a 3D segment and the two faces it lies on (the same face twice
+     for a line drawn across a face); it is drawn when either face faces the
+     eye. Seams -- a cut from a cycle split, the join between two slabs -- are
+     never lines, which is why lines are explicit rather than derived from the
+     faces' boundaries. */
+  function face(pts,inside){
+    var a=pts[0], b=pts[1], c=pts[2];
+    var ux=b[0]-a[0],uy=b[1]-a[1],uz=b[2]-a[2], vx=c[0]-a[0],vy=c[1]-a[1],vz=c[2]-a[2];
+    var n=[uy*vz-uz*vy, uz*vx-ux*vz, ux*vy-uy*vx], L=Math.hypot(n[0],n[1],n[2])||1;
+    n=[n[0]/L,n[1]/L,n[2]/L];
+    var d=n[0]*a[0]+n[1]*a[1]+n[2]*a[2];
+    if(n[0]*inside[0]+n[1]*inside[1]+n[2]*inside[2]-d>0){ n=[-n[0],-n[1],-n[2]]; d=-d; }
+    return {n:n, d:d, pts:pts};
+  }
+  /* A prism over a convex plan quad Q (4 corners) from z0 to z1. Faces:
+     0 bottom, 1 top, 2..5 the sides, side k running Q[k] -> Q[k+1]. */
+  function prism(Q,z0,z1){
+    var lo=Q.map(function(q){return [q[0],q[1],z0];}), hi=Q.map(function(q){return [q[0],q[1],z1];});
+    var cx=0,cy=0; Q.forEach(function(q){cx+=q[0]/4; cy+=q[1]/4;});
+    var ins=[cx,cy,(z0+z1)/2], F=[face(lo,ins), face(hi,ins)], e;
+    for(e=0;e<4;e++){ var e2=(e+1)%4; F.push(face([lo[e],lo[e2],hi[e2],hi[e]],ins)); }
+    return {faces:F, lines:[], ins:ins};
+  }
+  function boxEdges(P){
+    var F=P.faces, e;
+    for(e=0;e<4;e++){
+      var e2=(e+1)%4, sdf=2+e, prv=2+(e+3)%4;
+      P.lines.push({a:F[0].pts[e], b:F[0].pts[e2], f0:0, f1:sdf});
+      P.lines.push({a:F[1].pts[e], b:F[1].pts[e2], f0:1, f1:sdf});
+      P.lines.push({a:F[0].pts[e], b:F[1].pts[e], f0:prv, f1:sdf});
+    }
+  }
+  function verts(P){ var V=[]; P.faces.forEach(function(f){ f.pts.forEach(function(q){ V.push(q); }); }); return V; }
+
+  lots.forEach(function(L){
+    L.blocks.forEach(function(B){
+      var Q=[P3(L.s0,L.side,B.fr,0),P3(L.s1,L.side,B.fr,0),P3(L.s1,L.side,B.bk,0),P3(L.s0,L.side,B.bk,0)];
+      var P=prism(Q,B.z0,B.z1);
+      boxEdges(P);
+      /* floor lines on every side face; the visibility test decides */
+      B.floors.forEach(function(zf){
+        for(var e=0;e<4;e++){
+          var a=Q[e], b=Q[(e+1)%4];
+          P.lines.push({a:[a[0],a[1],zf], b:[b[0],b[1],zf], f0:2+e, f1:2+e});
+        }
+      });
+      P.cont=L; P.col='#1a1a1a'; L.parts.push(P);
+    });
+    STRTTALLY.lots.push({side:L.side, idx:L.idx, s0:L.s0, s1:L.s1, poly:L.poly,
+      blocks:L.blocks.map(function(B){ return [B.z0,B.z1,B.fr,B.bk,B.floors.slice()]; })});
+  });
+  /* The kerb: a prism from the road edge to the slab's back, 0.15 high. Only
+     its road-facing face carries lines -- the kerb's foot and its top edge.
+     Face 2 is the side running Q[0] -> Q[1], which is the road edge. */
+  conts.forEach(function(C){
+    if(C.kind!=='slab') return;
+    var Q=[P3(C.s0,C.side,HALFW,0),P3(C.s1,C.side,HALFW,0),P3(C.s1,C.side,KOFF,0),P3(C.s0,C.side,KOFF,0)];
+    var P=prism(Q,0,KERB);
+    P.lines.push({a:[Q[0][0],Q[0][1],0], b:[Q[1][0],Q[1][1],0], f0:2, f1:2});
+    P.lines.push({a:[Q[0][0],Q[0][1],KERB], b:[Q[1][0],Q[1][1],KERB], f0:2, f1:1});
+    /* THE KERB HIDES NOTHING (spec §3.3's class of cables and dots). Measured:
+       as an occluder, each 4 m kerb piece's silhouette plus the gap trimmed the
+       start of the next piece's kerb line, and the kerb read as a dashed line
+       every 4 m. It is 0.15 m tall; what it could hide is not worth that. */
+    P.hides=false;
+    P.cont=C; P.col='#1a1a1a'; C.parts.push(P);
+  });
+
+  /* ---- §3.2 near plane, frustum, and each part's screen silhouette -------- */
+  var TH=1/FF, TV=(HH/HW)/FF, M=1.05;
+  function prep(P){
+    var V=verts(P), CV=V.map(cam), all=[0,0,0,0,0], m;
+    for(m=0;m<CV.length;m++){
+      var c=CV[m];
+      if(c[2]<NEAR) all[0]++;
+      if(c[0]-c[2]*TH*M>0) all[1]++;
+      if(-c[0]-c[2]*TH*M>0) all[2]++;
+      if(c[1]-c[2]*TV*M>0) all[3]++;
+      if(-c[1]-c[2]*TV*M>0) all[4]++;
+    }
+    for(m=0;m<5;m++) if(all[m]===CV.length) return false;
+    /* The silhouette: the vertices in front of `near`, plus the crossing
+       point of every face edge that crosses it. Every edge of a convex part
+       is an edge of one of its faces, so walking the face loops is exact. */
+    var sp=[];
+    for(m=0;m<CV.length;m++) if(CV[m][2]>=NEAR) sp.push(scr(CV[m]));
+    P.faces.forEach(function(f){
+      for(var e=0;e<f.pts.length;e++){
+        var a=cam(f.pts[e]), b=cam(f.pts[(e+1)%f.pts.length]);
+        if((a[2]-NEAR)*(b[2]-NEAR)<0){
+          var t=(NEAR-a[2])/(b[2]-a[2]);
+          sp.push(scr([a[0]+(b[0]-a[0])*t, a[1]+(b[1]-a[1])*t, NEAR]));
+        }
+      }
+    });
+    var x0=1e18,y0=1e18,x1=-1e18,y1=-1e18;
+    sp.forEach(function(q){ if(q[0]<x0)x0=q[0]; if(q[0]>x1)x1=q[0]; if(q[1]<y0)y0=q[1]; if(q[1]>y1)y1=q[1]; });
+    if(LODMM>0 && Math.max(x1-x0,y1-y0)*PAGEMM<LODMM) return false;
+    P.sil=hull2(sp); P.sbb=[x0,y0,x1,y1];
+    var cz=cam(P.ins); P.czc=cz[2];
+    return true;
+  }
+  function hull2(pts){
+    if(pts.length<3) return null;
+    var q=pts.slice().sort(function(a,b){ return a[0]-b[0]||a[1]-b[1]; });
+    var lo=[], up=[], m;
+    function cr(o,a,b){ return (a[0]-o[0])*(b[1]-o[1])-(a[1]-o[1])*(b[0]-o[0]); }
+    for(m=0;m<q.length;m++){ while(lo.length>=2 && cr(lo[lo.length-2],lo[lo.length-1],q[m])<=0) lo.pop(); lo.push(q[m]); }
+    for(m=q.length-1;m>=0;m--){ while(up.length>=2 && cr(up[up.length-2],up[up.length-1],q[m])<=0) up.pop(); up.push(q[m]); }
+    var ring=lo.slice(0,-1).concat(up.slice(0,-1));
+    return ring.length>=3?ring:null;
+  }
+
+  /* ---- splitting a part at a plane (the cycle breaker) ------------------- */
+  function clipPoly(pts,n,d,keepAbove){
+    var o=[], m;
+    for(m=0;m<pts.length;m++){
+      var a=pts[m], b=pts[(m+1)%pts.length];
+      var da=n[0]*a[0]+n[1]*a[1]+n[2]*a[2]-d, db=n[0]*b[0]+n[1]*b[1]+n[2]*b[2]-d;
+      if(!keepAbove){ da=-da; db=-db; }
+      if(da>=0) o.push(a);
+      if((da>=0)!==(db>=0)){
+        var t=da/(da-db);
+        o.push([a[0]+(b[0]-a[0])*t, a[1]+(b[1]-a[1])*t, a[2]+(b[2]-a[2])*t]);
+      }
+    }
+    return o;
+  }
+  function splitPart(P,n,d){
+    var halves=[], side;
+    for(side=0;side<2;side++){
+      var up=side===0, H={faces:[], lines:[], cont:P.cont, col:P.col, split:(P.split||0)+1};
+      var cap=[];
+      P.faces.forEach(function(f){
+        var c=clipPoly(f.pts,n,d,up);
+        H.faces.push({n:f.n, d:f.d, pts:c});
+        c.forEach(function(q){
+          if(Math.abs(n[0]*q[0]+n[1]*q[1]+n[2]*q[2]-d)<1e-9) cap.push(q);
+        });
+      });
+      /* the cap is a seam: a face for the planes and the silhouette, no lines */
+      if(cap.length>=3){
+        var ax=Math.abs(n[0])>0.9?[0,1,0]:[1,0,0];
+        var e1=[n[1]*ax[2]-n[2]*ax[1], n[2]*ax[0]-n[0]*ax[2], n[0]*ax[1]-n[1]*ax[0]];
+        var l1=Math.hypot(e1[0],e1[1],e1[2]); e1=[e1[0]/l1,e1[1]/l1,e1[2]/l1];
+        var e2=[n[1]*e1[2]-n[2]*e1[1], n[2]*e1[0]-n[0]*e1[2], n[0]*e1[1]-n[1]*e1[0]];
+        var h=hull2(cap.map(function(q){ var r2=[q[0]*e1[0]+q[1]*e1[1]+q[2]*e1[2], q[0]*e2[0]+q[1]*e2[1]+q[2]*e2[2]]; r2.q=q; return r2; }));
+        if(h) H.faces.push({n:up?[-n[0],-n[1],-n[2]]:n, d:up?-d:d, pts:h.map(function(r2){ return r2.q; })});
+      }
+      H.faces=H.faces.filter(function(f){ return f.pts.length>=3; });
+      P.lines.forEach(function(Ln){
+        var da=n[0]*Ln.a[0]+n[1]*Ln.a[1]+n[2]*Ln.a[2]-d, db=n[0]*Ln.b[0]+n[1]*Ln.b[1]+n[2]*Ln.b[2]-d;
+        if(!up){ da=-da; db=-db; }
+        if(da<0&&db<0) return;
+        var a=Ln.a, b=Ln.b;
+        if(da<0||db<0){
+          var t=da/(da-db), x=[a[0]+(b[0]-a[0])*t, a[1]+(b[1]-a[1])*t, a[2]+(b[2]-a[2])*t];
+          if(da<0) a=x; else b=x;
+        }
+        H.lines.push({a:a, b:b, f0:Ln.f0, f1:Ln.f1});
+      });
+      var cx=0,cy=0,cz=0,nv=0;
+      H.faces.forEach(function(f){ f.pts.forEach(function(q){ cx+=q[0]; cy+=q[1]; cz+=q[2]; nv++; }); });
+      H.ins=[cx/nv,cy/nv,cz/nv];
+      halves.push(H);
+    }
+    return halves;
+  }
+
+  /* ---- §3.3 the order ---------------------------------------------------- */
+  var EYE=[CE[0],CE[1]];
+  /* the plan angular interval a container subtends from the eye, or null
+     when the eye is inside it (then it subtends everything) */
+  function arcOf(Q){
+    var inside=true, m, cx=0, cy=0;
+    for(m=0;m<Q.length;m++){
+      var a=Q[m], b=Q[(m+1)%Q.length];
+      var cr=(b[0]-a[0])*(EYE[1]-a[1])-(b[1]-a[1])*(EYE[0]-a[0]);
+      if(cr<0){ inside=false; }
+      cx+=a[0]/Q.length; cy+=a[1]/Q.length;
+    }
+    var inside2=true;
+    for(m=0;m<Q.length;m++){
+      var a2=Q[m], b2=Q[(m+1)%Q.length];
+      if((b2[0]-a2[0])*(EYE[1]-a2[1])-(b2[1]-a2[1])*(EYE[0]-a2[0])>0) inside2=false;
+    }
+    if(inside||inside2) return null;
+    var c0=Math.atan2(cy-EYE[1],cx-EYE[0]), lo=0, hi=0;
+    for(m=0;m<Q.length;m++){
+      var da=Math.atan2(Q[m][1]-EYE[1],Q[m][0]-EYE[0])-c0;
+      while(da>Math.PI) da-=TAU; while(da<-Math.PI) da+=TAU;
+      if(da<lo) lo=da; if(da>hi) hi=da;
+    }
+    return [c0+lo, c0+hi];
+  }
+  function arcsMeet(A,B){
+    if(!A||!B) return true;
+    var ca=(A[0]+A[1])/2, cb=(B[0]+B[1])/2, dd=cb-ca;
+    while(dd>Math.PI) dd-=TAU; while(dd<-Math.PI) dd+=TAU;
+    return Math.abs(dd) < (A[1]-A[0])/2+(B[1]-B[0])/2 - 1e-12;
+  }
+  /* The eye-side rule on one axis: A's extent [a0,a1], B's [b0,b1], eye e.
+     Returns 1 (A first), -1 (B first), 0 (separated with the eye between,
+     so neither can hide the other), or null (not separated on this axis). */
+  function sideRule(a0,a1,b0,b1,e){
+    var tol=1e-9;
+    if(a1<=b0+tol){ if(e<=a1+tol) return 1; if(e>=b0-tol) return -1; return 0; }
+    if(b1<=a0+tol){ if(e<=b1+tol) return -1; if(e>=a0-tol) return 1; return 0; }
+    return null;
+  }
+  function planSep(A,B){
+    var polys=[A.poly,B.poly], pi, e, m;
+    for(pi=0;pi<2;pi++){
+      var Q=polys[pi];
+      for(e=0;e<Q.length;e++){
+        var a=Q[e], b=Q[(e+1)%Q.length], nx=b[1]-a[1], ny=a[0]-b[0];
+        var L=Math.hypot(nx,ny); if(L<1e-12) continue; nx/=L; ny/=L;
+        var a0=1e18,a1=-1e18,b0=1e18,b1=-1e18;
+        for(m=0;m<A.poly.length;m++){ var t=A.poly[m][0]*nx+A.poly[m][1]*ny; if(t<a0)a0=t; if(t>a1)a1=t; }
+        for(m=0;m<B.poly.length;m++){ var t2=B.poly[m][0]*nx+B.poly[m][1]*ny; if(t2<b0)b0=t2; if(t2>b1)b1=t2; }
+        var r=sideRule(a0,a1,b0,b1,EYE[0]*nx+EYE[1]*ny);
+        if(r!==null) return r;
+      }
+    }
+    return null;
+  }
+  function partSep(A,B){
+    var list=A.faces.concat(B.faces), VA=verts(A), VB=verts(B), fi, m;
+    for(fi=0;fi<list.length;fi++){
+      var n=list[fi].n, a0=1e18,a1=-1e18,b0=1e18,b1=-1e18;
+      for(m=0;m<VA.length;m++){ var t=n[0]*VA[m][0]+n[1]*VA[m][1]+n[2]*VA[m][2]; if(t<a0)a0=t; if(t>a1)a1=t; }
+      for(m=0;m<VB.length;m++){ var t2=n[0]*VB[m][0]+n[1]*VB[m][1]+n[2]*VB[m][2]; if(t2<b0)b0=t2; if(t2>b1)b1=t2; }
+      var r=sideRule(a0,a1,b0,b1,n[0]*CE[0]+n[1]*CE[1]+n[2]*CE[2]);
+      if(r!==null) return r;
+    }
+    return null;
+  }
+  /* Kahn over nodes 0..N-1 with `before[i]` = the nodes that must follow i.
+     Ready nodes leave NEAREST first. Returns the order and whatever is left
+     in a cycle. */
+  function kahn(N,edges,key){
+    var indeg=new Array(N).fill(0), nxt=[], m, done=[], left=N;
+    for(m=0;m<N;m++) nxt.push([]);
+    edges.forEach(function(e){ nxt[e[0]].push(e[1]); indeg[e[1]]++; });
+    var ready=[]; for(m=0;m<N;m++) if(!indeg[m]) ready.push(m);
+    while(ready.length){
+      var bi=0; for(m=1;m<ready.length;m++) if(key[ready[m]]<key[ready[bi]]) bi=m;
+      var u=ready.splice(bi,1)[0]; done.push(u); left--;
+      nxt[u].forEach(function(v){ if(--indeg[v]===0) ready.push(v); });
+    }
+    var rest=[]; for(m=0;m<N;m++) if(indeg[m]>0) rest.push(m);
+    return {order:done, rest:rest};
+  }
+
+  /* prep every part; a container with nothing left in view is dropped */
+  var live=[], nparts=0;
+  conts.forEach(function(C){
+    C.parts=C.parts.filter(prep);
+    if(!C.parts.length) return;
+    C.arc=arcOf(C.poly);
+    var cz=cam([ (C.poly[0][0]+C.poly[2][0])/2, (C.poly[0][1]+C.poly[2][1])/2, CAMZ ]);
+    C.key=cz[2];
+    live.push(C); nparts+=C.parts.length;
+  });
+  var cedges=[], unsep=0;
+  for(i=0;i<live.length;i++) for(j=i+1;j<live.length;j++){
+    if(!arcsMeet(live[i].arc,live[j].arc)) continue;
+    var rr=planSep(live[i],live[j]);
+    if(rr===null){ unsep++; continue; }
+    if(rr===1) cedges.push([i,j]); else if(rr===-1) cedges.push([j,i]);
+  }
+  var KO=kahn(live.length,cedges,live.map(function(C){ return C.key; }));
+  var ccycles=KO.rest.length;
+  /* a cycle between containers is impossible by the plan argument above; if
+     one ever appears it is COUNTED, and its members go last, nearest first */
+  var corder=KO.order.concat(KO.rest.sort(function(a,b){ return live[a].key-live[b].key; }));
+
+  var cycles=ccycles, splits=0;
+  function orderParts(C){
+    for(var attempt=0;attempt<8;attempt++){
+      var PS=C.parts, n=PS.length, pe=[], a, b;
+      for(a=0;a<n;a++) for(b=a+1;b<n;b++){
+        var A=PS[a].sbb, B=PS[b].sbb;
+        if(A[2]<B[0]||B[2]<A[0]||A[3]<B[1]||B[3]<A[1]) continue;
+        var r=partSep(PS[a],PS[b]);
+        if(r===1) pe.push([a,b]); else if(r===-1) pe.push([b,a]);
+      }
+      var K=kahn(n,pe,PS.map(function(P){ return P.czc; }));
+      if(!K.rest.length) return K.order.map(function(ix){ return PS[ix]; });
+      /* split the first part left in the cycle at the plane through its
+         centroid normal to the view direction, and sort again */
+      var victim=PS[K.rest[0]], d=FW[0]*victim.ins[0]+FW[1]*victim.ins[1]+FW[2]*victim.ins[2];
+      var halves=splitPart(victim,FW,d).filter(prep);
+      C.parts=PS.filter(function(P){ return P!==victim; }).concat(halves);
+      splits++;
+    }
+    cycles++;
+    return C.parts.slice().sort(function(a,b){ return a.czc-b.czc; });
+  }
+
+  /* ---- commit: front to back, lines first, then the silhouette ----------- */
+  var occl=[], preIx=[], srcOf=[], maxz=NEAR;
+  var committed=[];
+  corder.forEach(function(ci){
+    var C=live[ci];
+    STRTTALLY.conts.push({kind:C.kind, side:C.side, s0:C.s0, s1:C.s1});
+    orderParts(C).forEach(function(P){
+      var vis=P.faces.map(function(f){
+        return f.n[0]*CE[0]+f.n[1]*CE[1]+f.n[2]*CE[2]-f.d>1e-9;
+      });
+      var pid=committed.length, pp=[], meta=[];
+      committed.push(P);
+      P.lines.forEach(function(Ln){
+        if(!vis[Ln.f0] && !vis[Ln.f1]) return;
+        var a=cam(Ln.a), b=cam(Ln.b);
+        if(a[2]<NEAR && b[2]<NEAR) return;
+        var gi=STRTTALLY.pre.length;
+        STRTTALLY.pre.push({a:Ln.a, b:Ln.b, part:pid});
+        if(a[2]<NEAR || b[2]<NEAR){
+          var t=(NEAR-a[2])/(b[2]-a[2]);
+          var x=[a[0]+(b[0]-a[0])*t, a[1]+(b[1]-a[1])*t, NEAR];
+          if(a[2]<NEAR) a=x; else b=x;
+        }
+        var A=scr(a), B=scr(b);
+        pp.push([[A[0],A[1]],[B[0],B[1]]]);
+        meta.push({pre:gi, iza:1/a[2], izb:1/b[2], A:A, B:B});
+        if(a[2]>maxz) maxz=a[2]; if(b[2]>maxz) maxz=b[2];
+      });
+      if(pp.length){
+        var frag=hlrConvex(pp,occl,GAP), f;
+        for(f=0;f<frag.length;f++){
+          var run=frag[f]; if(run.length<2) continue;
+          var M2=meta[run.src], dx=M2.B[0]-M2.A[0], dy=M2.B[1]-M2.A[1], L2=dx*dx+dy*dy;
+          var izs=run.map(function(q){
+            var t=L2>0?((q[0]-M2.A[0])*dx+(q[1]-M2.A[1])*dy)/L2:0;
+            return M2.iza+(M2.izb-M2.iza)*Math.max(0,Math.min(1,t));
+          });
+          run.pre=M2.pre; run.part=pid; run.izs=izs; run.col=P.col;
+          out.push(run);
+        }
+      }
+      STRTTALLY.parts.push({faces:P.faces.map(function(fc){ return {n:fc.n, d:fc.d}; }),
+                            V:verts(P), cont:C.kind, split:P.split||0, hides:P.hides!==false});
+      STRTTALLY.sil.push(P.sil);
+      if(P.sil && P.hides!==false) occl.push(P.sil);
+    });
+  });
+
+  /* ---- the page clip, and depth onto the expandos ------------------------ */
+  var X0=PAD, Y0=PAD, X1=PGW-PAD, Y1=PGH-PAD, res=[], FARZ=Math.max(maxz,NEAR+1);
+  out.forEach(function(run){
+    var cur=null, cz=null;
+    function flush(){
+      if(cur && cur.length>1){
+        cur.z=cz.map(function(iz){ var zc=1/iz; return 1-Math.max(0,Math.min(1,(zc-NEAR)/(FARZ-NEAR))); });
+        cur.zc=cz.map(function(iz){ return 1/iz; });
+        cur.pre=run.pre; cur.part=run.part; cur.col=run.col;
+        res.push(cur);
+      }
+      cur=null; cz=null;
+    }
+    for(var m=1;m<run.length;m++){
+      var a=run[m-1], b=run[m], t0=0, t1=1, dx=b[0]-a[0], dy=b[1]-a[1];
+      var P4=[-dx,dx,-dy,dy], Q4=[a[0]-X0,X1-a[0],a[1]-Y0,Y1-a[1]], okc=true;
+      for(var q=0;q<4;q++){
+        if(Math.abs(P4[q])<1e-15){ if(Q4[q]<0){ okc=false; break; } continue; }
+        var r=Q4[q]/P4[q];
+        if(P4[q]<0){ if(r>t1){ okc=false; break; } if(r>t0) t0=r; }
+        else       { if(r<t0){ okc=false; break; } if(r<t1) t1=r; }
+      }
+      if(!okc || t1-t0<1e-12){ flush(); continue; }
+      var ia=run.izs[m-1], ib=run.izs[m];
+      var pa=[a[0]+dx*t0, a[1]+dy*t0], pb=[a[0]+dx*t1, a[1]+dy*t1];
+      if(cur && t0<=1e-12){ cur.push(pb); cz.push(ia+(ib-ia)*t1); }
+      else { flush(); cur=[pa,pb]; cz=[ia+(ib-ia)*t0, ia+(ib-ia)*t1]; }
+      if(t1<1-1e-12) flush();
+    }
+    flush();
+  });
+
+  var npts=0; res.forEach(function(q){ npts+=q.length; });
+  STRTSTATS={lots:lots.length, dropped:dropped, pushed:pushed, conts:live.length,
+             parts:committed.length, paths:res.length, points:npts,
+             cycles:cycles, ccycles:ccycles, splits:splits, unsep:unsep,
+             budget:90000};
+  STRTINFO=lots.length+' lots · '+committed.length.toLocaleString()+' parts · '+
+           res.length.toLocaleString()+' paths'+
+           (cycles?' · CYCLES '+cycles:' · cycles 0')+
+           (splits?' · '+splits+' split':'')+
+           (dropped?' · '+dropped+' lots dropped (overlap)':'');
+  return res;
+}
+
 /* ---------- 14. MOIRE : swept section along a 3D spine, ONE path ----------
    The geometric-chuck / James Nolan Gandy look. Mechanically that is a physical
    Fourier series; this is the art-directable cousin. A single continuous helix in
@@ -18163,6 +18856,7 @@ function draw(){
   if(mode==='poin' && POININFO) txt+=' \u00b7 '+POININFO;
   if(mode==='poin' && POINSNAP) txt+=' \u00b7 '+POINSNAP;
   if(mode==='stat' && STATINFO) txt+=' \u00b7 '+STATINFO;
+  if(mode==='strt' && STRTINFO) txt+=' \u00b7 '+STRTINFO;
   if(mode==='fan'){
     var fv=vals(), wnd=fv.loops+fv.prec/100;
     txt+=' \u00b7 winding '+(Math.abs(wnd-Math.round(wnd))<1e-9?wnd.toFixed(0):wnd.toFixed(2));
@@ -18399,7 +19093,7 @@ var FAMILIES=[
   ['Lattices',   ['truchet','maze','hilbert','voronoi','pack','rows','poin']],
   ['Curves',     ['harmo','sform','lsys','string','fan','chladni']],
   ['FROM PHOTO 3D', ['isoimg']],
-  ['3D',         ['hil3','harmo3','attract','ruled','knot','spack','flow3','surf','iso','stat']],
+  ['3D',         ['hil3','harmo3','attract','ruled','knot','spack','flow3','surf','iso','stat','strt']],
   ['From photo', ['tonehatch','tonespiral']]
 ];
 function mountTabs(){
@@ -18839,6 +19533,25 @@ var HELP={
 'stat.budg':'How much drawing the station is allowed to be, in thousands of POINTS. It is the size control: `Keel length` seeds the shape and growth then throws off new branches until this is spent, so a longer keel makes a differently-shaped station of the same weight rather than a bigger one. The page\u2019s own ceiling caps it \u2014 the one recorded BEFORE the draft clamp, so dragging a slider cannot grow a different station \u2014 and the module pass stops at 85% of it so the greebles, tethers and rings are inside the budget rather than starved by it. Measured: 45 is 7,952 paths in 621 ms; the full page ceiling is 18,892 paths in 2,008 ms.',
 'stat.lod':'The smallest piece of hardware that still gets drawn, as its size on the SHEET. An isometric view has no perspective shrink, so there is nothing to make a distant greeble small except the station being big \u2014 and once a station fills the page at a fine module scale, a thruster quad is a blob the pen cannot resolve and a minute of plotting time. This is measured against millimetres per cell ESTIMATED BEFORE anything is built, because the decision has to be taken before the drawing exists: the lattice bounding box is the one extent known up front, so it over-estimates the scale by whatever margin the station leaves inside its own box. At 0 nothing is dropped.',
 'stat.occ':'How wide a white gap a nearer solid opens in whatever passes behind it. The station hides itself — every solid is confined to one lattice cell and sorted front to back by i+j+k, which for disjoint cells is an EXACT painter order and not a heuristic — so this is the finish on that, in millimetres on the sheet. The default matches the iso city’s and the CLI’s 0.5 mm. Wide gaps erase short segments outright rather than merely widening the breaks.',
+'strt.len':'How far the street runs, in metres. The camera stands part-way along it (Camera along) and sees the rest recede. A longer street reaches further toward the vanishing point and costs more lines.',
+'strt.bend':'How much the street curves, in degrees per 100 m. 0 is dead straight, so the kerbs meet at one vanishing point; higher bends the far end out of sight behind the buildings on the inside of the curve.',
+'strt.width':'The carriageway, kerb to kerb, in metres. Narrow makes a lane with the buildings leaning over you; wide makes an avenue.',
+'strt.pave':'The pavement on each side, kerb to shopfront, in metres. At 0 the buildings stand at the kerb.',
+'strt.lotmin':'The narrowest building plot along the street, in metres. Plots are cut between Lot min and Lot max, so the gap between the two is how varied the frontages are.',
+'strt.lotmax':'The widest building plot along the street, in metres. Wide plots make long, flat frontages; keep it near Lot min for a row of narrow Tokyo-style buildings.',
+'strt.alley':'How often a gap (1.2–2.5 m) opens between two buildings. At 0 the street is a continuous wall on both sides.',
+'strt.floors':'How many storeys a building has above its shop floor, roughly: each building draws between about half this and all of it, and Canyon rise adds more toward the far end.',
+'strt.canyon':'How much taller the buildings get with distance along the street, so the far end reads as a wall. 0 keeps every building to the Storeys range.',
+'strt.stepb':'How often a storey steps back from the street, 0.6–2 m, for good: every storey above it stays back too.',
+'strt.canti':'How often a single storey juts out over the pavement, 0.4–1.2 m, like a bay. It never reaches past the kerb line.',
+'strt.cams':'Where the camera stands, as a share of the street’s length. Near 0 you see the whole street ahead; toward 90 most of it is behind you.',
+'strt.camx':'The camera’s position across the street, as a share of half the road’s width: 0 is the centre line, -100 and 100 the kerbs.',
+'strt.camz':'The camera’s height in metres. 1.6 is standing eye height; raise it for a view from a window or a rooftop. The horizon stays where Pitch puts it; the street drops away below it as you go up.',
+'strt.look':'How far ahead the camera aims, in metres along the street. On a bent street this is what turns the camera to follow the curve.',
+'strt.pitch':'Tilts the camera up (positive) or down, in degrees, after it aims along the street. Up shows more building and sky; down shows more road.',
+'strt.fov':'The camera’s field of view across the sheet, in degrees. Narrow is a long lens and flattens the street; wide exaggerates the perspective and the buildings lean.',
+'strt.lod':'The smallest part still drawn, as its size on the sheet. Far buildings shrink toward nothing near the vanishing point; below this they are left out rather than drawn as a blob the pen cannot resolve. 0 draws everything.',
+'strt.occ':'How wide a white gap a nearer object leaves in whatever passes behind it, in millimetres on the sheet. The street works out exactly what is in front of what; this is only the finish on the break.',
 /* Maze */
 'maze.grid':'Cells per side. Walls are placed by recursive division.',
 'maze.bias':'Horizontal vs vertical split preference when a region is square. 0 and 100 give strongly grained mazes.',
@@ -19076,7 +19789,9 @@ document.addEventListener('click',function(e){
 function mkRow(box,spec,prefix,get,set){
   var key=spec[0], label=spec[1], mn=spec[2], mx=spec[3], st=spec[4], fmt=spec[6]||null;
   if(label==='\\u2014') return;
-  var div=fmt?fmt[0]:1, unit=fmt?fmt[1]:'', dec=(div===1)?0:2, def=spec[5];
+  /* At scale 1 a knob shows as many decimals as its STEP has (0 for every knob
+     before the street engine, which is the first with a fractional step). */
+  var div=fmt?fmt[0]:1, unit=fmt?fmt[1]:'', dec=(div===1)?(String(spec[4]).split('.')[1]||'').length:2, def=spec[5];
   var d=document.createElement('div'); d.className='row';
   d.innerHTML='<label for="'+prefix+key+'">'+label+'</label>'+
     '<input type="range" id="'+prefix+key+'" min="'+mn+'" max="'+mx+'" step="'+st+'">'+
@@ -19168,7 +19883,7 @@ function mkRow(box,spec,prefix,get,set){
   nu.addEventListener('keydown',function(e){ if(e.key==='Enter'){ push(parseFloat(nu.value)*div,true); nu.blur(); } });
 }
 function repaintRow(prefix,spec,raw){
-  var key=spec[0], div=spec[6]?spec[6][0]:1, dec=(div===1)?0:2;
+  var key=spec[0], div=spec[6]?spec[6][0]:1, dec=(div===1)?(String(spec[4]).split('.')[1]||'').length:2;
   var r=document.getElementById(prefix+key), n=document.getElementById(prefix+'n_'+key);
   if(r) r.value=raw; if(n) n.value=(raw/div).toFixed(dec);
 }
