@@ -420,7 +420,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v261</a> &mdash; STREET — a perspective street canyon with the camera standing in it: lots and box-stack buildings along a curving street, a pinhole camera with a near plane, and an order computed from separating planes and checked against ray truth</span></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v262</a> &mdash; REFACTOR ONLY — the street engine's parts, order, commit and page clip move into one render pass the detail budget can run again; every street drawing byte-identical to v261</span></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <div class="tabs" id="tabs"></div>
@@ -17612,40 +17612,6 @@ function buildStreet(p){
   }
   function verts(P){ var V=[]; P.faces.forEach(function(f){ f.pts.forEach(function(q){ V.push(q); }); }); return V; }
 
-  lots.forEach(function(L){
-    L.blocks.forEach(function(B){
-      var Q=[P3(L.s0,L.side,B.fr,0),P3(L.s1,L.side,B.fr,0),P3(L.s1,L.side,B.bk,0),P3(L.s0,L.side,B.bk,0)];
-      var P=prism(Q,B.z0,B.z1);
-      boxEdges(P);
-      /* floor lines on every side face; the visibility test decides */
-      B.floors.forEach(function(zf){
-        for(var e=0;e<4;e++){
-          var a=Q[e], b=Q[(e+1)%4];
-          P.lines.push({a:[a[0],a[1],zf], b:[b[0],b[1],zf], f0:2+e, f1:2+e});
-        }
-      });
-      P.cont=L; P.col='#1a1a1a'; L.parts.push(P);
-    });
-    STRTTALLY.lots.push({side:L.side, idx:L.idx, s0:L.s0, s1:L.s1, poly:L.poly,
-      blocks:L.blocks.map(function(B){ return [B.z0,B.z1,B.fr,B.bk,B.floors.slice()]; })});
-  });
-  /* The kerb: a prism from the road edge to the slab's back, 0.15 high. Only
-     its road-facing face carries lines -- the kerb's foot and its top edge.
-     Face 2 is the side running Q[0] -> Q[1], which is the road edge. */
-  conts.forEach(function(C){
-    if(C.kind!=='slab') return;
-    var Q=[P3(C.s0,C.side,HALFW,0),P3(C.s1,C.side,HALFW,0),P3(C.s1,C.side,KOFF,0),P3(C.s0,C.side,KOFF,0)];
-    var P=prism(Q,0,KERB);
-    P.lines.push({a:[Q[0][0],Q[0][1],0], b:[Q[1][0],Q[1][1],0], f0:2, f1:2});
-    P.lines.push({a:[Q[0][0],Q[0][1],KERB], b:[Q[1][0],Q[1][1],KERB], f0:2, f1:1});
-    /* THE KERB HIDES NOTHING (spec §3.3's class of cables and dots). Measured:
-       as an occluder, each 4 m kerb piece's silhouette plus the gap trimmed the
-       start of the next piece's kerb line, and the kerb read as a dashed line
-       every 4 m. It is 0.15 m tall; what it could hide is not worth that. */
-    P.hides=false;
-    P.cont=C; P.col='#1a1a1a'; C.parts.push(P);
-  });
-
   /* ---- §3.2 near plane, frustum, and each part's screen silhouette -------- */
   var TH=1/FF, TV=(HH/HW)/FF, M=1.05;
   function prep(P){
@@ -17675,7 +17641,7 @@ function buildStreet(p){
     });
     var x0=1e18,y0=1e18,x1=-1e18,y1=-1e18;
     sp.forEach(function(q){ if(q[0]<x0)x0=q[0]; if(q[0]>x1)x1=q[0]; if(q[1]<y0)y0=q[1]; if(q[1]>y1)y1=q[1]; });
-    if(LODMM>0 && Math.max(x1-x0,y1-y0)*PAGEMM<LODMM) return false;
+    if(LODNOW>0 && Math.max(x1-x0,y1-y0)*PAGEMM<LODNOW) return false;
     P.sil=hull2(sp); P.sbb=[x0,y0,x1,y1];
     var cz=cam(P.ins); P.czc=cz[2];
     return true;
@@ -17833,131 +17799,181 @@ function buildStreet(p){
   }
 
   /* prep every part; a container with nothing left in view is dropped */
-  var live=[], nparts=0;
-  conts.forEach(function(C){
-    C.parts=C.parts.filter(prep);
-    if(!C.parts.length) return;
-    C.arc=arcOf(C.poly);
-    var cz=cam([ (C.poly[0][0]+C.poly[2][0])/2, (C.poly[0][1]+C.poly[2][1])/2, CAMZ ]);
-    C.key=cz[2];
-    live.push(C); nparts+=C.parts.length;
-  });
-  var cedges=[], unsep=0;
-  for(i=0;i<live.length;i++) for(j=i+1;j<live.length;j++){
-    if(!arcsMeet(live[i].arc,live[j].arc)) continue;
-    var rr=planSep(live[i],live[j]);
-    if(rr===null){ unsep++; continue; }
-    if(rr===1) cedges.push([i,j]); else if(rr===-1) cedges.push([j,i]);
-  }
-  var KO=kahn(live.length,cedges,live.map(function(C){ return C.key; }));
-  var ccycles=KO.rest.length;
-  /* a cycle between containers is impossible by the plan argument above; if
-     one ever appears it is COUNTED, and its members go last, nearest first */
-  var corder=KO.order.concat(KO.rest.sort(function(a,b){ return live[a].key-live[b].key; }));
-
-  var cycles=ccycles, splits=0;
-  function orderParts(C){
-    for(var attempt=0;attempt<8;attempt++){
-      var PS=C.parts, n=PS.length, pe=[], a, b;
-      for(a=0;a<n;a++) for(b=a+1;b<n;b++){
-        var A=PS[a].sbb, B=PS[b].sbb;
-        if(A[2]<B[0]||B[2]<A[0]||A[3]<B[1]||B[3]<A[1]) continue;
-        var r=partSep(PS[a],PS[b]);
-        if(r===1) pe.push([a,b]); else if(r===-1) pe.push([b,a]);
-      }
-      var K=kahn(n,pe,PS.map(function(P){ return P.czc; }));
-      if(!K.rest.length) return K.order.map(function(ix){ return PS[ix]; });
-      /* split the first part left in the cycle at the plane through its
-         centroid normal to the view direction, and sort again */
-      var victim=PS[K.rest[0]], d=FW[0]*victim.ins[0]+FW[1]*victim.ins[1]+FW[2]*victim.ins[2];
-      var halves=splitPart(victim,FW,d).filter(prep);
-      C.parts=PS.filter(function(P){ return P!==victim; }).concat(halves);
-      splits++;
-    }
-    cycles++;
-    return C.parts.slice().sort(function(a,b){ return a.czc-b.czc; });
-  }
-
-  /* ---- commit: front to back, lines first, then the silhouette ----------- */
-  var occl=[], preIx=[], srcOf=[], maxz=NEAR;
-  var committed=[];
-  corder.forEach(function(ci){
-    var C=live[ci];
-    STRTTALLY.conts.push({kind:C.kind, side:C.side, s0:C.s0, s1:C.s1});
-    orderParts(C).forEach(function(P){
-      var vis=P.faces.map(function(f){
-        return f.n[0]*CE[0]+f.n[1]*CE[1]+f.n[2]*CE[2]-f.d>1e-9;
+  /* ---- THE RENDER: parts, order, commit, page clip. A FUNCTION so the budget
+     of §4 can run it again at tighter detail; it is called once until then.
+     Everything above it -- the spline, the lots, the stacks, the camera -- is
+     built once and never depends on the detail settings. */
+  var LODNOW=LODMM;
+  function render(lodmm){
+    LODNOW=lodmm; out=[];
+    STRTTALLY.parts=[]; STRTTALLY.pre=[]; STRTTALLY.sil=[]; STRTTALLY.conts=[];
+    conts.forEach(function(C){ C.parts=[]; });
+    lots.forEach(function(L){
+      L.blocks.forEach(function(B){
+        var Q=[P3(L.s0,L.side,B.fr,0),P3(L.s1,L.side,B.fr,0),P3(L.s1,L.side,B.bk,0),P3(L.s0,L.side,B.bk,0)];
+        var P=prism(Q,B.z0,B.z1);
+        boxEdges(P);
+        /* floor lines on every side face; the visibility test decides */
+        B.floors.forEach(function(zf){
+          for(var e=0;e<4;e++){
+            var a=Q[e], b=Q[(e+1)%4];
+            P.lines.push({a:[a[0],a[1],zf], b:[b[0],b[1],zf], f0:2+e, f1:2+e});
+          }
+        });
+        P.cont=L; P.col='#1a1a1a'; L.parts.push(P);
       });
-      var pid=committed.length, pp=[], meta=[];
-      committed.push(P);
-      P.lines.forEach(function(Ln){
-        if(!vis[Ln.f0] && !vis[Ln.f1]) return;
-        var a=cam(Ln.a), b=cam(Ln.b);
-        if(a[2]<NEAR && b[2]<NEAR) return;
-        var gi=STRTTALLY.pre.length;
-        STRTTALLY.pre.push({a:Ln.a, b:Ln.b, part:pid});
-        if(a[2]<NEAR || b[2]<NEAR){
-          var t=(NEAR-a[2])/(b[2]-a[2]);
-          var x=[a[0]+(b[0]-a[0])*t, a[1]+(b[1]-a[1])*t, NEAR];
-          if(a[2]<NEAR) a=x; else b=x;
-        }
-        var A=scr(a), B=scr(b);
-        pp.push([[A[0],A[1]],[B[0],B[1]]]);
-        meta.push({pre:gi, iza:1/a[2], izb:1/b[2], A:A, B:B});
-        if(a[2]>maxz) maxz=a[2]; if(b[2]>maxz) maxz=b[2];
-      });
-      if(pp.length){
-        var frag=hlrConvex(pp,occl,GAP), f;
-        for(f=0;f<frag.length;f++){
-          var run=frag[f]; if(run.length<2) continue;
-          var M2=meta[run.src], dx=M2.B[0]-M2.A[0], dy=M2.B[1]-M2.A[1], L2=dx*dx+dy*dy;
-          var izs=run.map(function(q){
-            var t=L2>0?((q[0]-M2.A[0])*dx+(q[1]-M2.A[1])*dy)/L2:0;
-            return M2.iza+(M2.izb-M2.iza)*Math.max(0,Math.min(1,t));
-          });
-          run.pre=M2.pre; run.part=pid; run.izs=izs; run.col=P.col;
-          out.push(run);
-        }
-      }
-      STRTTALLY.parts.push({faces:P.faces.map(function(fc){ return {n:fc.n, d:fc.d}; }),
-                            V:verts(P), cont:C.kind, split:P.split||0, hides:P.hides!==false});
-      STRTTALLY.sil.push(P.sil);
-      if(P.sil && P.hides!==false) occl.push(P.sil);
     });
-  });
+    /* The kerb: a prism from the road edge to the slab's back, 0.15 high. Only
+       its road-facing face carries lines -- the kerb's foot and its top edge.
+       Face 2 is the side running Q[0] -> Q[1], which is the road edge. */
+    conts.forEach(function(C){
+      if(C.kind!=='slab') return;
+      var Q=[P3(C.s0,C.side,HALFW,0),P3(C.s1,C.side,HALFW,0),P3(C.s1,C.side,KOFF,0),P3(C.s0,C.side,KOFF,0)];
+      var P=prism(Q,0,KERB);
+      P.lines.push({a:[Q[0][0],Q[0][1],0], b:[Q[1][0],Q[1][1],0], f0:2, f1:2});
+      P.lines.push({a:[Q[0][0],Q[0][1],KERB], b:[Q[1][0],Q[1][1],KERB], f0:2, f1:1});
+      /* THE KERB HIDES NOTHING (spec §3.3's class of cables and dots). Measured:
+         as an occluder, each 4 m kerb piece's silhouette plus the gap trimmed the
+         start of the next piece's kerb line, and the kerb read as a dashed line
+         every 4 m. It is 0.15 m tall; what it could hide is not worth that. */
+      P.hides=false;
+      P.cont=C; P.col='#1a1a1a'; C.parts.push(P);
+    });
 
-  /* ---- the page clip, and depth onto the expandos ------------------------ */
-  var X0=PAD, Y0=PAD, X1=PGW-PAD, Y1=PGH-PAD, res=[], FARZ=Math.max(maxz,NEAR+1);
-  out.forEach(function(run){
-    var cur=null, cz=null;
-    function flush(){
-      if(cur && cur.length>1){
-        cur.z=cz.map(function(iz){ var zc=1/iz; return 1-Math.max(0,Math.min(1,(zc-NEAR)/(FARZ-NEAR))); });
-        cur.zc=cz.map(function(iz){ return 1/iz; });
-        cur.pre=run.pre; cur.part=run.part; cur.col=run.col;
-        res.push(cur);
-      }
-      cur=null; cz=null;
+    var live=[], nparts=0;
+    conts.forEach(function(C){
+      C.parts=C.parts.filter(prep);
+      if(!C.parts.length) return;
+      C.arc=arcOf(C.poly);
+      var cz=cam([ (C.poly[0][0]+C.poly[2][0])/2, (C.poly[0][1]+C.poly[2][1])/2, CAMZ ]);
+      C.key=cz[2];
+      live.push(C); nparts+=C.parts.length;
+    });
+    var cedges=[], unsep=0;
+    for(i=0;i<live.length;i++) for(j=i+1;j<live.length;j++){
+      if(!arcsMeet(live[i].arc,live[j].arc)) continue;
+      var rr=planSep(live[i],live[j]);
+      if(rr===null){ unsep++; continue; }
+      if(rr===1) cedges.push([i,j]); else if(rr===-1) cedges.push([j,i]);
     }
-    for(var m=1;m<run.length;m++){
-      var a=run[m-1], b=run[m], t0=0, t1=1, dx=b[0]-a[0], dy=b[1]-a[1];
-      var P4=[-dx,dx,-dy,dy], Q4=[a[0]-X0,X1-a[0],a[1]-Y0,Y1-a[1]], okc=true;
-      for(var q=0;q<4;q++){
-        if(Math.abs(P4[q])<1e-15){ if(Q4[q]<0){ okc=false; break; } continue; }
-        var r=Q4[q]/P4[q];
-        if(P4[q]<0){ if(r>t1){ okc=false; break; } if(r>t0) t0=r; }
-        else       { if(r<t0){ okc=false; break; } if(r<t1) t1=r; }
-      }
-      if(!okc || t1-t0<1e-12){ flush(); continue; }
-      var ia=run.izs[m-1], ib=run.izs[m];
-      var pa=[a[0]+dx*t0, a[1]+dy*t0], pb=[a[0]+dx*t1, a[1]+dy*t1];
-      if(cur && t0<=1e-12){ cur.push(pb); cz.push(ia+(ib-ia)*t1); }
-      else { flush(); cur=[pa,pb]; cz=[ia+(ib-ia)*t0, ia+(ib-ia)*t1]; }
-      if(t1<1-1e-12) flush();
-    }
-    flush();
-  });
+    var KO=kahn(live.length,cedges,live.map(function(C){ return C.key; }));
+    var ccycles=KO.rest.length;
+    /* a cycle between containers is impossible by the plan argument above; if
+       one ever appears it is COUNTED, and its members go last, nearest first */
+    var corder=KO.order.concat(KO.rest.sort(function(a,b){ return live[a].key-live[b].key; }));
 
+    var cycles=ccycles, splits=0;
+    function orderParts(C){
+      for(var attempt=0;attempt<8;attempt++){
+        var PS=C.parts, n=PS.length, pe=[], a, b;
+        for(a=0;a<n;a++) for(b=a+1;b<n;b++){
+          var A=PS[a].sbb, B=PS[b].sbb;
+          if(A[2]<B[0]||B[2]<A[0]||A[3]<B[1]||B[3]<A[1]) continue;
+          var r=partSep(PS[a],PS[b]);
+          if(r===1) pe.push([a,b]); else if(r===-1) pe.push([b,a]);
+        }
+        var K=kahn(n,pe,PS.map(function(P){ return P.czc; }));
+        if(!K.rest.length) return K.order.map(function(ix){ return PS[ix]; });
+        /* split the first part left in the cycle at the plane through its
+           centroid normal to the view direction, and sort again */
+        var victim=PS[K.rest[0]], d=FW[0]*victim.ins[0]+FW[1]*victim.ins[1]+FW[2]*victim.ins[2];
+        var halves=splitPart(victim,FW,d).filter(prep);
+        C.parts=PS.filter(function(P){ return P!==victim; }).concat(halves);
+        splits++;
+      }
+      cycles++;
+      return C.parts.slice().sort(function(a,b){ return a.czc-b.czc; });
+    }
+
+    /* ---- commit: front to back, lines first, then the silhouette ----------- */
+    var occl=[], preIx=[], srcOf=[], maxz=NEAR;
+    var committed=[];
+    corder.forEach(function(ci){
+      var C=live[ci];
+      STRTTALLY.conts.push({kind:C.kind, side:C.side, s0:C.s0, s1:C.s1});
+      orderParts(C).forEach(function(P){
+        var vis=P.faces.map(function(f){
+          return f.n[0]*CE[0]+f.n[1]*CE[1]+f.n[2]*CE[2]-f.d>1e-9;
+        });
+        var pid=committed.length, pp=[], meta=[];
+        committed.push(P);
+        P.lines.forEach(function(Ln){
+          if(!vis[Ln.f0] && !vis[Ln.f1]) return;
+          var a=cam(Ln.a), b=cam(Ln.b);
+          if(a[2]<NEAR && b[2]<NEAR) return;
+          var gi=STRTTALLY.pre.length;
+          STRTTALLY.pre.push({a:Ln.a, b:Ln.b, part:pid});
+          if(a[2]<NEAR || b[2]<NEAR){
+            var t=(NEAR-a[2])/(b[2]-a[2]);
+            var x=[a[0]+(b[0]-a[0])*t, a[1]+(b[1]-a[1])*t, NEAR];
+            if(a[2]<NEAR) a=x; else b=x;
+          }
+          var A=scr(a), B=scr(b);
+          pp.push([[A[0],A[1]],[B[0],B[1]]]);
+          meta.push({pre:gi, iza:1/a[2], izb:1/b[2], A:A, B:B});
+          if(a[2]>maxz) maxz=a[2]; if(b[2]>maxz) maxz=b[2];
+        });
+        if(pp.length){
+          var frag=hlrConvex(pp,occl,GAP), f;
+          for(f=0;f<frag.length;f++){
+            var run=frag[f]; if(run.length<2) continue;
+            var M2=meta[run.src], dx=M2.B[0]-M2.A[0], dy=M2.B[1]-M2.A[1], L2=dx*dx+dy*dy;
+            var izs=run.map(function(q){
+              var t=L2>0?((q[0]-M2.A[0])*dx+(q[1]-M2.A[1])*dy)/L2:0;
+              return M2.iza+(M2.izb-M2.iza)*Math.max(0,Math.min(1,t));
+            });
+            run.pre=M2.pre; run.part=pid; run.izs=izs; run.col=P.col;
+            out.push(run);
+          }
+        }
+        STRTTALLY.parts.push({faces:P.faces.map(function(fc){ return {n:fc.n, d:fc.d}; }),
+                              V:verts(P), cont:C.kind, split:P.split||0, hides:P.hides!==false});
+        STRTTALLY.sil.push(P.sil);
+        if(P.sil && P.hides!==false) occl.push(P.sil);
+      });
+    });
+
+    /* ---- the page clip, and depth onto the expandos ------------------------ */
+    var X0=PAD, Y0=PAD, X1=PGW-PAD, Y1=PGH-PAD, res=[], FARZ=Math.max(maxz,NEAR+1);
+    out.forEach(function(run){
+      var cur=null, cz=null;
+      function flush(){
+        if(cur && cur.length>1){
+          cur.z=cz.map(function(iz){ var zc=1/iz; return 1-Math.max(0,Math.min(1,(zc-NEAR)/(FARZ-NEAR))); });
+          cur.zc=cz.map(function(iz){ return 1/iz; });
+          cur.pre=run.pre; cur.part=run.part; cur.col=run.col;
+          res.push(cur);
+        }
+        cur=null; cz=null;
+      }
+      for(var m=1;m<run.length;m++){
+        var a=run[m-1], b=run[m], t0=0, t1=1, dx=b[0]-a[0], dy=b[1]-a[1];
+        var P4=[-dx,dx,-dy,dy], Q4=[a[0]-X0,X1-a[0],a[1]-Y0,Y1-a[1]], okc=true;
+        for(var q=0;q<4;q++){
+          if(Math.abs(P4[q])<1e-15){ if(Q4[q]<0){ okc=false; break; } continue; }
+          var r=Q4[q]/P4[q];
+          if(P4[q]<0){ if(r>t1){ okc=false; break; } if(r>t0) t0=r; }
+          else       { if(r<t0){ okc=false; break; } if(r<t1) t1=r; }
+        }
+        if(!okc || t1-t0<1e-12){ flush(); continue; }
+        var ia=run.izs[m-1], ib=run.izs[m];
+        var pa=[a[0]+dx*t0, a[1]+dy*t0], pb=[a[0]+dx*t1, a[1]+dy*t1];
+        if(cur && t0<=1e-12){ cur.push(pb); cz.push(ia+(ib-ia)*t1); }
+        else { flush(); cur=[pa,pb]; cz=[ia+(ib-ia)*t0, ia+(ib-ia)*t1]; }
+        if(t1<1-1e-12) flush();
+      }
+      flush();
+    });
+
+    return {res:res, committed:committed, live:live, cycles:cycles, ccycles:ccycles,
+            splits:splits, unsep:unsep};
+  }
+  lots.forEach(function(L){
+    STRTTALLY.lots.push({side:L.side, idx:L.idx, s0:L.s0, s1:L.s1, poly:L.poly,
+      blocks:L.blocks.map(function(B){ return [B.z0,B.z1,B.fr,B.bk,B.floors.slice()]; })});
+  });
+  var RR=render(LODMM), res=RR.res, committed=RR.committed, live=RR.live;
+  var cycles=RR.cycles, ccycles=RR.ccycles, splits=RR.splits, unsep=RR.unsep;
   var npts=0; res.forEach(function(q){ npts+=q.length; });
   STRTSTATS={lots:lots.length, dropped:dropped, pushed:pushed, conts:live.length,
              parts:committed.length, paths:res.length, points:npts,
