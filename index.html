@@ -422,7 +422,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v273</a> &mdash; REFACTOR ONLY — the corridor kit lets a theme pin knobs it has no use for and switch off poles, lane marks and bollards, and give its own stat line; the street sets none of them and is byte-identical to v272</span></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v274</a> &mdash; NIGHT MARKET — a new corridor engine on the Street kit: a narrow lane of shophouses with rolled-up shutters, stalls with canopies along both edges, red lantern strings overhead, steam over the food, cloth banners, puddles</span></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <div class="tabs" id="tabs"></div>
@@ -2111,6 +2111,31 @@ var SPEC={
     ['cams','Camera along',0,90,1,12,[100,'%']],['camx','Camera side',-100,100,1,-10,[100,'%']],
     ['camz','Camera height',0.2,80,0.1,1.6,[1,' m']],['look','Look ahead',5,300,1,60,[1,' m']],
     ['pitch','Pitch',-45,45,0.5,6,[1,'°']],['fov','Field of view',25,120,1,72,[1,'°']],
+    ['dnear','Solid detail to',2,80,1,18,[1,' m']],['dfar','Outline detail to',10,400,5,90,[1,' m']],
+    ['dpen','Depth pens',0,1,1,0],['dsplit','Depth split',5,300,5,60,[1,' m']],
+    ['lod','LOD cutoff',0,60,1,4,[10,' mm']],['budg','Size budget',10,300,5,90,[1,' k points']],
+    ['occ','Gap',0,30,1,4,[10,' mm']]]],
+  /* NIGHT MARKET, queue row 50 (docs/specs/2026-10-04-corridor-themes.md §3):
+     the Street list less cars, particles and graffiti (the theme pins them at
+     0), §3's defaults, and the market's own four. Width goes down to 2 m. */
+  mkt:['Night market',[
+    ['len','Lane length',60,600,10,220,[1,' m']],['bend','Bend',0,60,1,12,[1,'°/100 m']],
+    ['width','Lane width',2,12,0.5,4.5,[1,' m']],['pave','Pavement',0,6,0.25,1.2,[1,' m']],
+    ['lotmin','Shophouse min',3,20,0.5,3,[1,' m']],['lotmax','Shophouse max',4,40,0.5,6,[1,' m']],
+    ['alley','Alley chance',0,60,1,14,[100,'%']],['floors','Storeys',1,40,1,3],
+    ['canyon','Canyon rise',0,100,1,0,[100,'%']],['stepb','Step-back',0,60,1,18,[100,'%']],
+    ['canti','Cantilever',0,60,1,14,[100,'%']],['fire','Fire escapes',0,100,1,25,[100,'%']],
+    ['glow','Lit windows',0,100,1,22,[100,'%']],['uvar','Upper variety',0,100,1,55,[100,'%']],
+    ['signs','Signs',0,100,1,40,[100,'%']],['neon','Neon',0,100,1,10,[100,'%']],['lang','Script',0,3,1,0],
+    ['cables','Lantern strings',0,100,1,45,[100,'%']],['sag','String sag',0,30,1,6,[100,'%']],
+    ['stalls','Stalls',0,10,0.5,3,[1,'/10 m']],['lant','Lanterns',0,100,1,60,[100,'%']],
+    ['ban','Banners',0,100,1,30,[100,'%']],['steam','Steam',0,100,1,40,[100,'%']],
+    ['puddles','Puddles',0,40,1,3],['pudsz','Puddle size',5,100,1,40,[100,'%']],['ripple','Ripple',0,30,1,6,[10,' mm']],
+    ['hatch','Tone hatch',0,100,1,55,[100,'%']],['hatchmode','Hatch spacing',0,1,1,0],
+    ['sun','Light from',0,359,1,300,[1,'°']],
+    ['cams','Camera along',0,90,1,6,[100,'%']],['camx','Camera side',-100,100,1,0,[100,'%']],
+    ['camz','Camera height',0.2,80,0.1,1.6,[1,' m']],['look','Look ahead',5,300,1,25,[1,' m']],
+    ['pitch','Pitch',-45,45,0.5,4,[1,'°']],['fov','Field of view',25,120,1,80,[1,'°']],
     ['dnear','Solid detail to',2,80,1,18,[1,' m']],['dfar','Outline detail to',10,400,5,90,[1,' m']],
     ['dpen','Depth pens',0,1,1,0],['dsplit','Depth split',5,300,5,60,[1,' m']],
     ['lod','LOD cutoff',0,60,1,4,[10,' mm']],['budg','Size budget',10,300,5,90,[1,' k points']],
@@ -15791,7 +15816,7 @@ function buildIsoImg(p){
 
 var ENG={record:buildRecord, flow:buildFlow, growth:buildGrowth, contour:buildContour, ridge:buildRidge,
          pack:buildPack, voronoi:buildVoronoi, truchet:buildTruchet, maze:buildMaze, hilbert:buildHilbert,
-         rows:buildRows, poin:buildPoincare, flag:buildFlag, stat:buildStation, strt:buildStreet,
+         rows:buildRows, poin:buildPoincare, flag:buildFlag, stat:buildStation, strt:buildStreet, mkt:buildMarket,
          harmo:buildHarmo, chladni:buildChladni, moire:buildMoire, disc:buildChladniDisc, fan:buildFan,
   string:buildString, fermat:buildFermat, logsp:buildLogSpiral, chuck:buildChuck,
          apoll:buildApollonian, wave:buildWave, sform:buildSuper,
@@ -17374,13 +17399,319 @@ var STRTTALLY={cam:null,project:null,parts:[],pre:[],sil:[],conts:[],lots:[],sla
 var STHEMES={
   street:{key:'strt', label:'Street', lotDepth:[8,20], alleyW:[1.2,2.5], baseN2:0.35, baseH:[3.6,4.5],
           midH:[2.8,3.2], edgeZ:0.15, slabLen:4, clear:4.5, ztop:200, mirror:'puddles',
-          content:function(K){ return streetTheme(K); }}
+          content:function(K){ return streetTheme(K); }},
+  /* §3: a narrow lane, a single shopfront storey of 3.2-3.8 m, lantern strings
+     at 2.6 m (the street's 4.5 m would refuse every one), no poles, no cars,
+     no lane paint, no bollards, no particles (steam instead), no graffiti */
+  mkt:{key:'mkt', label:'Night market', lotDepth:[6,12], alleyW:[1.2,2.5], baseN2:0, baseH:[3.2,3.8],
+       midH:[2.8,3.2], edgeZ:0.15, slabLen:4, clear:2.6, ztop:200, mirror:'puddles', minWidth:2,
+       fixed:{cars:0, dots:0, graff:0}, flags:{poles:false, roadMarks:false, bollards:false, shopOpen:true, cableEdge:true, attachBase:true, edgeSlots:true},
+       cableAvoid:['lantern','stall'],
+       content:function(K){ return marketTheme(K); }}
 };
 /* the width of a [lo,hi] range, rounded to the nearest nanometre so that a
    [1.2,2.5] range spans the 1.3 the code always multiplied by, not the
    1.2999999999999998 the subtraction gives */
 function spanOf(r){ return Math.round((r[1]-r[0])*1e9)/1e9; }
 function buildStreet(p){ return buildCorridor(p,STHEMES.street); }
+function buildMarket(p){ return buildCorridor(p,STHEMES.mkt); }
+/* THE NIGHT MARKET THEME (queue row 50, docs/specs/2026-10-04-corridor-themes.md
+   §3): a narrow lane between two- to four-storey shophouses, stalls along both
+   edges, lantern strings overhead, steam over the food stalls. The shophouses
+   are the street theme's own (its facades, signs at 40%, neon at 10%, its
+   facade-to-facade cable plan with no poles), the shutters rolled up; this
+   adds what makes it a market:
+   - STALLS in 2 m slots along each side's lane edge, Stalls per 10 m of lane:
+     a table, four poles, a canopy (a sloping plate, a peaked pair, or a flat
+     one with a scalloped valance), produce or crates on the table, and 1-3
+     bulbs under the canopy. A canopy that reaches past the centreline is
+     SPLIT THERE with splitPart and its far piece belongs to the far side's
+     slab; two canopies that would meet over the centreline are kept apart.
+   - LANTERNS on Lanterns % of the facade-to-facade strings, which hang at
+     clear 2.6 m: an 8-sided prism every 1.0-1.8 m, its top just under the
+     string, in the SLAB UNDER ITS CENTRE (one that would straddle a slab face
+     is left off), red with yellow caps and a tassel. Other strings' pieces
+     avoid them.
+   - STEAM over Steam % of the stalls: 3-6 rising wavy strokes, hiding nothing.
+   - CLOTH BANNERS on Banners % of the upper-floor bays: a cloth rectangle on
+     the wall with hems and vertical lettering.
+   Every layer draws from its own substream (salts 137 stalls, 139 lanterns,
+   149 banners, 151 goods, 157 steam), so no layer's knob moves another's. */
+function marketTheme(K){
+  var THM=K.THM, p=K.p, P3=K.P3, frame=K.frame, sub=K.sub, para=K.para, prismN=K.prismN,
+      splitPart=K.splitPart, inConv=K.inConv, hitsAny=K.hitsAny, slabsBySide=K.slabsBySide,
+      cables=K.cables, HALFW=K.HALFW, LEN=K.LEN, dist3=K.dist3, lots=K.lots, wallOf=K.wallOf,
+      wp=K.wp, mmPerM=K.mmPerM, surf=K.surf, drawOn=K.drawOn, verts=K.verts, cam=K.cam,
+      NEAR=K.NEAR, RT=K.RT, FF=K.FF, HW=K.HW, faceIx=K.faceIx;
+  var S=streetTheme(K);
+  var SALT_STALL=137, SALT_LANT=139, SALT_BAN=149, SALT_STEAM=157, SLOT=2;
+  function kn(v,d,lo,hi){ return Math.max(lo,Math.min(hi,isFinite(v)?+v:d)); }
+  var STALLS=kn(p.stalls,3,0,10), LANT=kn(p.lant,60,0,100)/100, BAN=kn(p.ban,30,0,100)/100,
+      STEAM=kn(p.steam,40,0,100)/100;
+  var COL_K='#1a1a1a', COL_RED='#d42a2a', COL_YEL='#f2c230', COL_GREY='#8a8a8a';
+  var CANC=['#d42a2a','#ec7a1c','#2156c7','#22a7b4','#f2c230'], PRODC=['#ec7a1c','#2f9a44','#d42a2a','#f2c230'];
+  var TAL={stalls:[], lanterns:[], strings:[], steam:[], banners:[], refused:0};
+  STRTTALLY.mkt=TAL;
+  /* ---- the stall plan: world, not camera. Every slot draws its 12 numbers
+     whatever the knobs say. A slot is 2 m and a slab is 4, so a stall never
+     crosses a slab face along the lane. */
+  var ob=HALFW-0.03, stalls=[];
+  [1,-1].forEach(function(sd){
+    for(var k2=0;(k2+1)*SLOT<=LEN-0.5;k2++){
+      var R=sub(sd<0?2:1,k2,SALT_STALL), u=[], q;
+      for(q=0;q<12;q++) u.push(R());
+      if(!(u[0]<STALLS/10)) continue;
+      var Ls=1.2+0.7*u[1], s0=k2*SLOT+0.06+(SLOT-0.12-Ls)*u[2];
+      stalls.push({id:stalls.length, side:sd, k:k2, s0:s0, s1:s0+Ls, hc:2.1+0.3*u[3], cd:1.0+0.6*u[4],
+                   ctype:u[5]<0.4?'slope':u[5]<0.7?'peak':'scallop', col:CANC[Math.min(4,Math.floor(u[6]*5))],
+                   goods:u[7]<0.5?'produce':'crates', nb:1+Math.floor(u[8]*3), u:u});
+    }
+  });
+  /* two canopies that reach past the centreline from opposite sides must not
+     meet: the second is shortened until there is 5 cm between their fronts */
+  stalls.forEach(function(B){
+    if(B.side!==-1) return;
+    stalls.forEach(function(A){
+      if(A.side!==1 || A.s1<B.s0-0.1 || B.s1<A.s0-0.1) return;
+      var ofA=ob-A.cd, ofB=ob-B.cd;
+      if(ofA+ofB<0.05) B.cd=ob-(0.05-ofA);
+    });
+  });
+  function stallFrame(st){
+    var sc=(st.s0+st.s1)/2, F=frame(sc), t=[F[2],F[3],0], dn=[-F[3]*st.side,F[2]*st.side,0];
+    /* (s, o, z) in the stall's own frame: along the lane, across it (o grows
+       toward the facade on this side), up */
+    return function(s,o,z){ var b=P3(sc,st.side,o,z); return [b[0]+t[0]*(s-sc), b[1]+t[1]*(s-sc), z]; };
+  }
+  function stallParts(st,dn,df){
+    var X=stallFrame(st), Ls=st.s1-st.s0, sc=(st.s0+st.s1)/2, of=ob-st.cd, hc=st.hc;
+    var C=slabsBySide[st.side][Math.floor(sc/THM.slabLen)]; if(!C) return null;
+    var cen=X(sc,ob-0.4,1.2), d=dist3(cen); if(!(d<df)) return [];
+    function vecs(s0,o0,z0,s1,o1,z1){ var a=X(s0,o0,z0), b=X(s1,o1,z1); return [b[0]-a[0],b[1]-a[1],b[2]-a[2]]; }
+    function box(s0,s1,o0,o1,z0,z1){ return para(X(s0,o0,z0),vecs(s0,o0,z0,s1,o0,z0),vecs(s0,o0,z0,s0,o1,z0),[0,0,z1-z0]); }
+    /* the canopy's underside over a point o across the stall */
+    function under(o){
+      if(st.ctype==='slope') return hc+0.3*(o-of)/(ob-of);
+      if(st.ctype==='peak'){ var om=(ob+of)/2; return hc+0.35*(1-Math.abs(o-om)/((ob-of)/2)); }
+      return hc;
+    }
+    var parts=[], k;
+    function add(P,kind,col,extra){ P.kind=kind; P.col=col; P.layer='stall'; P.stall=st.id; P.cont=C;
+      if(extra) for(var e in extra) P[e]=extra[e]; parts.push(P); return P; }
+    var table=add(box(st.s0,st.s1,ob-0.8,ob,0,0.75),'table',COL_K);
+    /* the posts stand on the GROUND beside the table's two ends, not on its
+       top: a post on the top was committed ahead of the table (it is above
+       it) and its white gap trimmed the table's front edge, which runs in front
+       of the post's foot -- 1.3% of the visible ink on a 2.5 m lane */
+    [[st.s0-0.04,ob],[st.s1,ob],[st.s0-0.04,ob-0.76],[st.s1,ob-0.76]].forEach(function(c2){
+      var zt=Math.min(under(c2[1]),under(c2[1]-0.04))-0.003;
+      add(box(c2[0],c2[0]+0.04,c2[1]-0.04,c2[1],0,zt),'post',COL_K);
+    });
+    var e0=st.s0-0.04, e1=st.s1+0.04, cps=[];
+    if(st.ctype==='slope') cps.push(para(X(e0,ob,hc+0.3),vecs(e0,ob,0,e1,ob,0),vecs(e0,ob,hc+0.3,e0,of,hc),[0,0,0.04]));
+    else if(st.ctype==='peak'){ var om=(ob+of)/2;
+      cps.push(para(X(e0,ob,hc),vecs(e0,ob,0,e1,ob,0),vecs(e0,ob,hc,e0,om,hc+0.35),[0,0,0.04]));
+      cps.push(para(X(e0,om,hc+0.35),vecs(e0,om,0,e1,om,0),vecs(e0,om,hc+0.35,e0,of,hc),[0,0,0.04])); }
+    else cps.push(para(X(e0,ob,hc),vecs(e0,ob,0,e1,ob,0),vecs(e0,ob,0,e0,of,0),[0,0,0.04]));
+    cps.forEach(function(P,ci){
+      P.lines.forEach(function(Ln){ Ln.col=st.col; Ln.kind='canopy'; });
+      add(P,'canopy',st.col,{ci:ci});
+    });
+    /* the scalloped valance: a cloth plate 1 cm thick under the canopy's front
+       edge, its scallops drawn on BOTH faces -- a line hung off a face below
+       it would show only from the side that face looks to */
+    if(st.ctype==='scallop'){
+      var V=para(X(e0,of+0.01,hc-0.14),vecs(e0,of,0,e1,of,0),vecs(e0,of+0.01,0,e0,of,0),[0,0,0.14]), m=Math.max(3,Math.round((e1-e0)/0.3)), q;
+      V.lines=[];
+      [faceIx(V,[-(X(sc,1,0)[0]-X(sc,0,0)[0]),-(X(sc,1,0)[1]-X(sc,0,0)[1]),0]), faceIx(V,[X(sc,1,0)[0]-X(sc,0,0)[0],X(sc,1,0)[1]-X(sc,0,0)[1],0])].forEach(function(fi,side2){
+        var oo=side2?of+0.01:of;
+        for(q=0;q<m;q++){ var a=e0+(e1-e0)*q/m, b=e0+(e1-e0)*(q+1)/m, prv=null;
+          for(var j=0;j<=6;j++){ var ss=a+(b-a)*j/6, Y=X(ss,oo,hc-0.12*Math.sin(Math.PI*j/6));
+            if(prv) V.lines.push({a:prv, b:Y, f0:fi, f1:fi, col:st.col, kind:'valance'}); prv=Y; } }
+        V.lines.push({a:X(e0,oo,hc), b:X(e1,oo,hc), f0:fi, f1:fi, col:st.col, kind:'valance'});
+      });
+      add(V,'valance',st.col);
+    }
+    /* the goods: produce as piles of small ellipses on the table top, or crates */
+    var RGd=sub(st.side<0?2:1,st.k,SALT_STALL+1000), gu=[]; for(k=0;k<24;k++) gu.push(RGd());
+    if(st.goods==='produce'){
+      var np=2+Math.floor(gu[0]*3);
+      for(k=0;k<np;k++){ var ps=st.s0+0.15+(Ls-0.3)*(k+0.5)/np, po=ob-0.4+0.2*(gu[1+k]-0.5), pc=PRODC[Math.floor(gu[5+k]*4)%4];
+        for(var e=0;e<5;e++){ var es=ps+0.12*(gu[9+e]-0.5), eo=po+0.12*(gu[14+e]-0.5), er=0.04+0.03*gu[19+(e%5)], prv2=null;
+          for(var j2=0;j2<=10;j2++){ var an=TAU*j2/10, Y2=X(es+Math.cos(an)*er,eo+Math.sin(an)*er*0.7,0.75);
+            if(prv2) table.lines.push({a:prv2, b:Y2, f0:1, f1:1, col:pc, kind:'produce'}); prv2=Y2; } } }
+    } else {
+      var ncr=2+Math.floor(gu[0]*2);
+      for(k=0;k<ncr;k++){ var cs=st.s0+0.12+(Ls-0.24)*k/ncr+0.02, cw=Math.min(0.3,(Ls-0.24)/ncr-0.04);
+        add(box(cs,cs+cw,ob-0.62,ob-0.37,0.75,0.93),'crate',COL_K); }
+    }
+    /* bulbs: dots under the canopy, a 0.35 mm stroke on the sheet like the
+       street's particles */
+    for(k=0;k<st.nb;k++){
+      /* under the canopy's LOWEST point (its front edge, hc), inset from the
+         posts; a dot is 0.35 mm on the sheet, so far away it is a long stroke
+         in the world -- past 0.25 m it would reach the canopy or a post, and
+         it is left out */
+      var bs=st.s0+0.25+(Ls-0.5)*(k+0.5)/st.nb, bo=ob-0.4, bz=hc-0.16, P0=X(bs,bo,bz), c0=cam(P0);
+      if(!(c0[2]>2*NEAR)) continue;
+      var Lw=0.35*c0[2]/(PAGEMM*FF*HW), h=0.005, hz=[-RT[1],RT[0],0];
+      if(Lw>0.25) continue;
+      var a=[P0[0]-RT[0]*Lw/2,P0[1]-RT[1]*Lw/2,bz], b2=[P0[0]+RT[0]*Lw/2,P0[1]+RT[1]*Lw/2,bz];
+      var Pd=para([a[0]-hz[0]*h,a[1]-hz[1]*h,bz-h],[RT[0]*Lw,RT[1]*Lw,0],[hz[0]*2*h,hz[1]*2*h,0],[0,0,2*h]);
+      Pd.lines=[{a:a, b:b2, f0:0, f1:0, kind:'bulb', col:COL_YEL}];
+      add(Pd,'bulb',COL_YEL,{hides:false, seeThru:true, nolod:true});
+    }
+    /* steam over Steam % of the stalls: its own substream */
+    var RSm=sub(st.side<0?2:1,st.k,SALT_STEAM), su=[]; for(k=0;k<16;k++) su.push(RSm());
+    var steamy=su[0]<STEAM;
+    TAL.steam.push({stall:st.id, on:steamy});
+    if(steamy){
+      var nst=3+Math.floor(su[1]*4), top=Math.min(1.0+0.6+0.8*su[2], under(ob-0.6)-0.1, under(ob-0.2)-0.1, under(ob-0.4)-0.1);
+      if(top>1.2){
+        var Pl=[], lo=1e9, hi=-1e9;
+        for(k=0;k<nst;k++){ var sx=st.s0+0.2+(Ls-0.4)*(k+0.5)/nst, so=ob-0.4+0.25*(su[3+k]-0.5), ph=TAU*su[9+k], prv3=null;
+          for(var j3=0;j3<=12;j3++){ var zz=1.0+(top-1.0)*j3/12, Y3=X(sx+0.04*Math.sin(TAU*(zz-1.0)/0.3+ph),so,zz);
+            if(prv3) Pl.push({a:prv3, b:Y3, f0:0, f1:0, kind:'steam', col:COL_GREY}); prv3=Y3; } }
+        var SB=box(st.s0+0.12,st.s1-0.12,ob-0.6,ob-0.2,0.98,top+0.01);
+        SB.lines=Pl;
+        add(SB,'steam',COL_GREY,{hides:false, seeThru:true});
+      }
+    }
+    return parts;
+  }
+  /* put a stall's parts into their containers: a canopy that reaches past
+     the centreline is SPLIT at the vertical plane through the centreline chord
+     of its slab, and the far piece goes to the far side's slab. A stall any
+     piece of which would leave its container is left out, and counted. */
+  function intoSlabs(st,parts){
+    var C=parts.length?parts[0].cont:null; if(!C) return false;
+    var k=Math.round(C.s0/THM.slabLen), Cf=slabsBySide[-st.side][k];
+    var A=P3(C.s0,1,0,0), B=P3(C.s1,1,0,0), ex=B[0]-A[0], ey=B[1]-A[1], el=Math.hypot(ex,ey);
+    var n=[-ey/el,ex/el,0], dd=n[0]*A[0]+n[1]*A[1];     /* n points to side +1 */
+    if(st.side<0){ n=[-n[0],-n[1],0]; dd=-dd; }       /* now toward this stall's own side */
+    var out=[], split=0;
+    for(var i=0;i<parts.length;i++){
+      var P=parts[i], V=verts(P), below=V.some(function(v){ return n[0]*v[0]+n[1]*v[1]-dd<-1e-9; });
+      if(!below){ out.push(P); continue; }
+      if(P.kind!=='canopy' || !Cf) return false;
+      var H=splitPart(P,n,dd);
+      [[H[0],C],[H[1],Cf]].forEach(function(hc){
+        var Q=hc[0]; Q.cont=hc[1]; Q.kind='canopy'; Q.col=P.col; Q.layer='stall'; Q.stall=st.id; Q.cut=true;
+        Q.lines.forEach(function(Ln){ if(Ln.col===undefined) Ln.col=P.col; if(Ln.kind===undefined) Ln.kind='canopy'; });
+        out.push(Q);
+      });
+      split++;
+    }
+    for(var j=0;j<out.length;j++){ var Pq=out[j];
+      if(!verts(Pq).every(function(v){ return inConv(Pq.cont.poly,v); })) return false; }
+    out.forEach(function(Pq){ Pq.cont.parts.push(Pq); });
+    st.split=split; return true;
+  }
+  /* ---- lanterns: on Lanterns % of the facade-to-facade strings, every
+     1.0-1.8 m, each in the slab under its centre */
+  function bbx(V){ var b=[1e18,1e18,1e18,-1e18,-1e18,-1e18];
+    V.forEach(function(v){ for(var k=0;k<3;k++){ if(v[k]<b[k]) b[k]=v[k]; if(v[k]>b[k+3]) b[k+3]=v[k]; } }); return b; }
+  function lanternsInto(){
+    cables.forEach(function(cb){
+      if(cb.kind!=='ff') return;
+      var R=sub(3,cb.id,SALT_LANT), on=R()<LANT, rec={cable:cb.id, on:on, n:0, why:{slab:0, face:0, hit:0, tassel:0}};
+      TAL.strings.push(rec);
+      if(!on) return;
+      /* one lantern at arc tpos of the string, radius r, height h: in the slab
+         under its centre, wholly inside it, touching nothing that hides */
+      function place(tpos,r,h){
+        var t=tpos/cb.L, X=cb.at(t), zt=X[2], m;
+        for(m=-4;m<=4;m++){ var tt=Math.max(0,Math.min(1,t+m*r/4/cb.L)); zt=Math.min(zt,cb.at(tt)[2]); }
+        zt-=0.05;
+        var C=null; [1,-1].forEach(function(sd2){ slabsBySide[sd2].forEach(function(Cs){ if(!C && inConv(Cs.poly,X)) C=Cs; }); });
+        if(!C){ rec.why.slab++; return false; }
+        var oct=[]; for(m=0;m<8;m++){ var an=TAU*(m+0.5)/8; oct.push([X[0]+Math.cos(an)*r, X[1]+Math.sin(an)*r]); }
+        var P=prismN(oct,zt-h,zt);
+        if(!verts(P).every(function(v){ return inConv(C.poly,v); })){ rec.why.face++; return false; }
+        if(hitsAny(P,C,['furn','stall','lantern'])){ TAL.refused++; rec.why.hit++; return false; }
+        /* hitsAny passes over parts that hide nothing, and a tassel is one: a
+           lantern on another string must still keep clear of it */
+        var bP=bbx(verts(P));
+        if(C.parts.some(function(Q){ if(Q.kind!=='tassel') return false; var b=bbx(verts(Q));
+             return !(b[3]<bP[0]||bP[3]<b[0]||b[4]<bP[1]||bP[4]<b[1]||b[5]<bP[2]||bP[5]<b[2]); })){ TAL.refused++; rec.why.hit++; return false; }
+        P.lines.forEach(function(Ln){ Ln.col=(Ln.f0<=1||Ln.f1<=1)?COL_YEL:COL_RED; Ln.kind='lantern'; });
+        P.cont=C; P.col=COL_RED; P.kind='lantern'; P.layer='lantern'; P.cable=cb.id;
+        /* the tassel hangs in the air below: a see-through part of its own, so
+           it shows from above and below alike */
+        var TS=para([X[0]-0.01,X[1]-0.01,zt-h-0.155],[0.02,0,0],[0,0.02,0],[0,0,0.15]);
+        TS.lines=[{a:[X[0],X[1],zt-h-0.005], b:[X[0],X[1],zt-h-0.155], f0:0, f1:0, col:COL_YEL, kind:'tassel'}];
+        TS.cont=C; TS.col=COL_YEL; TS.kind='tassel'; TS.layer='lantern'; TS.hides=false; TS.seeThru=true; TS.nolod=true;
+        if(!verts(TS).every(function(v){ return inConv(C.poly,v); }) || hitsAny(TS,C,['furn','stall','lantern'])){ rec.why.tassel++; return false; }
+        C.parts.push(P); C.parts.push(TS); rec.n++;
+        TAL.lanterns.push({cable:cb.id, c:[X[0],X[1],zt-h/2], side:C.side, s0:C.s0, s1:C.s1, r:r, h:h});
+        return true;
+      }
+      var tpos=0.6+0.6*R(), r0=0.15+0.10*R(), h0=0.35+0.2*R();
+      for(var guard=0;guard<200 && tpos<cb.L-0.6;guard++){
+        var r=0.15+0.10*R(), h=0.35+0.2*R(), step=1.0+0.8*R();
+        place(tpos,r,h); tpos+=step;
+      }
+      /* a string the walk left bare -- every place on it under a canopy or
+         over a slab face -- gets one lantern by its middle if that is free */
+      if(!rec.n){
+        /* from the middle outward, every 0.25 m, at the smallest size: the
+           middle of a string is over the centreline, the boundary between the
+           two sides' slabs, and fits neither; a string slanting across a bend
+           can straddle a slab face almost everywhere */
+        for(var tq=0.25;tq<cb.L/2-0.6 && !rec.n;tq+=0.25)
+          if(!place(cb.L/2+tq,0.15,h0)) place(cb.L/2-tq,0.15,h0); }
+    });
+  }
+  /* ---- cloth banners on the upper floors' bays: the wall plane, hems at
+     top and bottom, lettered vertically */
+  function bannersFor(L,dn,df){
+    var sk=L.side<0?2:1;
+    L.blocks.forEach(function(B,bi){
+      var up=B.storeys.filter(function(S2){ return !S2.base; }); if(!up.length) return;
+      var F=wallOf(L,B), BP=L.parts[bi], nb=Math.max(1,Math.round(F.W/3.1)), bw=F.W/nb, c;
+      for(c=0;c<nb;c++){
+        var R=sub(sk,(L.idx*16+bi)*64+c,SALT_BAN), u=R(), uw=R(), uh=R(), uc=R(), us=R(), RTX=sub(sk,(L.idx*16+bi)*64+c,SALT_BAN+1);
+        if(!(u<BAN)) continue;
+        var W=0.5+0.3*uw, ztop=up[0].z1-0.2, Hb=Math.min(1.5+1.5*uh, ztop-Math.max(L.baseTop||0,B.z0)-0.4);
+        if(Hb<0.8) continue;
+        var ucen=(c+0.5)*bw, cenP=wp(F,ucen,ztop-Hb/2,0), d=dist3(cenP);
+        if(!(d<df)) continue;
+        var col=CANC[Math.min(4,Math.floor(uc*5))], x0=ucen-W/2, x1=ucen+W/2, z0=ztop-Hb;
+        var L2=function(a,b,kind,cl){ BP.lines.push({a:a, b:b, f0:2, f1:2, col:cl, kind:kind}); };
+        L2(wp(F,x0,z0,0),wp(F,x1,z0,0),'banner',col); L2(wp(F,x1,z0,0),wp(F,x1,ztop,0),'banner',col);
+        L2(wp(F,x1,ztop,0),wp(F,x0,ztop,0),'banner',col); L2(wp(F,x0,ztop,0),wp(F,x0,z0,0),'banner',col);
+        L2(wp(F,x0,ztop-0.08,0),wp(F,x1,ztop-0.08,0),'banner',col); L2(wp(F,x0,z0+0.08,0),wp(F,x1,z0+0.08,0),'banner',col);
+        var script=S.LANG<3?['kanji','hangul','latin'][S.LANG]:['kanji','hangul','latin'][Math.min(2,Math.floor(us*3))];
+        var T=S.setText(script,W,Hb-0.16,true,RTX), mm=mmPerM(cenP,F.n);
+        if(T.h*mm>=S.TEXTMM){
+          var M=function(uu,vv){ return wp(F,x0+uu,z0+0.08+vv,0); };
+          T.lines.forEach(function(pl){ for(var q=1;q<pl.length;q++) L2(M(pl[q-1][0],pl[q-1][1]),M(pl[q][0],pl[q][1]),'bannertext',COL_K); });
+        }
+        TAL.banners.push({side:L.side, idx:L.idx, bi:bi, c:c, col:col, h:Hb, lettered:T.h*mm>=S.TEXTMM});
+      }
+    });
+  }
+  return {
+    dress:S.dress,
+    signsFor:function(L,dn,df){ S.signsFor(L,dn,df); bannersFor(L,dn,df); },
+    furnish:function(dn,df){
+      S.furnish(dn,df);
+      TAL.stalls=[]; TAL.lanterns=[]; TAL.strings=[]; TAL.steam=[]; TAL.refused=0;
+      stalls.forEach(function(st){
+        var parts=stallParts(st,dn,df);
+        var rec={id:st.id, side:st.side, k:st.k, s0:st.s0, s1:st.s1, ctype:st.ctype, col:st.col, cd:st.cd, placed:false, split:0};
+        if(parts && parts.length && intoSlabs(st,parts)){ rec.placed=true; rec.split=st.split; }
+        else if(parts && parts.length) TAL.refused++;
+        TAL.stalls.push(rec);
+      });
+      lanternsInto();
+    },
+    cars:[], dots:[], poles:[],
+    info:function(nsigns){
+      return ' · '+stalls.length+' stalls · '+TAL.lanterns.length+' lanterns · '+nsigns+' signs · '+cables.length+' strings';
+    }
+  };
+}
 /* THE STREET THEME (queue row 49, docs/specs/2026-10-04-corridor-themes.md §1):
    everything buildStreet DRAWS, as opposed to the corridor machine that
    places, orders and occludes it. The kit makes it with KIT(), the names
@@ -17389,7 +17720,7 @@ function streetTheme(K){
   /* SWITCHES a theme may turn off (row 50). Street sets none of them, and an
      unset switch is the street as it was. */
   var THM=K.THM, P3=K.P3, add3=K.add3, addCable=K.addCable, cam=K.cam, dist3=K.dist3, drawOn=K.drawOn, faceC=K.faceC, faceIx=K.faceIx, frame=K.frame, hitsAny=K.hitsAny, inConv=K.inConv, lateral=K.lateral, mmPerM=K.mmPerM, paperGap=K.paperGap, para=K.para, polyFromLoops=K.polyFromLoops, prism=K.prism, prismN=K.prismN, splitPart=K.splitPart, sub=K.sub, surf=K.surf, vec=K.vec, verts=K.verts, wallOf=K.wallOf, wp=K.wp, CANTI=K.CANTI, CANYON=K.CANYON, CE=K.CE, FF=K.FF, FLOORS=K.FLOORS, HALFW=K.HALFW, HW=K.HW, KERB=K.KERB, KOFF=K.KOFF, LEN=K.LEN, NEAR=K.NEAR, PBACK=K.PBACK, RT=K.RT, SALT_BLD=K.SALT_BLD, STEPB=K.STEPB, ZUP=K.ZUP, cables=K.cables, conts=K.conts, lots=K.lots, slabsBySide=K.slabsBySide, p=K.p;
-  var i, j, k, FL=THM.flags||{};
+  var i, j, k, FL=THM.flags||{}, SALT_GOODS=151;
   /* ---- §2.4 the box stack. Every storey draws the SAME number of values
      whatever the knobs say, so moving Step-back or Cantilever changes which
      storeys move and never which numbers the next storey reads. */
@@ -17637,6 +17968,35 @@ function streetTheme(K){
           var u0=c*bw, u1=(c+1)*bw, uc=(u0+u1)/2, ug=RF(), ua=RF(), ub=RF(), ucol=RF();
           var cen=wp(F,uc,(zs+ze)/2,0), band=bandAt(cen);
           if(!band) continue;
+          if(shop && FL.shopOpen){
+            /* ROW 50, a market's shopfront: the shutter ROLLED UP into its box
+               at the head, the bay open below, and goods hanging in the
+               opening -- their own substream, so nothing else moves */
+            var go0=u0+0.15, go1=u1-0.15, gtop=zs+2.6, RG2=sub(sk,(L.idx*16+bi)*64+c,SALT_GOODS);
+            rect(go0,go1,zs,gtop,COL_K,'shop');
+            rect(u0+0.1,u1-0.1,gtop,gtop+0.32,COL_K,'shutterbox');
+            line(wp(F,u0+0.1,gtop+0.16,0),wp(F,u1-0.1,gtop+0.16,0),COL_K,'shutterbox');
+            var ngd=3+Math.floor(RG2()*4), gdv=[];
+            for(var gq=0;gq<6;gq++) gdv.push([RG2(),RG2()]);
+            for(var gq2=0;gq2<ngd;gq2++){
+              var gx=go0+(go1-go0)*(gq2+0.5)/ngd, glen=0.3+0.5*gdv[gq2][0], gz=gtop-0.08-glen;
+              line(wp(F,gx,gtop-0.08,0),wp(F,gx,gz,0),COL_K,'goods');
+              rect(gx-0.06,gx+0.06,gz-0.12-0.08*gdv[gq2][1],gz,COL_K,'goods');
+            }
+            if(ua<0.55){
+              var acol2=AWN[ucol<0.5?0:1], dpA2=Math.min(1.2,room-0.02);
+              if(band==='solid' && dpA2>=0.3){
+                solid(para(wp(F,u0+0.1,zs+2.75+0.25,0), vec(F,'t',u1-u0-0.2),
+                           add3(vec(F,'n',dpA2),ZUP,-0.35), vec(F,'z',0.06)),'awning',acol2);
+              } else {
+                line(wp(F,u0+0.1,zs+3.0,0),wp(F,u1-0.1,zs+3.0,0),acol2,'awning');
+                line(wp(F,u0+0.1,zs+2.7,0),wp(F,u1-0.1,zs+2.7,0),acol2,'awning');
+              }
+              elem('awning',cen,band);
+            }
+            elem('shop',cen,band);
+            continue;
+          }
           if(shop){
             /* the shopfront: glass, mullions, a transom, one door, an awning
                on some bays, a shutter half down on some */
@@ -18241,11 +18601,15 @@ function streetTheme(K){
     for(k=1;k<B0.nb;k++) if(k!==B0.pipeK) ks.push(k);
     var uc=sub(sk,L.idx,SALT_CABLE)();
     L.cableU=ks.length?ks[Math.min(ks.length-1,Math.floor(uc*ks.length))]*B0.bw:null;
+    /* a market's shophouse is one or two bays wide and usually has no free
+       boundary (row 50): its string leaves 0.3 m in from one party wall,
+       which leaves the other edge for a sign */
+    if(L.cableU===null && FL.cableEdge) L.cableU=0.3;
     L.attachFr=B0.fr; L.attach=[];
     if(L.cableU!==null) L.blocks.forEach(function(B,bi){
       if(B.fr>B0.fr+0.05) return;
       if(B.pipeK>0 && Math.abs(B.pipeK*B.bw-L.cableU)<0.3) return;
-      B.storeys.forEach(function(S){ if(!S.base) L.attach.push({z:S.z1-0.35, bi:bi}); });
+      B.storeys.forEach(function(S){ if(!S.base || FL.attachBase) L.attach.push({z:S.z1-0.35, bi:bi}); });
     });
     L.baseTop=L.blocks[0].z0;
     L.blocks[0].storeys.forEach(function(S){ if(S.base) L.baseTop=Math.max(L.baseTop,S.z1); });
@@ -18385,7 +18749,7 @@ function streetTheme(K){
     var FTB=wallOf(L,TB);
     if(L.top==='flat' && FTB.W>=5 && TB.bk-TB.fr>=4) cands.push({type:'billboard'});
     L.blocks.forEach(function(B,bi){
-      if(!(B.nb>=2)) return;
+      if(!(B.nb>=2) && !FL.edgeSlots) return;
       var room=Math.max(0,(B.fr-L.fe)*0.95-0.02);
       if(room<0.85) return;
       var zlo=Math.max(B.z0,L.baseTop)+0.3, zhi=B.z1-0.3;
@@ -18409,6 +18773,14 @@ function streetTheme(K){
         for(j=0;j<ns;j++) cands.push({type:'wall', F:F, ub:ub, z0:zlo+j*hs, z1:zlo+(j+1)*hs, room:room,
                                       w0:k===B.pipeK?0.13:0});
       }
+      /* ROW 50: a shophouse is one or two bays wide, so a market also hangs
+         signs 0.08 m in from each PARTY WALL -- blades and banners only, 0.1 m
+         thick across the front, so they stay inside the lot and clear of a
+         balcony, which starts 0.15 m into its bay */
+      if(FL.edgeSlots) [0.08,B.nb*B.bw-0.08].forEach(function(ue){
+        if(L.cableU!==null && Math.abs(ue-L.cableU)<zone) return;
+        for(j=0;j<ns;j++) cands.push({type:'wall', F:F, ub:ue, z0:zlo+j*hs, z1:zlo+(j+1)*hs, room:room, w0:0, edge:true});
+      });
     });
     cands.forEach(function(cd,ci){
       var R=sub(sk,L.idx*512+ci,SALT_SIGN), RT=sub(sk,L.idx*512+ci,SALT_TEXT);
@@ -18421,6 +18793,7 @@ function streetTheme(K){
         if(t==='banner' && cd.z1-cd.z0<4.4) t='blade';
         if(t==='lightbox' && cd.room<2.0) t='blade';
         if(t==='emblem' && cd.room<1.05) t='blade';
+        if(cd.edge && (t==='lightbox' || t==='emblem')) t='blade';
         rec.type=t;
       }
       STRTTALLY.signs.push(rec);
@@ -18788,14 +19161,15 @@ function streetTheme(K){
     drawOn(Pt,fi,surf(C,FR.n,gw,gh),polys,col,'graff');
   }
 
-  return {dress:dress, signsFor:signsFor, furnish:furnish, cars:cars, dots:dots, poles:poles};
+  return {dress:dress, signsFor:signsFor, furnish:furnish, cars:cars, dots:dots, poles:poles,
+          setText:setText, LANG:LANG, TEXTMM:TEXTMM};
 }
 function buildCorridor(p,THM){
   /* a theme PINS the knobs it has no use for (row 50): a market alley has no
      cars, so its build must not read the street's default of three */
   if(THM.fixed) p=Object.assign({},p,THM.fixed);
   var LEN=Math.max(60,+p.len||220), BEND=Math.max(0,+p.bend||0);
-  var WID=Math.max(4,+p.width||7), PAVE=Math.max(0,isFinite(p.pave)?+p.pave:2.5);
+  var WID=Math.max(THM.minWidth||4,+p.width||7), PAVE=Math.max(0,isFinite(p.pave)?+p.pave:2.5);
   var LOTMIN=Math.max(3,+p.lotmin||5), LOTMAX=Math.max(LOTMIN,+p.lotmax||11);
   var ALLEY=(p.alley||0)/100, FLOORS=Math.max(1,Math.round(p.floors||9));
   var CANYON=(p.canyon||0)/100, STEPB=(p.stepb||0)/100, CANTI=(p.canti||0)/100;
@@ -19309,6 +19683,9 @@ function buildCorridor(p,THM){
     }
     return null;
   }
+  /* what a cable piece may not pass through: structure and furniture, and
+     whatever a theme adds -- a market's lanterns hang under other strings */
+  var CAVOID=['struct','furn'].concat(THM.cableAvoid||[]);
   function cablesInto(){
     cables.forEach(function(cb){
       cb.pieces=0; cb.dropped=0;
@@ -19317,7 +19694,7 @@ function buildCorridor(p,THM){
         for(k=0;k<n;k++){
           var ta=iv.t0+(iv.t1-iv.t0)*k/n, tb=iv.t0+(iv.t1-iv.t0)*(k+1)/n, Pa=cb.at(ta), Pb=cb.at(tb);
           var Pq=stickIn(Pa,Pb,iv.C.poly);
-          if(!Pq || hitsAny(Pq,iv.C,['struct','furn'])){ cb.dropped++; continue; }
+          if(!Pq || hitsAny(Pq,iv.C,CAVOID)){ cb.dropped++; continue; }
           Pq.lines=[{a:Pa, b:Pb, f0:0, f1:0, kind:'cable', col:COL_K}];
           Pq.cont=iv.C; Pq.col=COL_K; Pq.kind='cable'; Pq.layer='cable'; Pq.cable=cb.id;
           Pq.hides=false; Pq.seeThru=true;
@@ -19577,7 +19954,7 @@ function buildCorridor(p,THM){
     LODNOW=lodmm; out=[];
     STRTTALLY.parts=[]; STRTTALLY.pre=[]; STRTTALLY.sil=[]; STRTTALLY.conts=[];
     STRTTALLY.elems=[]; STRTTALLY.bld=[]; STRTTALLY.hfaces=[];
-    STRTTALLY.signs=[]; STRTTALLY.graff=[]; STRTTALLY.cars=[]; STRTTALLY.upr=[]; STRTTALLY.urows=[];
+    STRTTALLY.signs=[]; STRTTALLY.graff=[]; STRTTALLY.cars=[]; STRTTALLY.upr=[]; STRTTALLY.urows=[]; STRTTALLY.unsepPairs=[];
     conts.forEach(function(C){ C.parts=[]; });
     lots.forEach(function(L){
       L.blocks.forEach(function(B){
@@ -19688,7 +20065,7 @@ function buildCorridor(p,THM){
           /* two parts whose silhouettes overlap and that no face plane
              separates INTERPENETRATE -- the layout's promise is broken, and
              the order between them is a guess. Counted, never silent. */
-          if(r===null && attempt===0) unsepParts++;
+          if(r===null && attempt===0){ unsepParts++; STRTTALLY.unsepPairs.push([PS[a].kind||'',PS[b].kind||'',C.kind]); }
           if(r===1) pe.push([a,b]); else if(r===-1) pe.push([b,a]);
         }
         var K=kahn(n,pe,PS.map(function(P){ return P.czc; }));
@@ -20917,6 +21294,7 @@ function draw(){
   if(mode==='poin' && POINSNAP) txt+=' \u00b7 '+POINSNAP;
   if(mode==='stat' && STATINFO) txt+=' \u00b7 '+STATINFO;
   if(mode==='strt' && STRTINFO) txt+=' \u00b7 '+STRTINFO;
+  if(mode==='mkt' && STRTINFO) txt+=' \u00b7 '+STRTINFO;
   if(mode==='fan'){
     var fv=vals(), wnd=fv.loops+fv.prec/100;
     txt+=' \u00b7 winding '+(Math.abs(wnd-Math.round(wnd))<1e-9?wnd.toFixed(0):wnd.toFixed(2));
@@ -21153,7 +21531,7 @@ var FAMILIES=[
   ['Lattices',   ['truchet','maze','hilbert','voronoi','pack','rows','poin']],
   ['Curves',     ['harmo','sform','lsys','string','fan','chladni']],
   ['FROM PHOTO 3D', ['isoimg']],
-  ['3D',         ['hil3','harmo3','attract','ruled','knot','spack','flow3','surf','iso','stat','strt']],
+  ['3D',         ['hil3','harmo3','attract','ruled','knot','spack','flow3','surf','iso','stat','strt','mkt']],
   ['From photo', ['tonehatch','tonespiral']]
 ];
 function mountTabs(){
@@ -21622,6 +22000,48 @@ var HELP={
 'stat.budg':'How much drawing the station is allowed to be, in thousands of POINTS. It is the size control: `Keel length` seeds the shape and growth then throws off new branches until this is spent, so a longer keel makes a differently-shaped station of the same weight rather than a bigger one. The page\u2019s own ceiling caps it \u2014 the one recorded BEFORE the draft clamp, so dragging a slider cannot grow a different station \u2014 and the module pass stops at 85% of it so the greebles, tethers and rings are inside the budget rather than starved by it. Measured: 45 is 7,952 paths in 621 ms; the full page ceiling is 18,892 paths in 2,008 ms.',
 'stat.lod':'The smallest piece of hardware that still gets drawn, as its size on the SHEET. An isometric view has no perspective shrink, so there is nothing to make a distant greeble small except the station being big \u2014 and once a station fills the page at a fine module scale, a thruster quad is a blob the pen cannot resolve and a minute of plotting time. This is measured against millimetres per cell ESTIMATED BEFORE anything is built, because the decision has to be taken before the drawing exists: the lattice bounding box is the one extent known up front, so it over-estimates the scale by whatever margin the station leaves inside its own box. At 0 nothing is dropped.',
 'stat.occ':'How wide a white gap a nearer solid opens in whatever passes behind it. The station hides itself — every solid is confined to one lattice cell and sorted front to back by i+j+k, which for disjoint cells is an EXACT painter order and not a heuristic — so this is the finish on that, in millimetres on the sheet. The default matches the iso city’s and the CLI’s 0.5 mm. Wide gaps erase short segments outright rather than merely widening the breaks.',
+'mkt.len':'How far the market lane runs, in metres. The camera stands part-way along it and the stalls, lanterns and shophouses recede toward the far end.',
+'mkt.bend':'How much the lane curves, in degrees per 100 m. 0 is dead straight; a bend turns the far stalls out of sight behind the shophouses.',
+'mkt.width':'The lane between the shophouses, wall to wall, in metres. The stalls stand along both edges, so a narrow lane brings their canopies together over the middle; below about 3 m they reach past it and are split there.',
+'mkt.pave':'The strip between the stalls and the shop fronts, in metres. The stalls stand at the lane edge and the shophouses this far behind them, which leaves room for awnings and blade signs to stand out. At 0 the fronts are at the lane edge and nothing can project.',
+'mkt.lotmin':'The narrowest shophouse front, in metres. Narrow fronts make the lane busy with doorways.',
+'mkt.lotmax':'The widest shophouse front, in metres. Keep it close to Shophouse min for a row of narrow shophouses.',
+'mkt.alley':'How often a gap of 1.2-2.5 m opens between two shophouses.',
+'mkt.floors':'Storeys above the open shop front, roughly: each shophouse draws between about half this and all of it.',
+'mkt.canyon':'How much taller the shophouses get toward the far end of the lane. A market lane is usually even, so 0.',
+'mkt.stepb':'How often a storey steps back from the lane, 0.6-2 m, for good.',
+'mkt.canti':'How often a single storey juts out over the lane, 0.4-1.2 m, like a bay.',
+'mkt.fire':'How many shophouses carry a fire escape in one bay of their front.',
+'mkt.glow':'How many windows are lit, on the fronts and the side walls alike. A lit window gets a yellow hatch inside its frame.',
+'mkt.uvar':'How much the upper floors vary: zones that re-roll their bays, ribbons, tall pairs, plant storeys, belt courses, and windows with AC units, laundry, planters, curtains or grilles. 0 is one scheme top to bottom.',
+'mkt.signs':'How many of the places a sign could go carry one: fascias over the shop fronts and blade signs, banners, lightboxes and emblems up the bay lines.',
+'mkt.neon':'How many signs are neon: the lettering becomes tubes in one neon ink. A market lane is mostly lanterns, so it is low.',
+'mkt.lang':'The script on the signs and cloth banners. 0 pseudo-kanji, 1 pseudo-hangul, 2 Latin words, 3 a mix.',
+'mkt.cables':'How many strings run across the lane from front to front, at two storey heights. Lanterns hang on them; none comes below 2.6 m over the lane.',
+'mkt.sag':'How far a string hangs below the straight line between its ends at mid-span, as a share of the span. A string that would come below 2.6 m over the lane has its sag reduced.',
+'mkt.stalls':'Stalls per 10 m of lane, both sides together, in 2 m slots along the lane edges: a table, four poles, a canopy, produce or crates, and bulbs.',
+'mkt.lant':'How many of the strings carry lanterns: a red eight-sided lantern every 1.0-1.8 m with yellow caps and a tassel, each over the lane under its string.',
+'mkt.ban':'How many upper-floor bays carry a cloth banner hung on the wall, with hems at top and bottom and lettering running down it.',
+'mkt.steam':'How many stalls have a plume of steam rising over the table: 3-6 grey wavy strokes under the canopy.',
+'mkt.puddles':'How many puddles lie on the lane, each showing the market mirrored in the water: lanterns, canopies and fronts, upside down.',
+'mkt.pudsz':'How big the puddles are. At 100 a puddle is up to 3.8 m along the lane.',
+'mkt.ripple':'How far the reflection wobbles sideways, in millimetres on the sheet. 0 is a still mirror.',
+'mkt.hatch':'How dense the shading is on walls facing away from the light. 0 is no shading.',
+'mkt.hatchmode':'0: shading lines evenly spaced on the wall, crowding into the distance. 1: evenly spaced on the paper.',
+'mkt.sun':'Where the light comes from, as a compass bearing. The walls facing away from it get the tone hatch.',
+'mkt.cams':'Where the camera stands, as a share of the lane length. Near 0 you see the whole lane ahead.',
+'mkt.camx':'The camera across the lane, as a share of half its width: 0 is the middle.',
+'mkt.camz':'The camera height in metres. 1.6 is eye height, looking under the lanterns.',
+'mkt.look':'How far ahead the camera aims, in metres along the lane.',
+'mkt.pitch':'Tilts the camera up (positive) or down, in degrees, after it aims along the lane. Up shows more lanterns and signs.',
+'mkt.fov':'The field of view across the sheet, in degrees. Wide makes the lane close in around you.',
+'mkt.dnear':'Up to this distance, in metres, the fronts are solid: sills, lintels, balconies and AC units stand out and hide what is behind them.',
+'mkt.dfar':'Up to this distance, in metres, fronts, stalls and banners are drawn; beyond it a shophouse keeps its floor lines and outline.',
+'mkt.dpen':'1 draws the black lines further away than Depth split in dark grey instead: a near pen and a far pen.',
+'mkt.dsplit':'With Depth pens on: how far away, in metres, black turns to dark grey.',
+'mkt.lod':'The smallest part still drawn, as its size on the sheet.',
+'mkt.budg':'How many points the drawing may use, in thousands. Over it, the detail distances come in and the LOD cutoff rises until it fits.',
+'mkt.occ':'How wide a white gap a nearer object leaves in whatever passes behind it, in millimetres on the sheet.',
 'strt.len':'How far the street runs, in metres. The camera stands part-way along it (Camera along) and sees the rest recede. A longer street reaches further toward the vanishing point and costs more lines.',
 'strt.bend':'How much the street curves, in degrees per 100 m. 0 is dead straight, so the kerbs meet at one vanishing point; higher bends the far end out of sight behind the buildings on the inside of the curve.',
 'strt.width':'The carriageway, kerb to kerb, in metres. Narrow makes a lane with the buildings leaning over you; wide makes an avenue.',
