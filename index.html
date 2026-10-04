@@ -422,7 +422,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v268</a> &mdash; REFACTOR ONLY — the street's line-fill helper takes the wall it fills as a parameter, so row 44's side walls can use it; byte-identical to v267</span></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v269</a> &mdash; SIDE WALLS LIGHT UP — windows on the side walls are lit at the Lit windows rate like the street faces, from their own random stream so every street-face lit window stays exactly where it was, with the same paper floor so an edge-on wall thins its hatch instead of going solid</span></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <div class="tabs" id="tabs"></div>
@@ -17705,6 +17705,9 @@ function buildStreet(p){
 
   /* the knobs of the dressing, read once */
   var SALT_FAC=53, SALT_TOP=61, SALT_ESC=67;
+  /* row 44's spec names 113 for the side-wall lit windows; row 33 had taken
+     it for the puddles, and row 45's spec reserves 127 */
+  var SALT_RET=131;
   var COL_K='#1a1a1a', COL_HATCH='#4a4a4a', COL_GLOW='#f2c230', AWN=['#ec7a1c','#d42a2a'];
   var GLOW=Math.max(0,Math.min(1,(isFinite(p.glow)?+p.glow:22)/100));
   var FIRE=Math.max(0,Math.min(1,(isFinite(p.fire)?+p.fire:25)/100));
@@ -17884,9 +17887,17 @@ function buildStreet(p){
           }
         });
       }
-      /* return faces (the lot's own sides): windows as outlines only */
+      /* return faces (the lot's own sides): windows as outlines, and LIT at the
+         street faces' rate (row 44, Albert: "no i want the other faces to have
+         lit windows"). Each face draws one number per window from its OWN
+         substream, SALT_RET, drawn or not and in loop order, so the bands and
+         the budget change what is drawn and never which windows are lit, and
+         SALT_FAC -- every street face's pattern -- is untouched. The hatch is
+         the street recipe in the return's own frame, through the same MINSP
+         paper floor, so an edge-on side wall thins its hatch rather than
+         going solid. No solids on a return: it is the lot's own side. */
       [3,5].forEach(function(fk){
-        var fc=BP.faces[fk];
+        var fc=BP.faces[fk], RRT=sub(sk,(L.idx*16+bi)*2+(fk===3?0:1),SALT_RET);
         if(!(fc.n[0]*CE[0]+fc.n[1]*CE[1]+fc.n[2]*CE[2]-fc.d>1e-9)) return;
         var q0=fc.pts[0], q1=fc.pts[1];
         var tx=q1[0]-q0[0], ty=q1[1]-q0[1], Wr=Math.hypot(tx,ty);
@@ -17896,12 +17907,13 @@ function buildStreet(p){
         B.storeys.forEach(function(S){
           if(S.base) return;
           for(var rc=0;rc<nr;rc++){
-            var ucr=(rc+0.5)*rw, cen2=wp(FR,ucr,(S.z0+S.z1)/2,0), b2=bandAt(cen2);
+            var ucr=(rc+0.5)*rw, cen2=wp(FR,ucr,(S.z0+S.z1)/2,0), b2=bandAt(cen2), rlit=RRT()<GLOW;
             if(!b2) continue;
             var x0=ucr-rw*0.3, x1=ucr+rw*0.3, y0=S.z0+0.9, y1=S.z1-0.45;
             var corners=[wp(FR,x0,y0,0),wp(FR,x1,y0,0),wp(FR,x1,y1,0),wp(FR,x0,y1,0)];
             for(var e=0;e<4;e++) BP.lines.push({a:corners[e],b:corners[(e+1)%4],f0:fk,f1:fk,col:COL_K,kind:'win'});
-            elem('return',cen2,b2);
+            if(rlit) hlines(x0+0.05,x1-0.05,y0+0.05,y1-0.05,0.18,COL_GLOW,'glow',FR,fk);
+            elem(rlit?'returnlit':'return',cen2,b2);
           }
         });
         if(bi===0){
@@ -19651,7 +19663,7 @@ function buildStreet(p){
             npud:pudVis.length, nmirror:mcommitted.length, nrefl:nrefl};
   }
   lots.forEach(function(L){
-    STRTTALLY.lots.push({side:L.side, idx:L.idx, s0:L.s0, s1:L.s1, poly:L.poly,
+    STRTTALLY.lots.push({side:L.side, idx:L.idx, s0:L.s0, s1:L.s1, poly:L.poly, base:L.baseTop,
       blocks:L.blocks.map(function(B){ return [B.z0,B.z1,B.fr,B.bk,B.floors.slice()]; })});
   });
   /* §4 THE BUDGET. Build at the knobs; while the drawing is over `budg` (or
@@ -21305,7 +21317,7 @@ var HELP={
 'strt.pitch':'Tilts the camera up (positive) or down, in degrees, after it aims along the street. Up shows more building and sky; down shows more road.',
 'strt.fov':'The camera’s field of view across the sheet, in degrees. Narrow is a long lens and flattens the street; wide exaggerates the perspective and the buildings lean.',
 'strt.fire':'How many buildings carry a fire escape: landings at every floor and a zig-zag stair, in one bay of the street face. Only buildings with room in front of the wall and three or more storeys above the shop can have one.',
-'strt.glow':'How many windows are lit. A lit window gets a yellow hatch inside its frame, so Lit windows is also how much yellow ink the drawing uses.',
+'strt.glow':'How many windows are lit, on the street faces and the side walls alike. A lit window gets a yellow hatch inside its frame, so Lit windows is also how much yellow ink the drawing uses.',
 'strt.hatch':'How dense the shading is on walls facing away from the light. 0 is no shading. The side walls of the canyon get it half again as dense, which is what makes one side dark and the other light.',
 'strt.hatchmode':'0: the shading lines are evenly spaced ON THE WALL, so they crowd together into the distance. 1: evenly spaced ON THE PAPER, so a far wall is as light as a near one.',
 'strt.sun':'Where the light comes from, as a compass bearing: 0 north, 90 east, 180 south, 270 west. The walls facing away from it get the tone hatch.',
