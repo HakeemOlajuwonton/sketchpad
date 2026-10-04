@@ -422,7 +422,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v269</a> &mdash; SIDE WALLS LIGHT UP — windows on the side walls are lit at the Lit windows rate like the street faces, from their own random stream so every street-face lit window stays exactly where it was, with the same paper floor so an edge-on wall thins its hatch instead of going solid</span></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v270</a> &mdash; UPPER FLOORS VARY — a new Upper variety knob splits each building's storeys into zones that re-roll their bays, turn into ribbons, tall pairs or a plant storey, take belt courses, and dress windows with AC units, laundry, planters, curtains and grilles; at 0 the street is exactly v269</span></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <div class="tabs" id="tabs"></div>
@@ -2099,7 +2099,8 @@ var SPEC={
     ['alley','Alley chance',0,60,1,14,[100,'%']],['floors','Storeys',1,40,1,9],
     ['canyon','Canyon rise',0,100,1,30,[100,'%']],['stepb','Step-back',0,60,1,18,[100,'%']],
     ['canti','Cantilever',0,60,1,14,[100,'%']],['fire','Fire escapes',0,100,1,25,[100,'%']],
-    ['glow','Lit windows',0,100,1,22,[100,'%']],['signs','Signs',0,100,1,55,[100,'%']],
+    ['glow','Lit windows',0,100,1,22,[100,'%']],['uvar','Upper variety',0,100,1,55,[100,'%']],
+    ['signs','Signs',0,100,1,55,[100,'%']],
     ['neon','Neon',0,100,1,60,[100,'%']],['lang','Script',0,3,1,0],
     ['cables','Cables',0,100,1,45,[100,'%']],['sag','Cable sag',0,30,1,6,[100,'%']],
     ['cars','Cars',0,20,1,3,[1,'/100 m']],['puddles','Puddles',0,40,1,9],
@@ -17361,7 +17362,7 @@ var STRTSTATS={lots:0,conts:0,parts:0,paths:0,points:0,cycles:0};
    ray-casts those itself. Mirrored in enginetest/extract.js's `parts`. */
 var STRTTALLY={cam:null,project:null,parts:[],pre:[],sil:[],conts:[],lots:[],slabs:[],
                elems:[],bld:[],hfaces:[],signs:[],bank:null,words:[],poles:[],cables:[],
-               cars:[],dots:null,graff:[],puds:[],rparts:[],rpre:[],rsil:[],refl:[],allparts:[]};
+               cars:[],dots:null,graff:[],puds:[],rparts:[],rpre:[],rsil:[],refl:[],allparts:[],upr:[],urows:[]};
 function buildStreet(p){
   var LEN=Math.max(60,+p.len||220), BEND=Math.max(0,+p.bend||0);
   var WID=Math.max(4,+p.width||7), PAVE=Math.max(0,isFinite(p.pave)?+p.pave:2.5);
@@ -17382,7 +17383,7 @@ function buildStreet(p){
   STRTINFO=''; STRTSTATS={lots:0,conts:0,parts:0,paths:0,points:0,cycles:0};
   STRTTALLY={cam:null,project:null,parts:[],pre:[],sil:[],conts:[],lots:[],slabs:[],
              signs:[],bank:null,words:[],poles:[],cables:[],cars:[],dots:null,graff:[],
-             puds:[],rparts:[],rpre:[],rsil:[],refl:[],allparts:[]};
+             puds:[],rparts:[],rpre:[],rsil:[],refl:[],allparts:[],upr:[],urows:[]};
 
   /* ---- substreams: the splitmix finaliser iso's cellRnd uses, keyed on
      (a, b, salt). Every layer salts its own, so turning one layer on or off
@@ -17708,6 +17709,21 @@ function buildStreet(p){
   /* row 44's spec names 113 for the side-wall lit windows; row 33 had taken
      it for the puddles, and row 45's spec reserves 127 */
   var SALT_RET=131;
+  /* ROW 45, UPPER FLOORS THAT VARY (docs/specs/2026-10-03-strt-upper-floors-and-cars.md
+     §2). Albert, on a tall tower: "there's no variation at the upper floors". A
+     block rolled ONE column scheme for every storey above its shop. Now its
+     storeys fall into ZONES of 2-5; each zone after the first re-rolls the
+     scheme with probability Upper variety (at least half the columns change
+     kind), and a re-rolled zone is plain bays, a ribbon, tall pairs or one plant
+     storey; a belt course may mark the boundary; each zone sets its windows'
+     height (0.92-1.12 at 100, never z0/z1); and each window may carry an AC
+     unit, laundry, a planter, a curtain or a grille. EVERY NUMBER IS FROM
+     SALT_UPR, in a fixed count per zone and per window, so the bands and the
+     budget change what is drawn and never what the building is -- and the
+     facade's own SALT_FAC stream is not touched. AT 0 NOTHING IS DRAWN FROM IT
+     and every drawing is byte-identical to v269. */
+  var SALT_UPR=127, UVAR=Math.max(0,Math.min(1,(isFinite(p.uvar)?+p.uvar:55)/100));
+  var UKINDS=['win','bal','shut','louv','blank'], UKW=[0.5,0.15,0.1,0.1,0.15];
   var COL_K='#1a1a1a', COL_HATCH='#4a4a4a', COL_GLOW='#f2c230', AWN=['#ec7a1c','#d42a2a'];
   var GLOW=Math.max(0,Math.min(1,(isFinite(p.glow)?+p.glow:22)/100));
   var FIRE=Math.max(0,Math.min(1,(isFinite(p.fire)?+p.fire:25)/100));
@@ -17752,6 +17768,70 @@ function buildStreet(p){
       for(c=0;c<nb;c++){ var u=RF(); cols.push(u<0.5?'win':u<0.65?'bal':u<0.75?'shut':u<0.85?'louv':'blank'); }
       var doorCol=Math.floor(RF()*nb), pipeU=RF(), pipeC=1+Math.floor(RF()*Math.max(1,nb-1));
       var escCol=Math.floor(nb/2);
+      /* ROW 45: the zones of this block, and every number they will use */
+      var zoneOf=[];
+      if(UVAR>0){
+        var nonb=[], zk=0, zi2=0, prevK=cols.slice(), topSi=-1;
+        B.storeys.forEach(function(S2,si2){ if(!S2.base){ nonb.push(si2); topSi=si2; } });
+        while(zk<nonb.length){
+          var RZ=sub(sk,(L.idx*16+bi)*64+zi2,SALT_UPR);
+          var zl=2+Math.floor(RZ()*4), uRe=RZ(), uTy=RZ(), uTk=RZ(), uBelt=RZ(), uBn=RZ(), uH=RZ(), chg=[], nku=[], cc;
+          for(cc=0;cc<nb;cc++){ chg.push(RZ()); nku.push(RZ()); }
+          var mem=nonb.slice(zk,zk+zl), kinds=prevK.slice(), type='plain';
+          if(zi2>0 && uRe<UVAR){
+            var want=Math.ceil(nb/2), pick=[];
+            for(cc=0;cc<nb;cc++) if(chg[cc]<0.5) pick.push(cc);
+            if(pick.length<want){
+              var rest=[]; for(cc=0;cc<nb;cc++) if(chg[cc]>=0.5) rest.push(cc);
+              rest.sort(function(a,b){ return chg[a]-chg[b]; });
+              pick=pick.concat(rest.slice(0,want-pick.length));
+            }
+            pick.forEach(function(c2){
+              var cur=UKINDS.indexOf(kinds[c2]), tot=0, k2, acc=0;
+              for(k2=0;k2<5;k2++) if(k2!==cur) tot+=UKW[k2];
+              for(k2=0;k2<5;k2++){ if(k2===cur) continue; acc+=UKW[k2]/tot; if(nku[c2]<acc || k2===4 || (k2===3&&cur===4)){ kinds[c2]=UKINDS[k2]; break; } }
+            });
+            if(uTy<0.35*UVAR) type=uTk<1/3?'ribbon':uTk<2/3?'tall':'plant';
+          }
+          var hf=1+UVAR*(uH*0.20-0.08);
+          var plantSi=type==='plant'?(mem.indexOf(topSi)>=0?topSi:mem[0]):-1;
+          var Zr={zi:zi2, kinds:kinds, type:type, hf:hf, first:mem[0], plant:plantSi,
+                  belt:(zi2>0 && uBelt<UVAR)?(uBn<0.5?1:2):0, cl:{}};
+          mem.forEach(function(si3){
+            var row=[];
+            for(cc=0;cc<nb;cc++){ var w6=[RZ(),RZ(),RZ(),RZ(),RZ(),RZ()]; row.push(w6); }
+            Zr.cl[si3]=row; zoneOf[si3]=Zr;
+          });
+          prevK=kinds; zk+=zl; zi2++;
+        }
+      }
+      /* the storey rows the repeat measure reads (strtcheck.js L11): per column
+         the kind, the zone's type, and the clutter it was dealt -- the building,
+         not the drawing, so it is the same in every band */
+      (function(){
+        var rows=[];
+        B.storeys.forEach(function(S2,si2){
+          if(S2.base) return;
+          var Z2=zoneOf[si2], r2=[];
+          for(var c3=0;c3<nb;c3++){
+            var kd=Z2?Z2.kinds[c3]:cols[c3];
+            if(hasEsc && bi===escB && c3===escCol) kd='win';
+            if(kd==='bal' && room<0.5) kd='win';
+            var sg=kd;
+            if(Z2){
+              if(Z2.plant===si2) sg='plant';
+              else {
+                if(kd==='win' && Z2.type!=='plain') sg+='/'+Z2.type;
+                var w7=Z2.cl[si2][c3];
+                if(kd==='win') sg+=(w7[0]<0.18*UVAR?'a':'')+(w7[1]<0.10*UVAR?'l':'')+(w7[2]<0.08*UVAR?'p':'')+(w7[3]<0.15*UVAR?'c':'')+(w7[4]<0.08*UVAR?'g':'');
+              }
+            }
+            r2.push(sg);
+          }
+          rows.push(r2);
+        });
+        STRTTALLY.urows.push({side:L.side, idx:L.idx, bi:bi, rows:rows});
+      })();
       function line(a,b,col,kind){ BP.lines.push({a:a, b:b, f0:2, f1:2, col:col, kind:kind}); }
       function rect(u0,u1,v0,v1,col,kind){
         line(wp(F,u0,v0,0),wp(F,u1,v0,0),col,kind); line(wp(F,u1,v0,0),wp(F,u1,v1,0),col,kind);
@@ -17777,8 +17857,68 @@ function buildStreet(p){
       }
       function elem(kind,cen,band){ STRTTALLY.elems.push({kind:kind, c:cen, band:band}); }
       function bandAt(P){ var d=dist3(P); return d<dn?'solid':d<df?'outline':''; }
+      /* ROW 45 §2.4: one window's clutter, each item at its own rate x Upper
+         variety. An AC unit and a planter are SOLIDS nearer than Solid detail
+         to (inside `room`, the envelope rule) and outlines further out;
+         laundry, a curtain and a grille lie in the window's own plane, so they
+         are lines at every distance. All of it black. A curtain only on an unlit
+         window -- a lit one stays yellow. */
+      function clutter(w,uc,wx0,wx1,wy0,wy1,zs,lit,band,acTaken){
+        var U=UVAR, k;
+        if(w[0]<0.18*U && !acTaken && wy0-0.62>=zs+0.05){
+          if(band==='solid' && room>=0.32)
+            solid(para(wp(F,uc-0.4,wy0-0.62,0),vec(F,'t',0.8),vec(F,'n',Math.min(0.3,room)),vec(F,'z',0.5)),'ac');
+          else { rect(uc-0.4,uc+0.4,wy0-0.62,wy0-0.12,COL_K,'uac'); line(wp(F,uc-0.4,wy0-0.62,0),wp(F,uc+0.4,wy0-0.12,0),COL_K,'uac'); }
+          STRTTALLY.upr.push({kind:'ac', band:band});
+        }
+        if(w[1]<0.10*U){
+          var ly=wy0+0.6*(wy1-wy0), nl=2+Math.floor(w[5]*3), sp2=(wx1-wx0)/(nl+1);
+          line(wp(F,wx0-0.1,ly,0),wp(F,wx1+0.1,ly,0),COL_K,'laundry');
+          for(k=1;k<=nl;k++){ var lx=wx0+sp2*k; rect(lx-0.11,lx+0.11,ly-0.3,ly,COL_K,'laundry'); }
+          STRTTALLY.upr.push({kind:'laundry', band:band});
+        }
+        if(w[2]<0.08*U){
+          if(band==='solid' && room>=0.2)
+            solid(para(wp(F,wx0+0.05,wy0,0),vec(F,'t',wx1-wx0-0.1),vec(F,'n',Math.min(0.2,room)),vec(F,'z',0.18)),'planter');
+          else rect(wx0+0.05,wx1-0.05,wy0,wy0+0.18,COL_K,'planter');
+          var ns=3+Math.floor(((w[5]*7)%1)*3);
+          for(k=1;k<=ns;k++){ var sx=wx0+0.05+(wx1-wx0-0.1)*k/(ns+1); line(wp(F,sx,wy0+0.18,0),wp(F,sx,wy0+0.34,0),COL_K,'planter'); }
+          STRTTALLY.upr.push({kind:'planter', band:band});
+        }
+        if(!lit && w[3]<0.15*U){
+          var cx=wx0+(0.3+0.4*w[5])*(wx1-wx0);
+          line(wp(F,cx,wy0,0),wp(F,cx,wy1,0),COL_K,'curtain');
+          if(((w[5]*13)%1)<0.5) hlines(wx0+0.05,cx-0.03,wy0+0.05,wy1-0.05,0.25,COL_K,'curtain');
+          else hlines(cx+0.03,wx1-0.05,wy0+0.05,wy1-0.05,0.25,COL_K,'curtain');
+          STRTTALLY.upr.push({kind:'curtain', band:band});
+        }
+        if(w[4]<0.08*U){
+          var ng=3+Math.floor(((w[5]*29)%1)*3);
+          for(k=1;k<=ng;k++){ var gx=wx0+(wx1-wx0)*k/(ng+1); line(wp(F,gx,wy0,0),wp(F,gx,wy1,0),COL_K,'grille'); }
+          STRTTALLY.upr.push({kind:'grille', band:band});
+        }
+      }
       B.storeys.forEach(function(S,si){
-        var zs=S.z0, ze=S.z1, shop=S.base && si===0 && bi===0;
+        var zs=S.z0, ze=S.z1, shop=S.base && si===0 && bi===0, ZN=zoneOf[si];
+        if(ZN){
+          /* a belt course at the zone's foot; a plant storey is louvres across
+             the whole face */
+          if(ZN.first===si && ZN.belt){
+            var bcz=wp(F,F.W/2,zs,0), bbz=bandAt(bcz);
+            if(bbz){
+              line(wp(F,0.05,zs,0),wp(F,F.W-0.05,zs,0),COL_K,'belt');
+              if(ZN.belt===2) line(wp(F,0.05,zs+0.25,0),wp(F,F.W-0.05,zs+0.25,0),COL_K,'belt');
+              STRTTALLY.upr.push({kind:'belt', band:bbz});
+            }
+          }
+          if(ZN.plant===si){
+            var pcz=wp(F,F.W/2,(zs+ze)/2,0), pbz=bandAt(pcz);
+            if(pbz){
+              rect(0.15,F.W-0.15,zs+0.5,ze-0.4,COL_K,'louvre'); hlines(0.15,F.W-0.15,zs+0.5,ze-0.4,0.08,COL_K,'louvre');
+              STRTTALLY.upr.push({kind:'plant', band:pbz});
+            }
+          }
+        }
         for(c=0;c<nb;c++){
           var u0=c*bw, u1=(c+1)*bw, uc=(u0+u1)/2, ug=RF(), ua=RF(), ub=RF(), ucol=RF();
           var cen=wp(F,uc,(zs+ze)/2,0), band=bandAt(cen);
@@ -17807,10 +17947,35 @@ function buildStreet(p){
             elem('shop',cen,band);
             continue;
           }
-          var kind=cols[c];
+          if(ZN && ZN.plant===si) continue;
+          var kind=ZN?ZN.kinds[c]:cols[c];
           if(hasEsc && bi===escB && c===escCol) kind='win';
           if(kind==='bal' && (S.base || room<0.5)) kind='win';
           var wx0=uc-bw*0.3, wx1=uc+bw*0.3, wy0=zs+0.9, wy1=ze-0.45;
+          if(ZN && ZN.hf!==1){ var hmid=(wy0+wy1)/2, hh=Math.min((wy1-wy0)/2*ZN.hf,(ze-zs)/2-0.3); wy0=hmid-hh; wy1=hmid+hh; }
+          var ZT=(ZN && kind==='win' && !(hasEsc && bi===escB && c===escCol))?ZN.type:'plain';
+          if(ZT==='tall' || ZT==='ribbon'){
+            /* tall pairs: two narrow windows a bay, near the storey's full
+               height; a ribbon: one strip along the run of window bays, a
+               mullion on every bay line */
+            var litz=ug<GLOW;
+            if(ZT==='tall'){
+              [[u0+0.1*bw,u0+0.4*bw],[u0+0.6*bw,u0+0.9*bw]].forEach(function(pr2){
+                rect(pr2[0],pr2[1],zs+0.3,ze-0.3,COL_K,'win');
+                if(litz) hlines(pr2[0]+0.05,pr2[1]-0.05,zs+0.35,ze-0.35,0.18,COL_GLOW,'glow');
+              });
+            } else {
+              var lw=c===0 || ZN.kinds[c-1]!=='win', rw2=c===nb-1 || ZN.kinds[c+1]!=='win';
+              var ra=lw?u0+0.15:u0, rb=rw2?u1-0.15:u1;
+              line(wp(F,ra,wy0,0),wp(F,rb,wy0,0),COL_K,'win'); line(wp(F,ra,wy1,0),wp(F,rb,wy1,0),COL_K,'win');
+              line(wp(F,ra,wy0,0),wp(F,ra,wy1,0),COL_K,'win');
+              if(rw2) line(wp(F,rb,wy0,0),wp(F,rb,wy1,0),COL_K,'win');
+              if(litz) hlines(ra+0.05,rb-0.05,wy0+0.05,wy1-0.05,0.18,COL_GLOW,'glow');
+            }
+            STRTTALLY.upr.push({kind:ZT, band:band});
+            elem(litz?'winlit':'win',cen,band);
+            continue;
+          }
           if(kind==='blank'){ continue; }
           if(kind==='shut'){ rect(wx0,wx1,wy0,wy1,COL_K,'shutter'); hlines(wx0,wx1,wy0,wy1,0.12,COL_K,'shutter'); elem('shutter',cen,band); continue; }
           if(kind==='louv'){ rect(wx0,wx1,wy0,wy1,COL_K,'louvre'); hlines(wx0,wx1,wy0,wy1,0.08,COL_K,'louvre'); elem('louvre',cen,band); continue; }
@@ -17850,6 +18015,8 @@ function buildStreet(p){
           var lit=ug<GLOW;
           if(lit) hlines(wx0+0.05,wx1-0.05,wy0+0.05,wy1-0.05,0.18,COL_GLOW,'glow');
           elem(lit?'winlit':'win',cen,band);
+          if(ZN && !S.base && !(hasEsc && bi===escB && c===escCol)) clutter(ZN.cl[si][c],uc,wx0,wx1,wy0,wy1,zs,lit,band,
+                 band==='solid' && room>=0.03 && !S.base && ub<0.12 && room>=0.32);
         }
       });
       /* a downpipe on one bay boundary, the height of the block */
@@ -19255,7 +19422,7 @@ function buildStreet(p){
     LODNOW=lodmm; out=[];
     STRTTALLY.parts=[]; STRTTALLY.pre=[]; STRTTALLY.sil=[]; STRTTALLY.conts=[];
     STRTTALLY.elems=[]; STRTTALLY.bld=[]; STRTTALLY.hfaces=[];
-    STRTTALLY.signs=[]; STRTTALLY.graff=[]; STRTTALLY.cars=[];
+    STRTTALLY.signs=[]; STRTTALLY.graff=[]; STRTTALLY.cars=[]; STRTTALLY.upr=[]; STRTTALLY.urows=[];
     conts.forEach(function(C){ C.parts=[]; });
     lots.forEach(function(L){
       L.blocks.forEach(function(B){
@@ -21325,6 +21492,7 @@ var HELP={
 'strt.dfar':'Up to this distance, in metres, the facade is drawn as outlines on the wall. Beyond it a building keeps only its floor lines and its outline, which keeps the far end from turning into a smudge.',
 'strt.budg':'How many points the drawing may use, in thousands. If the street needs more, the two detail distances come in toward you and the LOD cutoff rises until it fits, and the status line says so.',
 'strt.lod':'The smallest part still drawn, as its size on the sheet. Far buildings shrink toward nothing near the vanishing point; below this they are left out rather than drawn as a blob the pen cannot resolve. 0 draws everything.',
+'strt.uvar':'How much the upper floors vary. Storeys fall into zones of 2-5; each zone may re-roll its bays (windows, balconies, shutters, louvres, blank), become a ribbon of windows, tall pairs or a plant storey, get a belt course, and its windows carry AC units, laundry, planters, curtains or grilles. 0 is one scheme top to bottom.',
 'strt.signs':'How many of the places a sign could go carry one: the shop\u2019s fascia, a billboard on a flat roof, and slots up each bay line of the facade for blade signs, tall banners, lightboxes and round emblems. 0 is a street with no signs; 100 fills every slot.',
 'strt.neon':'How many signs are neon. A neon sign\u2019s lettering becomes tubes (two lines a glyph\u2019s 4% apart, round at the ends) in one neon ink -- magenta, pink, turquoise, light blue or orange -- with a double border; close enough, the tubes show as tubes, further off as single strokes.',
 'strt.lang':'The script on the signs. 0 pseudo-kanji (1-3 radicals of 2-6 strokes), 1 pseudo-hangul (blocks of 2-3 parts), 2 Latin (real words in the Hershey sans face), 3 a mix, one script per sign. The invented characters recur across signs, so they read as a script rather than as scribbles.',
