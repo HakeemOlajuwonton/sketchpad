@@ -422,7 +422,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v267</a> &mdash; NEON STREET KEEPS YOUR KNOBS — the button colours the drawing as it stands (Pen map 3, and Line pens / Engine layers off since they override it) and no longer resets the page, the camera, Colours or any Street slider</span></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v268</a> &mdash; REFACTOR ONLY — the street's line-fill helper takes the wall it fills as a parameter, so row 44's side walls can use it; byte-identical to v267</span></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <div class="tabs" id="tabs"></div>
@@ -17758,11 +17758,14 @@ function buildStreet(p){
          at 10 m and a solid black patch at 80 m, and the first build drew
          exactly those patches down the far end of the canyon. The spacing is
          widened to at least MINSP mm on the sheet at the fill's own depth. */
-      function hlines(u0,u1,v0,v1,sp,col,kind){
-        var g=paperGap(wp(F,(u0+u1)/2,(v0+v1)/2,0),F.t,ZUP);
+      /* FR/fk: the frame and face the fill lies on -- the street face F and its
+         face 2 unless a return face is named (row 44) */
+      function hlines(u0,u1,v0,v1,sp,col,kind,FR,fk){
+        var Fh=FR||F, fh=FR?fk:2;
+        var g=paperGap(wp(Fh,(u0+u1)/2,(v0+v1)/2,0),Fh.t,ZUP);
         if(!(g>0)) return;
         sp=Math.max(sp, MINSP/g);
-        for(var v=v1-sp;v>v0+1e-6;v-=sp) line(wp(F,u0,v,0),wp(F,u1,v,0),col,kind);
+        for(var v=v1-sp;v>v0+1e-6;v-=sp) BP.lines.push({a:wp(Fh,u0,v,0), b:wp(Fh,u1,v,0), f0:fh, f1:fh, col:col, kind:kind});
       }
       function solid(Pq,kind,col,extra){
         Pq.cont=L; Pq.col=col||COL_K; Pq.kind=kind;
