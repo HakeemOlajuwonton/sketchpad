@@ -422,7 +422,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v274</a> &mdash; NIGHT MARKET — a new corridor engine on the Street kit: a narrow lane of shophouses with rolled-up shutters, stalls with canopies along both edges, red lantern strings overhead, steam over the food, cloth banners, puddles</span></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v275</a> &mdash; REFACTOR ONLY — the corridor kit gains three hooks for the harbour: a theme may size its own lots (lotGen), a kerb of height 0 is not built, and slabPieces cuts a lane part into one piece per road slab. Street and Night market byte-identical</span></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <div class="tabs" id="tabs"></div>
@@ -19312,6 +19312,11 @@ function buildCorridor(p,THM){
     for(li=0;li<400;li++){
       var R=sub(sd<0?2:1,li,SALT_LOT);
       var wl=LOTMIN+R()*(LOTMAX-LOTMIN), ua=R(), aw=THM.alleyW[0]+R()*spanOf(THM.alleyW), depth=THM.lotDepth[0]+R()*spanOf(THM.lotDepth);
+      /* a theme may size its own lots (row 51: a container row is one
+         container wide and one or two lengths deep), from numbers it draws
+         AFTER these four, so a lot is still the same lot whatever it does */
+      var LGX=null;
+      if(THM.lotGen){ LGX=THM.lotGen(R,p); wl=LGX.wl; depth=LGX.depth; }
       var b0=cursor, b1=cursor+wl;
       if(b1>cum[cum.length-1]) break;
       cursor=b1+(ua<ALLEY?aw:0);
@@ -19345,7 +19350,7 @@ function buildCorridor(p,THM){
       }
       if(clash){ dropped++; continue; }
       var LOT={kind:'lot', side:sd, idx:li, s0:s0, s1:s1, poly:env, bb:ebb, parts:[],
-               fe:KOFF+d, back:BK, depth:depth, blocks:[]};
+               fe:KOFF+d, back:BK, depth:depth, blocks:[], gen:LGX};
       conts.push(LOT); lots.push(LOT);
     }
   });
@@ -19859,6 +19864,37 @@ function buildCorridor(p,THM){
     return halves;
   }
 
+  /* ---- ROW 51: a part in the lane cut into one piece per slab it is in.
+     Each slab is a convex prism and the slabs tile the lane, so clipping the
+     part by a slab's four vertical faces gives exactly its share of that slab.
+     The cuts are seams (splitPart draws none). A part any of which lies outside
+     every slab is refused (null): a theme keeps its lane things in the lane. */
+  function slabPieces(P){
+    var VP=verts(P), b=[1e18,1e18,-1e18,-1e18], out=[], vol=0, k;
+    VP.forEach(function(v){ if(v[0]<b[0])b[0]=v[0]; if(v[1]<b[1])b[1]=v[1]; if(v[0]>b[2])b[2]=v[0]; if(v[1]>b[3])b[3]=v[1]; });
+    for(k=0;k<conts.length;k++){
+      var C=conts[k]; if(C.kind!=='slab' || !bbHit(b,C.bb)) continue;
+      var Q=C.poly, piece=P, cx=0, cy=0, e;
+      Q.forEach(function(q){ cx+=q[0]/Q.length; cy+=q[1]/Q.length; });
+      for(e=0;e<Q.length && piece;e++){
+        var a=Q[e], c=Q[(e+1)%Q.length], nx=-(c[1]-a[1]), ny=c[0]-a[0], L=Math.hypot(nx,ny); nx/=L; ny/=L;
+        if(nx*(cx-a[0])+ny*(cy-a[1])<0){ nx=-nx; ny=-ny; }
+        var d=nx*a[0]+ny*a[1], V=verts(piece), lo=1e18, hi=-1e18;
+        V.forEach(function(v){ var w=nx*v[0]+ny*v[1]-d; if(w<lo) lo=w; if(w>hi) hi=w; });
+        if(hi<=1e-9){ piece=null; break; }
+        if(lo<-1e-9){ var H=splitPart(piece,[nx,ny,0],d); piece=H[0];
+          if(!piece.faces.length || verts(piece).length<4) piece=null; }
+      }
+      if(piece){ piece.cont=C; out.push(piece); }
+    }
+    /* every vertex of the original must be in some slab, or part of it is not
+       in the lane at all */
+    for(k=0;k<VP.length;k++){ var v=VP[k], inAny=false;
+      for(var m=0;m<conts.length && !inAny;m++) if(conts[m].kind==='slab' && inConv(conts[m].poly,v)) inAny=true;
+      if(!inAny) return null; }
+    return out;
+  }
+
   /* ---- §3.3 the order ---------------------------------------------------- */
   var EYE=[CE[0],CE[1]];
   /* the plan angular interval a container subtends from the eye, or null
@@ -19977,7 +20013,7 @@ function buildCorridor(p,THM){
        its road-facing face carries lines -- the kerb's foot and its top edge.
        Face 2 is the side running Q[0] -> Q[1], which is the road edge. */
     conts.forEach(function(C){
-      if(C.kind!=='slab') return;
+      if(C.kind!=='slab' || !(KERB>0)) return;
       var Q=[P3(C.s0,C.side,HALFW,0),P3(C.s1,C.side,HALFW,0),P3(C.s1,C.side,KOFF,0),P3(C.s0,C.side,KOFF,0)];
       var P=prism(Q,0,KERB);
       P.lines.push({a:[Q[0][0],Q[0][1],0], b:[Q[1][0],Q[1][1],0], f0:2, f1:2});
@@ -20405,7 +20441,7 @@ function buildCorridor(p,THM){
            (tries?' · OVER BUDGET: detail pulled in to '+DN.toFixed(0)+' / '+DF.toFixed(0)+' m, LOD '+LODE.toFixed(1)+' mm'+
                   (RR.nrefl&&RIPMM>0?', ripple sampled every '+RSTEPMM().toFixed(1)+' mm':''):'');
   return res;
-  function KIT(){ return {THM:THM, P3:P3, add3:add3, addCable:addCable, cam:cam, dist3:dist3, drawOn:drawOn, faceC:faceC, faceIx:faceIx, frame:frame, hitsAny:hitsAny, inConv:inConv, lateral:lateral, mmPerM:mmPerM, paperGap:paperGap, para:para, polyFromLoops:polyFromLoops, prism:prism, prismN:prismN, splitPart:splitPart, sub:sub, surf:surf, vec:vec, verts:verts, wallOf:wallOf, wp:wp, CANTI:CANTI, CANYON:CANYON, CE:CE, FF:FF, FLOORS:FLOORS, HALFW:HALFW, HW:HW, KERB:KERB, KOFF:KOFF, LEN:LEN, NEAR:NEAR, PBACK:PBACK, RT:RT, SALT_BLD:SALT_BLD, STEPB:STEPB, ZUP:ZUP, cables:cables, conts:conts, lots:lots, slabsBySide:slabsBySide, p:p}; }
+  function KIT(){ return {slabPieces:slabPieces, bbHit:bbHit, MINSP:0.7, THM:THM, P3:P3, add3:add3, addCable:addCable, cam:cam, dist3:dist3, drawOn:drawOn, faceC:faceC, faceIx:faceIx, frame:frame, hitsAny:hitsAny, inConv:inConv, lateral:lateral, mmPerM:mmPerM, paperGap:paperGap, para:para, polyFromLoops:polyFromLoops, prism:prism, prismN:prismN, splitPart:splitPart, sub:sub, surf:surf, vec:vec, verts:verts, wallOf:wallOf, wp:wp, CANTI:CANTI, CANYON:CANYON, CE:CE, FF:FF, FLOORS:FLOORS, HALFW:HALFW, HW:HW, KERB:KERB, KOFF:KOFF, LEN:LEN, NEAR:NEAR, PBACK:PBACK, RT:RT, SALT_BLD:SALT_BLD, STEPB:STEPB, ZUP:ZUP, cables:cables, conts:conts, lots:lots, slabsBySide:slabsBySide, p:p}; }
 }
 
 /* ---------- 14. MOIRE : swept section along a 3D spine, ONE path ----------
