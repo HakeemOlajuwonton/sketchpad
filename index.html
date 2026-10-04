@@ -422,7 +422,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v265</a> &mdash; VERSION LINK STYLED — the vNNN in the banner takes the accent colour with a dotted underline instead of the browser's visited purple</span></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v266</a> &mdash; PUDDLES THAT REFLECT — noisy puddles on the road ahead of the camera, each showing the street mirrored in the water: ordered and hidden by the same exact machinery as the real street, clipped to the outline, rippled, and hidden in turn by whatever really stands in front</span></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <div class="tabs" id="tabs"></div>
@@ -2082,8 +2082,8 @@ var SPEC={
     ['lod','LOD cutoff',0,60,1,5,[10,' mm']],
     ['budg','Size budget',10,200,5,45,[1,' k points']],
     ['occ','Occlusion gap',0,80,1,5,[10,' mm']]]],
-  /* STREET, queue rows 30-32. ONLY THE KNOBS A BUILT ROW READS ARE DECLARED --
-     the spec's §7 lists forty, and row 33 adds the last three (puddles, pudsz,
+  /* STREET, queue rows 30-33. ONLY THE KNOBS A BUILT ROW READS ARE DECLARED --
+     the spec's §7 lists forty, and row 33 added the last three (puddles, pudsz,
      ripple) with the reflections that read them, so no knob here is dead. Ranges and defaults are §7's verbatim.
      `budg` was one of them at row 30 -- knobaudit found it DEAD there -- and
      arrives at row 31 with `dnear`/`dfar`, the bands its budget steps.
@@ -2102,7 +2102,8 @@ var SPEC={
     ['glow','Lit windows',0,100,1,22,[100,'%']],['signs','Signs',0,100,1,55,[100,'%']],
     ['neon','Neon',0,100,1,60,[100,'%']],['lang','Script',0,3,1,0],
     ['cables','Cables',0,100,1,45,[100,'%']],['sag','Cable sag',0,30,1,6,[100,'%']],
-    ['cars','Cars',0,20,1,3,[1,'/100 m']],
+    ['cars','Cars',0,20,1,3,[1,'/100 m']],['puddles','Puddles',0,40,1,9],
+    ['pudsz','Puddle size',5,100,1,40,[100,'%']],['ripple','Ripple',0,30,1,6,[10,' mm']],
     ['dots','Particles',0,3000,10,420],['graff','Graffiti',0,100,1,20,[100,'%']],
     ['hatch','Tone hatch',0,100,1,55,[100,'%']],['hatchmode','Hatch spacing',0,1,1,0],
     ['sun','Light from',0,359,1,300,[1,'°']],
@@ -17360,7 +17361,7 @@ var STRTSTATS={lots:0,conts:0,parts:0,paths:0,points:0,cycles:0};
    ray-casts those itself. Mirrored in enginetest/extract.js's `parts`. */
 var STRTTALLY={cam:null,project:null,parts:[],pre:[],sil:[],conts:[],lots:[],slabs:[],
                elems:[],bld:[],hfaces:[],signs:[],bank:null,words:[],poles:[],cables:[],
-               cars:[],dots:null,graff:[]};
+               cars:[],dots:null,graff:[],puds:[],rparts:[],rpre:[],rsil:[],refl:[],allparts:[]};
 function buildStreet(p){
   var LEN=Math.max(60,+p.len||220), BEND=Math.max(0,+p.bend||0);
   var WID=Math.max(4,+p.width||7), PAVE=Math.max(0,isFinite(p.pave)?+p.pave:2.5);
@@ -17380,7 +17381,8 @@ function buildStreet(p){
   var out=[], i, j, k;
   STRTINFO=''; STRTSTATS={lots:0,conts:0,parts:0,paths:0,points:0,cycles:0};
   STRTTALLY={cam:null,project:null,parts:[],pre:[],sil:[],conts:[],lots:[],slabs:[],
-             signs:[],bank:null,words:[],poles:[],cables:[],cars:[],dots:null,graff:[]};
+             signs:[],bank:null,words:[],poles:[],cables:[],cars:[],dots:null,graff:[],
+             puds:[],rparts:[],rpre:[],rsil:[],refl:[],allparts:[]};
 
   /* ---- substreams: the splitmix finaliser iso's cellRnd uses, keyed on
      (a, b, salt). Every layer salts its own, so turning one layer on or off
@@ -18467,6 +18469,63 @@ function buildStreet(p){
   STRTTALLY.dots={asked:DOTS, placed:dots.length, rejected:drej,
                   list:dots.map(function(d){ return {P:P3(d.s,d.side,d.o,d.z), col:d.col, s:d.s}; })};
 
+  /* ---- §5.6 PUDDLES (row 33): noisy blobs on the carriageway. EACH LIES IN
+     ONE ROAD SLAB, which is what keeps the order exact: a puddle is a part of
+     its slab like a car or a dot, and it is never cut, because it is never
+     longer than the slab it sits in (Puddle size 100 is 3.8 m along the
+     street). It hides nothing. Each puddle draws its fourteen numbers from
+     its own substream keyed on its INDEX, so Puddles 9 -> 10 adds the tenth
+     and moves none of the nine, and no other layer reads them.
+     The outline is star-shaped about its centre -- r(theta) = 1 plus three
+     harmonics whose amplitudes sum to under 0.4 -- so it is a simple polygon
+     whatever the draw; its convex hull is the part the order sees. Biased
+     toward the kerb, where water lies. A puddle that would leave its slab or
+     overlap an earlier one is not placed, and counted. */
+  var PUDN=Math.max(0,Math.min(40,Math.round(isFinite(p.puddles)?+p.puddles:9)));
+  var PUDSZ=Math.max(0.05,Math.min(1,(isFinite(p.pudsz)?+p.pudsz:40)/100));
+  var RIPMM=Math.max(0,Math.min(3,(isFinite(p.ripple)?+p.ripple:6)/10));
+  var SALT_PUD=113, PUDNP=40;
+  /* WHERE THE CAMERA LOOKS. Spread evenly over the street, nine puddles put
+     less than one on the 15 m of road nearest the camera, and that is the
+     only road on which a reflection is bigger than a sliver -- at 30 m a 2 m
+     puddle is under a millimetre tall on the sheet. So they lie on the 60 m
+     ahead of the camera, thickest near it (s = 60 u^2, half within 15 m): the reference's
+     puddles are in its foreground. This ties the puddles to Camera along and
+     to nothing else; they never read the camera's height, aim or lens. */
+  var sPud0=Math.min(LEN-4,CAMS*LEN+3), sPud1=Math.min(LEN-0.5,CAMS*LEN+63);
+  var puds=[], prej=0;
+  for(i=0;i<PUDN;i++){
+    var RPD=sub(0,i,SALT_PUD), ud=[];
+    for(j=0;j<14;j++) ud.push(RPD());
+    var sdP=ud[1]<0.5?1:-1, slP=slabsBySide[sdP];
+    var sPd=Math.min(LEN-0.5, sPud0+(sPud1-sPud0)*ud[0]*ud[0]);
+    var CP=slP[Math.max(0,Math.min(slP.length-1,Math.floor(sPd/4)))];
+    var lenP=Math.min(CP.s1-CP.s0-0.3,(0.7+3.1*PUDSZ)*(0.6+0.4*ud[2]));
+    var widP=Math.min(HALFW-0.4,lenP*(0.35+0.4*ud[3]));
+    if(!(lenP>=0.3 && widP>=0.15)){ prej++; continue; }
+    var scP=CP.s0+0.15+lenP/2+(CP.s1-CP.s0-0.3-lenP)*ud[4];
+    var oloP=0.2+widP/2, ohiP=HALFW-0.2-widP/2, ocP=oloP+(ohiP-oloP)*Math.sqrt(ud[5]);
+    var a2=0.18*ud[6], a3=0.13*ud[7], a5=0.07*ud[8], rot=(ud[12]-0.5)*0.6, loc=[], mx=0, my=0, m2;
+    for(m2=0;m2<PUDNP;m2++){
+      var th=TAU*m2/PUDNP;
+      var rr=1+a2*Math.cos(2*th+TAU*ud[9])+a3*Math.cos(3*th+TAU*ud[10])+a5*Math.cos(5*th+TAU*ud[11]);
+      var lx=Math.cos(th)*rr, ly=Math.sin(th)*rr;
+      var qx=lx*Math.cos(rot)-ly*Math.sin(rot), qy=lx*Math.sin(rot)+ly*Math.cos(rot);
+      loc.push([qx,qy]); mx=Math.max(mx,Math.abs(qx)); my=Math.max(my,Math.abs(qy));
+    }
+    var ringP=loc.map(function(q){ return P3(scP+q[0]/mx*lenP/2, sdP, ocP+q[1]/my*widP/2, 0); });
+    var clash=!ringP.every(function(v){ return inConv(CP.poly,v); });
+    for(m2=0;m2<puds.length && !clash;m2++){
+      var o3=puds[m2];
+      if(o3.C===CP && Math.abs(o3.s-scP)<(o3.len+lenP)/2+0.1 && Math.abs(o3.o-ocP)<(o3.wid+widP)/2+0.1) clash=true;
+    }
+    if(clash){ prej++; continue; }
+    puds.push({id:i, C:CP, side:sdP, s:scP, o:ocP, len:lenP, wid:widP, ring:ringP,
+               hull:hull2(ringP.map(function(v){ return [v[0],v[1]]; })), ph:TAU*ud[13]});
+  }
+  STRTTALLY.puds=puds.map(function(pd){ return {id:pd.id, side:pd.side, s0:pd.C.s0, s1:pd.C.s1, poly:pd.C.poly,
+    s:pd.s, o:pd.o, len:pd.len, wid:pd.wid, ring:pd.ring}; });
+
   /* ---- §5.2 CABLES: catenaries pole to pole, pole to facade and facade to
      facade, cut per container. THE CURVE IS A CATENARY IN THE CABLE'S
      VERTICAL PLANE: z(t) = chord(t) + a (cosh((t-1/2)L/a) - cosh(L/2a)),
@@ -18916,7 +18975,8 @@ function buildStreet(p){
       }
       var cur=null, cz=null, far=null;
       function emit(){ if(cur && cur.length>1){ cur.zc=cz; cur.z=cz.map(zOf); cur.pre=q.pre; cur.part=q.part;
-        cur.kind=q.kind; cur.col=far?COL_HATCH:COL_K; o2.push(cur); } cur=null; }
+        cur.kind=q.kind; cur.col=far?COL_HATCH:COL_K; if(q.rp!==undefined){ cur.rp=q.rp; cur.pud=q.pud; }
+        o2.push(cur); } cur=null; }
       segs.forEach(function(sg){
         if(cur && far===sg.far){ cur.push(sg.b); cz.push(sg.zb); return; }
         emit(); cur=[sg.a,sg.b]; cz=[sg.za,sg.zb]; far=sg.far;
@@ -19217,9 +19277,31 @@ function buildStreet(p){
     });
     furnish(dn,df);
     cablesInto();
+    /* the puddles: a plate 4 mm thin under the road's surface, its outline
+       on the top face. It hides nothing; it carries the reflection (below). */
+    puds.forEach(function(pd){
+      var Pq=prismN(pd.hull,-0.004,0), m;
+      Pq.lines=[];
+      for(m=0;m<pd.ring.length;m++)
+        Pq.lines.push({a:pd.ring[m], b:pd.ring[(m+1)%pd.ring.length], f0:1, f1:1, kind:'puddle', col:COL_LBLUE});
+      Pq.cont=pd.C; Pq.col=COL_LBLUE; Pq.kind='puddle'; Pq.layer='puddle'; Pq.hides=false;
+      Pq.pud=pd; Pq.refl=[];
+      pd.C.parts.push(Pq);
+    });
 
     var live=[], nparts=0;
+    /* THE WHOLE STREET, before the frustum, the LOD cut or any mirror filter,
+       for strtcheck.js L5: the gate mirrors it ITSELF, because a truth built
+       from the mirrored parts this engine kept cannot see one it wrongly
+       dropped. Only when there are puddles to see it in. */
+    STRTTALLY.allparts=[];
+    if(puds.length) conts.forEach(function(C){ C.parts.forEach(function(P){
+      STRTTALLY.allparts.push({faces:P.faces.map(function(f){ return {n:f.n, d:f.d}; }), V:verts(P), kind:P.kind||'',
+        hides:P.hides!==false, seeThru:!!P.seeThru,
+        lines:P.lines.map(function(Ln){ return {a:Ln.a, b:Ln.b, f0:Ln.f0, f1:Ln.f1, col:Ln.col||P.col}; })});
+    }); });
     conts.forEach(function(C){
+      C.all=C.parts.slice();
       C.parts=C.parts.filter(prep);
       if(!C.parts.length) return;
       C.arc=arcOf(C.poly);
@@ -19285,6 +19367,182 @@ function buildStreet(p){
       return C.parts.slice().sort(function(a,b){ return a.czc-b.czc; });
     }
 
+    /* ---- §5.6 THE REFLECTION -------------------------------------------------
+       THE SCENE MIRRORED IN z = 0, SEEN FROM THE REAL EYE, which is the real
+       scene seen from an eye below the ground. So it is ordered and occluded by
+       the SAME machinery as the real one, on its own:
+       - A mirrored part is the part with z negated: (x,y,z) -> (x,y,-z), and a
+         face plane n.x = d becomes (nx,ny,-nz).x = d. An outward normal stays
+         outward, so the eye-side rule, the back-face test and the silhouettes
+         all apply unchanged.
+       - THE CONTAINERS ARE THE SAME PLAN POLYGONS -- a vertical prism mirrored
+         in the ground is a vertical prism over the same footprint -- so the
+         plan argument that makes the container order exact holds as it is.
+       - Only a part whose mirrored screen box meets a puddle's can show in
+         one, and only a container some PLAN ray from the eye carries through a
+         puddle can hold one: both are necessary conditions, so the filters drop
+         nothing that could be seen. Ground-level things (the road plate, the
+         puddles) lie IN the mirror and are not mirrored.
+       Every visible mirrored line is clipped to the union of the puddles'
+       outlines on the sheet -- the ground in front of the eye maps one-to-one
+       onto the sheet, so disjoint puddles have disjoint outlines and the union
+       is each one alone -- then occluded within the mirror world, then
+       displaced by the ripple. THE MIRROR WORLD IS OCCLUDED WITH NO GAP. Seen
+       at a grazing angle the reflection is squeezed many times over in height,
+       so the street's white gap -- which a part committed earlier leaves
+       around itself whether or not it is in front at that spot -- erased whole
+       reflected features: measured on a 0.7 m eye over big puddles, 4.5% of
+       the truly visible reflection was missing with it and 0.2% without. The
+       real street's gap still breaks the reflection where a real part stands
+       in front of the water. What survives belongs to its PUDDLE and is
+       committed with it, at the puddle's place in the real order, so a real
+       car in front of the puddle hides the reflection as it hides the puddle.
+       Its depth is the GROUND's under each drawn point -- the reflection is
+       painted on the water, not hung below it -- and since the camera has no
+       roll that depth depends on the sheet's y alone. */
+    var rc0=cycles, rs0=splits, ru0=unsepParts, pudVis=[], mcommitted=[], nrefl=0;
+    live.forEach(function(C){ C.parts.forEach(function(P){ if(P.kind==='puddle') pudVis.push(P); }); });
+    pudVis.forEach(function(P){
+      var cp=P.pud.ring.map(cam), poly=[], m;
+      for(m=0;m<cp.length;m++){
+        var a=cp[m], b=cp[(m+1)%cp.length];
+        if(a[2]>=NEAR) poly.push(scr(a));
+        if(a[2]<NEAR!==b[2]<NEAR){
+          var t=(NEAR-a[2])/(b[2]-a[2]);
+          poly.push(scr([a[0]+(b[0]-a[0])*t, a[1]+(b[1]-a[1])*t, NEAR]));
+        }
+      }
+      if(poly.length>=3){ P.scr=poly; P.scb=bbox2(poly); P.parc=arcOf(P.pud.hull); }
+    });
+    pudVis=pudVis.filter(function(P){ return !!P.scr; });
+    function mirror(P){
+      function mz(q){ return [q[0],q[1],-q[2]]; }
+      return {faces:P.faces.map(function(f){ return {n:[f.n[0],f.n[1],-f.n[2]], d:f.d, pts:f.pts.map(mz)}; }),
+              lines:P.lines.map(function(Ln){ return {a:mz(Ln.a), b:mz(Ln.b), f0:Ln.f0, f1:Ln.f1,
+                                                      col:Ln.col||P.col, kind:Ln.kind||'edge'}; }),
+              ins:mz(P.ins), cont:P.cont, col:P.col, kind:P.kind, layer:P.layer, hides:P.hides,
+              seeThru:P.seeThru, nolod:P.nolod, mirror:true};
+    }
+    /* a screen segment against one puddle outline (simple, not convex): the
+       crossings split it, and a piece is kept when its midpoint is inside */
+    function inRing(H,x,y){
+      var c=false, m, n=H.length;
+      for(m=0;m<n;m++){
+        var a=H[m], b=H[(m+1)%n];
+        if((a[1]>y)!==(b[1]>y) && x<a[0]+(y-a[1])*(b[0]-a[0])/(b[1]-a[1])) c=!c;
+      }
+      return c;
+    }
+    function clipRing(A,B,H){
+      var ts=[0,1], m, n=H.length, dx=B[0]-A[0], dy=B[1]-A[1], o=[];
+      for(m=0;m<n;m++){
+        var a=H[m], b=H[(m+1)%n], ex=b[0]-a[0], ey=b[1]-a[1], den=dx*ey-dy*ex;
+        if(Math.abs(den)<1e-18) continue;
+        var t=((a[0]-A[0])*ey-(a[1]-A[1])*ex)/den, u=((a[0]-A[0])*dy-(a[1]-A[1])*dx)/den;
+        if(t>0 && t<1 && u>=0 && u<=1) ts.push(t);
+      }
+      ts.sort(function(x,y){ return x-y; });
+      for(m=1;m<ts.length;m++){
+        var t0=ts[m-1], t1=ts[m]; if(t1-t0<1e-12) continue;
+        var tm=(t0+t1)/2;
+        if(!inRing(H,A[0]+dx*tm,A[1]+dy*tm)) continue;
+        if(o.length && Math.abs(o[o.length-1][2]-t0)<1e-12) o[o.length-1][2]=t1;
+        else o.push([0,t0,t1]);
+      }
+      return o.map(function(r){ return [[A[0]+dx*r[1],A[1]+dy*r[1]],[A[0]+dx*r[2],A[1]+dy*r[2]]]; });
+    }
+    if(pudVis.length){
+      var mconts=[];
+      conts.forEach(function(C){
+        var ca=arcOf(C.poly);
+        if(!pudVis.some(function(P){ return arcsMeet(ca,P.parc); })) return;
+        var ms=[];
+        (C.all||[]).forEach(function(P){
+          if(P.kind==='plate' || P.kind==='puddle') return;
+          var M=mirror(P);
+          if(!prep(M)) return;
+          if(!pudVis.some(function(Q){ return bbHit(Q.scb,M.sbb); })) return;
+          ms.push(M);
+        });
+        if(!ms.length) return;
+        var cz=cam([ (C.poly[0][0]+C.poly[2][0])/2, (C.poly[0][1]+C.poly[2][1])/2, CAMZ ]);
+        mconts.push({kind:C.kind, side:C.side, s0:C.s0, s1:C.s1, poly:C.poly, parts:ms, arc:ca, key:cz[2]});
+      });
+      var medges=[], ma, mb;
+      for(ma=0;ma<mconts.length;ma++) for(mb=ma+1;mb<mconts.length;mb++){
+        if(!arcsMeet(mconts[ma].arc,mconts[mb].arc)) continue;
+        var mr=planSep(mconts[ma],mconts[mb]);
+        if(mr===1) medges.push([ma,mb]); else if(mr===-1) medges.push([mb,ma]);
+      }
+      var MKO=kahn(mconts.length,medges,mconts.map(function(C){ return C.key; }));
+      cycles+=MKO.rest.length;
+      var mocc=[];
+      MKO.order.concat(MKO.rest).forEach(function(ci){
+        orderParts(mconts[ci]).forEach(function(P){
+          var vis=P.faces.map(function(f){
+            return P.seeThru || f.n[0]*CE[0]+f.n[1]*CE[1]+f.n[2]*CE[2]-f.d>1e-9;
+          });
+          var pid=mcommitted.length, pp=[], meta=[];
+          mcommitted.push(P);
+          P.lines.forEach(function(Ln){
+            if(!(vis[Ln.f0] || vis[Ln.f1])) return;
+            var a=cam(Ln.a), b=cam(Ln.b);
+            if(a[2]<NEAR && b[2]<NEAR) return;
+            var ri=STRTTALLY.rpre.length;
+            STRTTALLY.rpre.push({a:Ln.a, b:Ln.b, part:pid, kind:Ln.kind, col:Ln.col});
+            if(a[2]<NEAR || b[2]<NEAR){
+              var t=(NEAR-a[2])/(b[2]-a[2]);
+              var x=[a[0]+(b[0]-a[0])*t, a[1]+(b[1]-a[1])*t, NEAR];
+              if(a[2]<NEAR) a=x; else b=x;
+            }
+            var A=scr(a), B=scr(b), sb=[Math.min(A[0],B[0]),Math.min(A[1],B[1]),Math.max(A[0],B[0]),Math.max(A[1],B[1])];
+            pudVis.forEach(function(Q){
+              if(!bbHit(Q.scb,sb)) return;
+              clipRing(A,B,Q.scr).forEach(function(sg){ pp.push(sg); meta.push({rp:ri, col:Ln.col, pud:Q}); });
+            });
+          });
+          if(pp.length){
+            var frag=hlrConvex(pp,mocc,0), f;
+            for(f=0;f<frag.length;f++){
+              var run=frag[f]; if(run.length<2) continue;
+              var M2=meta[run.src];
+              M2.pud.refl.push({pts:run.map(function(q){ return [q[0],q[1]]; }), rp:M2.rp, col:M2.col});
+            }
+          }
+          STRTTALLY.rparts.push({faces:P.faces.map(function(fc){ return {n:fc.n, d:fc.d}; }), V:verts(P),
+                                 hides:P.hides!==false, kind:P.kind||'', seeThru:!!P.seeThru, split:P.split||0});
+          STRTTALLY.rsil.push(P.sil);
+          if(P.sil && P.hides!==false) mocc.push(P.sil);
+        });
+      });
+    }
+    /* THE RIPPLE: every reflected line is resampled every 0.3 mm of sheet
+       height and pushed sideways by Ripple x w(y), w = 0.6 sin(2 pi y / 2.4 mm
+       + phase) + 0.4 (value noise at 0.9 mm), so |w| <= 1 and the shift is a
+       function of the sheet's y alone within one puddle: a vertical edge
+       wobbles, a horizontal one slides. Phase and noise are the puddle's own.
+       The resampling is most of a reflection's points (856 still, 4,130
+       rippled, on a full street at a 10k budget), so EACH BUDGET STEP DOUBLES
+       ITS INTERVAL, up to 1.2 mm -- half the wave's length, below which the
+       wave would alias into noise. */
+    var RIPU=RIPMM/PAGEMM, LAM1=2.4/PAGEMM, LAM2=0.9/PAGEMM, RSTEP=RSTEPMM()/PAGEMM;
+    /* y from the PAGE CENTRE, so the wave rides with the drawing when a taller
+       sheet shifts it (pagecheck's FRAMED map) */
+    function ripW(y,pd){ y-=PGH/2; return 0.6*Math.sin(TAU*y/LAM1+pd.ph)+0.4*(2*vn(y/LAM2+50,pd.id*7.31+0.5,113)-1); }
+    function rippled(pts,pd){
+      var src=[], m, k;
+      for(m=0;m<pts.length;m++){
+        if(m>0 && RIPU>0){
+          var a=pts[m-1], b=pts[m], n=Math.ceil(Math.abs(b[1]-a[1])/RSTEP);
+          for(k=1;k<n;k++) src.push([a[0]+(b[0]-a[0])*k/n, a[1]+(b[1]-a[1])*k/n]);
+        }
+        src.push([pts[m][0],pts[m][1]]);
+      }
+      return {src:src, dsp:RIPU>0?src.map(function(q){ return [q[0]+RIPU*ripW(q[1],pd), q[1]]; }):src};
+    }
+    /* depth of the ground under a sheet point: 1/zc. RT is level, so only y counts */
+    function groundIz(q){ var sy=-(q[1]-PGH/2)/(FF*HW); return -(UP[2]*sy+FW[2])/CE[2]; }
+
     /* ---- commit: front to back, lines first, then the silhouette ----------- */
     var occl=[], preIx=[], srcOf=[], maxz=NEAR;
     var committed=[];
@@ -19315,11 +19573,23 @@ function buildStreet(p){
           meta.push({pre:gi, iza:1/a[2], izb:1/b[2], A:A, B:B, col:Ln.col||P.col, kind:Ln.kind||'edge'});
           if(a[2]>maxz) maxz=a[2]; if(b[2]>maxz) maxz=b[2];
         });
+        if(P.refl) P.refl.forEach(function(R){
+          var RR=rippled(R.pts,P.pud);
+          STRTTALLY.refl.push({pud:P.pud.id, rp:R.rp, col:R.col, src:RR.src, dsp:RR.dsp});
+          pp.push(RR.dsp);
+          meta.push({pre:-1, rp:R.rp, pud:P.pud.id, ground:true, col:R.col, kind:'refl'});
+          nrefl++;
+        });
         if(pp.length){
           var frag=hlrConvex(pp,occl,GAP), f;
           for(f=0;f<frag.length;f++){
             var run=frag[f]; if(run.length<2) continue;
-            var M2=meta[run.src], dx=M2.B[0]-M2.A[0], dy=M2.B[1]-M2.A[1], L2=dx*dx+dy*dy;
+            var M2=meta[run.src];
+            if(M2.ground){
+              run.pre=-1; run.rp=M2.rp; run.pud=M2.pud; run.part=pid; run.izs=run.map(groundIz);
+              run.col=M2.col; run.kind='refl'; out.push(run); continue;
+            }
+            var dx=M2.B[0]-M2.A[0], dy=M2.B[1]-M2.A[1], L2=dx*dx+dy*dy;
             var izs=run.map(function(q){
               var t=L2>0?((q[0]-M2.A[0])*dx+(q[1]-M2.A[1])*dy)/L2:0;
               return M2.iza+(M2.izb-M2.iza)*Math.max(0,Math.min(1,t));
@@ -19346,6 +19616,7 @@ function buildStreet(p){
           cur.z=cz.map(function(iz){ var zc=1/iz; return 1-Math.max(0,Math.min(1,(zc-NEAR)/(FARZ-NEAR))); });
           cur.zc=cz.map(function(iz){ return 1/iz; });
           cur.pre=run.pre; cur.part=run.part; cur.col=run.col; cur.kind=run.kind;
+          if(run.rp!==undefined){ cur.rp=run.rp; cur.pud=run.pud; }
           res.push(cur);
         }
         cur=null; cz=null;
@@ -19372,7 +19643,9 @@ function buildStreet(p){
     STRTTALLY.hfaces=STRTTALLY.hfaces.map(function(h){ return {part:committed.indexOf(h.part), f:h.f, sp:h.sp, c:h.c}; })
                                      .filter(function(h){ return h.part>=0; });
     return {res:res, committed:committed, live:live, cycles:cycles, ccycles:ccycles,
-            splits:splits, unsep:unsep, unsepParts:unsepParts, farz:FARZ};
+            splits:splits, unsep:unsep, unsepParts:unsepParts, farz:FARZ,
+            rcycles:cycles-rc0, rsplits:splits-rs0, runsep:unsepParts-ru0,
+            npud:pudVis.length, nmirror:mcommitted.length, nrefl:nrefl};
   }
   lots.forEach(function(L){
     STRTTALLY.lots.push({side:L.side, idx:L.idx, s0:L.s0, s1:L.s1, poly:L.poly,
@@ -19385,6 +19658,7 @@ function buildStreet(p){
   var BUDG=Math.min(Math.max(10,+p.budg||90)*1000, GEOCAPFULL);
   var DN=Math.max(2,isFinite(p.dnear)?+p.dnear:18), DF=Math.max(DN,isFinite(p.dfar)?+p.dfar:90);
   var LODE=LODMM, tries=0, RR, npts0;
+  function RSTEPMM(){ return Math.min(1.2,0.3*Math.pow(2,tries)); }
   for(;;){
     RR=render(LODE,DN,DF);
     npts0=0; RR.res.forEach(function(q){ npts0+=q.length; });
@@ -19402,16 +19676,20 @@ function buildStreet(p){
              cycles:cycles, ccycles:ccycles, splits:splits, unsep:unsep,
              unsepParts:RR.unsepParts, budget:BUDG, tries:tries, dnear:DN, dfar:DF, lod:LODE,
              elems:STRTTALLY.elems.length, signs:nsigns, cables:cables.length, cars:cars.length,
-             dots:dots.length, penup0:penup0, penup1:penup1, dsplit:DSPLIT};
+             dots:dots.length, penup0:penup0, penup1:penup1, dsplit:DSPLIT,
+             puddles:puds.length, pudRejected:prej, rstep:RSTEPMM(), pudVisible:RR.npud, mirrored:RR.nmirror,
+             reflRuns:RR.nrefl, rcycles:RR.rcycles, rsplits:RR.rsplits, runsep:RR.runsep};
   STRTINFO=lots.length+' lots · '+committed.length.toLocaleString()+' parts · '+
            res.length.toLocaleString()+' paths'+
            (cycles?' · CYCLES '+cycles:' · cycles 0')+
            (splits?' · '+splits+' split':'')+
            (dropped?' · '+dropped+' lots dropped (overlap)':'')+
            ' · '+nsigns+' signs · '+cables.length+' cables · '+cars.length+' cars · '+dots.length+' particles'+
+           ' · '+puds.length+' puddles'+(RR.npud?' ('+RR.npud+' in view, '+RR.nmirror.toLocaleString()+' parts reflected)':'')+
            (DPEN?' · depth pens: pen-up '+(penup0/1000).toFixed(1)+' m \u2192 '+(penup1/1000).toFixed(1)+' m (\u00d7'+
                  (penup0>0?penup1/penup0:0).toFixed(2)+')':'')+
-           (tries?' · OVER BUDGET: detail pulled in to '+DN.toFixed(0)+' / '+DF.toFixed(0)+' m, LOD '+LODE.toFixed(1)+' mm':'');
+           (tries?' · OVER BUDGET: detail pulled in to '+DN.toFixed(0)+' / '+DF.toFixed(0)+' m, LOD '+LODE.toFixed(1)+' mm'+
+                  (RR.nrefl&&RIPMM>0?', ripple sampled every '+RSTEPMM().toFixed(1)+' mm':''):'');
   return res;
 }
 
@@ -21036,6 +21314,9 @@ var HELP={
 'strt.cables':'How many overhead cables: pole to pole along the kerb, pole to building, and building to building across the street. They hang as true catenaries, hide nothing, and are hidden by whatever is in front of them.',
 'strt.sag':'How far a cable hangs below the straight line between its ends at mid-span, as a share of the span. Over the road no cable comes below 4.5 m: one that would has its sag reduced until it clears.',
 'strt.cars':'Cars per 100 m of street, parked at the kerb or in the lane. Near the camera (inside Solid detail to) they have wheels; further off a body and a cabin, nothing more.',
+'strt.puddles':'How many puddles lie on the road. Each sits inside one 4 m stretch of one side of the carriageway, drawn as a light blue outline, and shows the street above it mirrored in the water: the buildings, signs, cables and particles, upside down, hidden where something real stands in front of the puddle.',
+'strt.pudsz':'How big the puddles are. At 100 a puddle is up to 3.8 m along the street, the length of one stretch of road; each draws its own size and shape below that, and they lie toward the kerb, where water collects.',
+'strt.ripple':'How far the reflection wobbles sideways, in millimetres on the sheet: a wave plus a little noise that changes with height on the paper, so vertical edges in the water ripple. 0 is a still, perfect mirror.',
 'strt.dots':'How many coloured particles hang in the air over the road, thickening toward the far end of the street: orange, light blue and pink, 5 : 3 : 2. Each is a 0.35 mm stroke on the sheet however far away it is.',
 'strt.graff':'How many ground-floor shutters and side walls carry graffiti: tags (scribbled strokes) or throw-ups (bubble outlines of 2-4 letters), in magenta, turquoise, yellow or black, drawn on the wall so they foreshorten with it.',
 'strt.dpen':'1 draws the black lines further away than Depth split in dark grey instead -- a fine far pen and a heavier near one, the plot\u2019s depth, as two inks. The stat line reports the pen-up travel with and without the split, because splitting a pen adds travel.',
