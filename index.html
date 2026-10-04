@@ -422,7 +422,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v272</a> &mdash; REFACTOR ONLY — the Street engine is split into a corridor kit (path, lots, camera, exact order, bands, mirror, depth pens) and a street theme (what it draws), so other corridors can be built on the same machine; byte-identical to v271</span></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v273</a> &mdash; REFACTOR ONLY — the corridor kit lets a theme pin knobs it has no use for and switch off poles, lane marks and bollards, and give its own stat line; the street sets none of them and is byte-identical to v272</span></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <div class="tabs" id="tabs"></div>
@@ -17386,8 +17386,10 @@ function buildStreet(p){ return buildCorridor(p,STHEMES.street); }
    places, orders and occludes it. The kit makes it with KIT(), the names
    of the kit this code reads, and calls what it returns. */
 function streetTheme(K){
+  /* SWITCHES a theme may turn off (row 50). Street sets none of them, and an
+     unset switch is the street as it was. */
   var THM=K.THM, P3=K.P3, add3=K.add3, addCable=K.addCable, cam=K.cam, dist3=K.dist3, drawOn=K.drawOn, faceC=K.faceC, faceIx=K.faceIx, frame=K.frame, hitsAny=K.hitsAny, inConv=K.inConv, lateral=K.lateral, mmPerM=K.mmPerM, paperGap=K.paperGap, para=K.para, polyFromLoops=K.polyFromLoops, prism=K.prism, prismN=K.prismN, splitPart=K.splitPart, sub=K.sub, surf=K.surf, vec=K.vec, verts=K.verts, wallOf=K.wallOf, wp=K.wp, CANTI=K.CANTI, CANYON=K.CANYON, CE=K.CE, FF=K.FF, FLOORS=K.FLOORS, HALFW=K.HALFW, HW=K.HW, KERB=K.KERB, KOFF=K.KOFF, LEN=K.LEN, NEAR=K.NEAR, PBACK=K.PBACK, RT=K.RT, SALT_BLD=K.SALT_BLD, STEPB=K.STEPB, ZUP=K.ZUP, cables=K.cables, conts=K.conts, lots=K.lots, slabsBySide=K.slabsBySide, p=K.p;
-  var i, j, k;
+  var i, j, k, FL=THM.flags||{};
   /* ---- §2.4 the box stack. Every storey draws the SAME number of values
      whatever the knobs say, so moving Step-back or Cantilever changes which
      storeys move and never which numbers the next storey reads. */
@@ -18264,6 +18266,7 @@ function streetTheme(K){
       poles.push({s:s, side:PSIDE, h:ph, slab:Math.floor(s/4), arm:true});
     }
   }
+  if(FL.poles===false) poles=[];
   STRTTALLY.poles=poles.map(function(q){ return {s:q.s, side:q.side, h:q.h, arm:q.arm}; });
   function poleTop(q){ return P3(q.s,q.side,HALFW+0.15,q.h+0.05); }
   function armTip(q){ return P3(q.s,q.side,HALFW+0.07-1.45,q.h-0.65); }
@@ -18532,12 +18535,12 @@ function streetTheme(K){
       var mid=P3((C.s0+C.s1)/2,sd,HALFW/2,0);
       if(dist3(mid)<df){
         var ln=function(a,b){ Pl.lines.push({a:a, b:b, f0:1, f1:1, kind:'lane'}); };
-        if(sd===1) for(var d=Math.floor(C.s0/6)*6; d<C.s1; d+=6){
+        if(FL.roadMarks!==false && sd===1) for(var d=Math.floor(C.s0/6)*6; d<C.s1; d+=6){
           var a=Math.max(C.s0,d), b=Math.min(C.s1,d+3);
           if(b-a>0.05) ln(P3(a,1,0.06,0),P3(b,1,0.06,0));
         }
         var za=Math.max(C.s0,ZEBRA), zb=Math.min(C.s1,ZEBRA+3);
-        if(zb-za>0.05) for(var o=0.4;o+0.5<=HALFW-0.2;o+=1.0){
+        if(FL.roadMarks!==false && zb-za>0.05) for(var o=0.4;o+0.5<=HALFW-0.2;o+=1.0){
           ln(P3(za,sd,o,0),P3(zb,sd,o,0)); ln(P3(za,sd,o+0.5,0),P3(zb,sd,o+0.5,0));
           /* the stripe's own ends only -- not where a slab face cuts it */
           if(Math.abs(za-ZEBRA)<1e-9) ln(P3(za,sd,o,0),P3(za,sd,o+0.5,0));
@@ -18553,7 +18556,7 @@ function streetTheme(K){
       C.parts.push(Pl);
       /* bollards: a run along the kerb in some slabs, clear of the poles */
       var RB=sub(sd<0?2:1,k,SALT_BOLL), ub2=RB(), ob=RB();
-      if(ub2<0.3) [C.s0+1+ob*0.5, C.s0+2.6+ob*0.5].forEach(function(sb){
+      if(FL.bollards!==false && ub2<0.3) [C.s0+1+ob*0.5, C.s0+2.6+ob*0.5].forEach(function(sb){
         if(sb>C.s1-0.3) return;
         if(poles.some(function(pl){ return pl.side===sd && Math.abs(pl.s-sb)<0.7; })) return;
         var Fb=frame(sb), t=[Fb[2],Fb[3],0], n=[-Fb[3]*sd,Fb[2]*sd,0], c0=P3(sb,sd,HALFW+0.15,KERB);
@@ -18788,6 +18791,9 @@ function streetTheme(K){
   return {dress:dress, signsFor:signsFor, furnish:furnish, cars:cars, dots:dots, poles:poles};
 }
 function buildCorridor(p,THM){
+  /* a theme PINS the knobs it has no use for (row 50): a market alley has no
+     cars, so its build must not read the street's default of three */
+  if(THM.fixed) p=Object.assign({},p,THM.fixed);
   var LEN=Math.max(60,+p.len||220), BEND=Math.max(0,+p.bend||0);
   var WID=Math.max(4,+p.width||7), PAVE=Math.max(0,isFinite(p.pave)?+p.pave:2.5);
   var LOTMIN=Math.max(3,+p.lotmin||5), LOTMAX=Math.max(LOTMIN,+p.lotmax||11);
@@ -19626,7 +19632,7 @@ function buildCorridor(p,THM){
        from the mirrored parts this engine kept cannot see one it wrongly
        dropped. Only when there are puddles to see it in. */
     STRTTALLY.allparts=[];
-    if(puds.length || CT.cars.length) conts.forEach(function(C){ C.parts.forEach(function(P){
+    if(puds.length || (CT.cars||[]).length) conts.forEach(function(C){ C.parts.forEach(function(P){
       STRTTALLY.allparts.push({faces:P.faces.map(function(f){ return {n:f.n, d:f.d}; }), V:verts(P), kind:P.kind||'',
         hides:P.hides!==false, seeThru:!!P.seeThru, car:P.car, cpart:P.cpart, wh:P.wh,
         lines:P.lines.map(function(Ln){ return {a:Ln.a, b:Ln.b, f0:Ln.f0, f1:Ln.f1, col:Ln.col||P.col, kind:Ln.kind, tag:Ln.tag}; })});
@@ -20006,8 +20012,8 @@ function buildCorridor(p,THM){
              parts:committed.length, paths:res.length, points:npts,
              cycles:cycles, ccycles:ccycles, splits:splits, unsep:unsep,
              unsepParts:RR.unsepParts, budget:BUDG, tries:tries, dnear:DN, dfar:DF, lod:LODE,
-             elems:STRTTALLY.elems.length, signs:nsigns, cables:cables.length, cars:CT.cars.length,
-             dots:CT.dots.length, penup0:penup0, penup1:penup1, dsplit:DSPLIT,
+             elems:STRTTALLY.elems.length, signs:nsigns, cables:cables.length, cars:(CT.cars||[]).length,
+             dots:(CT.dots||[]).length, penup0:penup0, penup1:penup1, dsplit:DSPLIT,
              puddles:puds.length, pudRejected:prej, rstep:RSTEPMM(), pudVisible:RR.npud, mirrored:RR.nmirror,
              reflRuns:RR.nrefl, rcycles:RR.rcycles, rsplits:RR.rsplits, runsep:RR.runsep};
   STRTINFO=lots.length+' lots · '+committed.length.toLocaleString()+' parts · '+
@@ -20015,7 +20021,7 @@ function buildCorridor(p,THM){
            (cycles?' · CYCLES '+cycles:' · cycles 0')+
            (splits?' · '+splits+' split':'')+
            (dropped?' · '+dropped+' lots dropped (overlap)':'')+
-           ' · '+nsigns+' signs · '+cables.length+' cables · '+CT.cars.length+' cars · '+CT.dots.length+' particles'+
+           (CT.info?CT.info(nsigns):' · '+nsigns+' signs · '+cables.length+' cables · '+CT.cars.length+' cars · '+CT.dots.length+' particles')+
            ' · '+puds.length+' puddles'+(RR.npud?' ('+RR.npud+' in view, '+RR.nmirror.toLocaleString()+' parts reflected)':'')+
            (DPEN?' · depth pens: pen-up '+(penup0/1000).toFixed(1)+' m \u2192 '+(penup1/1000).toFixed(1)+' m (\u00d7'+
                  (penup0>0?penup1/penup0:0).toFixed(2)+')':'')+
