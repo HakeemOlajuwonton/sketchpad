@@ -422,7 +422,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v266</a> &mdash; PUDDLES THAT REFLECT — noisy puddles on the road ahead of the camera, each showing the street mirrored in the water: ordered and hidden by the same exact machinery as the real street, clipped to the outline, rippled, and hidden in turn by whatever really stands in front</span></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v267</a> &mdash; NEON STREET KEEPS YOUR KNOBS — the button colours the drawing as it stands (Pen map 3, and Line pens / Engine layers off since they override it) and no longer resets the page, the camera, Colours or any Street slider</span></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <div class="tabs" id="tabs"></div>
@@ -20929,30 +20929,32 @@ ENGEXTRA.poin=function(box){
   d.appendChild(a);
   box.appendChild(d);
 };
-/* THE NEON STREET PRESET (spec §6), a button in the Street panel. It sets Pen
-   map 3 and Colours 6 (True colour, so the neon finds its own inks), a
-   portrait sheet, §6's camera, and every other Street knob to its default.
-   §6 names no page SIZE: 200 x 260 mm is the largest portrait sheet the
-   Funssor's 236 x 260 drawable takes. ONE FUNCTION, called by the button and
-   by strtcheck.js, so the gate drives the preset Albert presses. It writes
-   STATE only; the button then remounts the panels, as restore() does. */
-var STRTPRESETS={neon:{label:'Neon street', g:{pmap:3,bands:6,page:200,pagel:260,pageor:1},
-                      eng:{cams:12,camx:-10,camz:1.6,look:60,pitch:6,fov:72,bend:14}}};
+/* THE NEON STREET BUTTON (queue row 43, docs/specs/2026-10-03-strt-neon-button-
+   keeps-knobs.md). Albert: "make neon sign apply to the knobs as they are, it
+   shouldn't reset my fucking page". It used to reset every Street knob and write
+   §6's camera, a portrait page and Colours 6 over his -- and the Sketchpad has no
+   undo, so one press destroyed a composed page. It now switches the drawing AS IT
+   STANDS to True colour: Pen map 3, plus Line pens 0 and Engine layers 0 ONLY
+   because each of those claims the groups and wins over the pen map. Nothing else
+   in STATE.g and nothing in STATE.eng.strt is written -- not the page, not the
+   camera, not any Street knob, not Colours. §6's reference look lives on as
+   numbers in the street spec and as strtcheck.js's fixture. ONE FUNCTION, called
+   by the button and by the gate; it returns the status message, or false. */
 function applyStrtPreset(name){
-  var P=STRTPRESETS[name], E=STATE.eng.strt, k;
-  if(!P || !E) return false;
-  SPEC.strt[1].forEach(function(sp){ E[sp[0]]=sp[5]; });
-  for(k in P.eng) E[k]=P.eng[k];
-  for(k in P.g) STATE.g[k]=P.g[k];
-  return true;
+  var G=STATE.g, off=[];
+  if(name!=='neon' || !G) return false;
+  if(+G.lpen) off.push('Line pens off');
+  if(+G.elay) off.push('Engine layers off');
+  G.pmap=3; G.lpen=0; G.elay=0;
+  return 'Neon street: Pen map 3 (True colour) at Colours '+G.bands+(off.length?', '+off.join(', '):'');
 }
 ENGEXTRA.strt=function(box){
   var d=document.createElement('div');
   d.className='engx'; d.id='strtx';
   var b=document.createElement('button');
   b.type='button'; b.textContent='Neon street';
-  b.title='The reference look: True colour with 6 inks, a portrait 200 x 260 mm sheet, the camera at eye height looking down a gently bending street, every other Street slider at its default.';
-  b.addEventListener('click',function(){ applyStrtPreset('neon'); mountG(); mount(); msg('Neon street preset'); });
+  b.title='Colour the drawing as it is: Pen map 3 (True colour) at your Colours count, so the neon finds its own inks. Turns off Line pens and Engine layers if they are on, since they override the pen map. Changes nothing else: page, camera and every slider stay as you set them.';
+  b.addEventListener('click',function(){ var m=applyStrtPreset('neon'); mountG(); mount(); if(m) msg(m); });
   d.appendChild(b);
   box.appendChild(d);
 };
