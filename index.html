@@ -422,7 +422,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v271</a> &mdash; CARS LOOK LIKE CARS — one body with chamfered bumpers, a cabin that fits it, sedans, hatches, kei vans and taxis, glass and door seams up close, head lamps and red tail lamps, and wheels in every band</span></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v272</a> &mdash; REFACTOR ONLY — the Street engine is split into a corridor kit (path, lots, camera, exact order, bands, mirror, depth pens) and a street theme (what it draws), so other corridors can be built on the same machine; byte-identical to v271</span></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <div class="tabs" id="tabs"></div>
@@ -17363,195 +17363,40 @@ var STRTSTATS={lots:0,conts:0,parts:0,paths:0,points:0,cycles:0};
 var STRTTALLY={cam:null,project:null,parts:[],pre:[],sil:[],conts:[],lots:[],slabs:[],
                elems:[],bld:[],hfaces:[],signs:[],bank:null,words:[],poles:[],cables:[],
                cars:[],dots:null,graff:[],puds:[],rparts:[],rpre:[],rsil:[],refl:[],allparts:[],upr:[],urows:[]};
-function buildStreet(p){
-  var LEN=Math.max(60,+p.len||220), BEND=Math.max(0,+p.bend||0);
-  var WID=Math.max(4,+p.width||7), PAVE=Math.max(0,isFinite(p.pave)?+p.pave:2.5);
-  var LOTMIN=Math.max(3,+p.lotmin||5), LOTMAX=Math.max(LOTMIN,+p.lotmax||11);
-  var ALLEY=(p.alley||0)/100, FLOORS=Math.max(1,Math.round(p.floors||9));
-  var CANYON=(p.canyon||0)/100, STEPB=(p.stepb||0)/100, CANTI=(p.canti||0)/100;
-  var CAMS=(isFinite(p.cams)?+p.cams:12)/100, CAMX=(isFinite(p.camx)?+p.camx:-10)/100;
-  var CAMZ=Math.max(0.2,isFinite(p.camz)?+p.camz:1.6);
-  var LOOK=Math.max(5,+p.look||60), PITCH=(isFinite(p.pitch)?+p.pitch:6)*Math.PI/180;
-  var FOV=Math.max(25,Math.min(120,isFinite(p.fov)?+p.fov:72))*Math.PI/180;
-  var LODMM=Math.max(0,(isFinite(p.lod)?+p.lod:4)/10);
-  var GAP=((p.occ||0)/10)/PAGEMM;
-  /* Fixed, not knobs. PAD is the drawable margin in page units (the station's);
-     NEAR the near plane in metres (spec §3.2); KERB the kerb height. */
-  var PAD=0.06, NEAR=0.25, KERB=0.15, DS=0.5, ZTOP=200;
-  var HALFW=WID/2, KOFF=HALFW+0.3, PBACK=HALFW+PAVE;
-  var out=[], i, j, k;
-  STRTINFO=''; STRTSTATS={lots:0,conts:0,parts:0,paths:0,points:0,cycles:0};
-  STRTTALLY={cam:null,project:null,parts:[],pre:[],sil:[],conts:[],lots:[],slabs:[],
-             signs:[],bank:null,words:[],poles:[],cables:[],cars:[],dots:null,graff:[],
-             puds:[],rparts:[],rpre:[],rsil:[],refl:[],allparts:[],upr:[],urows:[]};
-
-  /* ---- substreams: the splitmix finaliser iso's cellRnd uses, keyed on
-     (a, b, salt). Every layer salts its own, so turning one layer on or off
-     never moves another's numbers (spec §2.5). */
-  var SALT_SPLINE=11, SALT_LOT=23, SALT_BLD=37;
-  function sub(a,b,salt){
-    var s=(rnd(a*7919+b*104729+salt*1299709+17)*4294967296)>>>0;
-    return function(){
-      s=(s+0x9E3779B9)>>>0;
-      var t=s;
-      t=Math.imul(t^(t>>>15),0x85EBCA6B)>>>0;
-      t=Math.imul(t^(t>>>13),0xC2B2AE35)>>>0;
-      return ((t^(t>>>16))>>>0)/4294967296;
-    };
-  }
-
-  /* ---- §2.1 the spline. Stations every 0.5 m. A straight run, then arcs
-     whose curvature is `bend` degrees per 100 m times a draw in [0.35,1] with a
-     random sign. THE HEADING IS HELD WITHIN +-70 DEGREES of where it started,
-     by choosing the sign that turns back once it is past 40: a street that
-     closed on itself would put one side's lots through the other's, and the
-     whole order argument needs them disjoint. Generated past LEN so the look
-     target always has road under it. */
-  var NS=Math.ceil((LEN+LOOK+40)/DS)+1;
-  var SX=new Float64Array(NS), SY=new Float64Array(NS), SH=new Float64Array(NS);
-  {
-    var rs=sub(0,0,SALT_SPLINE), kap=0, left=15+rs()*25, hd=0, kmax=BEND*Math.PI/180/100;
-    SX[0]=0; SY[0]=0; SH[0]=0;
-    for(i=1;i<NS;i++){
-      left-=DS;
-      if(left<=0){
-        var sg=rs()<0.5?-1:1;
-        if(hd>40*Math.PI/180) sg=-1; else if(hd<-40*Math.PI/180) sg=1;
-        kap=sg*(0.35+0.65*rs())*kmax; left=25+rs()*45;
-      }
-      var h1=hd+kap*DS;
-      if(Math.abs(h1)>70*Math.PI/180){ kap=0; h1=hd; }
-      var hm=(hd+h1)/2;
-      SX[i]=SX[i-1]+Math.cos(hm)*DS; SY[i]=SY[i-1]+Math.sin(hm)*DS;
-      SH[i]=h1; hd=h1;
-    }
-  }
-  /* A point at arc s on side sd (+1 left, -1 right) at lateral offset o,
-     height z. Positions and headings interpolate linearly between stations,
-     so two lots that share an arc position share their side line EXACTLY. */
-  function frame(s){
-    var u=s/DS, i0=Math.max(0,Math.min(NS-2,Math.floor(u))), f=u-i0;
-    var x=SX[i0]+(SX[i0+1]-SX[i0])*f, y=SY[i0]+(SY[i0+1]-SY[i0])*f;
-    var h=SH[i0]+(SH[i0+1]-SH[i0])*f;
-    if(u<0){ x=SX[0]+Math.cos(SH[0])*s; y=SY[0]+Math.sin(SH[0])*s; h=SH[0]; }
-    return [x,y,Math.cos(h),Math.sin(h)];
-  }
-  function P3(s,sd,o,z){ var F=frame(s); return [F[0]-F[3]*sd*o, F[1]+F[2]*sd*o, z]; }
-
-  /* ---- plan-polygon helpers, used for the disjointness CHECK and the order */
-  function polyOverlap(A,B){
-    var polys=[A,B], pi, e;
-    for(pi=0;pi<2;pi++){
-      var Q=polys[pi];
-      for(e=0;e<Q.length;e++){
-        var a=Q[e], b=Q[(e+1)%Q.length], nx=b[1]-a[1], ny=a[0]-b[0];
-        var L=Math.hypot(nx,ny); if(L<1e-12) continue; nx/=L; ny/=L;
-        var a0=1e18,a1=-1e18,b0=1e18,b1=-1e18, m;
-        for(m=0;m<A.length;m++){ var t=A[m][0]*nx+A[m][1]*ny; if(t<a0)a0=t; if(t>a1)a1=t; }
-        for(m=0;m<B.length;m++){ var t2=B[m][0]*nx+B[m][1]*ny; if(t2<b0)b0=t2; if(t2>b1)b1=t2; }
-        if(a1<=b0+1e-7 || b1<=a0+1e-7) return false;
-      }
-    }
-    return true;
-  }
-  function convex(Q){
-    var sgn=0, e;
-    for(e=0;e<Q.length;e++){
-      var a=Q[e], b=Q[(e+1)%Q.length], c=Q[(e+2)%Q.length];
-      var cr=(b[0]-a[0])*(c[1]-b[1])-(b[1]-a[1])*(c[0]-b[0]);
-      if(Math.abs(cr)<1e-12) continue;
-      if(sgn===0) sgn=cr>0?1:-1; else if((cr>0?1:-1)!==sgn) return false;
-    }
-    return sgn!==0;
-  }
-  function bbox2(Q){ var b=[1e18,1e18,-1e18,-1e18]; Q.forEach(function(q){
-    if(q[0]<b[0])b[0]=q[0]; if(q[1]<b[1])b[1]=q[1]; if(q[0]>b[2])b[2]=q[0]; if(q[1]>b[3])b[3]=q[1]; });
-    return b; }
-  function bbHit(a,b){ return !(a[2]<b[0]||b[2]<a[0]||a[3]<b[1]||b[3]<a[1]); }
-
-  /* ---- §2.3 road slabs: 4 m of carriageway, kerb and the first 0.3 m of
-     pavement, one per side of the centreline. */
-  var conts=[], slabsBySide={'1':[],'-1':[]};
-  [1,-1].forEach(function(sd){
-    for(var sa=0;sa<LEN-1e-9;sa+=4){
-      var sb=Math.min(LEN,sa+4);
-      var Q=[P3(sa,sd,0,0),P3(sb,sd,0,0),P3(sb,sd,KOFF,0),P3(sa,sd,KOFF,0)].map(function(v){return [v[0],v[1]];});
-      var C={kind:'slab', side:sd, s0:sa, s1:sb, poly:Q, bb:bbox2(Q), parts:[]};
-      conts.push(C); slabsBySide[sd].push(C);
-      STRTTALLY.slabs.push({side:sd, s0:sa, s1:sb, poly:Q});
-    }
-  });
-
-  /* ---- §2.2 lots, walked along the pavement's BACK edge by its own arc
-     length. The lot's numbers come from its own substream keyed on
-     (side, index), so a lot is the same lot whatever LEN is. */
-  var lots=[], dropped=0, pushed=0;
-  [1,-1].forEach(function(sd){
-    var cum=[0], m;
-    var nb=Math.floor(LEN/DS);
-    var prev=P3(0,sd,PBACK,0);
-    for(m=1;m<=nb;m++){
-      var cur=P3(m*DS,sd,PBACK,0);
-      cum.push(cum[m-1]+Math.hypot(cur[0]-prev[0],cur[1]-prev[1])); prev=cur;
-    }
-    function arcOfBack(b){
-      var lo=0, hi=cum.length-1;
-      if(b>=cum[hi]) return hi*DS;
-      while(hi-lo>1){ var md=(lo+hi)>>1; if(cum[md]<=b) lo=md; else hi=md; }
-      var sgl=cum[hi]-cum[lo];
-      return (lo+(sgl>0?(b-cum[lo])/sgl:0))*DS;
-    }
-    var cursor=0, li=0;
-    for(li=0;li<400;li++){
-      var R=sub(sd<0?2:1,li,SALT_LOT);
-      var wl=LOTMIN+R()*(LOTMAX-LOTMIN), ua=R(), aw=1.2+R()*1.3, depth=8+R()*12;
-      var b0=cursor, b1=cursor+wl;
-      if(b1>cum[cum.length-1]) break;
-      cursor=b1+(ua<ALLEY?aw:0);
-      var s0=arcOfBack(b0), s1=arcOfBack(b1);
-      var BK=PBACK+depth, d=0, env=null, ok=false, t;
-      /* THE ENVELOPE FRONT is 0.3 m short of the kerb, pushed back by `d`
-         until the slabs it could touch are clear of it. On the inner side of a
-         bend a 4 m slab chord bulges past the arc by a couple of centimetres;
-         on the outer side a long lot chord does. Measured by SAT, not by
-         reasoning about which. */
-      for(t=0;t<80;t++){
-        var FE=KOFF+d;
-        env=[P3(s0,sd,FE,0),P3(s1,sd,FE,0),P3(s1,sd,BK,0),P3(s0,sd,BK,0)].map(function(v){return [v[0],v[1]];});
-        if(FE>=BK-4 || !convex(env)){ env=null; break; }
-        var hit=false, eb=bbox2(env), sl=slabsBySide[sd], q;
-        for(q=0;q<sl.length;q++){
-          if(sl[q].s1<s0-4.5||sl[q].s0>s1+4.5) continue;
-          if(bbHit(eb,sl[q].bb) && polyOverlap(env,sl[q].poly)){ hit=true; break; }
-        }
-        if(!hit){ ok=true; break; }
-        d+=0.05;
-      }
-      if(!ok||!env){ dropped++; continue; }
-      if(d>0) pushed++;
-      var ebb=bbox2(env), clash=false, o2;
-      for(o2=0;o2<conts.length;o2++){
-        var C2=conts[o2];
-        if(!bbHit(ebb,C2.bb)) continue;
-        if(C2.kind==='slab' && C2.side===sd) continue;         /* checked above */
-        if(polyOverlap(env,C2.poly)){ clash=true; break; }
-      }
-      if(clash){ dropped++; continue; }
-      var LOT={kind:'lot', side:sd, idx:li, s0:s0, s1:s1, poly:env, bb:ebb, parts:[],
-               fe:KOFF+d, back:BK, depth:depth, blocks:[]};
-      conts.push(LOT); lots.push(LOT);
-    }
-  });
-
+/* CORRIDOR THEMES (queue row 49, docs/specs/2026-10-04-corridor-themes.md §1).
+   buildStreet is a general machine for a canyon of objects along a path, seen
+   from inside -- the spline, the lots, the slabs, the camera, the exact order,
+   the bands and the budget, the mirror, the depth pens -- and a theme is what it
+   draws. A theme gives the machine its GEOMETRY CONSTANTS (the numbers the kit
+   used to hard-code) and its CONTENT, a factory the kit calls once with the
+   names it shares (KIT()); the factory returns what the kit calls back. Street
+   is the first theme and draws byte for byte what it drew before. */
+var STHEMES={
+  street:{key:'strt', label:'Street', lotDepth:[8,20], alleyW:[1.2,2.5], baseN2:0.35, baseH:[3.6,4.5],
+          midH:[2.8,3.2], edgeZ:0.15, slabLen:4, clear:4.5, ztop:200, mirror:'puddles',
+          content:function(K){ return streetTheme(K); }}
+};
+/* the width of a [lo,hi] range, rounded to the nearest nanometre so that a
+   [1.2,2.5] range spans the 1.3 the code always multiplied by, not the
+   1.2999999999999998 the subtraction gives */
+function spanOf(r){ return Math.round((r[1]-r[0])*1e9)/1e9; }
+function buildStreet(p){ return buildCorridor(p,STHEMES.street); }
+/* THE STREET THEME (queue row 49, docs/specs/2026-10-04-corridor-themes.md §1):
+   everything buildStreet DRAWS, as opposed to the corridor machine that
+   places, orders and occludes it. The kit makes it with KIT(), the names
+   of the kit this code reads, and calls what it returns. */
+function streetTheme(K){
+  var THM=K.THM, P3=K.P3, add3=K.add3, addCable=K.addCable, cam=K.cam, dist3=K.dist3, drawOn=K.drawOn, faceC=K.faceC, faceIx=K.faceIx, frame=K.frame, hitsAny=K.hitsAny, inConv=K.inConv, lateral=K.lateral, mmPerM=K.mmPerM, paperGap=K.paperGap, para=K.para, polyFromLoops=K.polyFromLoops, prism=K.prism, prismN=K.prismN, splitPart=K.splitPart, sub=K.sub, surf=K.surf, vec=K.vec, verts=K.verts, wallOf=K.wallOf, wp=K.wp, CANTI=K.CANTI, CANYON=K.CANYON, CE=K.CE, FF=K.FF, FLOORS=K.FLOORS, HALFW=K.HALFW, HW=K.HW, KERB=K.KERB, KOFF=K.KOFF, LEN=K.LEN, NEAR=K.NEAR, PBACK=K.PBACK, RT=K.RT, SALT_BLD=K.SALT_BLD, STEPB=K.STEPB, ZUP=K.ZUP, cables=K.cables, conts=K.conts, lots=K.lots, slabsBySide=K.slabsBySide, p=K.p;
+  var i, j, k;
   /* ---- §2.4 the box stack. Every storey draws the SAME number of values
      whatever the knobs say, so moving Step-back or Cantilever changes which
      storeys move and never which numbers the next storey reads. */
   lots.forEach(function(L){
     var R=sub(L.side<0?2:1,L.idx,SALT_BLD);
-    var nBase=R()<0.35?2:1, baseH=3.6+R()*0.9;
+    var nBase=R()<THM.baseN2?2:1, baseH=THM.baseH[0]+R()*spanOf(THM.baseH);
     var sfrac=((L.s0+L.s1)/2)/LEN;
     var nMid=Math.max(1,Math.round(FLOORS*(0.45+0.55*R())*(1+CANYON*sfrac*1.5)));
-    var midH=2.8+R()*0.4;
+    var midH=THM.midH[0]+R()*spanOf(THM.midH);
     var F0=Math.max(PBACK,L.fe), front=F0, back=L.back, z=KERB, st=[], n;
     for(n=0;n<nBase+nMid;n++){
       var u1=R(), u2=R(), u3=R(), u4=R();
@@ -17570,139 +17415,6 @@ function buildStreet(p){
     });
     L.height=z;
   });
-
-  /* ---- the camera, §3.1 --------------------------------------------------- */
-  var sC=CAMS*LEN;
-  var CE=P3(sC,1,CAMX*HALFW,CAMZ), TG=P3(sC+LOOK,1,0,CAMZ);
-  var fx=TG[0]-CE[0], fy=TG[1]-CE[1], fl=Math.hypot(fx,fy)||1;
-  fx/=fl; fy/=fl;
-  var FW=[fx*Math.cos(PITCH), fy*Math.cos(PITCH), Math.sin(PITCH)];
-  var RT=[FW[1], -FW[0], 0], rl=Math.hypot(RT[0],RT[1])||1;
-  RT=[RT[0]/rl, RT[1]/rl, 0];
-  var UP=[RT[1]*FW[2]-RT[2]*FW[1], RT[2]*FW[0]-RT[0]*FW[2], RT[0]*FW[1]-RT[1]*FW[0]];
-  var FF=1/Math.tan(FOV/2);
-  var HW=(PGW-2*PAD)/2, HH=(PGH-2*PAD)/2;
-  function cam(P){
-    var vx=P[0]-CE[0], vy=P[1]-CE[1], vz=P[2]-CE[2];
-    return [vx*RT[0]+vy*RT[1]+vz*RT[2], vx*UP[0]+vy*UP[1]+vz*UP[2], vx*FW[0]+vy*FW[1]+vz*FW[2]];
-  }
-  /* PAGE MAPPING IS FIXED, not fitted: sx in [-1,1] spans the drawable width
-     and sy takes the same scale. A camera that zoomed to its content would
-     move every time a building grew. */
-  function scr(c){ return [PGW/2+FF*c[0]/c[2]*HW, PGH/2-FF*c[1]/c[2]*HW]; }
-  function project(P){ var c=cam(P); return c[2]>1e-12?scr(c):null; }
-  STRTTALLY.cam={C:CE, f:FW, r:RT, u:UP, F:FF, near:NEAR, pad:PAD, hw:HW, hh:HH};
-  STRTTALLY.project=project;
-
-  /* ---- parts: convex polytopes with their face planes and their LINES.
-     A line is a 3D segment and the two faces it lies on (the same face twice
-     for a line drawn across a face); it is drawn when either face faces the
-     eye. Seams -- a cut from a cycle split, the join between two slabs -- are
-     never lines, which is why lines are explicit rather than derived from the
-     faces' boundaries. */
-  function face(pts,inside){
-    var a=pts[0], b=pts[1], c=pts[2];
-    var ux=b[0]-a[0],uy=b[1]-a[1],uz=b[2]-a[2], vx=c[0]-a[0],vy=c[1]-a[1],vz=c[2]-a[2];
-    var n=[uy*vz-uz*vy, uz*vx-ux*vz, ux*vy-uy*vx], L=Math.hypot(n[0],n[1],n[2])||1;
-    n=[n[0]/L,n[1]/L,n[2]/L];
-    var d=n[0]*a[0]+n[1]*a[1]+n[2]*a[2];
-    if(n[0]*inside[0]+n[1]*inside[1]+n[2]*inside[2]-d>0){ n=[-n[0],-n[1],-n[2]]; d=-d; }
-    return {n:n, d:d, pts:pts};
-  }
-  /* A prism over a convex plan quad Q (4 corners) from z0 to z1. Faces:
-     0 bottom, 1 top, 2..5 the sides, side k running Q[k] -> Q[k+1]. */
-  function prism(Q,z0,z1){
-    var lo=Q.map(function(q){return [q[0],q[1],z0];}), hi=Q.map(function(q){return [q[0],q[1],z1];});
-    var cx=0,cy=0; Q.forEach(function(q){cx+=q[0]/4; cy+=q[1]/4;});
-    var ins=[cx,cy,(z0+z1)/2], F=[face(lo,ins), face(hi,ins)], e;
-    for(e=0;e<4;e++){ var e2=(e+1)%4; F.push(face([lo[e],lo[e2],hi[e2],hi[e]],ins)); }
-    return {faces:F, lines:[], ins:ins};
-  }
-  function boxEdges(P){
-    var F=P.faces, e;
-    for(e=0;e<4;e++){
-      var e2=(e+1)%4, sdf=2+e, prv=2+(e+3)%4;
-      P.lines.push({a:F[0].pts[e], b:F[0].pts[e2], f0:0, f1:sdf});
-      P.lines.push({a:F[1].pts[e], b:F[1].pts[e2], f0:1, f1:sdf});
-      P.lines.push({a:F[0].pts[e], b:F[1].pts[e], f0:prv, f1:sdf});
-    }
-  }
-  function verts(P){ var V=[]; P.faces.forEach(function(f){ f.pts.forEach(function(q){ V.push(q); }); }); return V; }
-
-  /* ---- §5 THE DRESSING: facades, tops, tone hatch (row 31) ----------------
-     EVERY DRESSING SOLID IS A PARALLELEPIPED OR A CONVEX PRISM, so the order
-     machinery above takes it unchanged: a sill, a lintel, a balcony slab, an
-     AC box, a downpipe, a fire-escape landing, a sloping awning, a parapet
-     strip, a crown tier, a gable, a tank. Nothing concave is ever a part --
-     a parapet ring is four strips, a window reveal is a lintel and a sill.
-     PROTRUSIONS ARE BOUNDED BY THE ENVELOPE. A block's street face may stand
-     anywhere from the envelope front (a cantilever) to the pavement's back
-     edge, and whatever sticks out of it must stay inside the lot's container
-     or the container order stops being exact. `room` is that gap; an element
-     that needs more than there is is drawn as an outline on the wall instead.
-     Only the street face carries solids: a return face is the lot's own side,
-     and anything off it would be in the neighbour's container.
-     SEE-THROUGH PARTS (railings, fire stairs) hide nothing and draw every line
-     they carry; their box exists only so the order knows where they are.
-     §4's BANDS are decided per element by its distance from the eye: nearer
-     than `dn` it is a solid, nearer than `df` an outline on the wall plane,
-     and beyond `df` the wall keeps only its floor lines and silhouette. */
-  function add3(a,b,s){ return [a[0]+b[0]*s, a[1]+b[1]*s, a[2]+b[2]*s]; }
-  function polyFromLoops(loops){
-    var cx=0,cy=0,cz=0,n=0;
-    loops.forEach(function(l){ l.forEach(function(q){ cx+=q[0]; cy+=q[1]; cz+=q[2]; n++; }); });
-    var ins=[cx/n,cy/n,cz/n], lines=[], ek={};
-    var F=loops.map(function(l){ return face(l,ins); });
-    function key(q){ return q[0].toFixed(6)+','+q[1].toFixed(6)+','+q[2].toFixed(6); }
-    F.forEach(function(f,fi){
-      for(var e=0;e<f.pts.length;e++){
-        var a=f.pts[e], b=f.pts[(e+1)%f.pts.length], ka=key(a), kb=key(b);
-        var k=ka<kb?ka+'|'+kb:kb+'|'+ka;
-        if(ek[k]) ek[k].f1=fi;
-        else { var ln={a:a, b:b, f0:fi, f1:fi}; ek[k]=ln; lines.push(ln); }
-      }
-    });
-    return {faces:F, lines:lines, ins:ins};
-  }
-  function para(o,ea,eb,ec){
-    function c(i,j,k){ return [o[0]+ea[0]*i+eb[0]*j+ec[0]*k, o[1]+ea[1]*i+eb[1]*j+ec[1]*k, o[2]+ea[2]*i+eb[2]*j+ec[2]*k]; }
-    return polyFromLoops([[c(0,0,0),c(1,0,0),c(1,1,0),c(0,1,0)], [c(0,0,1),c(1,0,1),c(1,1,1),c(0,1,1)],
-                          [c(0,0,0),c(1,0,0),c(1,0,1),c(0,0,1)], [c(0,1,0),c(1,1,0),c(1,1,1),c(0,1,1)],
-                          [c(0,0,0),c(0,1,0),c(0,1,1),c(0,0,1)], [c(1,0,0),c(1,1,0),c(1,1,1),c(1,0,1)]]);
-  }
-  function prismN(Q,z0,z1){
-    var lo=Q.map(function(q){ return [q[0],q[1],z0]; }), hi=Q.map(function(q){ return [q[0],q[1],z1]; });
-    var loops=[lo,hi], e;
-    for(e=0;e<Q.length;e++){ var e2=(e+1)%Q.length; loops.push([lo[e],lo[e2],hi[e2],hi[e]]); }
-    return polyFromLoops(loops);
-  }
-  function dist3(P){ return Math.hypot(P[0]-CE[0],P[1]-CE[1],P[2]-CE[2]); }
-  /* MILLIMETRES ON THE SHEET PER METRE OF SPACING between parallel lines
-     running along `dl` and stacked along `dn`, at P. Distance alone is not
-     the measure -- a wall seen nearly edge-on packs its lines together across
-     their own direction, and the first build of the tone hatch went black on
-     exactly those walls. So the step is projected, and the gap measured
-     perpendicular to the projected line. 0 when P is not in front of the eye. */
-  function paperGap(P,dl,dn){
-    var c0=cam(P), c1=cam(add3(P,dl,0.05)), c2=cam(add3(P,dn,0.05));
-    if(!(c0[2]>NEAR && c1[2]>NEAR && c2[2]>NEAR)) return 0;
-    var a=scr(c0), b=scr(c1), q=scr(c2), lx=b[0]-a[0], ly=b[1]-a[1], L=Math.hypot(lx,ly);
-    if(L<1e-15) return 0;
-    return Math.abs((q[0]-a[0])*ly-(q[1]-a[1])*lx)/L*PAGEMM/0.05;
-  }
-  /* the frame of a block's street face: origin at its s0 corner on the
-     ground, t along the face, n out toward the street, length W */
-  function wallOf(L,B){
-    var A=P3(L.s0,L.side,B.fr,0), Bq=P3(L.s1,L.side,B.fr,0);
-    var tx=Bq[0]-A[0], ty=Bq[1]-A[1], W=Math.hypot(tx,ty)||1;
-    var t=[tx/W,ty/W,0], n=[t[1],-t[0],0];
-    var sm=(L.s0+L.s1)/2, fq=P3(sm,L.side,B.fr,0), bq=P3(sm,L.side,B.bk,0);
-    if(n[0]*(fq[0]-bq[0])+n[1]*(fq[1]-bq[1])<0) n=[-n[0],-n[1],0];
-    return {A:A, t:t, n:n, W:W};
-  }
-  function wp(F,u,v,w){ return [F.A[0]+F.t[0]*u+F.n[0]*w, F.A[1]+F.t[1]*u+F.n[1]*w, v]; }
-  var ZUP=[0,0,1];
-  function vec(F,dir,s){ return dir==='t'?[F.t[0]*s,F.t[1]*s,0]:dir==='n'?[F.n[0]*s,F.n[1]*s,0]:[0,0,s]; }
 
   /* the knobs of the dressing, read once */
   var SALT_FAC=53, SALT_TOP=61, SALT_ESC=67;
@@ -18209,11 +17921,9 @@ function buildStreet(p){
   var NEON=Math.max(0,Math.min(1,(isFinite(p.neon)?+p.neon:60)/100));
   var LANG=Math.max(0,Math.min(3,Math.round(isFinite(p.lang)?+p.lang:0)));
   var CABLES=Math.max(0,Math.min(1,(isFinite(p.cables)?+p.cables:45)/100));
-  var SAG=Math.max(0,Math.min(0.3,(isFinite(p.sag)?+p.sag:6)/100));
   var CARS=Math.max(0,Math.min(20,isFinite(p.cars)?+p.cars:3));
   var DOTS=Math.max(0,Math.min(3000,Math.round(isFinite(p.dots)?+p.dots:420)));
   var GRAFF=Math.max(0,Math.min(1,(isFinite(p.graff)?+p.graff:20)/100));
-  var DPEN=Math.round(p.dpen||0)>0, DSPLIT=Math.max(5,isFinite(p.dsplit)?+p.dsplit:60);
   var SALT_SIGN=71, SALT_POLE=73, SALT_CABLE=79, SALT_CAR=83, SALT_DOT=89, SALT_GRAF=97,
       SALT_GLYPH=101, SALT_ROAD=103, SALT_TEXT=107, SALT_BOLL=109;
   var COL_MAG='#c2297e', COL_PINK='#e8729a', COL_TURQ='#22a7b4', COL_LBLUE='#5aa9e6',
@@ -18232,64 +17942,6 @@ function buildStreet(p){
      pen then leaves a 0.25 mm white core -- and as one stroke below that,
      which is what a tube that narrow looks like anyway. */
   var TEXTMM=1.0, TUBEMM=0.5;
-
-  function cross3(a,b){ return [a[1]*b[2]-a[2]*b[1], a[2]*b[0]-a[0]*b[2], a[0]*b[1]-a[1]*b[0]]; }
-  function nrm3(a){ var L=Math.hypot(a[0],a[1],a[2])||1; return [a[0]/L,a[1]/L,a[2]/L]; }
-  function dotv(a,b){ return a[0]*b[0]+a[1]*b[1]+a[2]*b[2]; }
-  function faceIx(P,dir){ var bi=0,bd=-1e9; P.faces.forEach(function(f,i){ var d=dotv(f.n,dir); if(d>bd){ bd=d; bi=i; } }); return bi; }
-  function faceC(f){ var c=[0,0,0]; f.pts.forEach(function(q){ c[0]+=q[0]; c[1]+=q[1]; c[2]+=q[2]; });
-    return [c[0]/f.pts.length, c[1]/f.pts.length, c[2]/f.pts.length]; }
-  /* A VERTICAL SURFACE READ FROM OUTSIDE. (u,v) in metres from the lower
-     left corner as seen by someone facing it: u runs along r = f x z for a
-     viewer looking along -N, which is z x N. So text set once in (u,v) reads
-     the right way round on EVERY face it is drawn on, the back of a blade
-     included, and nothing has to be mirrored by hand. */
-  function surf(C,N,Wd,Hd){
-    var e1=nrm3([-N[1],N[0],0]);
-    return function(u,v){ return [C[0]+e1[0]*(u-Wd/2), C[1]+e1[1]*(u-Wd/2), C[2]+(v-Hd/2)]; };
-  }
-  /* mm on the sheet per metre at P, along the worse of a vertical surface's
-     two axes; 0 when P is not in front of the eye */
-  function mmPerM(P,N){
-    var c0=cam(P); if(!(c0[2]>NEAR)) return 0;
-    var a=scr(c0), e1=nrm3([-N[1],N[0],0]), best=1e18, k;
-    var dirs=[e1,[0,0,1]];
-    for(k=0;k<2;k++){
-      var c1=cam(add3(P,dirs[k],0.05)); if(!(c1[2]>NEAR)) return 0;
-      var b=scr(c1); best=Math.min(best, Math.hypot(b[0]-a[0],b[1]-a[1])*PAGEMM/0.05);
-    }
-    return best;
-  }
-  function drawOn(Pt,fi,M,polys,col,kind,sid){
-    polys.forEach(function(pl){
-      for(var i=1;i<pl.length;i++)
-        Pt.lines.push({a:M(pl[i-1][0],pl[i-1][1]), b:M(pl[i][0],pl[i][1]), f0:fi, f1:fi, col:col, kind:kind, sign:sid});
-    });
-  }
-  function inConv(Q,v){
-    var s=0;
-    for(var m=0;m<Q.length;m++){
-      var a=Q[m], b=Q[(m+1)%Q.length], c=(b[0]-a[0])*(v[1]-a[1])-(b[1]-a[1])*(v[0]-a[0]);
-      if(c>1e-9) s|=1; else if(c<-1e-9) s|=2;
-    }
-    return s!==3;
-  }
-  function bb3(V){ var b=[1e18,1e18,1e18,-1e18,-1e18,-1e18];
-    V.forEach(function(v){ for(var k=0;k<3;k++){ if(v[k]<b[k]) b[k]=v[k]; if(v[k]>b[k+3]) b[k+3]=v[k]; } }); return b; }
-  /* does Pq overlap any part of container C that HIDES, in the given layers?
-     partSep finding no separating face plane is the overlap test the order
-     itself uses, so what passes here is what the order can place. */
-  function hitsAny(Pq,C,layers){
-    var b=bb3(verts(Pq));
-    for(var i=0;i<C.parts.length;i++){
-      var Q=C.parts[i];
-      if(Q.hides===false || layers.indexOf(Q.layer||'struct')<0) continue;
-      var qb=Q.bb3||(Q.bb3=bb3(verts(Q)));
-      if(b[3]<qb[0]||qb[3]<b[0]||b[4]<qb[1]||qb[4]<b[1]||b[5]<qb[2]||qb[5]<b[2]) continue;
-      if(partSep(Pq,Q)===null) return true;
-    }
-    return false;
-  }
 
   /* ---- §5.3 THE SCRIPTS. Both pseudo-scripts are BANKS drawn once per seed,
      so a character recurs across signs the way a real script's do -- an
@@ -18655,127 +18307,6 @@ function buildStreet(p){
   STRTTALLY.dots={asked:DOTS, placed:dots.length, rejected:drej,
                   list:dots.map(function(d){ return {P:P3(d.s,d.side,d.o,d.z), col:d.col, s:d.s}; })};
 
-  /* ---- §5.6 PUDDLES (row 33): noisy blobs on the carriageway. EACH LIES IN
-     ONE ROAD SLAB, which is what keeps the order exact: a puddle is a part of
-     its slab like a car or a dot, and it is never cut, because it is never
-     longer than the slab it sits in (Puddle size 100 is 3.8 m along the
-     street). It hides nothing. Each puddle draws its fourteen numbers from
-     its own substream keyed on its INDEX, so Puddles 9 -> 10 adds the tenth
-     and moves none of the nine, and no other layer reads them.
-     The outline is star-shaped about its centre -- r(theta) = 1 plus three
-     harmonics whose amplitudes sum to under 0.4 -- so it is a simple polygon
-     whatever the draw; its convex hull is the part the order sees. Biased
-     toward the kerb, where water lies. A puddle that would leave its slab or
-     overlap an earlier one is not placed, and counted. */
-  var PUDN=Math.max(0,Math.min(40,Math.round(isFinite(p.puddles)?+p.puddles:9)));
-  var PUDSZ=Math.max(0.05,Math.min(1,(isFinite(p.pudsz)?+p.pudsz:40)/100));
-  var RIPMM=Math.max(0,Math.min(3,(isFinite(p.ripple)?+p.ripple:6)/10));
-  var SALT_PUD=113, PUDNP=40;
-  /* WHERE THE CAMERA LOOKS. Spread evenly over the street, nine puddles put
-     less than one on the 15 m of road nearest the camera, and that is the
-     only road on which a reflection is bigger than a sliver -- at 30 m a 2 m
-     puddle is under a millimetre tall on the sheet. So they lie on the 60 m
-     ahead of the camera, thickest near it (s = 60 u^2, half within 15 m): the reference's
-     puddles are in its foreground. This ties the puddles to Camera along and
-     to nothing else; they never read the camera's height, aim or lens. */
-  var sPud0=Math.min(LEN-4,CAMS*LEN+3), sPud1=Math.min(LEN-0.5,CAMS*LEN+63);
-  var puds=[], prej=0;
-  for(i=0;i<PUDN;i++){
-    var RPD=sub(0,i,SALT_PUD), ud=[];
-    for(j=0;j<14;j++) ud.push(RPD());
-    var sdP=ud[1]<0.5?1:-1, slP=slabsBySide[sdP];
-    var sPd=Math.min(LEN-0.5, sPud0+(sPud1-sPud0)*ud[0]*ud[0]);
-    var CP=slP[Math.max(0,Math.min(slP.length-1,Math.floor(sPd/4)))];
-    var lenP=Math.min(CP.s1-CP.s0-0.3,(0.7+3.1*PUDSZ)*(0.6+0.4*ud[2]));
-    var widP=Math.min(HALFW-0.4,lenP*(0.35+0.4*ud[3]));
-    if(!(lenP>=0.3 && widP>=0.15)){ prej++; continue; }
-    var scP=CP.s0+0.15+lenP/2+(CP.s1-CP.s0-0.3-lenP)*ud[4];
-    var oloP=0.2+widP/2, ohiP=HALFW-0.2-widP/2, ocP=oloP+(ohiP-oloP)*Math.sqrt(ud[5]);
-    var a2=0.18*ud[6], a3=0.13*ud[7], a5=0.07*ud[8], rot=(ud[12]-0.5)*0.6, loc=[], mx=0, my=0, m2;
-    for(m2=0;m2<PUDNP;m2++){
-      var th=TAU*m2/PUDNP;
-      var rr=1+a2*Math.cos(2*th+TAU*ud[9])+a3*Math.cos(3*th+TAU*ud[10])+a5*Math.cos(5*th+TAU*ud[11]);
-      var lx=Math.cos(th)*rr, ly=Math.sin(th)*rr;
-      var qx=lx*Math.cos(rot)-ly*Math.sin(rot), qy=lx*Math.sin(rot)+ly*Math.cos(rot);
-      loc.push([qx,qy]); mx=Math.max(mx,Math.abs(qx)); my=Math.max(my,Math.abs(qy));
-    }
-    var ringP=loc.map(function(q){ return P3(scP+q[0]/mx*lenP/2, sdP, ocP+q[1]/my*widP/2, 0); });
-    var clash=!ringP.every(function(v){ return inConv(CP.poly,v); });
-    for(m2=0;m2<puds.length && !clash;m2++){
-      var o3=puds[m2];
-      if(o3.C===CP && Math.abs(o3.s-scP)<(o3.len+lenP)/2+0.1 && Math.abs(o3.o-ocP)<(o3.wid+widP)/2+0.1) clash=true;
-    }
-    if(clash){ prej++; continue; }
-    puds.push({id:i, C:CP, side:sdP, s:scP, o:ocP, len:lenP, wid:widP, ring:ringP,
-               hull:hull2(ringP.map(function(v){ return [v[0],v[1]]; })), ph:TAU*ud[13]});
-  }
-  STRTTALLY.puds=puds.map(function(pd){ return {id:pd.id, side:pd.side, s0:pd.C.s0, s1:pd.C.s1, poly:pd.C.poly,
-    s:pd.s, o:pd.o, len:pd.len, wid:pd.wid, ring:pd.ring}; });
-
-  /* ---- §5.2 CABLES: catenaries pole to pole, pole to facade and facade to
-     facade, cut per container. THE CURVE IS A CATENARY IN THE CABLE'S
-     VERTICAL PLANE: z(t) = chord(t) + a (cosh((t-1/2)L/a) - cosh(L/2a)),
-     written as 2a sinh(tL/2a) sinh((t-1)L/2a), the same number without the
-     cancellation, with a solved from the midspan sag S = Cable sag x span. A
-     cable whose sag would bring it under 4.5 m over the road has its sag
-     reduced until it clears, and says so. */
-  function clipSeg(A,B,Q){
-    var t0=0, t1=1, dx=B[0]-A[0], dy=B[1]-A[1], m, ar=0;
-    for(m=0;m<Q.length;m++){ var a0=Q[m], b0=Q[(m+1)%Q.length]; ar+=a0[0]*b0[1]-a0[1]*b0[0]; }
-    var sg=ar>0?1:-1;
-    for(m=0;m<Q.length;m++){
-      var a=Q[m], b=Q[(m+1)%Q.length], nx=-(b[1]-a[1])*sg, ny=(b[0]-a[0])*sg;
-      var num=nx*(A[0]-a[0])+ny*(A[1]-a[1]), den=nx*dx+ny*dy;
-      if(Math.abs(den)<1e-15){ if(num<0) return null; continue; }
-      var t=-num/den;
-      if(den>0){ if(t>t0) t0=t; } else { if(t<t1) t1=t; }
-      if(t0>t1) return null;
-    }
-    return [t0,t1];
-  }
-  /* the signed lateral offset of plan point X from the centreline, on side sd */
-  function lateral(X,sGuess,sd){
-    var best=1e18, bs=sGuess, s, k;
-    for(k=-16;k<=16;k++){ s=sGuess+k*0.25; var F=frame(s), d=(X[0]-F[0])*F[2]+(X[1]-F[1])*F[3];
-      if(Math.abs(d)<best){ best=Math.abs(d); bs=s; } }
-    var G=frame(bs);
-    return ((X[0]-G[0])*(-G[3])+(X[1]-G[1])*G[2])*sd;
-  }
-  var cables=[];
-  function addCable(kind,A,B,ends){
-    var dx=B[0]-A[0], dy=B[1]-A[1], Lp=Math.hypot(dx,dy), k;
-    if(Lp<1 || Math.abs(B[2]-A[2])/Lp>0.6) return;
-    for(k=0;k<ends.length;k++){
-      var e=ends[k], o=e.P===A?B:A, vx=o[0]-e.P[0], vy=o[1]-e.P[1], vl=Math.hypot(vx,vy);
-      if((vx*e.N[0]+vy*e.N[1])/vl<Math.cos(35*Math.PI/180)) return;
-    }
-    var ivs=[];
-    conts.forEach(function(C){ var r=clipSeg(A,B,C.poly); if(r && r[1]-r[0]>1e-9) ivs.push({C:C, t0:r[0], t1:r[1]}); });
-    function aOf(S){
-      if(!(S>1e-9)) return Infinity;
-      var lo=Lp*1e-3, hi=Lp*Lp/(8*S)*4+Lp, it;
-      for(it=0;it<200;it++){ var md=Math.sqrt(lo*hi), sh=Math.sinh(Lp/(4*md));
-        if(2*md*sh*sh>S) lo=md; else hi=md; }
-      return Math.sqrt(lo*hi);
-    }
-    function zAt(t,a){ var c=A[2]+(B[2]-A[2])*t;
-      return isFinite(a)?c+2*a*Math.sinh(t*Lp/(2*a))*Math.sinh((t-1)*Lp/(2*a)):c; }
-    function low(S){ var a=aOf(S), m=1e18;
-      ivs.forEach(function(iv){ if(iv.C.kind!=='slab') return;
-        for(var j=0;j<=24;j++) m=Math.min(m,zAt(iv.t0+(iv.t1-iv.t0)*j/24,a)); });
-      return m; }
-    var S0=SAG*Lp, S=S0, clamped=false;
-    if(S>0 && low(S)<4.5){
-      var lo2=0, hi2=S;
-      for(k=0;k<60;k++){ var md2=(lo2+hi2)/2; if(low(md2)>=4.5) lo2=md2; else hi2=md2; }
-      S=lo2; clamped=true;
-      if(SAG>0 && S<1e-6) return;
-    }
-    if(low(S)<4.5-1e-9) return;
-    var a=aOf(S);
-    cables.push({id:cables.length, kind:kind, A:A, B:B, L:Lp, S0:S0, S:S, a:a, clamped:clamped, ivs:ivs,
-                 at:function(t){ return [A[0]+dx*t, A[1]+dy*t, zAt(t,a)]; }, pieces:0, dropped:0});
-  }
   function facadeAt(L,zWant){
     if(!L || L.cableU===null || !L.attach.length) return null;
     var at=L.attach[0], k;
@@ -19214,6 +18745,549 @@ function buildStreet(p){
       C.parts.push(Pd);
     });
   }
+  /* ---- §5.7 GRAFFITI on a ground-storey wall or shutter, in the wall's own
+     plane: TAGS are random-walk scribbles, THROW-UPS the bubble outlines of
+     2-4 pseudo-glyphs -- each glyph's strokes drawn as fat tubes, which is
+     what a bubble letter is. Its own substream per wall, drawn in a fixed
+     count; not drawn where it would be under 2 mm tall on the sheet. */
+  function graffiti(L,Pt,FR,fi,u0,u1,v0,v1,wall,key){
+    var sk=L.side<0?2:1, RG=sub(sk,key,SALT_GRAF), uP=RG(), uS=RG(), uC=RG(), uW=RG(), uX=RG();
+    var rec={style:uS<0.55?'tag':'throw', wall:wall, side:L.side, idx:L.idx, placed:uP<GRAFF};
+    STRTTALLY.graff.push(rec);
+    if(!rec.placed) return;
+    var col=[COL_MAG,COL_TURQ,COL_GLOW,COL_K][Math.min(3,Math.floor(uC*4))];
+    var gw=Math.min(u1-u0,1.2+1.8*uW), gh=Math.min(v1-v0,gw*0.5);
+    if(gw<0.4 || gh<0.2) return;
+    var gu=u0+(u1-u0-gw)*uX, gv=v0+(v1-v0-gh)*0.5, C=wp(FR,gu+gw/2,gv+gh/2,0);
+    if(!(gh*mmPerM(C,FR.n)>=2)) return;
+    var R2=sub(sk,key,SALT_GRAF+1), polys=[], k, j;
+    if(rec.style==='tag'){
+      var ns=1+Math.floor(R2()*3);
+      for(k=0;k<ns;k++){
+        var x=gw*(0.1+0.3*R2()), y=gh*(0.3+0.4*R2()), th=(R2()-0.5)*1.2, st=gh*(0.06+0.06*R2()), pl=[[x,y]];
+        var n=14+Math.floor(R2()*12);
+        for(j=0;j<n;j++){
+          th+=(R2()-0.5)*1.8; x+=Math.cos(th)*st+gw*0.02; y+=Math.sin(th)*st;
+          if(x<0||x>gw){ th=Math.PI-th; x=Math.max(0,Math.min(gw,x)); }
+          if(y<0||y>gh){ th=-th; y=Math.max(0,Math.min(gh,y)); }
+          pl.push([x,y]);
+        }
+        polys.push(pl);
+      }
+    } else {
+      var ng=2+Math.floor(R2()*3), cw=gw/ng, r=Math.min(cw,gh)*0.16;
+      var SK=[['V','H'],['K','H'],['S','V'],['H','S'],['B','V']];
+      for(k=0;k<ng;k++){
+        var bx=[k*cw+r*1.2, r*1.2, (k+1)*cw-r*1.2, gh-r*1.2], ty=SK[Math.min(4,Math.floor(R2()*5))];
+        ty.forEach(function(t){ tube(kStroke(t,bx,R2),r).forEach(function(lp){ polys.push(lp); }); });
+      }
+    }
+    drawOn(Pt,fi,surf(C,FR.n,gw,gh),polys,col,'graff');
+  }
+
+  return {dress:dress, signsFor:signsFor, furnish:furnish, cars:cars, dots:dots, poles:poles};
+}
+function buildCorridor(p,THM){
+  var LEN=Math.max(60,+p.len||220), BEND=Math.max(0,+p.bend||0);
+  var WID=Math.max(4,+p.width||7), PAVE=Math.max(0,isFinite(p.pave)?+p.pave:2.5);
+  var LOTMIN=Math.max(3,+p.lotmin||5), LOTMAX=Math.max(LOTMIN,+p.lotmax||11);
+  var ALLEY=(p.alley||0)/100, FLOORS=Math.max(1,Math.round(p.floors||9));
+  var CANYON=(p.canyon||0)/100, STEPB=(p.stepb||0)/100, CANTI=(p.canti||0)/100;
+  var CAMS=(isFinite(p.cams)?+p.cams:12)/100, CAMX=(isFinite(p.camx)?+p.camx:-10)/100;
+  var CAMZ=Math.max(0.2,isFinite(p.camz)?+p.camz:1.6);
+  var LOOK=Math.max(5,+p.look||60), PITCH=(isFinite(p.pitch)?+p.pitch:6)*Math.PI/180;
+  var FOV=Math.max(25,Math.min(120,isFinite(p.fov)?+p.fov:72))*Math.PI/180;
+  var LODMM=Math.max(0,(isFinite(p.lod)?+p.lod:4)/10);
+  var GAP=((p.occ||0)/10)/PAGEMM;
+  /* Fixed, not knobs. PAD is the drawable margin in page units (the station's);
+     NEAR the near plane in metres (spec §3.2); KERB the kerb height. */
+  /* the theme's (row 49): the kerb's height and the envelopes' top */
+  var PAD=0.06, NEAR=0.25, KERB=THM.edgeZ, DS=0.5, ZTOP=THM.ztop, SLAB=THM.slabLen;
+  var HALFW=WID/2, KOFF=HALFW+0.3, PBACK=HALFW+PAVE;
+  var out=[], i, j, k;
+  /* the kit's own inks: structure, tone hatch, the puddles' edge */
+  var COL_K='#1a1a1a', COL_HATCH='#4a4a4a', COL_LBLUE='#5aa9e6';
+  STRTINFO=''; STRTSTATS={lots:0,conts:0,parts:0,paths:0,points:0,cycles:0};
+  STRTTALLY={cam:null,project:null,parts:[],pre:[],sil:[],conts:[],lots:[],slabs:[],
+             signs:[],bank:null,words:[],poles:[],cables:[],cars:[],dots:null,graff:[],
+             puds:[],rparts:[],rpre:[],rsil:[],refl:[],allparts:[],upr:[],urows:[]};
+
+  /* ---- substreams: the splitmix finaliser iso's cellRnd uses, keyed on
+     (a, b, salt). Every layer salts its own, so turning one layer on or off
+     never moves another's numbers (spec §2.5). */
+  var SALT_SPLINE=11, SALT_LOT=23, SALT_BLD=37;
+  function sub(a,b,salt){
+    var s=(rnd(a*7919+b*104729+salt*1299709+17)*4294967296)>>>0;
+    return function(){
+      s=(s+0x9E3779B9)>>>0;
+      var t=s;
+      t=Math.imul(t^(t>>>15),0x85EBCA6B)>>>0;
+      t=Math.imul(t^(t>>>13),0xC2B2AE35)>>>0;
+      return ((t^(t>>>16))>>>0)/4294967296;
+    };
+  }
+
+  /* ---- §2.1 the spline. Stations every 0.5 m. A straight run, then arcs
+     whose curvature is `bend` degrees per 100 m times a draw in [0.35,1] with a
+     random sign. THE HEADING IS HELD WITHIN +-70 DEGREES of where it started,
+     by choosing the sign that turns back once it is past 40: a street that
+     closed on itself would put one side's lots through the other's, and the
+     whole order argument needs them disjoint. Generated past LEN so the look
+     target always has road under it. */
+  var NS=Math.ceil((LEN+LOOK+40)/DS)+1;
+  var SX=new Float64Array(NS), SY=new Float64Array(NS), SH=new Float64Array(NS);
+  {
+    var rs=sub(0,0,SALT_SPLINE), kap=0, left=15+rs()*25, hd=0, kmax=BEND*Math.PI/180/100;
+    SX[0]=0; SY[0]=0; SH[0]=0;
+    for(i=1;i<NS;i++){
+      left-=DS;
+      if(left<=0){
+        var sg=rs()<0.5?-1:1;
+        if(hd>40*Math.PI/180) sg=-1; else if(hd<-40*Math.PI/180) sg=1;
+        kap=sg*(0.35+0.65*rs())*kmax; left=25+rs()*45;
+      }
+      var h1=hd+kap*DS;
+      if(Math.abs(h1)>70*Math.PI/180){ kap=0; h1=hd; }
+      var hm=(hd+h1)/2;
+      SX[i]=SX[i-1]+Math.cos(hm)*DS; SY[i]=SY[i-1]+Math.sin(hm)*DS;
+      SH[i]=h1; hd=h1;
+    }
+  }
+  /* A point at arc s on side sd (+1 left, -1 right) at lateral offset o,
+     height z. Positions and headings interpolate linearly between stations,
+     so two lots that share an arc position share their side line EXACTLY. */
+  function frame(s){
+    var u=s/DS, i0=Math.max(0,Math.min(NS-2,Math.floor(u))), f=u-i0;
+    var x=SX[i0]+(SX[i0+1]-SX[i0])*f, y=SY[i0]+(SY[i0+1]-SY[i0])*f;
+    var h=SH[i0]+(SH[i0+1]-SH[i0])*f;
+    if(u<0){ x=SX[0]+Math.cos(SH[0])*s; y=SY[0]+Math.sin(SH[0])*s; h=SH[0]; }
+    return [x,y,Math.cos(h),Math.sin(h)];
+  }
+  function P3(s,sd,o,z){ var F=frame(s); return [F[0]-F[3]*sd*o, F[1]+F[2]*sd*o, z]; }
+
+  /* ---- plan-polygon helpers, used for the disjointness CHECK and the order */
+  function polyOverlap(A,B){
+    var polys=[A,B], pi, e;
+    for(pi=0;pi<2;pi++){
+      var Q=polys[pi];
+      for(e=0;e<Q.length;e++){
+        var a=Q[e], b=Q[(e+1)%Q.length], nx=b[1]-a[1], ny=a[0]-b[0];
+        var L=Math.hypot(nx,ny); if(L<1e-12) continue; nx/=L; ny/=L;
+        var a0=1e18,a1=-1e18,b0=1e18,b1=-1e18, m;
+        for(m=0;m<A.length;m++){ var t=A[m][0]*nx+A[m][1]*ny; if(t<a0)a0=t; if(t>a1)a1=t; }
+        for(m=0;m<B.length;m++){ var t2=B[m][0]*nx+B[m][1]*ny; if(t2<b0)b0=t2; if(t2>b1)b1=t2; }
+        if(a1<=b0+1e-7 || b1<=a0+1e-7) return false;
+      }
+    }
+    return true;
+  }
+  function convex(Q){
+    var sgn=0, e;
+    for(e=0;e<Q.length;e++){
+      var a=Q[e], b=Q[(e+1)%Q.length], c=Q[(e+2)%Q.length];
+      var cr=(b[0]-a[0])*(c[1]-b[1])-(b[1]-a[1])*(c[0]-b[0]);
+      if(Math.abs(cr)<1e-12) continue;
+      if(sgn===0) sgn=cr>0?1:-1; else if((cr>0?1:-1)!==sgn) return false;
+    }
+    return sgn!==0;
+  }
+  function bbox2(Q){ var b=[1e18,1e18,-1e18,-1e18]; Q.forEach(function(q){
+    if(q[0]<b[0])b[0]=q[0]; if(q[1]<b[1])b[1]=q[1]; if(q[0]>b[2])b[2]=q[0]; if(q[1]>b[3])b[3]=q[1]; });
+    return b; }
+  function bbHit(a,b){ return !(a[2]<b[0]||b[2]<a[0]||a[3]<b[1]||b[3]<a[1]); }
+
+  /* ---- §2.3 road slabs: 4 m of carriageway, kerb and the first 0.3 m of
+     pavement, one per side of the centreline. */
+  var conts=[], slabsBySide={'1':[],'-1':[]};
+  [1,-1].forEach(function(sd){
+    for(var sa=0;sa<LEN-1e-9;sa+=SLAB){
+      var sb=Math.min(LEN,sa+SLAB);
+      var Q=[P3(sa,sd,0,0),P3(sb,sd,0,0),P3(sb,sd,KOFF,0),P3(sa,sd,KOFF,0)].map(function(v){return [v[0],v[1]];});
+      var C={kind:'slab', side:sd, s0:sa, s1:sb, poly:Q, bb:bbox2(Q), parts:[]};
+      conts.push(C); slabsBySide[sd].push(C);
+      STRTTALLY.slabs.push({side:sd, s0:sa, s1:sb, poly:Q});
+    }
+  });
+
+  /* ---- §2.2 lots, walked along the pavement's BACK edge by its own arc
+     length. The lot's numbers come from its own substream keyed on
+     (side, index), so a lot is the same lot whatever LEN is. */
+  var lots=[], dropped=0, pushed=0;
+  [1,-1].forEach(function(sd){
+    var cum=[0], m;
+    var nb=Math.floor(LEN/DS);
+    var prev=P3(0,sd,PBACK,0);
+    for(m=1;m<=nb;m++){
+      var cur=P3(m*DS,sd,PBACK,0);
+      cum.push(cum[m-1]+Math.hypot(cur[0]-prev[0],cur[1]-prev[1])); prev=cur;
+    }
+    function arcOfBack(b){
+      var lo=0, hi=cum.length-1;
+      if(b>=cum[hi]) return hi*DS;
+      while(hi-lo>1){ var md=(lo+hi)>>1; if(cum[md]<=b) lo=md; else hi=md; }
+      var sgl=cum[hi]-cum[lo];
+      return (lo+(sgl>0?(b-cum[lo])/sgl:0))*DS;
+    }
+    var cursor=0, li=0;
+    for(li=0;li<400;li++){
+      var R=sub(sd<0?2:1,li,SALT_LOT);
+      var wl=LOTMIN+R()*(LOTMAX-LOTMIN), ua=R(), aw=THM.alleyW[0]+R()*spanOf(THM.alleyW), depth=THM.lotDepth[0]+R()*spanOf(THM.lotDepth);
+      var b0=cursor, b1=cursor+wl;
+      if(b1>cum[cum.length-1]) break;
+      cursor=b1+(ua<ALLEY?aw:0);
+      var s0=arcOfBack(b0), s1=arcOfBack(b1);
+      var BK=PBACK+depth, d=0, env=null, ok=false, t;
+      /* THE ENVELOPE FRONT is 0.3 m short of the kerb, pushed back by `d`
+         until the slabs it could touch are clear of it. On the inner side of a
+         bend a 4 m slab chord bulges past the arc by a couple of centimetres;
+         on the outer side a long lot chord does. Measured by SAT, not by
+         reasoning about which. */
+      for(t=0;t<80;t++){
+        var FE=KOFF+d;
+        env=[P3(s0,sd,FE,0),P3(s1,sd,FE,0),P3(s1,sd,BK,0),P3(s0,sd,BK,0)].map(function(v){return [v[0],v[1]];});
+        if(FE>=BK-4 || !convex(env)){ env=null; break; }
+        var hit=false, eb=bbox2(env), sl=slabsBySide[sd], q;
+        for(q=0;q<sl.length;q++){
+          if(sl[q].s1<s0-4.5||sl[q].s0>s1+4.5) continue;
+          if(bbHit(eb,sl[q].bb) && polyOverlap(env,sl[q].poly)){ hit=true; break; }
+        }
+        if(!hit){ ok=true; break; }
+        d+=0.05;
+      }
+      if(!ok||!env){ dropped++; continue; }
+      if(d>0) pushed++;
+      var ebb=bbox2(env), clash=false, o2;
+      for(o2=0;o2<conts.length;o2++){
+        var C2=conts[o2];
+        if(!bbHit(ebb,C2.bb)) continue;
+        if(C2.kind==='slab' && C2.side===sd) continue;         /* checked above */
+        if(polyOverlap(env,C2.poly)){ clash=true; break; }
+      }
+      if(clash){ dropped++; continue; }
+      var LOT={kind:'lot', side:sd, idx:li, s0:s0, s1:s1, poly:env, bb:ebb, parts:[],
+               fe:KOFF+d, back:BK, depth:depth, blocks:[]};
+      conts.push(LOT); lots.push(LOT);
+    }
+  });
+
+  /* ---- the camera, §3.1 --------------------------------------------------- */
+  var sC=CAMS*LEN;
+  var CE=P3(sC,1,CAMX*HALFW,CAMZ), TG=P3(sC+LOOK,1,0,CAMZ);
+  var fx=TG[0]-CE[0], fy=TG[1]-CE[1], fl=Math.hypot(fx,fy)||1;
+  fx/=fl; fy/=fl;
+  var FW=[fx*Math.cos(PITCH), fy*Math.cos(PITCH), Math.sin(PITCH)];
+  var RT=[FW[1], -FW[0], 0], rl=Math.hypot(RT[0],RT[1])||1;
+  RT=[RT[0]/rl, RT[1]/rl, 0];
+  var UP=[RT[1]*FW[2]-RT[2]*FW[1], RT[2]*FW[0]-RT[0]*FW[2], RT[0]*FW[1]-RT[1]*FW[0]];
+  var FF=1/Math.tan(FOV/2);
+  var HW=(PGW-2*PAD)/2, HH=(PGH-2*PAD)/2;
+  function cam(P){
+    var vx=P[0]-CE[0], vy=P[1]-CE[1], vz=P[2]-CE[2];
+    return [vx*RT[0]+vy*RT[1]+vz*RT[2], vx*UP[0]+vy*UP[1]+vz*UP[2], vx*FW[0]+vy*FW[1]+vz*FW[2]];
+  }
+  /* PAGE MAPPING IS FIXED, not fitted: sx in [-1,1] spans the drawable width
+     and sy takes the same scale. A camera that zoomed to its content would
+     move every time a building grew. */
+  function scr(c){ return [PGW/2+FF*c[0]/c[2]*HW, PGH/2-FF*c[1]/c[2]*HW]; }
+  function project(P){ var c=cam(P); return c[2]>1e-12?scr(c):null; }
+  STRTTALLY.cam={C:CE, f:FW, r:RT, u:UP, F:FF, near:NEAR, pad:PAD, hw:HW, hh:HH};
+  STRTTALLY.project=project;
+
+  /* ---- parts: convex polytopes with their face planes and their LINES.
+     A line is a 3D segment and the two faces it lies on (the same face twice
+     for a line drawn across a face); it is drawn when either face faces the
+     eye. Seams -- a cut from a cycle split, the join between two slabs -- are
+     never lines, which is why lines are explicit rather than derived from the
+     faces' boundaries. */
+  function face(pts,inside){
+    var a=pts[0], b=pts[1], c=pts[2];
+    var ux=b[0]-a[0],uy=b[1]-a[1],uz=b[2]-a[2], vx=c[0]-a[0],vy=c[1]-a[1],vz=c[2]-a[2];
+    var n=[uy*vz-uz*vy, uz*vx-ux*vz, ux*vy-uy*vx], L=Math.hypot(n[0],n[1],n[2])||1;
+    n=[n[0]/L,n[1]/L,n[2]/L];
+    var d=n[0]*a[0]+n[1]*a[1]+n[2]*a[2];
+    if(n[0]*inside[0]+n[1]*inside[1]+n[2]*inside[2]-d>0){ n=[-n[0],-n[1],-n[2]]; d=-d; }
+    return {n:n, d:d, pts:pts};
+  }
+  /* A prism over a convex plan quad Q (4 corners) from z0 to z1. Faces:
+     0 bottom, 1 top, 2..5 the sides, side k running Q[k] -> Q[k+1]. */
+  function prism(Q,z0,z1){
+    var lo=Q.map(function(q){return [q[0],q[1],z0];}), hi=Q.map(function(q){return [q[0],q[1],z1];});
+    var cx=0,cy=0; Q.forEach(function(q){cx+=q[0]/4; cy+=q[1]/4;});
+    var ins=[cx,cy,(z0+z1)/2], F=[face(lo,ins), face(hi,ins)], e;
+    for(e=0;e<4;e++){ var e2=(e+1)%4; F.push(face([lo[e],lo[e2],hi[e2],hi[e]],ins)); }
+    return {faces:F, lines:[], ins:ins};
+  }
+  function boxEdges(P){
+    var F=P.faces, e;
+    for(e=0;e<4;e++){
+      var e2=(e+1)%4, sdf=2+e, prv=2+(e+3)%4;
+      P.lines.push({a:F[0].pts[e], b:F[0].pts[e2], f0:0, f1:sdf});
+      P.lines.push({a:F[1].pts[e], b:F[1].pts[e2], f0:1, f1:sdf});
+      P.lines.push({a:F[0].pts[e], b:F[1].pts[e], f0:prv, f1:sdf});
+    }
+  }
+  function verts(P){ var V=[]; P.faces.forEach(function(f){ f.pts.forEach(function(q){ V.push(q); }); }); return V; }
+
+  /* ---- §5 THE DRESSING: facades, tops, tone hatch (row 31) ----------------
+     EVERY DRESSING SOLID IS A PARALLELEPIPED OR A CONVEX PRISM, so the order
+     machinery above takes it unchanged: a sill, a lintel, a balcony slab, an
+     AC box, a downpipe, a fire-escape landing, a sloping awning, a parapet
+     strip, a crown tier, a gable, a tank. Nothing concave is ever a part --
+     a parapet ring is four strips, a window reveal is a lintel and a sill.
+     PROTRUSIONS ARE BOUNDED BY THE ENVELOPE. A block's street face may stand
+     anywhere from the envelope front (a cantilever) to the pavement's back
+     edge, and whatever sticks out of it must stay inside the lot's container
+     or the container order stops being exact. `room` is that gap; an element
+     that needs more than there is is drawn as an outline on the wall instead.
+     Only the street face carries solids: a return face is the lot's own side,
+     and anything off it would be in the neighbour's container.
+     SEE-THROUGH PARTS (railings, fire stairs) hide nothing and draw every line
+     they carry; their box exists only so the order knows where they are.
+     §4's BANDS are decided per element by its distance from the eye: nearer
+     than `dn` it is a solid, nearer than `df` an outline on the wall plane,
+     and beyond `df` the wall keeps only its floor lines and silhouette. */
+  function add3(a,b,s){ return [a[0]+b[0]*s, a[1]+b[1]*s, a[2]+b[2]*s]; }
+  function polyFromLoops(loops){
+    var cx=0,cy=0,cz=0,n=0;
+    loops.forEach(function(l){ l.forEach(function(q){ cx+=q[0]; cy+=q[1]; cz+=q[2]; n++; }); });
+    var ins=[cx/n,cy/n,cz/n], lines=[], ek={};
+    var F=loops.map(function(l){ return face(l,ins); });
+    function key(q){ return q[0].toFixed(6)+','+q[1].toFixed(6)+','+q[2].toFixed(6); }
+    F.forEach(function(f,fi){
+      for(var e=0;e<f.pts.length;e++){
+        var a=f.pts[e], b=f.pts[(e+1)%f.pts.length], ka=key(a), kb=key(b);
+        var k=ka<kb?ka+'|'+kb:kb+'|'+ka;
+        if(ek[k]) ek[k].f1=fi;
+        else { var ln={a:a, b:b, f0:fi, f1:fi}; ek[k]=ln; lines.push(ln); }
+      }
+    });
+    return {faces:F, lines:lines, ins:ins};
+  }
+  function para(o,ea,eb,ec){
+    function c(i,j,k){ return [o[0]+ea[0]*i+eb[0]*j+ec[0]*k, o[1]+ea[1]*i+eb[1]*j+ec[1]*k, o[2]+ea[2]*i+eb[2]*j+ec[2]*k]; }
+    return polyFromLoops([[c(0,0,0),c(1,0,0),c(1,1,0),c(0,1,0)], [c(0,0,1),c(1,0,1),c(1,1,1),c(0,1,1)],
+                          [c(0,0,0),c(1,0,0),c(1,0,1),c(0,0,1)], [c(0,1,0),c(1,1,0),c(1,1,1),c(0,1,1)],
+                          [c(0,0,0),c(0,1,0),c(0,1,1),c(0,0,1)], [c(1,0,0),c(1,1,0),c(1,1,1),c(1,0,1)]]);
+  }
+  function prismN(Q,z0,z1){
+    var lo=Q.map(function(q){ return [q[0],q[1],z0]; }), hi=Q.map(function(q){ return [q[0],q[1],z1]; });
+    var loops=[lo,hi], e;
+    for(e=0;e<Q.length;e++){ var e2=(e+1)%Q.length; loops.push([lo[e],lo[e2],hi[e2],hi[e]]); }
+    return polyFromLoops(loops);
+  }
+  function dist3(P){ return Math.hypot(P[0]-CE[0],P[1]-CE[1],P[2]-CE[2]); }
+  /* MILLIMETRES ON THE SHEET PER METRE OF SPACING between parallel lines
+     running along `dl` and stacked along `dn`, at P. Distance alone is not
+     the measure -- a wall seen nearly edge-on packs its lines together across
+     their own direction, and the first build of the tone hatch went black on
+     exactly those walls. So the step is projected, and the gap measured
+     perpendicular to the projected line. 0 when P is not in front of the eye. */
+  function paperGap(P,dl,dn){
+    var c0=cam(P), c1=cam(add3(P,dl,0.05)), c2=cam(add3(P,dn,0.05));
+    if(!(c0[2]>NEAR && c1[2]>NEAR && c2[2]>NEAR)) return 0;
+    var a=scr(c0), b=scr(c1), q=scr(c2), lx=b[0]-a[0], ly=b[1]-a[1], L=Math.hypot(lx,ly);
+    if(L<1e-15) return 0;
+    return Math.abs((q[0]-a[0])*ly-(q[1]-a[1])*lx)/L*PAGEMM/0.05;
+  }
+  /* the frame of a block's street face: origin at its s0 corner on the
+     ground, t along the face, n out toward the street, length W */
+  function wallOf(L,B){
+    var A=P3(L.s0,L.side,B.fr,0), Bq=P3(L.s1,L.side,B.fr,0);
+    var tx=Bq[0]-A[0], ty=Bq[1]-A[1], W=Math.hypot(tx,ty)||1;
+    var t=[tx/W,ty/W,0], n=[t[1],-t[0],0];
+    var sm=(L.s0+L.s1)/2, fq=P3(sm,L.side,B.fr,0), bq=P3(sm,L.side,B.bk,0);
+    if(n[0]*(fq[0]-bq[0])+n[1]*(fq[1]-bq[1])<0) n=[-n[0],-n[1],0];
+    return {A:A, t:t, n:n, W:W};
+  }
+  function wp(F,u,v,w){ return [F.A[0]+F.t[0]*u+F.n[0]*w, F.A[1]+F.t[1]*u+F.n[1]*w, v]; }
+  var ZUP=[0,0,1];
+  function vec(F,dir,s){ return dir==='t'?[F.t[0]*s,F.t[1]*s,0]:dir==='n'?[F.n[0]*s,F.n[1]*s,0]:[0,0,s]; }
+
+  var SAG=Math.max(0,Math.min(0.3,(isFinite(p.sag)?+p.sag:6)/100));
+  var DPEN=Math.round(p.dpen||0)>0, DSPLIT=Math.max(5,isFinite(p.dsplit)?+p.dsplit:60);
+  function cross3(a,b){ return [a[1]*b[2]-a[2]*b[1], a[2]*b[0]-a[0]*b[2], a[0]*b[1]-a[1]*b[0]]; }
+  function nrm3(a){ var L=Math.hypot(a[0],a[1],a[2])||1; return [a[0]/L,a[1]/L,a[2]/L]; }
+  function dotv(a,b){ return a[0]*b[0]+a[1]*b[1]+a[2]*b[2]; }
+  function faceIx(P,dir){ var bi=0,bd=-1e9; P.faces.forEach(function(f,i){ var d=dotv(f.n,dir); if(d>bd){ bd=d; bi=i; } }); return bi; }
+  function faceC(f){ var c=[0,0,0]; f.pts.forEach(function(q){ c[0]+=q[0]; c[1]+=q[1]; c[2]+=q[2]; });
+    return [c[0]/f.pts.length, c[1]/f.pts.length, c[2]/f.pts.length]; }
+  /* A VERTICAL SURFACE READ FROM OUTSIDE. (u,v) in metres from the lower
+     left corner as seen by someone facing it: u runs along r = f x z for a
+     viewer looking along -N, which is z x N. So text set once in (u,v) reads
+     the right way round on EVERY face it is drawn on, the back of a blade
+     included, and nothing has to be mirrored by hand. */
+  function surf(C,N,Wd,Hd){
+    var e1=nrm3([-N[1],N[0],0]);
+    return function(u,v){ return [C[0]+e1[0]*(u-Wd/2), C[1]+e1[1]*(u-Wd/2), C[2]+(v-Hd/2)]; };
+  }
+  /* mm on the sheet per metre at P, along the worse of a vertical surface's
+     two axes; 0 when P is not in front of the eye */
+  function mmPerM(P,N){
+    var c0=cam(P); if(!(c0[2]>NEAR)) return 0;
+    var a=scr(c0), e1=nrm3([-N[1],N[0],0]), best=1e18, k;
+    var dirs=[e1,[0,0,1]];
+    for(k=0;k<2;k++){
+      var c1=cam(add3(P,dirs[k],0.05)); if(!(c1[2]>NEAR)) return 0;
+      var b=scr(c1); best=Math.min(best, Math.hypot(b[0]-a[0],b[1]-a[1])*PAGEMM/0.05);
+    }
+    return best;
+  }
+  function drawOn(Pt,fi,M,polys,col,kind,sid){
+    polys.forEach(function(pl){
+      for(var i=1;i<pl.length;i++)
+        Pt.lines.push({a:M(pl[i-1][0],pl[i-1][1]), b:M(pl[i][0],pl[i][1]), f0:fi, f1:fi, col:col, kind:kind, sign:sid});
+    });
+  }
+  function inConv(Q,v){
+    var s=0;
+    for(var m=0;m<Q.length;m++){
+      var a=Q[m], b=Q[(m+1)%Q.length], c=(b[0]-a[0])*(v[1]-a[1])-(b[1]-a[1])*(v[0]-a[0]);
+      if(c>1e-9) s|=1; else if(c<-1e-9) s|=2;
+    }
+    return s!==3;
+  }
+  function bb3(V){ var b=[1e18,1e18,1e18,-1e18,-1e18,-1e18];
+    V.forEach(function(v){ for(var k=0;k<3;k++){ if(v[k]<b[k]) b[k]=v[k]; if(v[k]>b[k+3]) b[k+3]=v[k]; } }); return b; }
+  /* does Pq overlap any part of container C that HIDES, in the given layers?
+     partSep finding no separating face plane is the overlap test the order
+     itself uses, so what passes here is what the order can place. */
+  function hitsAny(Pq,C,layers){
+    var b=bb3(verts(Pq));
+    for(var i=0;i<C.parts.length;i++){
+      var Q=C.parts[i];
+      if(Q.hides===false || layers.indexOf(Q.layer||'struct')<0) continue;
+      var qb=Q.bb3||(Q.bb3=bb3(verts(Q)));
+      if(b[3]<qb[0]||qb[3]<b[0]||b[4]<qb[1]||qb[4]<b[1]||b[5]<qb[2]||qb[5]<b[2]) continue;
+      if(partSep(Pq,Q)===null) return true;
+    }
+    return false;
+  }
+
+  /* ---- §5.6 PUDDLES (row 33): noisy blobs on the carriageway. EACH LIES IN
+     ONE ROAD SLAB, which is what keeps the order exact: a puddle is a part of
+     its slab like a car or a dot, and it is never cut, because it is never
+     longer than the slab it sits in (Puddle size 100 is 3.8 m along the
+     street). It hides nothing. Each puddle draws its fourteen numbers from
+     its own substream keyed on its INDEX, so Puddles 9 -> 10 adds the tenth
+     and moves none of the nine, and no other layer reads them.
+     The outline is star-shaped about its centre -- r(theta) = 1 plus three
+     harmonics whose amplitudes sum to under 0.4 -- so it is a simple polygon
+     whatever the draw; its convex hull is the part the order sees. Biased
+     toward the kerb, where water lies. A puddle that would leave its slab or
+     overlap an earlier one is not placed, and counted. */
+  var PUDN=Math.max(0,Math.min(40,Math.round(isFinite(p.puddles)?+p.puddles:9)));
+  var PUDSZ=Math.max(0.05,Math.min(1,(isFinite(p.pudsz)?+p.pudsz:40)/100));
+  var RIPMM=Math.max(0,Math.min(3,(isFinite(p.ripple)?+p.ripple:6)/10));
+  var SALT_PUD=113, PUDNP=40;
+  /* WHERE THE CAMERA LOOKS. Spread evenly over the street, nine puddles put
+     less than one on the 15 m of road nearest the camera, and that is the
+     only road on which a reflection is bigger than a sliver -- at 30 m a 2 m
+     puddle is under a millimetre tall on the sheet. So they lie on the 60 m
+     ahead of the camera, thickest near it (s = 60 u^2, half within 15 m): the reference's
+     puddles are in its foreground. This ties the puddles to Camera along and
+     to nothing else; they never read the camera's height, aim or lens. */
+  var sPud0=Math.min(LEN-4,CAMS*LEN+3), sPud1=Math.min(LEN-0.5,CAMS*LEN+63);
+  var puds=[], prej=0;
+  for(i=0;i<PUDN;i++){
+    var RPD=sub(0,i,SALT_PUD), ud=[];
+    for(j=0;j<14;j++) ud.push(RPD());
+    var sdP=ud[1]<0.5?1:-1, slP=slabsBySide[sdP];
+    var sPd=Math.min(LEN-0.5, sPud0+(sPud1-sPud0)*ud[0]*ud[0]);
+    var CP=slP[Math.max(0,Math.min(slP.length-1,Math.floor(sPd/SLAB)))];
+    var lenP=Math.min(CP.s1-CP.s0-0.3,(0.7+3.1*PUDSZ)*(0.6+0.4*ud[2]));
+    var widP=Math.min(HALFW-0.4,lenP*(0.35+0.4*ud[3]));
+    if(!(lenP>=0.3 && widP>=0.15)){ prej++; continue; }
+    var scP=CP.s0+0.15+lenP/2+(CP.s1-CP.s0-0.3-lenP)*ud[4];
+    var oloP=0.2+widP/2, ohiP=HALFW-0.2-widP/2, ocP=oloP+(ohiP-oloP)*Math.sqrt(ud[5]);
+    var a2=0.18*ud[6], a3=0.13*ud[7], a5=0.07*ud[8], rot=(ud[12]-0.5)*0.6, loc=[], mx=0, my=0, m2;
+    for(m2=0;m2<PUDNP;m2++){
+      var th=TAU*m2/PUDNP;
+      var rr=1+a2*Math.cos(2*th+TAU*ud[9])+a3*Math.cos(3*th+TAU*ud[10])+a5*Math.cos(5*th+TAU*ud[11]);
+      var lx=Math.cos(th)*rr, ly=Math.sin(th)*rr;
+      var qx=lx*Math.cos(rot)-ly*Math.sin(rot), qy=lx*Math.sin(rot)+ly*Math.cos(rot);
+      loc.push([qx,qy]); mx=Math.max(mx,Math.abs(qx)); my=Math.max(my,Math.abs(qy));
+    }
+    var ringP=loc.map(function(q){ return P3(scP+q[0]/mx*lenP/2, sdP, ocP+q[1]/my*widP/2, 0); });
+    var clash=!ringP.every(function(v){ return inConv(CP.poly,v); });
+    for(m2=0;m2<puds.length && !clash;m2++){
+      var o3=puds[m2];
+      if(o3.C===CP && Math.abs(o3.s-scP)<(o3.len+lenP)/2+0.1 && Math.abs(o3.o-ocP)<(o3.wid+widP)/2+0.1) clash=true;
+    }
+    if(clash){ prej++; continue; }
+    puds.push({id:i, C:CP, side:sdP, s:scP, o:ocP, len:lenP, wid:widP, ring:ringP,
+               hull:hull2(ringP.map(function(v){ return [v[0],v[1]]; })), ph:TAU*ud[13]});
+  }
+  STRTTALLY.puds=puds.map(function(pd){ return {id:pd.id, side:pd.side, s0:pd.C.s0, s1:pd.C.s1, poly:pd.C.poly,
+    s:pd.s, o:pd.o, len:pd.len, wid:pd.wid, ring:pd.ring}; });
+
+  /* ---- §5.2 CABLES: catenaries pole to pole, pole to facade and facade to
+     facade, cut per container. THE CURVE IS A CATENARY IN THE CABLE'S
+     VERTICAL PLANE: z(t) = chord(t) + a (cosh((t-1/2)L/a) - cosh(L/2a)),
+     written as 2a sinh(tL/2a) sinh((t-1)L/2a), the same number without the
+     cancellation, with a solved from the midspan sag S = Cable sag x span. A
+     cable whose sag would bring it under 4.5 m over the road has its sag
+     reduced until it clears, and says so. */
+  function clipSeg(A,B,Q){
+    var t0=0, t1=1, dx=B[0]-A[0], dy=B[1]-A[1], m, ar=0;
+    for(m=0;m<Q.length;m++){ var a0=Q[m], b0=Q[(m+1)%Q.length]; ar+=a0[0]*b0[1]-a0[1]*b0[0]; }
+    var sg=ar>0?1:-1;
+    for(m=0;m<Q.length;m++){
+      var a=Q[m], b=Q[(m+1)%Q.length], nx=-(b[1]-a[1])*sg, ny=(b[0]-a[0])*sg;
+      var num=nx*(A[0]-a[0])+ny*(A[1]-a[1]), den=nx*dx+ny*dy;
+      if(Math.abs(den)<1e-15){ if(num<0) return null; continue; }
+      var t=-num/den;
+      if(den>0){ if(t>t0) t0=t; } else { if(t<t1) t1=t; }
+      if(t0>t1) return null;
+    }
+    return [t0,t1];
+  }
+  /* the signed lateral offset of plan point X from the centreline, on side sd */
+  function lateral(X,sGuess,sd){
+    var best=1e18, bs=sGuess, s, k;
+    for(k=-16;k<=16;k++){ s=sGuess+k*0.25; var F=frame(s), d=(X[0]-F[0])*F[2]+(X[1]-F[1])*F[3];
+      if(Math.abs(d)<best){ best=Math.abs(d); bs=s; } }
+    var G=frame(bs);
+    return ((X[0]-G[0])*(-G[3])+(X[1]-G[1])*G[2])*sd;
+  }
+  var cables=[];
+  function addCable(kind,A,B,ends){
+    var dx=B[0]-A[0], dy=B[1]-A[1], Lp=Math.hypot(dx,dy), k;
+    if(Lp<1 || Math.abs(B[2]-A[2])/Lp>0.6) return;
+    for(k=0;k<ends.length;k++){
+      var e=ends[k], o=e.P===A?B:A, vx=o[0]-e.P[0], vy=o[1]-e.P[1], vl=Math.hypot(vx,vy);
+      if((vx*e.N[0]+vy*e.N[1])/vl<Math.cos(35*Math.PI/180)) return;
+    }
+    var ivs=[];
+    conts.forEach(function(C){ var r=clipSeg(A,B,C.poly); if(r && r[1]-r[0]>1e-9) ivs.push({C:C, t0:r[0], t1:r[1]}); });
+    function aOf(S){
+      if(!(S>1e-9)) return Infinity;
+      var lo=Lp*1e-3, hi=Lp*Lp/(8*S)*4+Lp, it;
+      for(it=0;it<200;it++){ var md=Math.sqrt(lo*hi), sh=Math.sinh(Lp/(4*md));
+        if(2*md*sh*sh>S) lo=md; else hi=md; }
+      return Math.sqrt(lo*hi);
+    }
+    function zAt(t,a){ var c=A[2]+(B[2]-A[2])*t;
+      return isFinite(a)?c+2*a*Math.sinh(t*Lp/(2*a))*Math.sinh((t-1)*Lp/(2*a)):c; }
+    function low(S){ var a=aOf(S), m=1e18;
+      ivs.forEach(function(iv){ if(iv.C.kind!=='slab') return;
+        for(var j=0;j<=24;j++) m=Math.min(m,zAt(iv.t0+(iv.t1-iv.t0)*j/24,a)); });
+      return m; }
+    var S0=SAG*Lp, S=S0, clamped=false;
+    if(S>0 && low(S)<THM.clear){
+      var lo2=0, hi2=S;
+      for(k=0;k<60;k++){ var md2=(lo2+hi2)/2; if(low(md2)>=THM.clear) lo2=md2; else hi2=md2; }
+      S=lo2; clamped=true;
+      if(SAG>0 && S<1e-6) return;
+    }
+    if(low(S)<THM.clear-1e-9) return;
+    var a=aOf(S);
+    cables.push({id:cables.length, kind:kind, A:A, B:B, L:Lp, S0:S0, S:S, a:a, clamped:clamped, ivs:ivs,
+                 at:function(t){ return [A[0]+dx*t, A[1]+dy*t, zAt(t,a)]; }, pieces:0, dropped:0});
+  }
+  /* THE THEME'S CONTENT, made here: after the lots, the camera, the shared
+     primitives, the mirror's puddles and the cable machinery exist, which
+     is everything its own top-level code reads. */
+  var CT=THM.content(KIT());
   /* ---- the cables' pieces, into their containers, LAST so the parts they
      must miss are all there. The drawn line is the piece; its box (2 cm
      thick, for the order) is shortened until it sits inside the container. */
@@ -19285,46 +19359,6 @@ function buildStreet(p){
     paths.forEach(function(q){ (by[q.col]||(by[q.col]=[])).push(q); });
     Object.keys(by).forEach(function(c){ t+=travelOf(sortPaths(by[c])); });
     return t;
-  }
-
-  /* ---- §5.7 GRAFFITI on a ground-storey wall or shutter, in the wall's own
-     plane: TAGS are random-walk scribbles, THROW-UPS the bubble outlines of
-     2-4 pseudo-glyphs -- each glyph's strokes drawn as fat tubes, which is
-     what a bubble letter is. Its own substream per wall, drawn in a fixed
-     count; not drawn where it would be under 2 mm tall on the sheet. */
-  function graffiti(L,Pt,FR,fi,u0,u1,v0,v1,wall,key){
-    var sk=L.side<0?2:1, RG=sub(sk,key,SALT_GRAF), uP=RG(), uS=RG(), uC=RG(), uW=RG(), uX=RG();
-    var rec={style:uS<0.55?'tag':'throw', wall:wall, side:L.side, idx:L.idx, placed:uP<GRAFF};
-    STRTTALLY.graff.push(rec);
-    if(!rec.placed) return;
-    var col=[COL_MAG,COL_TURQ,COL_GLOW,COL_K][Math.min(3,Math.floor(uC*4))];
-    var gw=Math.min(u1-u0,1.2+1.8*uW), gh=Math.min(v1-v0,gw*0.5);
-    if(gw<0.4 || gh<0.2) return;
-    var gu=u0+(u1-u0-gw)*uX, gv=v0+(v1-v0-gh)*0.5, C=wp(FR,gu+gw/2,gv+gh/2,0);
-    if(!(gh*mmPerM(C,FR.n)>=2)) return;
-    var R2=sub(sk,key,SALT_GRAF+1), polys=[], k, j;
-    if(rec.style==='tag'){
-      var ns=1+Math.floor(R2()*3);
-      for(k=0;k<ns;k++){
-        var x=gw*(0.1+0.3*R2()), y=gh*(0.3+0.4*R2()), th=(R2()-0.5)*1.2, st=gh*(0.06+0.06*R2()), pl=[[x,y]];
-        var n=14+Math.floor(R2()*12);
-        for(j=0;j<n;j++){
-          th+=(R2()-0.5)*1.8; x+=Math.cos(th)*st+gw*0.02; y+=Math.sin(th)*st;
-          if(x<0||x>gw){ th=Math.PI-th; x=Math.max(0,Math.min(gw,x)); }
-          if(y<0||y>gh){ th=-th; y=Math.max(0,Math.min(gh,y)); }
-          pl.push([x,y]);
-        }
-        polys.push(pl);
-      }
-    } else {
-      var ng=2+Math.floor(R2()*3), cw=gw/ng, r=Math.min(cw,gh)*0.16;
-      var SK=[['V','H'],['K','H'],['S','V'],['H','S'],['B','V']];
-      for(k=0;k<ng;k++){
-        var bx=[k*cw+r*1.2, r*1.2, (k+1)*cw-r*1.2, gh-r*1.2], ty=SK[Math.min(4,Math.floor(R2()*5))];
-        ty.forEach(function(t){ tube(kStroke(t,bx,R2),r).forEach(function(lp){ polys.push(lp); }); });
-      }
-    }
-    drawOn(Pt,fi,surf(C,FR.n,gw,gh),polys,col,'graff');
   }
 
   /* ---- §3.2 near plane, frustum, and each part's screen silhouette -------- */
@@ -19553,8 +19587,8 @@ function buildStreet(p){
         });
         P.cont=L; P.col='#1a1a1a'; P.kind='block'; L.parts.push(P);
       });
-      dress(L,dn,df);
-      signsFor(L,dn,df);
+      CT.dress(L,dn,df);
+      CT.signsFor(L,dn,df);
     });
     /* The kerb: a prism from the road edge to the slab's back, 0.15 high. Only
        its road-facing face carries lines -- the kerb's foot and its top edge.
@@ -19572,7 +19606,7 @@ function buildStreet(p){
       P.hides=false;
       P.cont=C; P.col='#1a1a1a'; P.kind='kerb'; C.parts.push(P);
     });
-    furnish(dn,df);
+    CT.furnish(dn,df);
     cablesInto();
     /* the puddles: a plate 4 mm thin under the road's surface, its outline
        on the top face. It hides nothing; it carries the reflection (below). */
@@ -19592,7 +19626,7 @@ function buildStreet(p){
        from the mirrored parts this engine kept cannot see one it wrongly
        dropped. Only when there are puddles to see it in. */
     STRTTALLY.allparts=[];
-    if(puds.length || cars.length) conts.forEach(function(C){ C.parts.forEach(function(P){
+    if(puds.length || CT.cars.length) conts.forEach(function(C){ C.parts.forEach(function(P){
       STRTTALLY.allparts.push({faces:P.faces.map(function(f){ return {n:f.n, d:f.d}; }), V:verts(P), kind:P.kind||'',
         hides:P.hides!==false, seeThru:!!P.seeThru, car:P.car, cpart:P.cpart, wh:P.wh,
         lines:P.lines.map(function(Ln){ return {a:Ln.a, b:Ln.b, f0:Ln.f0, f1:Ln.f1, col:Ln.col||P.col, kind:Ln.kind, tag:Ln.tag}; })});
@@ -19972,8 +20006,8 @@ function buildStreet(p){
              parts:committed.length, paths:res.length, points:npts,
              cycles:cycles, ccycles:ccycles, splits:splits, unsep:unsep,
              unsepParts:RR.unsepParts, budget:BUDG, tries:tries, dnear:DN, dfar:DF, lod:LODE,
-             elems:STRTTALLY.elems.length, signs:nsigns, cables:cables.length, cars:cars.length,
-             dots:dots.length, penup0:penup0, penup1:penup1, dsplit:DSPLIT,
+             elems:STRTTALLY.elems.length, signs:nsigns, cables:cables.length, cars:CT.cars.length,
+             dots:CT.dots.length, penup0:penup0, penup1:penup1, dsplit:DSPLIT,
              puddles:puds.length, pudRejected:prej, rstep:RSTEPMM(), pudVisible:RR.npud, mirrored:RR.nmirror,
              reflRuns:RR.nrefl, rcycles:RR.rcycles, rsplits:RR.rsplits, runsep:RR.runsep};
   STRTINFO=lots.length+' lots · '+committed.length.toLocaleString()+' parts · '+
@@ -19981,13 +20015,14 @@ function buildStreet(p){
            (cycles?' · CYCLES '+cycles:' · cycles 0')+
            (splits?' · '+splits+' split':'')+
            (dropped?' · '+dropped+' lots dropped (overlap)':'')+
-           ' · '+nsigns+' signs · '+cables.length+' cables · '+cars.length+' cars · '+dots.length+' particles'+
+           ' · '+nsigns+' signs · '+cables.length+' cables · '+CT.cars.length+' cars · '+CT.dots.length+' particles'+
            ' · '+puds.length+' puddles'+(RR.npud?' ('+RR.npud+' in view, '+RR.nmirror.toLocaleString()+' parts reflected)':'')+
            (DPEN?' · depth pens: pen-up '+(penup0/1000).toFixed(1)+' m \u2192 '+(penup1/1000).toFixed(1)+' m (\u00d7'+
                  (penup0>0?penup1/penup0:0).toFixed(2)+')':'')+
            (tries?' · OVER BUDGET: detail pulled in to '+DN.toFixed(0)+' / '+DF.toFixed(0)+' m, LOD '+LODE.toFixed(1)+' mm'+
                   (RR.nrefl&&RIPMM>0?', ripple sampled every '+RSTEPMM().toFixed(1)+' mm':''):'');
   return res;
+  function KIT(){ return {THM:THM, P3:P3, add3:add3, addCable:addCable, cam:cam, dist3:dist3, drawOn:drawOn, faceC:faceC, faceIx:faceIx, frame:frame, hitsAny:hitsAny, inConv:inConv, lateral:lateral, mmPerM:mmPerM, paperGap:paperGap, para:para, polyFromLoops:polyFromLoops, prism:prism, prismN:prismN, splitPart:splitPart, sub:sub, surf:surf, vec:vec, verts:verts, wallOf:wallOf, wp:wp, CANTI:CANTI, CANYON:CANYON, CE:CE, FF:FF, FLOORS:FLOORS, HALFW:HALFW, HW:HW, KERB:KERB, KOFF:KOFF, LEN:LEN, NEAR:NEAR, PBACK:PBACK, RT:RT, SALT_BLD:SALT_BLD, STEPB:STEPB, ZUP:ZUP, cables:cables, conts:conts, lots:lots, slabsBySide:slabsBySide, p:p}; }
 }
 
 /* ---------- 14. MOIRE : swept section along a 3D spine, ONE path ----------
