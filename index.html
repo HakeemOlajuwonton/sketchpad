@@ -422,7 +422,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v276</a> &mdash; HARBOUR — a new corridor engine on the Street kit: a yard lane between stacks of ISO containers in eight paints, corrugated, with door gear, castings, wordmarks and check-digit codes; gantry cranes spanning the lane, yard trucks, light masts, bay paint, puddles</span></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v277</a> &mdash; REFACTOR ONLY — the corridor kit gains the hooks the library needs: the sign scripts lifted out of the street into corridorScripts (with a theme word list), a shorter minimum length, theme-chosen lot gaps, a shallower minimum lot, the kerb strip width, a knob alias, and puddle margins and outline ink. Street, Night market and Harbour byte-identical</span></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <div class="tabs" id="tabs"></div>
@@ -18076,6 +18076,187 @@ function marketTheme(K){
    everything buildStreet DRAWS, as opposed to the corridor machine that
    places, orders and occludes it. The kit makes it with KIT(), the names
    of the kit this code reads, and calls what it returns. */
+/* §5.3 THE SCRIPTS, as a factory (lifted out of streetTheme at row 52,
+   unchanged): the pseudo-kanji and pseudo-hangul banks drawn once per seed
+   from SALT_GLYPH, the Latin word list, and setText. */
+function corridorScripts(sub,SALT_GLYPH,words){
+  /* ---- §5.3 THE SCRIPTS. Both pseudo-scripts are BANKS drawn once per seed,
+     so a character recurs across signs the way a real script's do -- an
+     invented glyph used once reads as a scribble, used ten times as writing.
+     Every glyph is polylines in a unit cell, y up. */
+  function kStroke(t,b,R){
+    var x0=b[0],y0=b[1],x1=b[2],y1=b[3],w=x1-x0,h=y1-y0;
+    function q(n){ return Math.floor(R()*n)/(n-1); }
+    if(t==='H'){ var y=y0+h*(0.12+0.76*q(5)); return [[x0+w*0.04,y],[x1-w*0.04,y]]; }
+    if(t==='V'){ var x=x0+w*(0.12+0.76*q(5)); return [[x,y1-h*0.03],[x,y0+h*0.03]]; }
+    if(t==='D'){ var xd=x0+w*(0.2+0.55*R()), yd=y0+h*(0.35+0.55*R()); return [[xd,yd],[xd+w*0.13,yd-h*0.15]]; }
+    if(t==='K'){ var xk=x0+w*(0.35+0.4*R()); return [[xk,y1-h*0.03],[xk,y0+h*0.1],[xk-w*0.18,y0+h*0.22]]; }
+    if(t==='S'){
+      var xs=x0+w*(0.45+0.35*R()), o=[], k;
+      for(k=0;k<=5;k++){
+        var tt=k/5, ax=xs, ay=y1-h*0.03, cx=xs-w*0.05, cy=y0+h*0.4, bx=x0+w*0.04, by=y0+h*0.04;
+        o.push([(1-tt)*(1-tt)*ax+2*(1-tt)*tt*cx+tt*tt*bx, (1-tt)*(1-tt)*ay+2*(1-tt)*tt*cy+tt*tt*by]);
+      }
+      return o;
+    }
+    var bx0=x0+w*0.16, bx1=x1-w*0.16, by0=y0+h*(0.08+0.3*R()), by1=Math.min(y1-h*0.05, by0+h*(0.3+0.3*R()));
+    return [[bx0,by0],[bx1,by0],[bx1,by1],[bx0,by1],[bx0,by0]];
+  }
+  /* a radical: 2-6 strokes from horizontal, vertical, dot, hook, left sweep
+     and box, at most one box */
+  function kRadical(b,R){
+    var n=2+Math.floor(R()*5), types=[], strokes=[], hasB=false, i;
+    for(i=0;i<n;i++){
+      var u=R(), t=u<0.3?'H':u<0.5?'V':u<0.62?'D':u<0.74?'K':u<0.86?'S':'B';
+      if(t==='B'){ if(hasB) t='H'; hasB=true; }
+      types.push(t); strokes.push(kStroke(t,b,R));
+    }
+    return {types:types, strokes:strokes};
+  }
+  /* a glyph: 1-3 radicals in a layout -- single, left-right (the right half
+     sometimes split top-bottom), top-bottom, or an enclosure */
+  function genKanji(R){
+    var lay=Math.floor(R()*4), rads=[], M2=0.08, sp;
+    if(lay===0) rads.push(kRadical([M2,M2,1-M2,1-M2],R));
+    else if(lay===1){
+      sp=0.38+0.14*R(); rads.push(kRadical([M2,M2,sp,1-M2],R));
+      if(R()<0.35){ var sy=0.45+0.1*R();
+        rads.push(kRadical([sp+0.04,sy+0.02,1-M2,1-M2],R)); rads.push(kRadical([sp+0.04,M2,1-M2,sy-0.02],R)); }
+      else rads.push(kRadical([sp+0.04,M2,1-M2,1-M2],R));
+    } else if(lay===2){
+      sp=0.42+0.14*R(); rads.push(kRadical([M2,sp+0.03,1-M2,1-M2],R)); rads.push(kRadical([M2,M2,1-M2,sp-0.03],R));
+    } else {
+      rads.push({types:['V','H','K'], strokes:[[[M2,1-M2],[M2,M2]],[[M2,1-M2],[1-M2,1-M2]],
+                                              [[1-M2,1-M2],[1-M2,M2+0.06],[1-M2-0.1,M2+0.14]]]});
+      rads.push(kRadical([M2+0.16,M2+0.12,1-M2-0.16,1-M2-0.18],R));
+    }
+    var st=[]; rads.forEach(function(r){ r.strokes.forEach(function(s){ st.push(s); }); });
+    return {layout:lay, rad:rads.map(function(r){ return r.types; }), strokes:st};
+  }
+  function ring2(xm,ym,r,n){ var o=[]; for(var i=0;i<=n;i++){ var a=TAU*i/n; o.push([xm+Math.cos(a)*r, ym+Math.sin(a)*r]); } return o; }
+  /* jamo-like parts: ten consonants, four vertical and four horizontal vowels */
+  function jamoC(k,b){
+    var x0=b[0],y0=b[1],x1=b[2],y1=b[3],xm=(x0+x1)/2,ym=(y0+y1)/2, w=x1-x0, h=y1-y0;
+    if(k===0) return [[[x0,y1],[x1,y1],[x1,y0]]];
+    if(k===1) return [[[x0,y1],[x0,y0],[x1,y0]]];
+    if(k===2) return [[[x1,y1],[x0,y1],[x0,y0],[x1,y0]]];
+    if(k===3) return [[[x0,y1],[x1,y1],[x1,ym],[x0,ym],[x0,y0],[x1,y0]]];
+    if(k===4) return [[[x0,y0],[x1,y0],[x1,y1],[x0,y1],[x0,y0]]];
+    if(k===5) return [[[x0,y1],[x0,y0],[x1,y0],[x1,y1]],[[x0,ym],[x1,ym]]];
+    if(k===6) return [[[xm,y1],[x0,y0]],[[xm+w*0.02,(y1+ym)/2],[x1,y0]]];
+    if(k===7) return [ring2(xm,ym,Math.min(w,h)/2,12)];
+    if(k===8) return [[[x0,y1],[x1,y1]],[[xm,y1],[x0,y0]],[[xm,(y1+ym)/2],[x1,y0]]];
+    var r2=Math.min(w,h)*0.28;
+    return [[[xm-w*0.15,y1],[xm+w*0.15,y1]],[[x0,y1-h*0.22],[x1,y1-h*0.22]],ring2(xm,y0+r2+h*0.02,r2,12)];
+  }
+  function jamoV(k,b,vert){
+    var x0=b[0],y0=b[1],x1=b[2],y1=b[3],xm=(x0+x1)/2,ym=(y0+y1)/2,w=x1-x0;
+    if(vert){
+      if(k===0) return [[[xm,y1],[xm,y0]]];
+      if(k===1) return [[[xm,y1],[xm,y0]],[[xm,ym],[x1,ym]]];
+      if(k===2) return [[[xm,y1],[xm,y0]],[[x0,ym],[xm,ym]]];
+      return [[[x0+w*0.35,y1],[x0+w*0.35,y0]],[[x0+w*0.35,ym],[x0+w*0.7,ym]],[[x1,y1],[x1,y0]]];
+    }
+    if(k===0) return [[[x0,ym],[x1,ym]]];
+    if(k===1) return [[[x0,ym],[x1,ym]],[[xm,ym],[xm,y1]]];
+    if(k===2) return [[[x0,ym],[x1,ym]],[[xm,ym],[xm,y0]]];
+    return [[[x0,ym],[x1,ym]],[[x0+w*0.35,ym],[x0+w*0.35,y1]],[[x0+w*0.65,ym],[x0+w*0.65,y1]]];
+  }
+  /* a syllable block of 2-3 jamo: a consonant, a vowel beside it or under it,
+     and sometimes a final consonant under both */
+  function genHangul(R){
+    var vert=R()<0.55, fin=R()<0.4, ci=Math.floor(R()*10), vi=Math.floor(R()*4), fi=Math.floor(R()*10);
+    var top=fin?0.46:0.1, st=[];
+    function put(L){ L.forEach(function(s){ st.push(s); }); }
+    if(vert){ put(jamoC(ci,[0.1,top+0.04,0.52,0.9])); put(jamoV(vi,[0.6,top,0.9,0.92],true)); }
+    else { put(jamoC(ci,[0.25,top+0.3*(1-top),0.75,0.9])); put(jamoV(vi,[0.12,top+0.02,0.88,top+0.26*(1-top)],false)); }
+    if(fin) put(jamoC(fi,[0.25,0.08,0.75,0.38]));
+    return {jamo:fin?3:2, layout:vert?'v':'h', strokes:st};
+  }
+  var BANK={kanji:[], hangul:[]};
+  {
+    var RBK=sub(0,0,SALT_GLYPH), RBH=sub(0,1,SALT_GLYPH), gi;
+    for(gi=0;gi<48;gi++) BANK.kanji.push(genKanji(RBK));
+    for(gi=0;gi<48;gi++) BANK.hangul.push(genHangul(RBH));
+  }
+  STRTTALLY.bank={kanji:BANK.kanji.map(function(g){ return {layout:g.layout, rad:g.rad}; }),
+                  hangul:BANK.hangul.map(function(g){ return {layout:g.layout, jamo:g.jamo}; })};
+  /* THE LATIN SCRIPT'S 200 WORDS, the kind a street's signs carry. */
+  var WORDS=words||('RAMEN SUSHI BAR CAFE HOTEL KARAOKE SALON PHARMACY BOOKS RECORDS TOBACCO NOODLE IZAKAYA GYOZA UDON SOBA '+
+    'TEMPURA YAKITORI CURRY BENTO TEA COFFEE DINER GRILL BAKERY DELI MARKET LIQUOR WINE BEER SAKE PUB LOUNGE CLUB '+
+    'DISCO ARCADE PACHINKO CINEMA THEATRE MUSIC PIANO GUITAR VINYL RADIO VIDEO GAMES TOYS COMICS MANGA ANIME '+
+    'PHOTO CAMERA OPTICS WATCH CLOCK JEWEL GOLD SILVER PAWN BANK CASH LOANS EXCHANGE TRAVEL TICKETS TOURS TAXI '+
+    'PARKING GARAGE MOTOR CYCLE BIKE TIRES FUEL OIL REPAIR KEYS LOCKS SHOES BOOTS BAGS HATS FASHION BOUTIQUE '+
+    'TAILOR DENIM KIMONO SILK COTTON FABRIC YARN BEAUTY NAILS HAIR BARBER SPA SAUNA BATH MASSAGE CLINIC DENTAL '+
+    'DOCTOR HERBS FLOWERS GARDEN PLANTS PETS FISH BIRDS FRUIT PRODUCE MEAT TOFU RICE BREAD CAKE SWEETS CANDY '+
+    'DONUT CREPE WAFFLE PIZZA PASTA TACO BURGER STEAK BBQ HOTPOT DUMPLING OYSTER CRAB SHRIMP SQUID EEL TUNA '+
+    'SALMON OCTOPUS NOODLES SNACK KITCHEN CANTEEN BISTRO TAVERN INN HOSTEL CAPSULE ROOMS VACANCY OPEN LATE '+
+    'NIGHT DAILY FRESH HOT COLD ICE STAR MOON SUN NEON CITY TOWER PLAZA ARCADIA CENTRAL STATION METRO EXPRESS '+
+    'POST MAIL PRINT COPY PAPER PENS ART GALLERY STUDIO DANCE YOGA BOXING KARATE JUDO GYM POOL BILLIARDS DARTS '+
+    'MAHJONG SHOGI WOK LUCKY LOTTO ELECTRIC PHONE MOBILE REPAIRS CHESS VIOLIN DRUMS JAZZ BLUES').split(' ');
+  STRTTALLY.words=WORDS.slice();
+  var LATCAP=0;
+  function latCap(){
+    if(LATCAP) return LATCAP;
+    var g=glyphStrokes('H','futural'), mx=0;
+    if(g) g.strokes.forEach(function(s){ s.forEach(function(q){ if(q[1]>mx) mx=q[1]; }); });
+    LATCAP=mx>0?mx:0.6;
+    return LATCAP;
+  }
+  /* SET TEXT in a W x H box, stacked as CJK signs run (vert) or in a row.
+     Returns polylines in the box's own (u,v), the glyph height, and a record
+     of what was set. Glyph choice comes from the sign's own text stream. */
+  function setText(script,W,H,vert,RT){
+    var m=0.12*Math.min(W,H), lines=[], rec=[], words=[], h, n, i;
+    if(vert){ h=Math.min(W-2*m,1.2); n=Math.min(8,Math.floor((H-2*m)/(1.12*h))); }
+    else { h=Math.min(H-2*m,1.6)*0.86; n=Math.min(10,Math.floor((W-2*m)/(1.1*h))); }
+    if(!(h>0.05) || n<1) return {lines:[], h:0, rec:[], words:[]};
+    function place(strokes,u0,v0,s,dx){
+      strokes.forEach(function(st){ lines.push(st.map(function(q){ return [u0+dx+q[0]*s, v0+q[1]*s]; })); });
+    }
+    function cell(k){ return vert?[(W-h)/2, H-m-(k+1)*1.12*h+0.06*h]:[(W-(n*1.1*h-0.1*h))/2+k*1.1*h, (H-h)/2]; }
+    if(script!=='latin'){
+      var B=script==='kanji'?BANK.kanji:BANK.hangul;
+      for(i=0;i<n;i++){
+        var bi=Math.min(B.length-1,Math.floor(RT()*B.length)), c=cell(i);
+        place(B[bi].strokes,c[0],c[1],h,0);
+        rec.push({script:script, bank:bi, strokes:B[bi].strokes.length});
+      }
+      return {lines:lines, h:h, rec:rec, words:words};
+    }
+    /* LATIN: a word that fits. Vertical takes one letter per cell; a row is
+       proportional, and shrinks to fit the panel rather than overrunning it */
+    var cap=latCap(), w=null, tries;
+    for(tries=0;tries<6;tries++){ var cand=WORDS[Math.min(WORDS.length-1,Math.floor(RT()*WORDS.length))];
+      if(!w && (!vert || cand.length<=n)) w=cand; }
+    /* none of six fits: a random word of those that do -- not the shortest,
+       which made every narrow blade on a street say the same thing */
+    if(!w){ var fit=WORDS.filter(function(x){ return x.length<=n; }); if(fit.length) w=fit[Math.min(fit.length-1,Math.floor(RT()*fit.length))]; }
+    if(!w) return {lines:[], h:0, rec:[], words:[]};
+    words.push(w);
+    var gl=w.split('').map(function(ch){ return {ch:ch, g:glyphStrokes(ch,'futural')}; });
+    if(vert){
+      var s=h*0.9/cap;
+      gl.forEach(function(G,k){
+        var c=cell(k), adv=G.g?G.g.adv:0.5;
+        if(G.g) place(G.g.strokes,c[0],c[1]+0.05*h,s,(h-adv*s)/2);
+        rec.push({script:'latin', ch:G.ch, strokes:G.g?G.g.strokes.length:0});
+      });
+      return {lines:lines, h:h, rec:rec, words:words};
+    }
+    var s2=h/cap, tot=0;
+    gl.forEach(function(G){ tot+=(G.g?G.g.adv:0.5); });
+    if(tot*s2>W-2*m){ s2=(W-2*m)/tot; h=s2*cap; }
+    var u=(W-tot*s2)/2, v0=(H-h)/2;
+    gl.forEach(function(G){
+      if(G.g) place(G.g.strokes,u,v0,s2,0);
+      u+=(G.g?G.g.adv:0.5)*s2;
+      rec.push({script:'latin', ch:G.ch, strokes:G.g?G.g.strokes.length:0});
+    });
+    return {lines:lines, h:h, rec:rec, words:words};
+  }
+  return {BANK:BANK, WORDS:WORDS, setText:setText, kStroke:kStroke, ring2:ring2, latCap:latCap};
+}
 function streetTheme(K){
   /* SWITCHES a theme may turn off (row 50). Street sets none of them, and an
      unset switch is the street as it was. */
@@ -18665,181 +18846,12 @@ function streetTheme(K){
      which is what a tube that narrow looks like anyway. */
   var TEXTMM=1.0, TUBEMM=0.5;
 
-  /* ---- §5.3 THE SCRIPTS. Both pseudo-scripts are BANKS drawn once per seed,
-     so a character recurs across signs the way a real script's do -- an
-     invented glyph used once reads as a scribble, used ten times as writing.
-     Every glyph is polylines in a unit cell, y up. */
-  function kStroke(t,b,R){
-    var x0=b[0],y0=b[1],x1=b[2],y1=b[3],w=x1-x0,h=y1-y0;
-    function q(n){ return Math.floor(R()*n)/(n-1); }
-    if(t==='H'){ var y=y0+h*(0.12+0.76*q(5)); return [[x0+w*0.04,y],[x1-w*0.04,y]]; }
-    if(t==='V'){ var x=x0+w*(0.12+0.76*q(5)); return [[x,y1-h*0.03],[x,y0+h*0.03]]; }
-    if(t==='D'){ var xd=x0+w*(0.2+0.55*R()), yd=y0+h*(0.35+0.55*R()); return [[xd,yd],[xd+w*0.13,yd-h*0.15]]; }
-    if(t==='K'){ var xk=x0+w*(0.35+0.4*R()); return [[xk,y1-h*0.03],[xk,y0+h*0.1],[xk-w*0.18,y0+h*0.22]]; }
-    if(t==='S'){
-      var xs=x0+w*(0.45+0.35*R()), o=[], k;
-      for(k=0;k<=5;k++){
-        var tt=k/5, ax=xs, ay=y1-h*0.03, cx=xs-w*0.05, cy=y0+h*0.4, bx=x0+w*0.04, by=y0+h*0.04;
-        o.push([(1-tt)*(1-tt)*ax+2*(1-tt)*tt*cx+tt*tt*bx, (1-tt)*(1-tt)*ay+2*(1-tt)*tt*cy+tt*tt*by]);
-      }
-      return o;
-    }
-    var bx0=x0+w*0.16, bx1=x1-w*0.16, by0=y0+h*(0.08+0.3*R()), by1=Math.min(y1-h*0.05, by0+h*(0.3+0.3*R()));
-    return [[bx0,by0],[bx1,by0],[bx1,by1],[bx0,by1],[bx0,by0]];
-  }
-  /* a radical: 2-6 strokes from horizontal, vertical, dot, hook, left sweep
-     and box, at most one box */
-  function kRadical(b,R){
-    var n=2+Math.floor(R()*5), types=[], strokes=[], hasB=false, i;
-    for(i=0;i<n;i++){
-      var u=R(), t=u<0.3?'H':u<0.5?'V':u<0.62?'D':u<0.74?'K':u<0.86?'S':'B';
-      if(t==='B'){ if(hasB) t='H'; hasB=true; }
-      types.push(t); strokes.push(kStroke(t,b,R));
-    }
-    return {types:types, strokes:strokes};
-  }
-  /* a glyph: 1-3 radicals in a layout -- single, left-right (the right half
-     sometimes split top-bottom), top-bottom, or an enclosure */
-  function genKanji(R){
-    var lay=Math.floor(R()*4), rads=[], M2=0.08, sp;
-    if(lay===0) rads.push(kRadical([M2,M2,1-M2,1-M2],R));
-    else if(lay===1){
-      sp=0.38+0.14*R(); rads.push(kRadical([M2,M2,sp,1-M2],R));
-      if(R()<0.35){ var sy=0.45+0.1*R();
-        rads.push(kRadical([sp+0.04,sy+0.02,1-M2,1-M2],R)); rads.push(kRadical([sp+0.04,M2,1-M2,sy-0.02],R)); }
-      else rads.push(kRadical([sp+0.04,M2,1-M2,1-M2],R));
-    } else if(lay===2){
-      sp=0.42+0.14*R(); rads.push(kRadical([M2,sp+0.03,1-M2,1-M2],R)); rads.push(kRadical([M2,M2,1-M2,sp-0.03],R));
-    } else {
-      rads.push({types:['V','H','K'], strokes:[[[M2,1-M2],[M2,M2]],[[M2,1-M2],[1-M2,1-M2]],
-                                              [[1-M2,1-M2],[1-M2,M2+0.06],[1-M2-0.1,M2+0.14]]]});
-      rads.push(kRadical([M2+0.16,M2+0.12,1-M2-0.16,1-M2-0.18],R));
-    }
-    var st=[]; rads.forEach(function(r){ r.strokes.forEach(function(s){ st.push(s); }); });
-    return {layout:lay, rad:rads.map(function(r){ return r.types; }), strokes:st};
-  }
-  function ring2(xm,ym,r,n){ var o=[]; for(var i=0;i<=n;i++){ var a=TAU*i/n; o.push([xm+Math.cos(a)*r, ym+Math.sin(a)*r]); } return o; }
-  /* jamo-like parts: ten consonants, four vertical and four horizontal vowels */
-  function jamoC(k,b){
-    var x0=b[0],y0=b[1],x1=b[2],y1=b[3],xm=(x0+x1)/2,ym=(y0+y1)/2, w=x1-x0, h=y1-y0;
-    if(k===0) return [[[x0,y1],[x1,y1],[x1,y0]]];
-    if(k===1) return [[[x0,y1],[x0,y0],[x1,y0]]];
-    if(k===2) return [[[x1,y1],[x0,y1],[x0,y0],[x1,y0]]];
-    if(k===3) return [[[x0,y1],[x1,y1],[x1,ym],[x0,ym],[x0,y0],[x1,y0]]];
-    if(k===4) return [[[x0,y0],[x1,y0],[x1,y1],[x0,y1],[x0,y0]]];
-    if(k===5) return [[[x0,y1],[x0,y0],[x1,y0],[x1,y1]],[[x0,ym],[x1,ym]]];
-    if(k===6) return [[[xm,y1],[x0,y0]],[[xm+w*0.02,(y1+ym)/2],[x1,y0]]];
-    if(k===7) return [ring2(xm,ym,Math.min(w,h)/2,12)];
-    if(k===8) return [[[x0,y1],[x1,y1]],[[xm,y1],[x0,y0]],[[xm,(y1+ym)/2],[x1,y0]]];
-    var r2=Math.min(w,h)*0.28;
-    return [[[xm-w*0.15,y1],[xm+w*0.15,y1]],[[x0,y1-h*0.22],[x1,y1-h*0.22]],ring2(xm,y0+r2+h*0.02,r2,12)];
-  }
-  function jamoV(k,b,vert){
-    var x0=b[0],y0=b[1],x1=b[2],y1=b[3],xm=(x0+x1)/2,ym=(y0+y1)/2,w=x1-x0;
-    if(vert){
-      if(k===0) return [[[xm,y1],[xm,y0]]];
-      if(k===1) return [[[xm,y1],[xm,y0]],[[xm,ym],[x1,ym]]];
-      if(k===2) return [[[xm,y1],[xm,y0]],[[x0,ym],[xm,ym]]];
-      return [[[x0+w*0.35,y1],[x0+w*0.35,y0]],[[x0+w*0.35,ym],[x0+w*0.7,ym]],[[x1,y1],[x1,y0]]];
-    }
-    if(k===0) return [[[x0,ym],[x1,ym]]];
-    if(k===1) return [[[x0,ym],[x1,ym]],[[xm,ym],[xm,y1]]];
-    if(k===2) return [[[x0,ym],[x1,ym]],[[xm,ym],[xm,y0]]];
-    return [[[x0,ym],[x1,ym]],[[x0+w*0.35,ym],[x0+w*0.35,y1]],[[x0+w*0.65,ym],[x0+w*0.65,y1]]];
-  }
-  /* a syllable block of 2-3 jamo: a consonant, a vowel beside it or under it,
-     and sometimes a final consonant under both */
-  function genHangul(R){
-    var vert=R()<0.55, fin=R()<0.4, ci=Math.floor(R()*10), vi=Math.floor(R()*4), fi=Math.floor(R()*10);
-    var top=fin?0.46:0.1, st=[];
-    function put(L){ L.forEach(function(s){ st.push(s); }); }
-    if(vert){ put(jamoC(ci,[0.1,top+0.04,0.52,0.9])); put(jamoV(vi,[0.6,top,0.9,0.92],true)); }
-    else { put(jamoC(ci,[0.25,top+0.3*(1-top),0.75,0.9])); put(jamoV(vi,[0.12,top+0.02,0.88,top+0.26*(1-top)],false)); }
-    if(fin) put(jamoC(fi,[0.25,0.08,0.75,0.38]));
-    return {jamo:fin?3:2, layout:vert?'v':'h', strokes:st};
-  }
-  var BANK={kanji:[], hangul:[]};
-  {
-    var RBK=sub(0,0,SALT_GLYPH), RBH=sub(0,1,SALT_GLYPH), gi;
-    for(gi=0;gi<48;gi++) BANK.kanji.push(genKanji(RBK));
-    for(gi=0;gi<48;gi++) BANK.hangul.push(genHangul(RBH));
-  }
-  STRTTALLY.bank={kanji:BANK.kanji.map(function(g){ return {layout:g.layout, rad:g.rad}; }),
-                  hangul:BANK.hangul.map(function(g){ return {layout:g.layout, jamo:g.jamo}; })};
-  /* THE LATIN SCRIPT'S 200 WORDS, the kind a street's signs carry. */
-  var WORDS=('RAMEN SUSHI BAR CAFE HOTEL KARAOKE SALON PHARMACY BOOKS RECORDS TOBACCO NOODLE IZAKAYA GYOZA UDON SOBA '+
-    'TEMPURA YAKITORI CURRY BENTO TEA COFFEE DINER GRILL BAKERY DELI MARKET LIQUOR WINE BEER SAKE PUB LOUNGE CLUB '+
-    'DISCO ARCADE PACHINKO CINEMA THEATRE MUSIC PIANO GUITAR VINYL RADIO VIDEO GAMES TOYS COMICS MANGA ANIME '+
-    'PHOTO CAMERA OPTICS WATCH CLOCK JEWEL GOLD SILVER PAWN BANK CASH LOANS EXCHANGE TRAVEL TICKETS TOURS TAXI '+
-    'PARKING GARAGE MOTOR CYCLE BIKE TIRES FUEL OIL REPAIR KEYS LOCKS SHOES BOOTS BAGS HATS FASHION BOUTIQUE '+
-    'TAILOR DENIM KIMONO SILK COTTON FABRIC YARN BEAUTY NAILS HAIR BARBER SPA SAUNA BATH MASSAGE CLINIC DENTAL '+
-    'DOCTOR HERBS FLOWERS GARDEN PLANTS PETS FISH BIRDS FRUIT PRODUCE MEAT TOFU RICE BREAD CAKE SWEETS CANDY '+
-    'DONUT CREPE WAFFLE PIZZA PASTA TACO BURGER STEAK BBQ HOTPOT DUMPLING OYSTER CRAB SHRIMP SQUID EEL TUNA '+
-    'SALMON OCTOPUS NOODLES SNACK KITCHEN CANTEEN BISTRO TAVERN INN HOSTEL CAPSULE ROOMS VACANCY OPEN LATE '+
-    'NIGHT DAILY FRESH HOT COLD ICE STAR MOON SUN NEON CITY TOWER PLAZA ARCADIA CENTRAL STATION METRO EXPRESS '+
-    'POST MAIL PRINT COPY PAPER PENS ART GALLERY STUDIO DANCE YOGA BOXING KARATE JUDO GYM POOL BILLIARDS DARTS '+
-    'MAHJONG SHOGI WOK LUCKY LOTTO ELECTRIC PHONE MOBILE REPAIRS CHESS VIOLIN DRUMS JAZZ BLUES').split(' ');
-  STRTTALLY.words=WORDS.slice();
-  var LATCAP=0;
-  function latCap(){
-    if(LATCAP) return LATCAP;
-    var g=glyphStrokes('H','futural'), mx=0;
-    if(g) g.strokes.forEach(function(s){ s.forEach(function(q){ if(q[1]>mx) mx=q[1]; }); });
-    LATCAP=mx>0?mx:0.6;
-    return LATCAP;
-  }
-  /* SET TEXT in a W x H box, stacked as CJK signs run (vert) or in a row.
-     Returns polylines in the box's own (u,v), the glyph height, and a record
-     of what was set. Glyph choice comes from the sign's own text stream. */
-  function setText(script,W,H,vert,RT){
-    var m=0.12*Math.min(W,H), lines=[], rec=[], words=[], h, n, i;
-    if(vert){ h=Math.min(W-2*m,1.2); n=Math.min(8,Math.floor((H-2*m)/(1.12*h))); }
-    else { h=Math.min(H-2*m,1.6)*0.86; n=Math.min(10,Math.floor((W-2*m)/(1.1*h))); }
-    if(!(h>0.05) || n<1) return {lines:[], h:0, rec:[], words:[]};
-    function place(strokes,u0,v0,s,dx){
-      strokes.forEach(function(st){ lines.push(st.map(function(q){ return [u0+dx+q[0]*s, v0+q[1]*s]; })); });
-    }
-    function cell(k){ return vert?[(W-h)/2, H-m-(k+1)*1.12*h+0.06*h]:[(W-(n*1.1*h-0.1*h))/2+k*1.1*h, (H-h)/2]; }
-    if(script!=='latin'){
-      var B=script==='kanji'?BANK.kanji:BANK.hangul;
-      for(i=0;i<n;i++){
-        var bi=Math.min(B.length-1,Math.floor(RT()*B.length)), c=cell(i);
-        place(B[bi].strokes,c[0],c[1],h,0);
-        rec.push({script:script, bank:bi, strokes:B[bi].strokes.length});
-      }
-      return {lines:lines, h:h, rec:rec, words:words};
-    }
-    /* LATIN: a word that fits. Vertical takes one letter per cell; a row is
-       proportional, and shrinks to fit the panel rather than overrunning it */
-    var cap=latCap(), w=null, tries;
-    for(tries=0;tries<6;tries++){ var cand=WORDS[Math.min(WORDS.length-1,Math.floor(RT()*WORDS.length))];
-      if(!w && (!vert || cand.length<=n)) w=cand; }
-    /* none of six fits: a random word of those that do -- not the shortest,
-       which made every narrow blade on a street say the same thing */
-    if(!w){ var fit=WORDS.filter(function(x){ return x.length<=n; }); if(fit.length) w=fit[Math.min(fit.length-1,Math.floor(RT()*fit.length))]; }
-    if(!w) return {lines:[], h:0, rec:[], words:[]};
-    words.push(w);
-    var gl=w.split('').map(function(ch){ return {ch:ch, g:glyphStrokes(ch,'futural')}; });
-    if(vert){
-      var s=h*0.9/cap;
-      gl.forEach(function(G,k){
-        var c=cell(k), adv=G.g?G.g.adv:0.5;
-        if(G.g) place(G.g.strokes,c[0],c[1]+0.05*h,s,(h-adv*s)/2);
-        rec.push({script:'latin', ch:G.ch, strokes:G.g?G.g.strokes.length:0});
-      });
-      return {lines:lines, h:h, rec:rec, words:words};
-    }
-    var s2=h/cap, tot=0;
-    gl.forEach(function(G){ tot+=(G.g?G.g.adv:0.5); });
-    if(tot*s2>W-2*m){ s2=(W-2*m)/tot; h=s2*cap; }
-    var u=(W-tot*s2)/2, v0=(H-h)/2;
-    gl.forEach(function(G){
-      if(G.g) place(G.g.strokes,u,v0,s2,0);
-      u+=(G.g?G.g.adv:0.5)*s2;
-      rec.push({script:'latin', ch:G.ch, strokes:G.g?G.g.strokes.length:0});
-    });
-    return {lines:lines, h:h, rec:rec, words:words};
-  }
+  /* §5.3's scripts: the glyph banks, the word list and setText, made by
+     corridorScripts (row 52 lifted them out so a theme without streets --
+     the library's spines -- can letter in the same scripts) */
+  var SCR=corridorScripts(sub,SALT_GLYPH), BANK=SCR.BANK, WORDS=SCR.WORDS, setText=SCR.setText,
+      kStroke=SCR.kStroke, ring2=SCR.ring2;
+
   /* emblem icons in a 2re x 2re box: cocktail glass, padlock, key, bowl, and
      §5.3a's generated emblem -- a circle with 2-4 concentric or radial
      strokes, rotationally symmetric */
@@ -19528,7 +19540,10 @@ function buildCorridor(p,THM){
   /* a theme PINS the knobs it has no use for (row 50): a market alley has no
      cars, so its build must not read the street's default of three */
   if(THM.fixed) p=Object.assign({},p,THM.fixed);
-  var LEN=Math.max(60,+p.len||220), BEND=Math.max(0,+p.bend||0);
+  /* row 52: a theme may read a kit knob under its own name (the library's
+     floor shine IS the puddle generator), and may be shorter than a street */
+  if(THM.alias){ p=Object.assign({},p); for(var ak in THM.alias) p[ak]=p[THM.alias[ak]]; }
+  var LEN=Math.max(THM.minLen||60,+p.len||220), BEND=Math.max(0,+p.bend||0);
   var WID=Math.max(THM.minWidth||4,+p.width||7), PAVE=Math.max(0,isFinite(p.pave)?+p.pave:2.5);
   var LOTMIN=Math.max(3,+p.lotmin||5), LOTMAX=Math.max(LOTMIN,+p.lotmax||11);
   var ALLEY=(p.alley||0)/100, FLOORS=Math.max(1,Math.round(p.floors||9));
@@ -19543,7 +19558,7 @@ function buildCorridor(p,THM){
      NEAR the near plane in metres (spec §3.2); KERB the kerb height. */
   /* the theme's (row 49): the kerb's height and the envelopes' top */
   var PAD=0.06, NEAR=0.25, KERB=THM.edgeZ, DS=0.5, ZTOP=THM.ztop, SLAB=THM.slabLen;
-  var HALFW=WID/2, KOFF=HALFW+0.3, PBACK=HALFW+PAVE;
+  var HALFW=WID/2, KOFF=HALFW+(THM.strip!==undefined?THM.strip:0.3), PBACK=HALFW+PAVE;
   var out=[], i, j, k;
   /* the kit's own inks: structure, tone hatch, the puddles' edge */
   var COL_K='#1a1a1a', COL_HATCH='#4a4a4a', COL_LBLUE='#5aa9e6';
@@ -19676,10 +19691,10 @@ function buildCorridor(p,THM){
          container wide and one or two lengths deep), from numbers it draws
          AFTER these four, so a lot is still the same lot whatever it does */
       var LGX=null;
-      if(THM.lotGen){ LGX=THM.lotGen(R,p); wl=LGX.wl; depth=LGX.depth; }
+      if(THM.lotGen){ LGX=THM.lotGen(R,p,li,sd); wl=LGX.wl; depth=LGX.depth; }
       var b0=cursor, b1=cursor+wl;
       if(b1>cum[cum.length-1]) break;
-      cursor=b1+(ua<ALLEY?aw:0);
+      cursor=b1+(LGX && LGX.gap!==undefined?LGX.gap:(ua<ALLEY?aw:0));
       var s0=arcOfBack(b0), s1=arcOfBack(b1);
       var BK=PBACK+depth, d=0, env=null, ok=false, t;
       /* THE ENVELOPE FRONT is 0.3 m short of the kerb, pushed back by `d`
@@ -19690,7 +19705,7 @@ function buildCorridor(p,THM){
       for(t=0;t<80;t++){
         var FE=KOFF+d;
         env=[P3(s0,sd,FE,0),P3(s1,sd,FE,0),P3(s1,sd,BK,0),P3(s0,sd,BK,0)].map(function(v){return [v[0],v[1]];});
-        if(FE>=BK-4 || !convex(env)){ env=null; break; }
+        if(FE>=BK-(THM.minEnv!==undefined?THM.minEnv:4) || !convex(env)){ env=null; break; }
         var hit=false, eb=bbox2(env), sl=slabsBySide[sd], q;
         for(q=0;q<sl.length;q++){
           if(sl[q].s1<s0-4.5||sl[q].s0>s1+4.5) continue;
@@ -19924,6 +19939,10 @@ function buildCorridor(p,THM){
   var PUDSZ=Math.max(0.05,Math.min(1,(isFinite(p.pudsz)?+p.pudsz:40)/100));
   var RIPMM=Math.max(0,Math.min(3,(isFinite(p.ripple)?+p.ripple:6)/10));
   var SALT_PUD=113, PUDNP=40;
+  /* how far a puddle keeps from the centreline and the slab's edge, and its
+     outline's ink (null: none) -- a theme's (row 52: the library's polish
+     patches lie in a 0.55 m half-aisle and have no edge) */
+  var PUDIN=THM.pudIn!==undefined?THM.pudIn:0.2, PUDCOL=THM.pudCol!==undefined?THM.pudCol:COL_LBLUE;
   /* WHERE THE CAMERA LOOKS. Spread evenly over the street, nine puddles put
      less than one on the 15 m of road nearest the camera, and that is the
      only road on which a reflection is bigger than a sliver -- at 30 m a 2 m
@@ -19940,10 +19959,10 @@ function buildCorridor(p,THM){
     var sPd=Math.min(LEN-0.5, sPud0+(sPud1-sPud0)*ud[0]*ud[0]);
     var CP=slP[Math.max(0,Math.min(slP.length-1,Math.floor(sPd/SLAB)))];
     var lenP=Math.min(CP.s1-CP.s0-0.3,(0.7+3.1*PUDSZ)*(0.6+0.4*ud[2]));
-    var widP=Math.min(HALFW-0.4,lenP*(0.35+0.4*ud[3]));
+    var widP=Math.min(HALFW-2*PUDIN,lenP*(0.35+0.4*ud[3]));
     if(!(lenP>=0.3 && widP>=0.15)){ prej++; continue; }
     var scP=CP.s0+0.15+lenP/2+(CP.s1-CP.s0-0.3-lenP)*ud[4];
-    var oloP=0.2+widP/2, ohiP=HALFW-0.2-widP/2, ocP=oloP+(ohiP-oloP)*Math.sqrt(ud[5]);
+    var oloP=PUDIN+widP/2, ohiP=HALFW-PUDIN-widP/2, ocP=oloP+(ohiP-oloP)*Math.sqrt(ud[5]);
     var a2=0.18*ud[6], a3=0.13*ud[7], a5=0.07*ud[8], rot=(ud[12]-0.5)*0.6, loc=[], mx=0, my=0, m2;
     for(m2=0;m2<PUDNP;m2++){
       var th=TAU*m2/PUDNP;
@@ -20392,9 +20411,9 @@ function buildCorridor(p,THM){
     puds.forEach(function(pd){
       var Pq=prismN(pd.hull,-0.004,0), m;
       Pq.lines=[];
-      for(m=0;m<pd.ring.length;m++)
-        Pq.lines.push({a:pd.ring[m], b:pd.ring[(m+1)%pd.ring.length], f0:1, f1:1, kind:'puddle', col:COL_LBLUE});
-      Pq.cont=pd.C; Pq.col=COL_LBLUE; Pq.kind='puddle'; Pq.layer='puddle'; Pq.hides=false;
+      if(PUDCOL) for(m=0;m<pd.ring.length;m++)
+        Pq.lines.push({a:pd.ring[m], b:pd.ring[(m+1)%pd.ring.length], f0:1, f1:1, kind:'puddle', col:PUDCOL});
+      Pq.cont=pd.C; Pq.col=PUDCOL||COL_LBLUE; Pq.kind='puddle'; Pq.layer='puddle'; Pq.hides=false;
       Pq.pud=pd; Pq.refl=[];
       pd.C.parts.push(Pq);
     });
