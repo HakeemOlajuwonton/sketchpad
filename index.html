@@ -422,7 +422,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v275</a> &mdash; REFACTOR ONLY — the corridor kit gains three hooks for the harbour: a theme may size its own lots (lotGen), a kerb of height 0 is not built, and slabPieces cuts a lane part into one piece per road slab. Street and Night market byte-identical</span></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v276</a> &mdash; HARBOUR — a new corridor engine on the Street kit: a yard lane between stacks of ISO containers in eight paints, corrugated, with door gear, castings, wordmarks and check-digit codes; gantry cranes spanning the lane, yard trucks, light masts, bay paint, puddles</span></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <div class="tabs" id="tabs"></div>
@@ -2136,6 +2136,19 @@ var SPEC={
     ['cams','Camera along',0,90,1,6,[100,'%']],['camx','Camera side',-100,100,1,0,[100,'%']],
     ['camz','Camera height',0.2,80,0.1,1.6,[1,' m']],['look','Look ahead',5,300,1,25,[1,' m']],
     ['pitch','Pitch',-45,45,0.5,4,[1,'°']],['fov','Field of view',25,120,1,80,[1,'°']],
+    ['dnear','Solid detail to',2,80,1,18,[1,' m']],['dfar','Outline detail to',10,400,5,90,[1,' m']],
+    ['dpen','Depth pens',0,1,1,0],['dsplit','Depth split',5,300,5,60,[1,' m']],
+    ['lod','LOD cutoff',0,60,1,4,[10,' mm']],['budg','Size budget',10,300,5,90,[1,' k points']],
+    ['occ','Gap',0,30,1,4,[10,' mm']]]],
+  harb:['Harbour',[
+    ['len','Lane length',60,600,10,220,[1,' m']],['bend','Bend',0,60,1,0,[1,'°/100 m']],
+    ['width','Lane width',6,24,0.5,14,[1,' m']],['pave','Apron',0,6,0.25,0,[1,' m']],
+    ['tiers','Tiers',1,8,1,4],['hc','High cubes',0,100,1,40,[100,'%']],
+    ['gantry','Gantry cranes',0,4,1,1,[1,'/100 m']],['trucks','Yard trucks',0,10,1,2,[1,'/100 m']],
+    ['puddles','Puddles',0,40,1,6],['pudsz','Puddle size',5,100,1,40,[100,'%']],['ripple','Ripple',0,30,1,6,[10,' mm']],
+    ['cams','Camera along',0,90,1,5,[100,'%']],['camx','Camera side',-100,100,1,-20,[100,'%']],
+    ['camz','Camera height',0.2,80,0.1,1.8,[1,' m']],['look','Look ahead',5,300,1,80,[1,' m']],
+    ['pitch','Pitch',-45,45,0.5,3,[1,'°']],['fov','Field of view',25,120,1,70,[1,'°']],
     ['dnear','Solid detail to',2,80,1,18,[1,' m']],['dfar','Outline detail to',10,400,5,90,[1,' m']],
     ['dpen','Depth pens',0,1,1,0],['dsplit','Depth split',5,300,5,60,[1,' m']],
     ['lod','LOD cutoff',0,60,1,4,[10,' mm']],['budg','Size budget',10,300,5,90,[1,' k points']],
@@ -15816,7 +15829,7 @@ function buildIsoImg(p){
 
 var ENG={record:buildRecord, flow:buildFlow, growth:buildGrowth, contour:buildContour, ridge:buildRidge,
          pack:buildPack, voronoi:buildVoronoi, truchet:buildTruchet, maze:buildMaze, hilbert:buildHilbert,
-         rows:buildRows, poin:buildPoincare, flag:buildFlag, stat:buildStation, strt:buildStreet, mkt:buildMarket,
+         rows:buildRows, poin:buildPoincare, flag:buildFlag, stat:buildStation, strt:buildStreet, mkt:buildMarket, harb:buildHarbour,
          harmo:buildHarmo, chladni:buildChladni, moire:buildMoire, disc:buildChladniDisc, fan:buildFan,
   string:buildString, fermat:buildFermat, logsp:buildLogSpiral, chuck:buildChuck,
          apoll:buildApollonian, wave:buildWave, sform:buildSuper,
@@ -17407,7 +17420,12 @@ var STHEMES={
        midH:[2.8,3.2], edgeZ:0.15, slabLen:4, clear:2.6, ztop:200, mirror:'puddles', minWidth:2,
        fixed:{cars:0, dots:0, graff:0}, flags:{poles:false, roadMarks:false, bollards:false, shopOpen:true, cableEdge:true, attachBase:true, edgeSlots:true},
        cableAvoid:['lantern','stall'],
-       content:function(K){ return marketTheme(K); }}
+       content:function(K){ return marketTheme(K); }},
+  /* §4: a yard lane, a container row for a lot, no kerb and no buildings */
+  harb:{key:'harb', label:'Harbour', lotDepth:[13,26], alleyW:[0.3,0.4], baseN2:0, baseH:[2.591,2.591],
+        midH:[2.591,2.591], edgeZ:0, slabLen:4, clear:4.5, ztop:200, mirror:'puddles', minWidth:6,
+        lotGen:function(R,p){ return harbourLotGen(R,p); }, fixed:{alley:100, cars:0, dots:0, graff:0, signs:0, cables:0, canyon:0, stepb:0, canti:0},
+        content:function(K){ return harbourTheme(K); }}
 };
 /* the width of a [lo,hi] range, rounded to the nearest nanometre so that a
    [1.2,2.5] range spans the 1.3 the code always multiplied by, not the
@@ -17415,6 +17433,7 @@ var STHEMES={
 function spanOf(r){ return Math.round((r[1]-r[0])*1e9)/1e9; }
 function buildStreet(p){ return buildCorridor(p,STHEMES.street); }
 function buildMarket(p){ return buildCorridor(p,STHEMES.mkt); }
+function buildHarbour(p){ return buildCorridor(p,STHEMES.harb); }
 /* THE NIGHT MARKET THEME (queue row 50, docs/specs/2026-10-04-corridor-themes.md
    §3): a narrow lane between two- to four-storey shophouses, stalls along both
    edges, lantern strings overhead, steam over the food stalls. The shophouses
@@ -17437,6 +17456,347 @@ function buildMarket(p){ return buildCorridor(p,STHEMES.mkt); }
      the wall with hems and vertical lettering.
    Every layer draws from its own substream (salts 137 stalls, 139 lanterns,
    149 banners, 151 goods, 157 steam), so no layer's knob moves another's. */
+/* THE CONTAINER HARBOUR THEME (queue row 51, docs/specs/2026-10-04-corridor-themes.md
+   §4): a yard lane between stacks of containers, with rail-mounted gantries
+   spanning it, yard trucks in it and light masts along it. There are no
+   buildings: a lot is ONE CONTAINER ROW, wide enough for one container with
+   its doors to the lane, 0.3-0.4 m from the next row, one or two 40-foot
+   slots deep (harbourLotGen).
+   - CONTAINERS (salt 163): ISO 668 sizes -- 20' 6.058 m, 40' 12.192 m, both
+     2.438 m wide, 2.591 m high or 2.896 m for a high cube (High cubes). A slot
+     holds a column 1 to Tiers high, and one roll says whether its top tier is
+     missing. A tier is one 40' or two 20's end to end (76 mm apart, so the
+     pair is exactly a 40' long): a 20' rests only on a 20', a 40' on a 40' or
+     on two 20's. Each container is its own box part in its row's container.
+     Its SIDE WALLS are corrugated -- a line every 0.28 m nearer than Solid
+     detail to, every other one out to Outline detail to, and none beyond, each
+     spacing held to the paper floor. Its DOOR END, where it faces the lane and
+     is nearer than Solid detail to, has two leaves, two locking bars a leaf
+     with their handles, and a corner casting at each corner (at the far end
+     too). Every container carries a generated 3-6 letter wordmark and an ISO
+     6346-shaped code whose CHECK DIGIT is computed; both are drawn on the door
+     ends that face the lane, where they are big enough to read.
+   - GANTRIES (Gantry cranes per 100 m, salt 167): a rail bogie and an A of two
+     legs in each edge of the lane, a box girder at Tiers x 2.9 + 3 m with its
+     truss drawn on both faces, and a trolley with a spreader on four hoist
+     lines. The girder crosses the centreline and is cut there, and the
+     spreader at every slab face (slabPieces).
+   - YARD TRUCKS (per 100 m, salt 173): a terminal tractor -- cab, chassis --
+     and a skeletal trailer, half of them carrying a 40', with wheels near; cut
+     at every slab face like a car. LIGHT MASTS every 60-90 m (salt 179), a
+     25-30 m pole with a flood head of 4-6 boxes, at the lane's edge.
+   - BAY PAINT on the lane in front of each row: a rectangle and the bay's
+     number.
+   Colours: one paint per container (dark red 25, blue 20, grey 15, dark green
+   12, orange 10, teal 8, navy 6, ochre 4); its outline, corrugation and
+   wordmark in it; door gear, castings and codes black; gantries and bay paint
+   yellow; masts grey; trucks black. */
+var HARB_ISO={L20:6.058, L40:12.192, W:2.438, H:2.591, HC:2.896, GAP20:0.076};
+function harbourLotGen(R,p){
+  /* one draw: one or two 40' slots deep. The row is 0.1 m wider than a
+     container, the depth what the slots need plus the kerb strip and slack */
+  var k=R()<0.5?1:2;
+  return {wl:HARB_ISO.W+0.1, depth:0.8+k*HARB_ISO.L40+(k-1)*0.15, slots:k};
+}
+/* ISO 6346: letters take 10..38 skipping multiples of 11, each of the first
+   ten characters is weighted 2^position, and the digit is the sum mod 11
+   mod 10 */
+function iso6346Check(c10){
+  var v={}, n=10, c, sum=0, i;
+  for(c=65;c<=90;c++){ if(n%11===0) n++; v[String.fromCharCode(c)]=n; n++; }
+  for(i=0;i<10;i++){ var ch=c10[i]; sum+=(v[ch]!==undefined?v[ch]:+ch)*Math.pow(2,i); }
+  return (sum%11)%10;
+}
+function harbourTheme(K){
+  var p=K.p, P3=K.P3, frame=K.frame, sub=K.sub, para=K.para, polyFromLoops=K.polyFromLoops, prism=K.prism,
+      inConv=K.inConv, hitsAny=K.hitsAny, slabsBySide=K.slabsBySide, slabPieces=K.slabPieces, CE=K.CE,
+      HALFW=K.HALFW, PBACK=K.PBACK, LEN=K.LEN, dist3=K.dist3, lots=K.lots, conts=K.conts, mmPerM=K.mmPerM,
+      surf=K.surf, drawOn=K.drawOn, verts=K.verts, faceIx=K.faceIx, paperGap=K.paperGap, MINSP=K.MINSP, SLAB=K.THM.slabLen;
+  function kn(v,d,lo,hi){ return Math.max(lo,Math.min(hi,isFinite(v)?+v:d)); }
+  var TIERS=Math.round(kn(p.tiers,4,1,8)), HCS=kn(p.hc,40,0,100)/100, GANTRY=kn(p.gantry,1,0,4), TRUCKS=kn(p.trucks,2,0,10);
+  var SALT_CONT=163, SALT_GANT=167, SALT_TRUCK=173, SALT_MAST=179, TMAX=8;
+  var COL_K='#1a1a1a', COL_YEL='#f2c230', COL_GREY='#8a8a8a';
+  var PAINT=[['#8e1b25',25],['#2156c7',20],['#8a8a8a',15],['#1e5a32',12],['#ec7a1c',10],['#137a6e',8],['#1f2f6b',6],['#c8962e',4]];
+  function paintOf(u){ var a=0; for(var i=0;i<PAINT.length;i++){ a+=PAINT[i][1]; if(u*100<a) return PAINT[i][0]; } return PAINT[PAINT.length-1][0]; }
+  var L20=HARB_ISO.L20, L40=HARB_ISO.L40, W=HARB_ISO.W;
+  var TAL={containers:[], gantries:[], trucks:[], masts:[], bays:0, refused:0, paint:PAINT.map(function(q){ return q[0]; })};
+  STRTTALLY.harb=TAL;
+  var LETT='ABCDEFGHIJKLMNOPQRSTUVWXYZ', CONS='BCDFGHKLMNPRSTVZ', VOW='AEIOU';
+  /* ---- the stacks: world, not camera. Every column draws the same numbers
+     whatever the knobs say -- TMAX tiers of them -- so Tiers and High cubes
+     cut and reshape the stacks and move no other container's paint */
+  lots.forEach(function(L){
+    var R=sub(L.side<0?2:1,L.idx,SALT_CONT), slots=(L.gen&&L.gen.slots)||1, cols=[], sl, tr;
+    for(sl=0;sl<slots;sl++){
+      var uh=R(), utop=R(), tiers=[], below='';
+      var hgt=Math.max(1,TIERS-Math.floor(uh*uh*TIERS));
+      if(utop<0.3 && hgt>1) hgt--;
+      for(tr=0;tr<TMAX;tr++){
+        var u=[R(),R()];
+        if(tr>=hgt) continue;
+        /* a 20' only on 20's; a 40' on a 40' or on two 20's */
+        var lay=below==='40'?'40':(u[0]<0.55?'40':'20');
+        var halves=lay==='40'?[[0,L40]]:[[0,L20],[L20+HARB_ISO.GAP20,L40]];
+        tiers.push({lay:lay, h:u[1]<HCS?HARB_ISO.HC:HARB_ISO.H, halves:halves});
+        below=lay;
+      }
+      cols.push(tiers);
+    }
+    L.harb=cols;
+  });
+  /* a container's own numbers: its paint, its code and its wordmark, from a
+     substream keyed on WHERE it is, so no knob moves another one's */
+  function boxDraws(L,sl,tr,hi){
+    var R=sub(L.side<0?2:1,L.idx*64+sl*16+tr*2+hi,SALT_CONT+1), own='', d='', w='', n, i;
+    var col=paintOf(R());
+    for(i=0;i<3;i++) own+=LETT[Math.floor(R()*26)];
+    for(i=0;i<6;i++) d+=Math.floor(R()*10);
+    n=3+Math.floor(R()*4);
+    for(i=0;i<6;i++){ var r=R(); if(i<n) w+=i%2?VOW[Math.floor(r*5)]:CONS[Math.floor(r*CONS.length)]; }
+    return {col:col, code:own+'U '+d+' '+iso6346Check(own+'U'+d), word:w};
+  }
+  /* lettering set in (u,v) metres on a face, through surf */
+  function letters(Pq,fi,M,str,col,kind,u0,v0,hgt){
+    var s2=hgt, u=u0, polys=[];
+    for(var i=0;i<str.length;i++){ var G=glyphStrokes(str[i],'futural');
+      if(!G){ u+=0.5*hgt; continue; }
+      G.strokes.forEach(function(st){ polys.push(st.map(function(q){ return [u+q[0]*s2, v0+q[1]*s2]; })); });
+      u+=G.adv*s2; }
+    drawOn(Pq,fi,M,polys,col,kind,-1);
+  }
+  /* a lot's straight local frame: s along the lane, o out from the
+     centreline, z up. On a bend the row is the chord's; whatever leaves the
+     lot is refused and counted. */
+  function rowFrame(L){
+    var sc=(L.s0+L.s1)/2, F=frame(sc);
+    return {sc:sc, X:function(s,o,z){ var b=P3(sc,L.side,o,z); return [b[0]+F[2]*(s-sc), b[1]+F[3]*(s-sc), z]; }};
+  }
+  function dress(L,dn,df){
+    if(L===lots[0]){ TAL.containers=[]; TAL.refused=0; }
+    if(!L.harb) return;
+    var RF=rowFrame(L), X=RF.X, sc=RF.sc, oF=Math.max(L.fe,PBACK)+0.05;
+    L.harb.forEach(function(tiers,sl){
+      /* A CONTAINER THAT DOES NOT FIT ITS ROW (on a bend) IS LEFT OUT, and
+         nothing floats for it: whether it fits depends on its plan footprint
+         alone, and whatever stands on it stands inside that footprint, so is
+         left out too. strtcheck.js T2 runs two bends to hold that. */
+      var z=0, oS=oF+sl*(L40+0.15);
+      tiers.forEach(function(T,tr){
+        T.halves.forEach(function(hv,hi){
+          var o0=oS+hv[0], o1=oS+hv[1], len=o1-o0;
+          var a=X(sc-W/2,o0,z), b=X(sc+W/2,o0,z), c=X(sc-W/2,o1,z);
+          var ea=[b[0]-a[0],b[1]-a[1],0], eb=[c[0]-a[0],c[1]-a[1],0];
+          var P=para(a,ea,eb,[0,0,T.h]), V=verts(P);
+          if(!V.every(function(v){ return inConv(L.poly,v); })){ TAL.refused++; return; }
+          var BD=boxDraws(L,sl,tr,hi), col=BD.col, code=BD.code, word=BD.word;
+          P.lines.forEach(function(Ln){ Ln.col=col; Ln.kind='container'; });
+          var cen=X(sc,(o0+o1)/2,z+T.h/2), d=dist3(cen), band=d<dn?'solid':d<df?'outline':'';
+          var tl=[ea[0]/W,ea[1]/W,0], ol=[eb[0]/len,eb[1]/len,0];
+          var fS0=faceIx(P,[-tl[0],-tl[1],0]), fS1=faceIx(P,tl), fD=faceIx(P,[-ol[0],-ol[1],0]), fB=faceIx(P,ol);
+          if(band){
+            [[fS0,sc-W/2],[fS1,sc+W/2]].forEach(function(fw){
+              /* the 0.28 m set, or every other line of it; none when that
+                 is under the paper floor */
+              var g=paperGap(X(fw[1],(o0+o1)/2,z+T.h/2),[0,0,1],ol), st=band==='solid'?1:2, n=Math.floor(len/0.28), q;
+              if(!(g>0) || st*len/n*g<MINSP) return;
+              for(q=st;q<n;q+=st) P.lines.push({a:X(fw[1],o0+q*len/n,z+0.04), b:X(fw[1],o0+q*len/n,z+T.h-0.04),
+                                              f0:fw[0], f1:fw[0], col:col, kind:'corrugation'});
+            });
+          }
+          var lane=sl===0 && hi===0, Dc=X(sc,o0,z+T.h/2), Nd=[-ol[0],-ol[1],0], MD=surf(Dc,Nd,W,T.h), mm=mmPerM(Dc,Nd);
+          if(lane && band){
+            if(0.1*mm>=1.0) letters(P,fD,MD,code,COL_K,'code',0.2,T.h-0.32,0.1);
+            if(0.3*mm>=1.2) letters(P,fD,MD,word,col,'wordmark',0.2,T.h*0.55,0.3);
+          }
+          if(band==='solid'){
+            var gl=function(fi,M,u1,v1,u2,v2,kind){ P.lines.push({a:M(u1,v1), b:M(u2,v2), f0:fi, f1:fi, col:COL_K, kind:kind}); };
+            var cast=function(fi,M){ [[0,0],[W-0.16,0],[0,T.h-0.12],[W-0.16,T.h-0.12]].forEach(function(c2){
+              gl(fi,M,c2[0],c2[1],c2[0]+0.16,c2[1],'casting'); gl(fi,M,c2[0]+0.16,c2[1],c2[0]+0.16,c2[1]+0.12,'casting');
+              gl(fi,M,c2[0]+0.16,c2[1]+0.12,c2[0],c2[1]+0.12,'casting'); gl(fi,M,c2[0],c2[1]+0.12,c2[0],c2[1],'casting'); }); };
+            cast(fD,MD);
+            cast(fB,surf(X(sc,o1,z+T.h/2),ol,W,T.h));
+            if(lane){
+              gl(fD,MD,W/2,0.12,W/2,T.h-0.12,'door');
+              [0.3,0.85,W/2+0.35,W/2+0.9].forEach(function(ub){
+                gl(fD,MD,ub,0.14,ub,T.h-0.14,'lockbar');
+                gl(fD,MD,ub,T.h*0.42,ub+0.14,T.h*0.42-0.06,'handle');
+              });
+            }
+          }
+          P.cont=L; P.col=col; P.kind='container'; P.layer='struct';
+          L.parts.push(P);
+          TAL.containers.push({side:L.side, idx:L.idx, slot:sl, tier:tr, half:hi, lay:T.lay, len:len, h:T.h, z0:z, z1:z+T.h,
+                               col:col, code:code, word:word, lane:lane, V:V.slice(0,8)});
+        });
+        z+=T.h;
+      });
+    });
+  }
+  /* ---- the lane --------------------------------------------------------- */
+  function laneFrame(sc,side){
+    var F=frame(sc);
+    return function(s,o,z){ var b=P3(sc,side,o,z); return [b[0]+F[2]*(s-sc), b[1]+F[3]*(s-sc), z]; };
+  }
+  function boxAt(X,s0,s1,o0,o1,z0,z1){
+    var a=X(s0,o0,z0), b=X(s1,o0,z0), c=X(s0,o1,z0);
+    return para(a,[b[0]-a[0],b[1]-a[1],0],[c[0]-a[0],c[1]-a[1],0],[0,0,z1-z0]);
+  }
+  /* a lane part cut into one piece per slab, tagged; null if any of it is
+     outside the lane */
+  function laneParts(P,kind,col,layer){
+    var pcs=slabPieces(P); if(!pcs) return null;
+    pcs.forEach(function(Q){ Q.kind=kind; Q.col=col; Q.layer=layer;
+      Q.lines.forEach(function(Ln){ if(Ln.col===undefined) Ln.col=col; if(!Ln.kind) Ln.kind=kind; }); });
+    return pcs;
+  }
+  function commit(pcs,layers){
+    for(var i=0;i<pcs.length;i++) if(hitsAny(pcs[i],pcs[i].cont,layers)) return false;
+    pcs.forEach(function(Q){ Q.cont.parts.push(Q); }); return true;
+  }
+  function wheel(Lx,x,y0,y1,r){
+    var A=[], B=[], k, lp;
+    for(k=0;k<8;k++){ var an=TAU*(k+0.5)/8; A.push(Lx(x+Math.cos(an)*r,y0,r+Math.sin(an)*r)); B.push(Lx(x+Math.cos(an)*r,y1,r+Math.sin(an)*r)); }
+    lp=[A,B]; for(k=0;k<8;k++){ var k2=(k+1)%8; lp.push([A[k],A[k2],B[k2],B[k]]); }
+    return polyFromLoops(lp);
+  }
+  function plates(){
+    conts.forEach(function(C){
+      if(C.kind!=='slab') return;
+      var sd=C.side, Q=[P3(C.s0,sd,0,0),P3(C.s1,sd,0,0),P3(C.s1,sd,HALFW,0),P3(C.s0,sd,HALFW,0)].map(function(v){ return [v[0],v[1]]; });
+      var Pl=prism(Q,-0.02,0);
+      Pl.lines=[]; Pl.hides=false; Pl.cont=C; Pl.col=COL_K; Pl.kind='plate'; Pl.layer='furn';
+      C.parts.push(Pl); C.plate=Pl;
+    });
+  }
+  function masts(){
+    /* along one edge of the lane, every 60-90 m, ahead of the gantries so
+       neither knob moves the masts */
+    var RM=sub(0,0,SALT_MAST), msd=RM()<0.5?1:-1, ms=10+RM()*20, g;
+    for(g=0;g<20 && ms<LEN-2;g++){
+      var ums=RM(), unh=RM(), uht=RM(), sm=SLAB*Math.floor(ms/SLAB)+SLAB/2, Xm=laneFrame(sm,msd), hm=25+5*uht;
+      var nh=4+Math.floor(unh*3), all=[], ok=true, q;
+      var parts=[boxAt(Xm,sm-0.2,sm+0.2,HALFW-0.2,HALFW+0.2,0,hm)];
+      for(q=0;q<nh;q++){ var s3=sm-0.9+1.8*q/(nh-1)-0.15; parts.push(boxAt(Xm,s3,s3+0.3,HALFW-0.65,HALFW-0.25,hm-0.5,hm)); }
+      parts.forEach(function(P){ var pcs=ok&&laneParts(P,'mast',COL_GREY,'furn'); if(!pcs){ ok=false; return; } all=all.concat(pcs); });
+      var rec={s:sm, side:msd, h:hm, heads:nh, placed:false};
+      if(ok && commit(all,['furn'])) rec.placed=true;
+      TAL.masts.push(rec);
+      ms+=60+30*ums;
+    }
+  }
+  function gantries(){
+    var Hg=TIERS*2.9+3, k;
+    /* one roll per 25 m slot; a slot at 2 mod 4 so the bogies sit in one slab */
+    for(k=0;(k+1)*25<=LEN;k++){
+      var R=sub(0,k,SALT_GANT), u=R(), us=R(), uo=R(), uz=R(), usd=R();
+      if(!(u<GANTRY/4)) continue;
+      var sg=k*25+SLAB*Math.floor((4+16*us)/SLAB)+SLAB/2, X=laneFrame(sg,1), parts=[];
+      [1,-1].forEach(function(sd){
+        var Xs=laneFrame(sg,sd);
+        parts.push(['bogie',boxAt(Xs,sg-1.7,sg+1.7,HALFW-0.8,HALFW-0.4,0,0.6),COL_YEL]);
+        [-1,1].forEach(function(e){
+          var f0=Xs(sg+e*1.3-0.15,HALFW-0.75,0.61), wv=Xs(sg+e*1.3+0.15,HALFW-0.75,0.61), nv=Xs(sg+e*1.3-0.15,HALFW-0.45,0.61);
+          var top=Xs(sg+e*0.3-0.15,HALFW-0.75,Hg-0.01);
+          parts.push(['leg',para(f0,[wv[0]-f0[0],wv[1]-f0[1],0],[nv[0]-f0[0],nv[1]-f0[1],0],[top[0]-f0[0],top[1]-f0[1],top[2]-f0[2]]),COL_YEL]);
+        });
+      });
+      /* the girder across the lane, sitting on the legs, its truss on the two
+         faces that look along the lane */
+      var oe=HALFW-0.4, G=boxAt(X,sg-0.5,sg+0.5,oe,-oe,Hg,Hg+1.2), tl=frame(sg), dlt=[tl[2],tl[3],0];
+      var gs=faceIx(G,[-dlt[0],-dlt[1],0]), gn=faceIx(G,dlt), nb=Math.max(4,Math.round(2*oe/1.6)), q;
+      [[gs,sg-0.5],[gn,sg+0.5]].forEach(function(fg){
+        for(q=0;q<nb;q++){ var oa=oe-2*oe*q/nb, ob=oe-2*oe*(q+1)/nb;
+          G.lines.push({a:X(fg[1],oa,Hg+(q%2?1.2:0)), b:X(fg[1],ob,Hg+(q%2?0:1.2)), f0:fg[0], f1:fg[0], col:COL_YEL, kind:'truss'}); }
+      });
+      parts.push(['girder',G,COL_YEL]);
+      /* the trolley under it, over either half of the lane; the spreader along
+         the lane on four hoist lines, never lower than 4.5 m */
+      var sgn=usd<0.5?1:-1, ot=sgn*(1.5+Math.max(0,HALFW-3.7)*uo), zt=Hg-1.0, zs=Hg-3-4*uz;
+      parts.push(['trolley',boxAt(X,sg-0.6,sg+0.6,ot-1.0,ot+1.0,zt,Hg-0.01),COL_YEL]);
+      var spread=zs>=4.5;
+      if(spread){
+        parts.push(['spreader',boxAt(X,sg-3.03,sg+3.03,ot-1.22,ot+1.22,zs,zs+0.35),COL_YEL]);
+        var HB=boxAt(X,sg-0.5,sg+0.5,ot-0.9,ot+0.9,zs+0.36,zt-0.01);
+        HB.lines=[]; [[-0.45,-0.85],[0.45,-0.85],[-0.45,0.85],[0.45,0.85]].forEach(function(c2){
+          HB.lines.push({a:X(sg+c2[0],ot+c2[1],zt-0.01), b:X(sg+c2[0],ot+c2[1],zs+0.36), f0:0, f1:0, col:COL_K, kind:'hoist'}); });
+        HB.hides=false; HB.seeThru=true;
+        parts.push(['hoist',HB,COL_K]);
+      }
+      var rec={s:sg, Hg:Hg, spreader:spread, girder:0, placed:false}, all=[], ok=true;
+      parts.forEach(function(pp){
+        if(!ok) return;
+        var pcs=laneParts(pp[1],pp[0],pp[2],'gantry');
+        if(!pcs){ ok=false; return; }
+        if(pp[0]==='hoist') pcs.forEach(function(Q){ Q.hides=false; Q.seeThru=true; });
+        if(pp[0]==='girder') rec.girder=pcs.length;
+        all=all.concat(pcs);
+      });
+      if(ok && commit(all,['furn','gantry'])) rec.placed=true;
+      TAL.gantries.push(rec);
+    }
+  }
+  function trucks(near){
+    /* a slot every 20 m a side, driving on its own side of the lane. NONE
+       WITHIN 12 m OF THE EYE in plan: a 17 m rig parked at the camera fills
+       half the sheet with one container end (the first render did) */
+    [1,-1].forEach(function(sd){
+      for(var k=0;(k+1)*20<=LEN;k++){
+        var R=sub(sd<0?2:1,k,SALT_TRUCK), u=R(), ul=R(), ucar=R(), ucp=R();
+        if(!(u<TRUCKS/5)) continue;
+        var st=k*20+9.5+ul, Xt=laneFrame(st,sd), ol=Math.max(1.4,HALFW*0.5), dir=sd;
+        var Lx=function(x,y,z){ return Xt(st+x*dir,ol+y,z); };
+        var bx=function(x0,x1,y0,y1,z0,z1){ var a=Lx(x0,y0,z0), b=Lx(x1,y0,z0), c=Lx(x0,y1,z0);
+          return para(a,[b[0]-a[0],b[1]-a[1],0],[c[0]-a[0],c[1]-a[1],0],[0,0,z1-z0]); };
+        var pt=[['cab',bx(5.6,8.0,-1.25,1.25,1.05,3.3),COL_K],['chassis',bx(3.0,5.6,-0.6,0.6,0.7,1.2),COL_K],
+                ['trailer',bx(-9.0,3.0,-1.2,1.2,1.15,1.45),COL_K]];
+        var carry=ucar<0.5, ccol=paintOf(ucp), d=dist3(Lx(0,0,1.5));
+        if(carry) pt.push(['box',bx(-8.95,-8.95+L40,-W/2,W/2,1.46,1.46+HARB_ISO.H),ccol]);
+        if(d<near) [6.8,4.3,-6.6,-7.8].forEach(function(xw){
+          pt.push(['wheel',wheel(Lx,xw,0.65,1.15,0.5),COL_K]); pt.push(['wheel',wheel(Lx,xw,-1.15,-0.65,0.5),COL_K]); });
+        var all=[], ok=true;
+        pt.forEach(function(q){ if(!ok) return;
+          var pcs=laneParts(q[1],q[0],q[2],'truck'); if(!pcs){ ok=false; return; } all=all.concat(pcs); });
+        var mid=Lx(0,0,0), atEye=Math.hypot(mid[0]-CE[0],mid[1]-CE[1])<12;
+        var rec={s:st, side:sd, carry:carry, col:carry?ccol:'', placed:false, eye:atEye};
+        if(ok && !atEye && commit(all,['furn','gantry','truck'])) rec.placed=true;
+        TAL.trucks.push(rec);
+      }
+    });
+  }
+  /* bay paint on the lane plate in front of each row: the rectangle's edges
+     cut at the slab faces, and the number where the row is in one slab */
+  function bays(df){
+    lots.forEach(function(L){
+      var sc=(L.s0+L.s1)/2, o0=HALFW-1.15, o1=HALFW-0.15;
+      if(!(dist3(P3(sc,L.side,o0,0))<df)) return;
+      slabsBySide[L.side].forEach(function(C){
+        var a=Math.max(L.s0+0.05,C.s0), b=Math.min(L.s1-0.05,C.s1), Pl=C.plate;
+        if(!(b>a) || !Pl) return;
+        var ln=function(A,B,kind){ if(inConv(C.poly,A) && inConv(C.poly,B)) Pl.lines.push({a:A, b:B, f0:1, f1:1, col:COL_YEL, kind:kind}); };
+        ln(P3(a,L.side,o0,0),P3(b,L.side,o0,0),'bay'); ln(P3(a,L.side,o1,0),P3(b,L.side,o1,0),'bay');
+        if(a===L.s0+0.05) ln(P3(a,L.side,o0,0),P3(a,L.side,o1,0),'bay');
+        if(b===L.s1-0.05) ln(P3(b,L.side,o0,0),P3(b,L.side,o1,0),'bay');
+        if(sc-0.6>=C.s0 && sc+0.6<=C.s1){
+          var num=String(L.idx+1), hgt=0.5, u=0, i;
+          for(i=0;i<num.length;i++){ var G=glyphStrokes(num[i],'futural'); if(!G) continue;
+            G.strokes.forEach(function(st){ for(var m=1;m<st.length;m++)
+              ln(P3(sc-0.4+u+st[m-1][0]*hgt,L.side,o0+0.25+st[m-1][1]*hgt,0),P3(sc-0.4+u+st[m][0]*hgt,L.side,o0+0.25+st[m][1]*hgt,0),'baynum'); });
+            u+=G.adv*hgt; }
+          TAL.bays++;
+        }
+      });
+    });
+  }
+  return {
+    dress:dress, signsFor:function(){},
+    furnish:function(dn,df){ TAL.gantries=[]; TAL.trucks=[]; TAL.masts=[]; TAL.bays=0;
+      plates(); masts(); gantries(); trucks(dn); bays(df); },
+    cars:[], dots:[],
+    info:function(){ return ' · '+TAL.containers.length+' containers · '+
+      TAL.gantries.filter(function(g){ return g.placed; }).length+' gantries · '+
+      TAL.trucks.filter(function(t){ return t.placed; }).length+' trucks'; }
+  };
+}
 function marketTheme(K){
   var THM=K.THM, p=K.p, P3=K.P3, frame=K.frame, sub=K.sub, para=K.para, prismN=K.prismN,
       splitPart=K.splitPart, inConv=K.inConv, hitsAny=K.hitsAny, slabsBySide=K.slabsBySide,
@@ -21331,6 +21691,7 @@ function draw(){
   if(mode==='stat' && STATINFO) txt+=' \u00b7 '+STATINFO;
   if(mode==='strt' && STRTINFO) txt+=' \u00b7 '+STRTINFO;
   if(mode==='mkt' && STRTINFO) txt+=' \u00b7 '+STRTINFO;
+  if(mode==='harb' && STRTINFO) txt+=' \u00b7 '+STRTINFO;
   if(mode==='fan'){
     var fv=vals(), wnd=fv.loops+fv.prec/100;
     txt+=' \u00b7 winding '+(Math.abs(wnd-Math.round(wnd))<1e-9?wnd.toFixed(0):wnd.toFixed(2));
@@ -21567,7 +21928,7 @@ var FAMILIES=[
   ['Lattices',   ['truchet','maze','hilbert','voronoi','pack','rows','poin']],
   ['Curves',     ['harmo','sform','lsys','string','fan','chladni']],
   ['FROM PHOTO 3D', ['isoimg']],
-  ['3D',         ['hil3','harmo3','attract','ruled','knot','spack','flow3','surf','iso','stat','strt','mkt']],
+  ['3D',         ['hil3','harmo3','attract','ruled','knot','spack','flow3','surf','iso','stat','strt','mkt','harb']],
   ['From photo', ['tonehatch','tonespiral']]
 ];
 function mountTabs(){
@@ -22036,6 +22397,30 @@ var HELP={
 'stat.budg':'How much drawing the station is allowed to be, in thousands of POINTS. It is the size control: `Keel length` seeds the shape and growth then throws off new branches until this is spent, so a longer keel makes a differently-shaped station of the same weight rather than a bigger one. The page\u2019s own ceiling caps it \u2014 the one recorded BEFORE the draft clamp, so dragging a slider cannot grow a different station \u2014 and the module pass stops at 85% of it so the greebles, tethers and rings are inside the budget rather than starved by it. Measured: 45 is 7,952 paths in 621 ms; the full page ceiling is 18,892 paths in 2,008 ms.',
 'stat.lod':'The smallest piece of hardware that still gets drawn, as its size on the SHEET. An isometric view has no perspective shrink, so there is nothing to make a distant greeble small except the station being big \u2014 and once a station fills the page at a fine module scale, a thruster quad is a blob the pen cannot resolve and a minute of plotting time. This is measured against millimetres per cell ESTIMATED BEFORE anything is built, because the decision has to be taken before the drawing exists: the lattice bounding box is the one extent known up front, so it over-estimates the scale by whatever margin the station leaves inside its own box. At 0 nothing is dropped.',
 'stat.occ':'How wide a white gap a nearer solid opens in whatever passes behind it. The station hides itself — every solid is confined to one lattice cell and sorted front to back by i+j+k, which for disjoint cells is an EXACT painter order and not a heuristic — so this is the finish on that, in millimetres on the sheet. The default matches the iso city’s and the CLI’s 0.5 mm. Wide gaps erase short segments outright rather than merely widening the breaks.',
+'harb.len':'How far the yard lane runs, in metres. The camera stands part-way along it and the stacks recede toward the far end.',
+'harb.bend':'How much the lane curves, in degrees per 100 m. A container yard is laid out straight, so 0; on a bend the deep rows narrow on the inside and a container that no longer fits its row is left out.',
+'harb.width':'The yard lane between the two lines of container rows, in metres. The gantry cranes span it on legs at its edges and the yard trucks drive down it.',
+'harb.pave':'A strip of bare apron between the lane and the container doors, in metres. 0 puts the doors at the lane edge.',
+'harb.tiers':'How high the containers are stacked. Each column holds 1 to this many, and one roll in three takes its top one off. The gantry girders stand clear above the highest tier.',
+'harb.hc':'How many containers are high cubes, 2.896 m tall instead of 2.591 m.',
+'harb.gantry':'Gantry cranes per 100 m of lane: yellow legs on rail bogies at both edges, a box girder across the lane with its truss drawn on, and a trolley lowering a spreader on four hoist lines.',
+'harb.trucks':'Yard trucks per 100 m of lane, on both sides together: a tractor and a skeletal trailer, half of them carrying a 40-foot container.',
+'harb.puddles':'How many puddles lie on the lane, each showing the stacks and cranes mirrored in the water.',
+'harb.pudsz':'How big the puddles are. At 100 a puddle is up to 3.8 m along the lane.',
+'harb.ripple':'How far the reflection wobbles sideways, in millimetres on the sheet. 0 is a still mirror.',
+'harb.cams':'Where the camera stands, as a share of the lane length. Near 0 you see the whole lane ahead.',
+'harb.camx':'The camera across the lane, as a share of half its width: 0 is the middle, 100 or -100 an edge.',
+'harb.camz':'The camera height in metres. 1.8 is a driver\u2019s eye; higher looks down onto the stack tops.',
+'harb.look':'How far ahead the camera aims, in metres along the lane.',
+'harb.pitch':'Tilts the camera up (positive) or down, in degrees, after it aims along the lane. Up shows more of the cranes.',
+'harb.fov':'The field of view across the sheet, in degrees.',
+'harb.dnear':'Up to this distance, in metres, containers carry their full corrugation, door bars, handles and corner castings.',
+'harb.dfar':'Up to this distance, in metres, containers carry every other corrugation line and the bay paint is drawn; beyond it a container is its outline.',
+'harb.dpen':'1 draws the black lines further away than Depth split in dark grey instead: a near pen and a far pen.',
+'harb.dsplit':'With Depth pens on: how far away, in metres, black turns to dark grey.',
+'harb.lod':'The smallest part still drawn, as its size on the sheet.',
+'harb.budg':'How many points the drawing may use, in thousands. Over it, the detail distances come in and the LOD cutoff rises until it fits.',
+'harb.occ':'How wide a white gap a nearer object leaves in whatever passes behind it, in millimetres on the sheet.',
 'mkt.len':'How far the market lane runs, in metres. The camera stands part-way along it and the stalls, lanterns and shophouses recede toward the far end.',
 'mkt.bend':'How much the lane curves, in degrees per 100 m. 0 is dead straight; a bend turns the far stalls out of sight behind the shophouses.',
 'mkt.width':'The lane between the shophouses, wall to wall, in metres. The stalls stand along both edges, so a narrow lane brings their canopies together over the middle; below about 3 m they reach past it and are split there.',
