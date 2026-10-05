@@ -424,7 +424,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v279</a> &mdash; PAPER PRESETS — 9×12, 11×14, 14×17 and 19×24 buttons at the top of Bed & fit set the page exactly (228.6×304.8 to 482.6×609.6 mm) and touch nothing else; Page size and Page long step by 0.1 mm, and a slider now lands exactly on its step</span></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v280</a> &mdash; FRONT PUDDLE AND RIPPLE ON THE WATER — Street: one big puddle where the road first comes into view, cut by the road's slabs so the order stays exact (Front puddle, 60), and ripples that live on the water — two wave trains, calm and choppy patches, bigger and longer near (Ripple variety, 60); both 0 draw v279 exactly</span></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <div class="tabs" id="tabs"></div>
@@ -2107,6 +2107,7 @@ var SPEC={
     ['cables','Cables',0,100,1,45,[100,'%']],['sag','Cable sag',0,30,1,6,[100,'%']],
     ['cars','Cars',0,20,1,3,[1,'/100 m']],['puddles','Puddles',0,40,1,9],
     ['pudsz','Puddle size',5,100,1,40,[100,'%']],['ripple','Ripple',0,30,1,6,[10,' mm']],
+    ['hero','Front puddle',0,100,1,60,[100,'%']],['rvar','Ripple variety',0,100,1,60,[100,'%']],
     ['dots','Particles',0,3000,10,420],['graff','Graffiti',0,100,1,20,[100,'%']],
     ['hatch','Tone hatch',0,100,1,55,[100,'%']],['hatchmode','Hatch spacing',0,1,1,0],
     ['sun','Light from',0,359,1,300,[1,'°']],
@@ -20298,6 +20299,13 @@ function buildCorridor(p,THM){
   var PUDN=Math.max(0,Math.min(40,Math.round(isFinite(p.puddles)?+p.puddles:9)));
   var PUDSZ=Math.max(0.05,Math.min(1,(isFinite(p.pudsz)?+p.pudsz:40)/100));
   var RIPMM=Math.max(0,Math.min(3,(isFinite(p.ripple)?+p.ripple:6)/10));
+  var RVAR=Math.max(0,Math.min(1,(isFinite(p.rvar)?+p.rvar:0)/100)), RF=null;
+  if(RVAR>0){
+    var RRP=sub(0,0,227), ur=[]; for(j=0;j<10;j++) ur.push(RRP());
+    var aA=TAU*ur[1];
+    RF={lA:0.35+0.25*ur[0], aA:aA, lB:0.15+0.10*ur[2], aB:aA+(ur[3]<0.5?-1:1)*(40+40*ur[4])*Math.PI/180,
+        pA:TAU*ur[5], pB:TAU*ur[6], lE:1.2+0.8*ur[7], nz:100*ur[8], ne:100*ur[9]};
+  }
   var SALT_PUD=113, PUDNP=40;
   /* how far a puddle keeps from the centreline and the slab's edge, and its
      outline's ink (null: none) -- a theme's (row 52: the library's polish
@@ -20310,6 +20318,74 @@ function buildCorridor(p,THM){
      ahead of the camera, thickest near it (s = 60 u^2, half within 15 m): the reference's
      puddles are in its foreground. This ties the puddles to Camera along and
      to nothing else; they never read the camera's height, aim or lens. */
+
+  /* ---- ROW 59: ONE BIG PUDDLE UP FRONT (`hero`). The camera decides where:
+     the ray through the bottom-centre of the drawable area meets the road at
+     arc g0, and the puddle starts 0.3 m beyond. It is 2.5-10 m long and up to
+     the road's width less 0.4, and may cross the centreline -- so it is CUT,
+     by every road slab it meets (Sutherland-Hodgman: the slabs are convex, the
+     blob need not be), and each piece is a puddle of its own slab, reflected
+     and committed exactly like a small one. Its outline is the hero's own
+     boundary, each segment clipped to the slab it lies in: a cut is never
+     drawn. Small puddles are placed exactly as before and then any that meets
+     the hero is dropped and counted, so every other one is unmoved. All its
+     numbers come from SALT_HERO (223); at Front puddle 0 nothing here runs. */
+  var HERO=Math.max(0,Math.min(1,(isFinite(p.hero)?+p.hero:0)/100)), SALT_HERO=223, heroInfo='';
+  var heroRec=null;
+  if(HERO>0){
+    var RH=sub(0,0,SALT_HERO), uh=[]; for(j=0;j<12;j++) uh.push(RH());
+    /* g0: the ray through (centre, bottom of the drawable area) to z = 0 */
+    var syB=-(PGH-PAD-PGH/2)/(FF*HW), dB=[FW[0]+syB*UP[0], FW[1]+syB*UP[1], FW[2]+syB*UP[2]], g0=null;
+    if(dB[2]<-1e-9){
+      var tB=-CE[2]/dB[2], GB=[CE[0]+dB[0]*tB, CE[1]+dB[1]*tB], bi=0, bd=1e18;
+      for(j=0;j<NS;j++){ var dd=(SX[j]-GB[0])*(SX[j]-GB[0])+(SY[j]-GB[1])*(SY[j]-GB[1]); if(dd<bd){ bd=dd; bi=j; } }
+      var Fg=frame(bi*DS), sg0=bi*DS+(GB[0]-Fg[0])*Fg[2]+(GB[1]-Fg[1])*Fg[3];
+      if(sg0>sC && sg0<LEN-1) g0=sg0;
+    }
+    if(g0===null){ g0=sC+2; heroInfo=' · front puddle off sheet'; }
+    var hL=2.5+7.5*HERO, hW=Math.min((0.45+0.45*HERO)*WID, WID-0.4), room=Math.max(0,WID-0.4-hW);
+    var hs0=g0+0.3, hs1=Math.min(LEN-0.2,hs0+hL);
+    var camSide=CAMX<0?-1:1, oside=uh[0]<0.6?camSide:-camSide, hoc=oside*(room/2)*uh[1];
+    var ha2=0.18*uh[2], ha3=0.13*uh[3], ha5=0.07*uh[4], ha7=0.05*uh[5], hrot=(uh[10]-0.5)*0.3, hloc=[], hmx=0, hmy=0;
+    for(j=0;j<64;j++){
+      var hth=TAU*j/64;
+      var hr=1+ha2*Math.cos(2*hth+TAU*uh[6])+ha3*Math.cos(3*hth+TAU*uh[7])+ha5*Math.cos(5*hth+TAU*uh[8])+ha7*Math.cos(7*hth+TAU*uh[9]);
+      var hx=Math.cos(hth)*hr, hy=Math.sin(hth)*hr;
+      var hqx=hx*Math.cos(hrot)-hy*Math.sin(hrot), hqy=hx*Math.sin(hrot)+hy*Math.cos(hrot);
+      hloc.push([hqx,hqy]); hmx=Math.max(hmx,Math.abs(hqx)); hmy=Math.max(hmy,Math.abs(hqy));
+    }
+    var hsc=(hs0+hs1)/2, hlen=hs1-hs0;
+    var hring=hloc.map(function(q){ var v=P3(hsc+q[0]/hmx*hlen/2,1,hoc+q[1]/hmy*hW/2,0); return [v[0],v[1]]; });
+    heroRec={ring:hring, s0:hs0, s1:hs1, g0:g0, o:hoc, wid:hW, len:hlen, ph:TAU*uh[11], pieces:[]};
+  }
+  /* Sutherland-Hodgman against one convex polygon (either winding) */
+  function shClip(R,Q){
+    var ar=0, m; for(m=0;m<Q.length;m++){ var qa=Q[m], qb=Q[(m+1)%Q.length]; ar+=qa[0]*qb[1]-qa[1]*qb[0]; }
+    var sg=ar>0?1:-1, out=R;
+    for(m=0;m<Q.length && out.length;m++){
+      var a=Q[m], b=Q[(m+1)%Q.length], inp=out, k; out=[];
+      function side(v){ return sg*((b[0]-a[0])*(v[1]-a[1])-(b[1]-a[1])*(v[0]-a[0])); }
+      for(k=0;k<inp.length;k++){
+        var P0=inp[k], P1=inp[(k+1)%inp.length], s0=side(P0), s1=side(P1);
+        if(s0>=0) out.push(P0);
+        if((s0>=0)!==(s1>=0)){ var t=s0/(s0-s1); out.push([P0[0]+(P1[0]-P0[0])*t, P0[1]+(P1[1]-P0[1])*t]); }
+      }
+    }
+    return out;
+  }
+  function polyArea(Q){ var a=0; for(var m=0;m<Q.length;m++){ var qa=Q[m], qb=Q[(m+1)%Q.length]; a+=qa[0]*qb[1]-qa[1]*qb[0]; } return Math.abs(a)/2; }
+  function ringsMeet(A,B){
+    var m, k;
+    for(m=0;m<A.length;m++) for(k=0;k<B.length;k++){
+      var a=A[m], b=A[(m+1)%A.length], c=B[k], d=B[(k+1)%B.length];
+      var d1=(d[0]-c[0])*(a[1]-c[1])-(d[1]-c[1])*(a[0]-c[0]), d2=(d[0]-c[0])*(b[1]-c[1])-(d[1]-c[1])*(b[0]-c[0]);
+      var d3=(b[0]-a[0])*(c[1]-a[1])-(b[1]-a[1])*(c[0]-a[0]), d4=(b[0]-a[0])*(d[1]-a[1])-(b[1]-a[1])*(d[0]-a[0]);
+      if(((d1>0)!==(d2>0)) && ((d3>0)!==(d4>0))) return true;
+    }
+    function inside(P,R){ var c=false; for(var m=0,n=R.length;m<n;m++){ var a=R[m], b=R[(m+1)%n];
+      if((a[1]>P[1])!==(b[1]>P[1]) && P[0]<a[0]+(P[1]-a[1])*(b[0]-a[0])/(b[1]-a[1])) c=!c; } return c; }
+    return inside(A[0],B) || inside(B[0],A);
+  }
   var sPud0=Math.min(LEN-4,CAMS*LEN+3), sPud1=Math.min(LEN-0.5,CAMS*LEN+63);
   var puds=[], prej=0;
   for(i=0;i<PUDN;i++){
@@ -20341,8 +20417,32 @@ function buildCorridor(p,THM){
     puds.push({id:i, C:CP, side:sdP, s:scP, o:ocP, len:lenP, wid:widP, ring:ringP,
                hull:hull2(ringP.map(function(v){ return [v[0],v[1]]; })), ph:TAU*ud[13]});
   }
+  if(heroRec){
+    /* small puddles meeting the hero are dropped AFTER they are placed, so the
+       ones that do not are exactly what they were */
+    var kept=[];
+    puds.forEach(function(pd){ if(ringsMeet(pd.ring.map(function(v){ return [v[0],v[1]]; }),heroRec.ring)) prej++; else kept.push(pd); });
+    puds=kept;
+    var hb=bbox2(heroRec.ring), hn=0;
+    conts.forEach(function(C){
+      if(C.kind!=='slab' || !bbHit(hb,C.bb)) return;
+      var piece=shClip(heroRec.ring,C.poly);
+      if(piece.length<3 || polyArea(piece)<1e-6) return;
+      /* the hero's own boundary inside this slab, cut at its faces */
+      var outl=[], m;
+      for(m=0;m<heroRec.ring.length;m++){
+        var A=heroRec.ring[m], B=heroRec.ring[(m+1)%heroRec.ring.length], r=clipSeg([A[0],A[1],0],[B[0],B[1],0],C.poly);
+        if(r && r[1]-r[0]>1e-9) outl.push([[A[0]+(B[0]-A[0])*r[0], A[1]+(B[1]-A[1])*r[0], 0],[A[0]+(B[0]-A[0])*r[1], A[1]+(B[1]-A[1])*r[1], 0]]);
+      }
+      var pc={id:1000+hn, hero:true, C:C, side:C.side, s:(C.s0+C.s1)/2, o:0, len:C.s1-C.s0, wid:0,
+              ring:piece.map(function(v){ return [v[0],v[1],0]; }), hull:hull2(piece), ph:heroRec.ph, rid:1000, outline:outl};
+      heroRec.pieces.push(pc); puds.push(pc); hn++;
+    });
+  }
   STRTTALLY.puds=puds.map(function(pd){ return {id:pd.id, side:pd.side, s0:pd.C.s0, s1:pd.C.s1, poly:pd.C.poly,
-    s:pd.s, o:pd.o, len:pd.len, wid:pd.wid, ring:pd.ring}; });
+    s:pd.s, o:pd.o, len:pd.len, wid:pd.wid, ring:pd.ring, hero:!!pd.hero, outline:pd.outline}; });
+  STRTTALLY.hero=heroRec?{ring:heroRec.ring, s0:heroRec.s0, s1:heroRec.s1, g0:heroRec.g0, o:heroRec.o, wid:heroRec.wid,
+    len:heroRec.len, pieces:heroRec.pieces.length, off:!!heroInfo}:null;
 
   /* ---- §5.2 CABLES: catenaries pole to pole, pole to facade and facade to
      facade, cut per container. THE CURVE IS A CATENARY IN THE CABLE'S
@@ -20728,6 +20828,9 @@ function buildCorridor(p,THM){
   function render(lodmm,dn,df){
     LODNOW=lodmm; out=[];
     STRTTALLY.parts=[]; STRTTALLY.pre=[]; STRTTALLY.sil=[]; STRTTALLY.conts=[];
+    /* the mirror's tally too, per pass (row 59): set once per BUILD, an
+       over-budget build handed the gate the reflections of every pass */
+    STRTTALLY.refl=[]; STRTTALLY.rpre=[]; STRTTALLY.rparts=[]; STRTTALLY.rsil=[];
     STRTTALLY.elems=[]; STRTTALLY.bld=[]; STRTTALLY.hfaces=[];
     STRTTALLY.signs=[]; STRTTALLY.graff=[]; STRTTALLY.cars=[]; STRTTALLY.upr=[]; STRTTALLY.urows=[]; STRTTALLY.unsepPairs=[];
     conts.forEach(function(C){ C.parts=[]; });
@@ -20771,7 +20874,8 @@ function buildCorridor(p,THM){
     puds.forEach(function(pd){
       var Pq=prismN(pd.hull,-0.004,0), m;
       Pq.lines=[];
-      if(PUDCOL) for(m=0;m<pd.ring.length;m++)
+      if(PUDCOL && pd.outline) pd.outline.forEach(function(sg){ Pq.lines.push({a:sg[0], b:sg[1], f0:1, f1:1, kind:'puddle', col:PUDCOL}); });
+      else if(PUDCOL) for(m=0;m<pd.ring.length;m++)
         Pq.lines.push({a:pd.ring[m], b:pd.ring[(m+1)%pd.ring.length], f0:1, f1:1, kind:'puddle', col:PUDCOL});
       Pq.cont=pd.C; Pq.col=PUDCOL||COL_LBLUE; Pq.kind='puddle'; Pq.layer='puddle'; Pq.hides=false;
       Pq.pud=pd; Pq.refl=[];
@@ -20940,7 +21044,7 @@ function buildCorridor(p,THM){
       }
       return o.map(function(r){ return [[A[0]+dx*r[1],A[1]+dy*r[1]],[A[0]+dx*r[2],A[1]+dy*r[2]]]; });
     }
-    if(pudVis.length){
+    if(pudVis.length && tries<9){
       var mconts=[];
       conts.forEach(function(C){
         var ca=arcOf(C.poly);
@@ -21015,19 +21119,48 @@ function buildCorridor(p,THM){
        ITS INTERVAL, up to 1.2 mm -- half the wave's length, below which the
        wave would alias into noise. */
     var RIPU=RIPMM/PAGEMM, LAM1=2.4/PAGEMM, LAM2=0.9/PAGEMM, RSTEP=RSTEPMM()/PAGEMM;
+    /* ROW 59: RIPPLE ON THE WATER (`rvar`). The shift blends the sheet wave
+       above with a field on the GROUND under each sheet point -- two wave
+       trains (0.35-0.6 m, and 0.15-0.25 m at 40-80 degrees to it), value
+       noise at 0.25 m, an envelope at 1.2-2 m that makes calm and choppy
+       water, and Ripple scaled by 5 m / depth (0.4-2x), so Ripple is the
+       amplitude at 5 m and near water ripples more and longer on the sheet.
+       ONE field for the drawing, never per puddle, so a hero's pieces ripple
+       seamlessly. Its numbers are SALT_RIP's (227); at 0 the sheet wave is
+       v277's byte for byte. */
+    function groundAt(q){
+      var sx=(q[0]-PGW/2)/(FF*HW), sy=-(q[1]-PGH/2)/(FF*HW);
+      var d0=FW[0]+sx*RT[0]+sy*UP[0], d1=FW[1]+sx*RT[1]+sy*UP[1], d2=FW[2]+sx*RT[2]+sy*UP[2];
+      if(!(d2<-1e-12)) return null;
+      var t=-CE[2]/d2; return [CE[0]+d0*t, CE[1]+d1*t, t];
+    }
+    function ripNew(q){
+      var G=groundAt(q); if(!G) return 0;
+      var x=G[0], y=G[1];
+      var wA=Math.sin(TAU*(x*Math.cos(RF.aA)+y*Math.sin(RF.aA))/RF.lA+RF.pA);
+      var wB=Math.sin(TAU*(x*Math.cos(RF.aB)+y*Math.sin(RF.aB))/RF.lB+RF.pB);
+      var wN=2*vn(x/0.25+RF.nz, y/0.25, 227)-1;
+      var env=0.25+0.75*vn(x/RF.lE+RF.ne, y/RF.lE, 229);
+      return env*(0.55*wA+0.30*wB+0.15*wN)*Math.max(0.4,Math.min(2.0,5/G[2]));
+    }
     /* y from the PAGE CENTRE, so the wave rides with the drawing when a taller
        sheet shifts it (pagecheck's FRAMED map) */
-    function ripW(y,pd){ y-=PGH/2; return 0.6*Math.sin(TAU*y/LAM1+pd.ph)+0.4*(2*vn(y/LAM2+50,pd.id*7.31+0.5,113)-1); }
+    /* a hero's pieces share one id and phase (rid), so the sheet wave is
+       continuous across its seams too */
+    function ripW(y,pd){ y-=PGH/2; return 0.6*Math.sin(TAU*y/LAM1+pd.ph)+0.4*(2*vn(y/LAM2+50,(pd.rid!==undefined?pd.rid:pd.id)*7.31+0.5,113)-1); }
     function rippled(pts,pd){
       var src=[], m, k;
       for(m=0;m<pts.length;m++){
         if(m>0 && RIPU>0){
-          var a=pts[m-1], b=pts[m], n=Math.ceil(Math.abs(b[1]-a[1])/RSTEP);
+          /* by sheet LENGTH once the ripple is on the water, because a
+             horizontal edge ripples then too */
+          var a=pts[m-1], b=pts[m], n=Math.ceil((RVAR>0?Math.hypot(b[0]-a[0],b[1]-a[1]):Math.abs(b[1]-a[1]))/RSTEP);
           for(k=1;k<n;k++) src.push([a[0]+(b[0]-a[0])*k/n, a[1]+(b[1]-a[1])*k/n]);
         }
         src.push([pts[m][0],pts[m][1]]);
       }
-      return {src:src, dsp:RIPU>0?src.map(function(q){ return [q[0]+RIPU*ripW(q[1],pd), q[1]]; }):src};
+      return {src:src, dsp:RIPU>0?src.map(function(q){
+        return [q[0]+RIPU*(RVAR>0?(1-RVAR)*ripW(q[1],pd)+RVAR*ripNew(q):ripW(q[1],pd)), q[1]]; }):src};
     }
     /* depth of the ground under a sheet point: 1/zc. RT is level, so only y counts */
     function groundIz(q){ var sy=-(q[1]-PGH/2)/(FF*HW); return -(UP[2]*sy+FW[2])/CE[2]; }
@@ -21151,8 +21284,13 @@ function buildCorridor(p,THM){
   for(;;){
     RR=render(LODE,DN,DF);
     npts0=0; RR.res.forEach(function(q){ npts0+=q.length; });
-    if(npts0<=BUDG || tries>=8) break;
-    DN*=0.7; DF=Math.max(DN,DF*0.75); LODE=LODE+0.3; tries++;
+    /* A NINTH STEP DROPS THE REFLECTIONS (row 59): a front puddle mirrors
+       thousands of points that no band or cutoff reaches -- 10,738 on the
+       10k stress sheet with the ripple off. Only a drawing still over budget
+       after the eight steps gets here, so every one that fits is untouched. */
+    if(npts0<=BUDG || tries>=9) break;
+    if(tries<8){ DN*=0.7; DF=Math.max(DN,DF*0.75); LODE=LODE+0.3; }
+    tries++;
   }
   var res=RR.res, committed=RR.committed, live=RR.live;
   var cycles=RR.cycles, ccycles=RR.ccycles, splits=RR.splits, unsep=RR.unsep;
@@ -21166,7 +21304,7 @@ function buildCorridor(p,THM){
              unsepParts:RR.unsepParts, budget:BUDG, tries:tries, dnear:DN, dfar:DF, lod:LODE,
              elems:STRTTALLY.elems.length, signs:nsigns, cables:cables.length, cars:(CT.cars||[]).length,
              dots:(CT.dots||[]).length, penup0:penup0, penup1:penup1, dsplit:DSPLIT,
-             puddles:puds.length, pudRejected:prej, rstep:RSTEPMM(), pudVisible:RR.npud, mirrored:RR.nmirror,
+             puddles:puds.length-(heroRec?heroRec.pieces.length:0), heroPieces:heroRec?heroRec.pieces.length:0, pudRejected:prej, rstep:RSTEPMM(), pudVisible:RR.npud, mirrored:RR.nmirror,
              reflRuns:RR.nrefl, rcycles:RR.rcycles, rsplits:RR.rsplits, runsep:RR.runsep};
   STRTINFO=lots.length+' lots · '+committed.length.toLocaleString()+' parts · '+
            res.length.toLocaleString()+' paths'+
@@ -21174,11 +21312,13 @@ function buildCorridor(p,THM){
            (splits?' · '+splits+' split':'')+
            (dropped?' · '+dropped+' lots dropped (overlap)':'')+
            (CT.info?CT.info(nsigns):' · '+nsigns+' signs · '+cables.length+' cables · '+CT.cars.length+' cars · '+CT.dots.length+' particles')+
-           ' · '+puds.length+' '+(THM.pudWord||'puddles')+(RR.npud?' ('+RR.npud+' in view, '+RR.nmirror.toLocaleString()+' parts reflected)':'')+
+           ' · '+(puds.length-(heroRec?heroRec.pieces.length:0))+' '+(THM.pudWord||'puddles')+
+           (heroRec?' + a front puddle in '+heroRec.pieces.length+' pieces':'')+heroInfo+(RR.npud?' ('+RR.npud+' in view, '+RR.nmirror.toLocaleString()+' parts reflected)':'')+
            (DPEN?' · depth pens: pen-up '+(penup0/1000).toFixed(1)+' m \u2192 '+(penup1/1000).toFixed(1)+' m (\u00d7'+
                  (penup0>0?penup1/penup0:0).toFixed(2)+')':'')+
            (tries?' · OVER BUDGET: detail pulled in to '+DN.toFixed(0)+' / '+DF.toFixed(0)+' m, LOD '+LODE.toFixed(1)+' mm'+
-                  (RR.nrefl&&RIPMM>0?', ripple sampled every '+RSTEPMM().toFixed(1)+' mm':''):'');
+                  (RR.nrefl&&RIPMM>0?', ripple sampled every '+RSTEPMM().toFixed(1)+' mm':'')+
+                  (tries>=9?', and the water left unreflected':''):'');
   return res;
   function KIT(){ return {slabPieces:slabPieces, bbHit:bbHit, MINSP:0.7, THM:THM, P3:P3, add3:add3, addCable:addCable, cam:cam, dist3:dist3, drawOn:drawOn, faceC:faceC, faceIx:faceIx, frame:frame, hitsAny:hitsAny, inConv:inConv, lateral:lateral, mmPerM:mmPerM, paperGap:paperGap, para:para, polyFromLoops:polyFromLoops, prism:prism, prismN:prismN, splitPart:splitPart, sub:sub, surf:surf, vec:vec, verts:verts, wallOf:wallOf, wp:wp, CANTI:CANTI, CANYON:CANYON, CE:CE, FF:FF, FLOORS:FLOORS, HALFW:HALFW, HW:HW, KERB:KERB, KOFF:KOFF, LEN:LEN, NEAR:NEAR, PBACK:PBACK, RT:RT, SALT_BLD:SALT_BLD, STEPB:STEPB, ZUP:ZUP, cables:cables, conts:conts, lots:lots, slabsBySide:slabsBySide, p:p}; }
 }
@@ -22906,7 +23046,9 @@ var HELP={
 'strt.cars':'Cars per 100 m of street, parked at the kerb or in the lane. Near the camera (inside Solid detail to) they have wheels; further off a body and a cabin, nothing more.',
 'strt.puddles':'How many puddles lie on the road. Each sits inside one 4 m stretch of one side of the carriageway, drawn as a light blue outline, and shows the street above it mirrored in the water: the buildings, signs, cables and particles, upside down, hidden where something real stands in front of the puddle.',
 'strt.pudsz':'How big the puddles are. At 100 a puddle is up to 3.8 m along the street, the length of one stretch of road; each draws its own size and shape below that, and they lie toward the kerb, where water collects.',
-'strt.ripple':'How far the reflection wobbles sideways, in millimetres on the sheet: a wave plus a little noise that changes with height on the paper, so vertical edges in the water ripple. 0 is a still, perfect mirror.',
+'strt.ripple':'How far the reflection wobbles sideways, in millimetres on the sheet. With Ripple variety at 0 it is a wave plus a little noise that changes with height on the paper; above 0 it is the wobble at 5 m away, larger nearer and smaller farther. 0 is a still, perfect mirror.',
+'strt.hero':'One big puddle right in front of the camera, where the road first comes into view at the bottom of the sheet: 2.5 m long at 1 and 10 m at 100, up to most of the road\u2019s width, crossing the middle line if it has to. Small puddles it would touch are left out. 0 is none.',
+'strt.rvar':'How much the ripple lives on the water rather than on the paper: two sets of waves at different angles, calm and choppy patches, and waves that get bigger and longer toward you. At 0 every edge in the water wobbles in step with the others; at 100 none do.',
 'strt.dots':'How many coloured particles hang in the air over the road, thickening toward the far end of the street: orange, light blue and pink, 5 : 3 : 2. Each is a 0.35 mm stroke on the sheet however far away it is.',
 'strt.graff':'How many ground-floor shutters and side walls carry graffiti: tags (scribbled strokes) or throw-ups (bubble outlines of 2-4 letters), in magenta, turquoise, yellow or black, drawn on the wall so they foreshorten with it.',
 'strt.dpen':'1 draws the black lines further away than Depth split in dark grey instead -- a fine far pen and a heavier near one, the plot\u2019s depth, as two inks. The stat line reports the pen-up travel with and without the split, because splitting a pen adds travel.',
