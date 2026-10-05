@@ -76,6 +76,8 @@
         padding-top:8px; border-top:1px solid var(--line);}
   .engx .engxlab{flex-basis:100%; color:var(--dim); font-size:12px; margin-bottom:2px;}
   .engx a{color:var(--dim); font-size:12px; margin-left:4px;}
+  #paperx{margin:0 0 8px; padding-top:0; border-top:0;}
+  #paperx button.on{background:var(--accent); border-color:var(--accent); color:#12100e; font-weight:600;}
   .foot2{display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-top:10px;}
   .foot2 input[type=text], .foot2 select{font:inherit; font-size:13px; padding:4px 6px;
             border:1px solid #d8d2c8; border-radius:4px; background:#fff;}
@@ -422,7 +424,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v278</a> &mdash; LIBRARY STACKS — a new corridor engine on the Street kit: an aisle between ranges of shelving, books with titles up their spines in the chosen script, leaning books, a ceiling with fluorescent lights, range signs with call numbers over the cross-aisles, book carts and kick-stools, and patches of floor polish that reflect the stacks</span></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v279</a> &mdash; PAPER PRESETS — 9×12, 11×14, 14×17 and 19×24 buttons at the top of Bed & fit set the page exactly (228.6×304.8 to 482.6×609.6 mm) and touch nothing else; Page size and Page long step by 0.1 mm, and a slider now lands exactly on its step</span></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <div class="tabs" id="tabs"></div>
@@ -8225,8 +8227,8 @@ var GSPEC=[
   ['nx','Node X',0,100,1,50,[1,'%']],
   ['ny','Node Y',0,100,1,50,[1,'%']],
   ['pw','Pen width',5,200,1,30,[100,'mm']],
-  ['page','Page size',100,900,1,200,[1,' mm']],
-  ['pagel','Page long',100,900,1,200,[1,' mm']],
+  ['page','Page size',100,900,0.1,200,[1,' mm']],
+  ['pagel','Page long',100,900,0.1,200,[1,' mm']],
   ['pageor','Page portrait',0,1,1,0],
   ['bedon','Show bed',0,1,1,0],
   ['grid','Grid',0,50,1,0,[1,' mm']],
@@ -23030,7 +23032,7 @@ var HELP={
 'hil3.omode':'0 off, 1 crossings, 2 tube. **Crossings** is real hidden-line removal for thin lines: it solves the actual 2D intersections, compares depth at the crossing, and removes a short interval from whichever strand is farther, so strands stay continuous and duck under one another. **Tube** treats the curve as an opaque rod and deletes a far strand wherever a nearer one comes within the gap of it \u2014 correct for rods, but on order 3 at 1.8 mm it removed 3.34 m of 6.95 m when the 480 real crossings only account for 0.89 m. The other 73% was far strands running close alongside nearer ones, erased without ever passing behind anything, which is why tube mode reads as scattered dashes.',
 'hil3.occ':'Break width at a crossing in crossings mode, or the rod diameter the curve is treated as, in mm on the page \u2014 genuinely mm as of v29, which fits the projection before occluding rather than after. v28 measured it in pre-fit units and then rescaled the drawing underneath it, so the default view delivered 1.07 mm when you asked for 1.8 and the error swung by a factor of 1.9 across view angles. Wherever a strand passes within this of something nearer, that stretch is dropped — hidden-line removal, and the breaks in the far strands are the only depth cue a single-weight pen can give. At 0 you get the honest unbroken tangle, which is one continuous path and worth seeing once. Larger values remove more ink and read as thicker tubes.',
 '_g.page':'The SHORT side of the sheet you are plotting onto, in mm \u2014 and with Page long left equal to it, both sides of a square one. This is the only thing in the app that says how big a unit of drawing space is, so every millimetre readout hangs off it: pen width, halo, groove pitch, cut width, shift, simplify tolerance, travel metres, the time estimate and the ink coverage all follow it, and so does the exported SVG page. The geometry itself does not move \u2014 the drawing is unitless and fills the page whatever size the page is \u2014 so changing this rescales what gets plotted without changing what gets drawn. Set it to the sheet actually in the machine before reading any millimetre off this app: at 200 with 400 mm paper loaded every number here is out by a factor of two.',
-'_g.pagel':'The LONG side of the sheet, in mm. Equal to Page size is a square page and is the default, which is what every drawing made before this knob existed assumed. Larger, and the page grows along one axis only \u2014 the SCALE stays the same in both directions, so a circle is still a circle and a 0.3 mm pen is still 0.3 mm; there is simply more sheet. Anything below Page size is treated as square rather than swapping the two sides. Sheets worth typing in: 9x12 in Bristol is 228.6 / 304.8, 11x14 in Bristol is 279.4 / 355.6, and the Funssor bed is 340 / 415. Roughly a fifth to a quarter of each of those was being thrown away by a square page. Not every engine fills the extra room: the ones that build on a grid gain CELLS, while the radial and projected ones stay the size the short axis allows and are simply centred on the bigger sheet, which at least makes the exported page the right size.',
+'_g.pagel':'The LONG side of the sheet, in mm. Equal to Page size is a square page and is the default, which is what every drawing made before this knob existed assumed. Larger, and the page grows along one axis only \u2014 the SCALE stays the same in both directions, so a circle is still a circle and a 0.3 mm pen is still 0.3 mm; there is simply more sheet. Anything below Page size is treated as square rather than swapping the two sides. The Paper buttons above set the drawing-pad sizes exactly \u2014 9\u00d712, 11\u00d714, 14\u00d717 and 19\u00d724 in \u2014 and the Funssor bed is 340 / 415. Roughly a fifth to a quarter of each of those was being thrown away by a square page. Not every engine fills the extra room: the ones that build on a grid gain CELLS, while the radial and projected ones stay the size the short axis allows and are simply centred on the bigger sheet, which at least makes the exported page the right size.',
 '_g.pageor':'Which way round the long side runs. 0 is landscape \u2014 the long side is the width. 1 is portrait \u2014 the long side is the height. Inert while Page long equals Page size, because a square has no orientation. This rotates the PAGE, not the drawing: the geometry is refitted to the new shape rather than turned.',
 '_g.mpinw':'Stroke width used when the mask is rasterised from pinned layers, in mm on the page. Wide, and the pinned drawing becomes a silhouette the next engine avoids. Near your actual pen width, it becomes ink avoidance: pin pen 1, press Mask from pins, keep outside, set Halo to a pen width, and pen 2 is geometrically incapable of drawing on pen 1’s ink. Verified by measuring the minimum distance from the live layer to the pinned layer after masking, not the mean.',
 '_g.pins':'Pin layer freezes the current drawing as an underlay so you can change engine and keep it. Pin a mirrored moire, switch to Hilbert, tune the Hilbert against the moire showing through underneath, then export — pins come out first, one <g> per pen, then the live layer. A pin is frozen on purpose: it ignores Reroll, the palette and every global knob afterwards, because an underlay that moved while you aimed at it would be useless. Registration is exact — pins live in the same unit space as everything else. Note that each engine is fitted to its own bounding box, so two engines both fill the page rather than sharing any deeper coordinate system.',
@@ -23200,7 +23202,10 @@ function mkRow(box,spec,prefix,get,set){
      already owns that field's text, and rewriting it mid-edit eats keystrokes. */
   function push(raw,selfPaint){
     if(isNaN(raw)){ if(selfPaint) paint(get(key)); return; }
-    raw=Math.max(mn, Math.min(mx, Math.round(raw/st)*st));
+    /* SNAP TO THE STEP'S OWN DECIMALS: in doubles 2286 x 0.1 is
+       228.60000000000002, and a sheet typed as 228.6 has to BE 228.6 (row 60).
+       Exact for every whole-number step, so those knobs are untouched. */
+    raw=Math.max(mn, Math.min(mx, +(Math.round(raw/st)*st).toFixed((String(st).split('.')[1]||'').length)));
     set(key,raw); rg.value=raw;
     if(selfPaint) nu.value=(raw/div).toFixed(dec);
     mark(raw); sched();
@@ -23658,8 +23663,10 @@ function mountG(){
       if(grp[2].indexOf(gs[0])<0) return;
       placed[gs[0]]=1;
       mkRow(box,gs,'gsl_',function(k){return STATE.g[k];},
-        function(k,v){STATE.g[k]=v; liveBack(k); maskKnobChanged(k); foldSummaries(); refreshPenUI();});
+        function(k,v){STATE.g[k]=v; liveBack(k); maskKnobChanged(k); foldSummaries(); refreshPenUI();
+                      if(k==='page'||k==='pagel') paperActive();});
     });
+    if(grp[0]==='bed') mountPaperUI(body,box);
     if(grp[0]==='mask') mountMaskUI(body);
     if(grp[0]==='word') mountWordUI(body);
     if(grp[0]==='text') mountTextUI(body);
@@ -23687,6 +23694,33 @@ function mountG(){
     setFold('eng', !sec.classList.contains('closed'));
   });
 })();
+/* PAPER PRESETS (row 60): the drawing-pad sizes, in inches x 25.4, written
+   exactly. A button writes Page size and Page long and NOTHING else --
+   portrait, the bed, the grid and every engine knob stay as they were (row
+   43's rule for the Neon street button) -- and the draw that follows saves
+   psBed as a slider change does. The one matching the page within 0.05 mm on
+   both sides is lit. */
+var PAPER=[['9\u00d712',228.6,304.8],['11\u00d714',279.4,355.6],['14\u00d717',355.6,431.8],['19\u00d724',482.6,609.6]];
+function paperActive(){
+  var bs=document.querySelectorAll('#paperx button');
+  for(var i=0;i<bs.length;i++){
+    var P=PAPER[+bs[i].dataset.i];
+    bs[i].className=(Math.abs(STATE.g.page-P[1])<=0.05 && Math.abs(STATE.g.pagel-P[2])<=0.05)?'on':'';
+  }
+}
+function mountPaperUI(body,box){
+  var d=document.createElement('div'); d.className='engx'; d.id='paperx';
+  var lab=document.createElement('span'); lab.className='engxlab'; lab.textContent='Paper';
+  d.appendChild(lab);
+  PAPER.forEach(function(P,i){
+    var b=document.createElement('button'); b.type='button'; b.textContent=P[0]; b.dataset.i=i;
+    b.title=P[0].replace('\u00d7',' \u00d7 ')+' in \u2014 '+P[1]+' \u00d7 '+P[2]+' mm';
+    b.addEventListener('click',function(){ STATE.g.page=P[1]; STATE.g.pagel=P[2]; mountG(); sched(); });
+    d.appendChild(b);
+  });
+  body.insertBefore(d,box);
+  paperActive();
+}
 function mountMaskUI(box){
   var d=document.createElement('div'); d.className='row';
   var MASKTIP='Load any image and the darker side becomes the subject. It is thresholded '+
