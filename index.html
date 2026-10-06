@@ -424,7 +424,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v280</a> &mdash; FRONT PUDDLE AND RIPPLE ON THE WATER — Street: one big puddle where the road first comes into view, cut by the road's slabs so the order stays exact (Front puddle, 60), and ripples that live on the water — two wave trains, calm and choppy patches, bigger and longer near (Ripple variety, 60); both 0 draw v279 exactly</span></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v282</a> &mdash; LIBRARY STACKS v2 — a real ceiling (a seeded grid, louvred lights, sprinklers, smoke detectors, diffusers), a foreground (carpet seams, a loaded cart just ahead, a kick-stool, books on the floor, books pulled out of the shelves, a front shine) and an end wall with a window and a reading table or a door, exit sign and clock</span></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <div class="tabs" id="tabs"></div>
@@ -2164,6 +2164,7 @@ var SPEC={
     ['ceilz','Ceiling',2.4,4,0.05,2.8,[1,' m']],['lamp','Light spacing',1.2,6,0.1,2.4,[1,' m']],
     ['carts','Book carts',0,10,1,2,[1,'/100 m']],
     ['shine','Floor shine',0,40,1,8],['pudsz','Shine size',5,100,1,40,[100,'%']],['ripple','Ripple',0,30,1,0,[10,' mm']],
+    ['hero','Front shine',0,100,1,50,[100,'%']],
     ['cams','Camera along',0,90,1,2,[100,'%']],['camx','Camera side',-100,100,1,0,[100,'%']],
     ['camz','Camera height',0.2,3,0.05,1.55,[1,' m']],['look','Look ahead',2,100,1,15,[1,' m']],
     ['pitch','Pitch',-45,45,0.5,2,[1,'°']],['fov','Field of view',25,120,1,75,[1,'°']],
@@ -17447,7 +17448,8 @@ var STHEMES={
   /* §5: an aisle, a shelving section for a lot, a ceiling, floor shine */
   libr:{key:'libr', label:'Library stacks', lotDepth:[0.30,0.30], alleyW:[1.5,1.5], baseN2:0, baseH:[2.13,2.13],
         midH:[2.13,2.13], edgeZ:0, slabLen:4, clear:2.0, ztop:200, mirror:'floor', minWidth:0.8, minLen:10,
-        strip:0, minEnv:0.2, pudIn:0.03, pudCol:null, pudWord:'polished patches', alias:{puddles:'shine'},
+        strip:0, minEnv:0.2, pudIn:0.03, pudCol:null, pudWord:'polished patches', heroWord:'a front shine', alias:{puddles:'shine'},
+        mirrorSkip:['hatch'], pudMinMM:3,
         lotGen:function(R,p,li,sd){ return libraryLotGen(R,p,li,sd); },
         fixed:{alley:0, cars:0, dots:0, graff:0, signs:0, cables:0, canyon:0, stepb:0, canti:0},
         content:function(K){ return libraryTheme(K); }}
@@ -17874,8 +17876,12 @@ function libraryTheme(K){
   var p=K.p, P3=K.P3, frame=K.frame, sub=K.sub, para=K.para, polyFromLoops=K.polyFromLoops, prism=K.prism, prismN=K.prismN,
       inConv=K.inConv, hitsAny=K.hitsAny, slabsBySide=K.slabsBySide, slabPieces=K.slabPieces, CE=K.CE,
       HALFW=K.HALFW, PBACK=K.PBACK, LEN=K.LEN, dist3=K.dist3, lots=K.lots, conts=K.conts, mmPerM=K.mmPerM,
-      surf=K.surf, drawOn=K.drawOn, verts=K.verts, faceIx=K.faceIx, paperGap=K.paperGap, MINSP=K.MINSP;
+      surf=K.surf, drawOn=K.drawOn, verts=K.verts, faceIx=K.faceIx, paperGap=K.paperGap, MINSP=K.MINSP, splitPart=K.splitPart;
   function kn(v,d,lo,hi){ return Math.max(lo,Math.min(hi,isFinite(v)?+v:d)); }
+  /* v2 (row 64): the ceiling's grid and fixtures, the foreground and the end
+     wall draw from SALT_V2 (233), pulled-out and flat books from SALT_PULL
+     (239) per shelf -- so every book of v1 stays where it was */
+  var SALT_V2=233, SALT_PULL=239, SCAM=kn(p.cams,2,0,90)/100*LEN;
   var SHELVES=Math.round(kn(p.shelves,6,3,8)), FILL=kn(p.fill,85,30,100)/100, CEILZ=kn(p.ceilz,2.8,2.4,4),
       LAMP=kn(p.lamp,2.4,1.2,6), CARTS=kn(p.carts,2,0,10), HATCH=kn(p.hatch,55,0,100)/100,
       LANG=Math.round(kn(p.lang,2,0,3)), RG=Math.max(3,Math.min(20,Math.round(isFinite(p.range)?+p.range:8)));
@@ -17889,7 +17895,8 @@ function libraryTheme(K){
   var SCR=corridorScripts(sub,SALT_GLYPHL,LIB_WORDS);
   var CLASSES=['B','BF','BL','D','DA','E','F','G','GV','H','HD','HM','J','K','L','ML','N','NA','ND','P','PN','PQ','PR','PS','PT',
                'Q','QA','QB','QC','QD','QH','R','RC','S','T','TA','TK','U','Z'];
-  var TAL={books:[], shelves:[], ceilings:0, ceilList:[], lamps:[], signs:[], cards:0, carts:[], stools:[], titles:[], refused:0};
+  var TAL={books:[], shelves:[], ceilings:0, ceilList:[], lamps:[], signs:[], cards:0, carts:[], stools:[], titles:[], refused:0,
+           pulled:[], lying:[], far:[], ceil:null, seams:[], first:null, stool:null, piles:[], wall:null};
   STRTTALLY.libr=TAL;
   /* ---- call-number ranges: one per range, ascending along each side */
   function callRange(sd,rg){
@@ -17935,7 +17942,28 @@ function libraryTheme(K){
      other books are near */
   function placeBooks(run,C,X,sA,oF,zf,band,layer,ka,kb,C0side){
     var bk=run.books, parts=[];
-    if(!bk.length || !band) return parts;
+    if(!bk.length) return parts;
+    if(!band){
+      /* BEYOND Outline detail TO (v2): every book is one vertical stroke in its
+         colour at its spine; strokes nearer than the paper floor merge, the
+         wider book's colour kept -- so a bay's colour still reads far off */
+      var fx0=bk[0].x0, fx1=0, fhm=0, fdm=1;
+      bk.forEach(function(B){ var c=Math.cos(B.lean), sn=Math.sin(B.lean);
+        fx0=Math.min(fx0,B.x0-B.h*sn); fx1=Math.max(fx1,B.x0+B.w*c); fhm=Math.max(fhm,B.h*c+B.w*sn); fdm=Math.min(fdm,B.d); });
+      var Fr=boxAt(X,sA+fx0,sA+fx1,oF,oF+fdm,zf,zf+fhm), ff=faceIx(Fr,(function(){ var a=X(0,0,0), b=X(0,-1,0); return [b[0]-a[0],b[1]-a[1],0]; })());
+      Fr.lines=[];
+      var sdf=(function(){ var a=X(0,0,0), b=X(1,0,0); return [b[0]-a[0],b[1]-a[1],0]; })();
+      var gf=paperGap(X(sA+(fx0+fx1)/2,oF,zf+fhm/2),[0,0,1],sdf), strokes=[];
+      bk.forEach(function(B){ var xc=B.x0+B.w/2, top=B.h*Math.cos(B.lean)+B.w*Math.sin(B.lean), L=strokes[strokes.length-1];
+        if(L && (xc-L.x1)*gf<MINSP){ if(B.w>L.w){ L.w=B.w; L.col=B.col; } L.h=Math.max(L.h,top); L.x1=xc; L.books.push({w:B.w, col:B.col}); }
+        else strokes.push({x0:xc, x1:xc, w:B.w, col:B.col, h:top, books:[{w:B.w, col:B.col}]}); });
+      /* a merged stroke stands at the middle of its books: at the near end it
+         sat in the shadow of its section's own upright, seen this edge-on */
+      strokes.forEach(function(S){ var xc=(S.x0+S.x1)/2; Fr.lines.push({a:X(sA+xc,oF,zf+0.005), b:X(sA+xc,oF,zf+S.h), f0:ff, f1:ff, col:S.col, kind:'farbook'}); });
+      TAL.far.push({books:bk.length, before:bk.length, after:strokes.length, strokes:strokes.map(function(S){ return {col:S.col, books:S.books}; })});
+      tag(Fr,'bookrow',COL_K,layer); Fr.cont=C; parts.push(Fr);
+      return parts;
+    }
     if(band==='near'){
       bk.forEach(function(B,bi){
         var s0=sA+B.x0, P, LR=sub(ka,kb*512+bi,SALT_TITLE);
@@ -17944,11 +17972,11 @@ function libraryTheme(K){
           var c=Math.cos(B.lean), sn=Math.sin(B.lean);
           var o0=X(s0,oF,zf), ea=X(s0+B.w*c,oF,zf+B.w*sn), eb=X(s0,oF+B.d,zf), ec=X(s0-B.h*sn,oF,zf+B.h*c);
           P=para(o0,[ea[0]-o0[0],ea[1]-o0[1],ea[2]-o0[2]],[eb[0]-o0[0],eb[1]-o0[1],0],[ec[0]-o0[0],ec[1]-o0[1],ec[2]-o0[2]]);
-        } else P=boxAt(X,s0,s0+B.w,oF,oF+B.d,zf,zf+B.h);
+        } else P=boxAt(X,s0,s0+B.w,oF-(B.pull||0),oF-(B.pull||0)+B.d,zf,zf+B.h);
         tag(P,'book',B.col,layer);
         /* the spine: bands near head and tail, and the title up the middle */
         var fi=faceIx(P,(function(){ var a=X(0,0,0), b=X(0,-1,0); return [b[0]-a[0],b[1]-a[1],0]; })());
-        var spU=function(u,v){ var c=Math.cos(B.lean), sn=Math.sin(B.lean); return X(s0+u*c-v*sn,oF,zf+u*sn+v*c); };
+        var oS=oF-(B.pull||0), spU=function(u,v){ var c=Math.cos(B.lean), sn=Math.sin(B.lean); return X(s0+u*c-v*sn,oS,zf+u*sn+v*c); };
         var ink=LIGHT[B.col]?COL_K:COL_OCHRE;
         [0.08,0.92].forEach(function(f){ P.lines.push({a:spU(0,B.h*f), b:spU(B.w,B.h*f), f0:fi, f1:fi, col:ink, kind:'band'}); });
         /* legible ALONG THE SPINE: a spine is seen nearly edge-on down an aisle,
@@ -17966,7 +17994,26 @@ function libraryTheme(K){
             P.lines.push({a:spU(tu(pl[i-1][0]),B.h*0.08+pl[i-1][1]), b:spU(tu(pl[i][0]),B.h*0.08+pl[i][1]), f0:fi, f1:fi, col:ink, kind:'title'}); });
           TAL.titles.push({script:script, words:T.words, h:T.h});
         }
-        P.cont=C; parts.push(P);
+        P.cont=C;
+        /* A PULLED-OUT BOOK (v2) stands proud of the shelf front, so it is CUT
+           at its section's front plane: the inner piece is the section's, the
+           proud piece goes to the aisle slab it lies over. If that piece is
+           not in the aisle the book stays flush. */
+        if(B.pull && C && C.kind==='lot'){
+          var on=(function(){ var a=X(0,0,0), b=X(0,1,0); return [b[0]-a[0],b[1]-a[1],0]; })(), fp=X(s0,C.fe,0), dpl=on[0]*fp[0]+on[1]*fp[1];
+          var H=splitPart(P,on,dpl), inner=H[0], outer=H[1];
+          var outs=outer && outer.faces.length ? slabPieces(outer) : null;
+          if(outs && inner && inner.faces.length){
+            /* splitPart keeps the lines' tags, not the part's own */
+            inner.cont=C; inner.kind='book'; inner.col=B.col; inner.layer=layer; parts.push(inner);
+            outs.forEach(function(Q){ Q.kind='book'; Q.col=B.col; Q.layer=layer; parts.push(Q); });
+            TAL.pulled.push({side:C.side, idx:C.idx, x0:B.x0, pull:B.pull, pieces:1+outs.length});
+            return;
+          }
+          /* no room: flush after all */
+          P=boxAt(X,s0,s0+B.w,oF,oF+B.d,zf,zf+B.h); tag(P,'book',B.col,layer); P.cont=C;
+        }
+        parts.push(P);
       });
     } else {
       /* one box for the shelf's books, as tall as the tallest, every spine on it */
@@ -17990,7 +18037,8 @@ function libraryTheme(K){
     return parts;
   }
   function dress(L,dn,df){
-    if(L===lots[0]){ TAL.books=[]; TAL.shelves=[]; TAL.titles=[]; TAL.cards=0; TAL.ceilings=0; TAL.ceilList=[]; TAL.refused=0; }
+    if(L===lots[0]){ TAL.books=[]; TAL.shelves=[]; TAL.titles=[]; TAL.cards=0; TAL.ceilings=0; TAL.ceilList=[]; TAL.refused=0;
+                     TAL.pulled=[]; TAL.lying=[]; TAL.far=[]; }
     var g=L.gen||{}, sc=(L.s0+L.s1)/2, X=rowFrame(sc,L.side), s0=L.s0, s1=L.s1;
     var oF=Math.max(L.fe,PBACK)+0.002, oP=oF+DEEP, right=!!g.last;
     var dc=dist3(X(sc,oF,1.2)), band=dc<dn?'near':dc<df?'mid':'';
@@ -18004,10 +18052,12 @@ function libraryTheme(K){
     var panel=grey(boxAt(X,s0,s1,oP,oP+0.015,0,SH),'panel');
     parts.push(panel);
     /* the tone hatch on the panel's face, where books can be seen in front of it */
-    if(band && HATCH>0){
+    /* the hatch lightens beyond Outline detail to (v2: spacing x1.5) so the far
+       shelves do not go grey before their books do */
+    if(HATCH>0){
       var fp=faceIx(panel,(function(){ var a=X(0,0,0), b=X(0,-1,0); return [b[0]-a[0],b[1]-a[1],0]; })());
       var gp=paperGap(X(sc,oP,SH/2),[X(1,0,0)[0]-X(0,0,0)[0],X(1,0,0)[1]-X(0,0,0)[1],0],[0,0,1]);
-      var sp=Math.max(0.012+0.06*(1-HATCH), gp>0?MINSP/gp:1e9);
+      var sp=Math.max((0.012+0.06*(1-HATCH))*(band?1:1.5), gp>0?MINSP/gp:1e9);
       if(gp>0) for(var zh=KICK+sp/2; zh<SH-0.01; zh+=sp)
         panel.lines.push({a:X(s0,oP,zh), b:X(s1,oP,zh), f0:fp, f1:fp, col:COL_DGREY, kind:'hatch'});
     }
@@ -18025,7 +18075,25 @@ function libraryTheme(K){
       var zf=KICK+k*PITCH, RB=sub(L.side<0?2:1,L.idx*16+k,SALT_BOOK), run=bookRun(RB,sB-sA,PITCH-0.02);
       TAL.shelves.push({side:L.side, idx:L.idx, k:k, W:sB-sA, used:run.used, pitch:PITCH, cart:false});
       run.books.forEach(function(B){ TAL.books.push({side:L.side, idx:L.idx, k:k, x0:B.x0, w:B.w, h:B.h, lean:B.lean, col:B.col, pitch:PITCH, W:sB-sA}); });
-      placeBooks(run,L,X,sA,oF+0.01,zf,band,'book',L.side<0?2:1,L.idx*16+k,L.side).forEach(function(P){ parts.push(P); });
+      /* v2: near the camera 6% of books stand 30-80 mm proud and 3% start a
+         book lying flat on top of their neighbours -- from SALT_PULL, so the
+         run itself is untouched */
+      var RP=sub(L.side<0?2:1,L.idx*16+k,SALT_PULL), lyers=[];
+      run.books.forEach(function(B,bi){ var u=[RP(),RP(),RP(),RP(),RP(),RP()];
+        B.pull=(band==='near' && !B.lean && u[0]<0.06)?0.03+0.05*u[1]:0;
+        if(band==='near' && u[2]<0.03) lyers.push({x:B.x0, L:0.17+0.12*u[3], th:0.02+0.03*u[4], d:0.14+0.08*u[5], col:bookCol(u[1])}); });
+      placeBooks(run,L,X,sA,oF+0.002,zf,band,'book',L.side<0?2:1,L.idx*16+k,L.side).forEach(function(P){ parts.push(P); });
+      var lastLy=-1;
+      lyers.forEach(function(Y){
+        if(Y.x<lastLy || Y.x+Y.L>sB-sA) return;
+        var top=0; run.books.forEach(function(B){ var iv0=B.x0-B.h*Math.sin(B.lean), iv1=B.x0+B.w*Math.cos(B.lean);
+          if(iv1>Y.x && iv0<Y.x+Y.L) top=Math.max(top,B.h*Math.cos(B.lean)+B.w*Math.sin(B.lean)); });
+        var z0=zf+top+0.002;
+        if(!(top>0) || z0+Y.th>zf+PITCH-BT-0.01) return;
+        parts.push(tag(boxAt(X,sA+Y.x,sA+Y.x+Y.L,oF+0.002,oF+0.002+Y.d,z0,z0+Y.th),'book',Y.col,'book'));
+        TAL.lying.push({side:L.side, idx:L.idx, k:k, x:Y.x, L:Y.L, z0:z0, th:Y.th, pitch:PITCH, zf:zf});
+        lastLy=Y.x+Y.L;
+      });
       if(RS()<0.5 && band==='near'){
         var ul=RS(), sl=sA+0.05+(sB-sA-0.15)*ul, bd=parts[2+(right?1:0)+k];
         var fb=faceIx(bd,(function(){ var a=X(0,0,0), b=X(0,-1,0); return [b[0]-a[0],b[1]-a[1],0]; })());
@@ -18041,10 +18109,11 @@ function libraryTheme(K){
     /* the ceiling over the section */
     /* nothing stands above a ceiling, so it HIDES NOTHING: as an occluder each
        plate's gap cut the next plate's tile joints where they met */
-    var Cl=prismN(L.poly,CEILZ,CEILZ+0.05); Cl.lines=[]; Cl.hides=false;
+    var Cl=prismN(L.poly,CEILZ,CEILZ+0.05); Cl.lines=[]; Cl.hides=false; L.ceil=Cl;
     parts.push(tag(Cl,'ceiling',COL_K,'ceil'));
     TAL.ceilings++; TAL.ceilList.push({kind:'lot', side:L.side, idx:L.idx, z:Math.min.apply(null,verts(Cl).map(function(v){ return v[2]; }))});
-    parts.forEach(function(P){ P.cont=L; L.parts.push(P); });
+    /* a proud book's outer piece belongs to its slab */
+    parts.forEach(function(P){ var C=(P.cont && P.cont.kind==='slab')?P.cont:L; P.cont=C; C.parts.push(P); });
   }
   /* ---- the aisle ---------------------------------------------------------- */
   function laneParts(P,kind,col,layer){
@@ -18061,12 +18130,7 @@ function libraryTheme(K){
       if(C.kind!=='slab') return;
       var Cl=prismN(C.poly,CEILZ,CEILZ+0.05), sd=C.side;
       Cl.lines=[];
-      /* tile joints across the half-aisle every 0.6 m, held to the paper floor */
-      var mid=P3((C.s0+C.s1)/2,sd,HALFW/2,CEILZ), F=frame((C.s0+C.s1)/2);
-      var gp=paperGap(mid,[-F[3]*sd,F[2]*sd,0],[F[2],F[3],0]);
-      if(dist3(mid)<df && gp*0.6>=MINSP) for(var s=Math.ceil(C.s0/0.6)*0.6; s<C.s1-1e-6; s+=0.6)
-        if(s>C.s0+1e-6) Cl.lines.push({a:P3(s,sd,0,CEILZ), b:P3(s,sd,HALFW,CEILZ), f0:0, f1:0, col:COL_K, kind:'tile'});
-      tag(Cl,'ceiling',COL_K,'ceil'); Cl.hides=false; Cl.cont=C; C.parts.push(Cl);
+      tag(Cl,'ceiling',COL_K,'ceil'); Cl.hides=false; Cl.cont=C; C.parts.push(Cl); C.ceil=Cl;
       TAL.ceilings++; TAL.ceilList.push({kind:'slab', side:C.side, s0:C.s0, z:Math.min.apply(null,verts(Cl).map(function(v){ return v[2]; }))});
     });
   }
@@ -18099,19 +18163,250 @@ function libraryTheme(K){
       TAL.signs.push(rec);
     });
   }
-  function lamps(){
-    TAL.lamps=[];
-    for(var k=0;(k+0.5)*LAMP+0.6<=LEN;k++){
-      var sc=(k+0.5)*LAMP, X=rowFrame(sc,1), clash=TAL.signs.some(function(sg){ return Math.abs(sg.s-sc)<0.7; });
-      var rec={s:sc, placed:false};
-      if(!clash){
-        var P=boxAt(X,sc-0.6,sc+0.6,-0.12,0.12,CEILZ-0.07,CEILZ-0.005);
-        P.lines.push({a:X(sc-0.55,0,CEILZ-0.07), b:X(sc+0.55,0,CEILZ-0.07), f0:faceIx(P,[0,0,-1]), f1:faceIx(P,[0,0,-1]), col:COL_YEL, kind:'tube'});
-        var pcs=laneParts(P,'lamp',COL_YEL,'lamp');
-        if(pcs && commit(pcs,['furn','sign','lamp'])) rec.placed=true;
-      }
-      TAL.lamps.push(rec);
+
+  /* ---- v2 THE CEILING'S FACE (row 64). Everything is a line on the ceiling
+     plate of the container it lies over -- clipped to that container's plan,
+     on the plate's underside -- so the order never sees it. A seeded 0.6 m
+     T-bar grid both ways (every joint inside Outline detail to, every other
+     beyond, and coarser still where the paper floor needs it), the line where
+     the aisle's ceiling meets the shelf fronts on each side, troffers in the
+     grid every Light spacing with a 3 x 6 louvre near, sprinklers, smoke
+     detectors and supply diffusers. */
+  function clip2(A,B,Q){
+    var t0=0, t1=1, dx=B[0]-A[0], dy=B[1]-A[1], m, ar=0;
+    for(m=0;m<Q.length;m++){ var a0=Q[m], b0=Q[(m+1)%Q.length]; ar+=a0[0]*b0[1]-a0[1]*b0[0]; }
+    var sg=ar>0?1:-1;
+    for(m=0;m<Q.length;m++){
+      var a=Q[m], b=Q[(m+1)%Q.length], nx=-(b[1]-a[1])*sg, ny=(b[0]-a[0])*sg;
+      var num=nx*(A[0]-a[0])+ny*(A[1]-a[1]), den=nx*dx+ny*dy;
+      if(Math.abs(den)<1e-15){ if(num<-1e-9) return null; continue; }
+      var t=-num/den;
+      if(den>0){ if(t>t0) t0=t; } else { if(t<t1) t1=t; }
+      if(t0>t1+1e-12) return null;
     }
+    return t1-t0>1e-9?[t0,t1]:null;
+  }
+  var CEILC=[];                                        /* containers with a ceiling plate */
+  function ceilSeg(A,B,col,kind,only){
+    var bb=[Math.min(A[0],B[0])-1e-6,Math.min(A[1],B[1])-1e-6,Math.max(A[0],B[0])+1e-6,Math.max(A[1],B[1])+1e-6], n=0;
+    CEILC.forEach(function(C){
+      if(only && C.kind!==only) return;
+      if(bb[2]<C.bb[0]||C.bb[2]<bb[0]||bb[3]<C.bb[1]||C.bb[3]<bb[1]) return;
+      var r=clip2(A,B,C.poly); if(!r) return;
+      C.ceil.lines.push({a:[A[0]+(B[0]-A[0])*r[0], A[1]+(B[1]-A[1])*r[0], CEILZ], b:[A[0]+(B[0]-A[0])*r[1], A[1]+(B[1]-A[1])*r[1], CEILZ],
+                         f0:0, f1:0, col:col, kind:kind}); n++;
+    });
+    return n;
+  }
+  function PL(s,o){ var v=P3(s,1,o,CEILZ); return [v[0],v[1]]; }
+  function ceilingFace(dn,df){
+    CEILC=[]; conts.forEach(function(C){ if(C.ceil) CEILC.push(C); });
+    var R=sub(0,0,SALT_V2), ps=0.6*R(), sprPh=3*R(), smPh=9*R(), dfPh=7*R(), E=PBACK+0.30;
+    var T={along:0, across:0, junction:0, troffers:[], louvres:0, sprinklers:0, smoke:0, diffusers:0, phase:ps};
+    TAL.ceil=T;
+    var ST=frame(0), lat=function(s){ var F=frame(s); return [-F[3],F[2],0]; }, alongDir=function(s){ var F=frame(s); return [F[2],F[3],0]; };
+    function zmid(s,o){ return P3(s,1,o,CEILZ); }
+    /* the troffers first, so the grid can leave their edges to them */
+    var trs=[];
+    for(var k=0;(k+0.5)*LAMP<=LEN;k++){
+      var sc=ps+0.6*Math.round(((k+0.5)*LAMP-ps)/0.6);
+      if(sc-0.6<0 || sc+0.6>LEN) continue;
+      if(trs.length && sc-trs[trs.length-1]<1.2+1e-9) continue;
+      trs.push(sc);
+    }
+    function inTroffer(s){ for(var i=0;i<trs.length;i++) if(s>trs[i]-0.6-1e-9 && s<trs[i]+0.6+1e-9) return true; return false; }
+    /* across joints */
+    var nAcross=Math.floor((LEN-ps)/0.6);
+    for(var j=0;j<=nAcross;j++){
+      var s=ps+0.6*j, P=zmid(s,0), d=dist3(P), m=d<df?1:2, gp=paperGap(P,lat(s),alongDir(s));
+      while(gp>0 && 0.6*m*gp<MINSP && m<64) m*=2;
+      if(!(gp>0) || j%m) continue;
+      if(inTroffer(s)){ T.across+=ceilSeg(PL(s,-E),PL(s,-0.3),COL_K,'joint')+ceilSeg(PL(s,0.3),PL(s,E),COL_K,'joint'); }
+      else T.across+=ceilSeg(PL(s,-E),PL(s,E),COL_K,'joint');
+    }
+    /* along joints, cell by cell, at +-0.3 and +-0.9 m */
+    [-0.9,-0.3,0.3,0.9].forEach(function(o,oi){
+      if(Math.abs(o)>E-1e-6) return;
+      for(var j=0;j<nAcross;j++){
+        var s0=ps+0.6*j, s1=s0+0.6, P=zmid((s0+s1)/2,o), d=dist3(P), gp=paperGap(P,alongDir(s0),lat(s0));
+        if(!(gp>0) || 0.6*gp<MINSP) continue;
+        if(d>=df && (oi%2)) continue;
+        if(Math.abs(o)<0.31 && inTroffer((s0+s1)/2)) continue;
+        T.along+=ceilSeg(PL(s0,o),PL(s1,o),COL_K,'joint');
+      }
+    });
+    /* where the aisle's ceiling meets the shelf fronts, both sides */
+    [1,-1].forEach(function(sd){ for(var j=0;j*0.6<LEN;j++){ var a=j*0.6, b=Math.min(LEN,a+0.6);
+      T.junction+=ceilSeg(PL(a,sd*HALFW),PL(b,sd*HALFW),COL_K,'junction','slab'); } });
+    /* troffers: a yellow outline, and inside Solid detail to a 3 x 6 louvre */
+    trs.forEach(function(sc){
+      var d=dist3(zmid(sc,0)), q=[[sc-0.6,-0.3],[sc+0.6,-0.3],[sc+0.6,0.3],[sc-0.6,0.3]];
+      for(var i=0;i<4;i++){ var a=q[i], b=q[(i+1)%4]; ceilSeg(PL(a[0],a[1]),PL(b[0],b[1]),COL_YEL,'troffer'); }
+      var lv=d<dn;
+      if(lv){ [-0.1,0.1].forEach(function(o){ ceilSeg(PL(sc-0.6,o),PL(sc+0.6,o),COL_YEL,'louvre'); });
+              for(var i2=1;i2<6;i2++){ var sl=sc-0.6+0.2*i2; ceilSeg(PL(sl,-0.3),PL(sl,0.3),COL_YEL,'louvre'); } T.louvres++; }
+      T.troffers.push({s:sc, louvre:lv});
+    });
+    function ring(sc,o,r,n,col,kind){ var pts=[]; for(var i=0;i<=n;i++){ var a=TAU*i/n; pts.push(PL(sc+Math.cos(a)*r,o+Math.sin(a)*r)); }
+      for(var i3=1;i3<pts.length;i3++) ceilSeg(pts[i3-1],pts[i3],col,kind); }
+    /* sprinklers every 3 m, beside the troffers; smoke detectors about every 9 m;
+       a supply diffuser every 6-8 m in a free grid cell */
+    for(var k2=0;sprPh+3*k2<LEN;k2++){ var ss=sprPh+3*k2, so=(k2%2?1:-1)*0.42;
+      if(dist3(zmid(ss,so))<dn){ ring(ss,so,0.03,8,COL_K,'sprinkler'); T.sprinklers++; } }
+    for(var k3=0;smPh+9*k3<LEN;k3++){ var sm=smPh+9*k3, tries3=0;
+      while(inTroffer(sm) && tries3++<4) sm+=0.9;
+      if(sm<LEN && dist3(zmid(sm,0))<df){ ring(sm,0,0.07,12,COL_K,'smoke'); ring(sm,0,0.025,8,COL_K,'smoke'); T.smoke++; } }
+    var RD=sub(0,1,SALT_V2), sd2=dfPh;
+    while(sd2<LEN-0.6){
+      var cell=ps+0.6*Math.floor((sd2-ps)/0.6)+0.3, t4=0;
+      while(inTroffer(cell) && t4++<6) cell+=0.6;
+      if(cell+0.3<LEN && cell-0.3>0 && !inTroffer(cell) && dist3(zmid(cell,0))<df){
+        [0.225,0.15,0.075].forEach(function(h){ var q=[[cell-h,-h],[cell+h,-h],[cell+h,h],[cell-h,h]];
+          for(var i=0;i<4;i++){ var a=q[i], b=q[(i+1)%4]; ceilSeg(PL(a[0],a[1]),PL(b[0],b[1]),COL_K,'diffuser'); } });
+        T.diffusers++;
+      }
+      sd2+=6+2*RD();
+    }
+    TAL.lamps=T.troffers;
+  }
+
+  /* ---- v2 THE FLOOR AND THE FOREGROUND (row 64). Carpet-tile seams every
+     0.5 m both ways, near only, on a floor plate in each slab that hides
+     nothing. The first cart stands 2.0-4.5 m ahead whenever there are carts, a
+     kick-stool stands within 3 m 60% of the time, and 0-2 piles of books lie
+     at the shelf bases within 6 m -- all from SALT_V2. */
+  function floors(dn){
+    TAL.seams=[];
+    conts.forEach(function(C){
+      if(C.kind!=='slab') return;
+      var sd=C.side, Q=C.poly, Pl=prismN(Q,-0.02,0);
+      Pl.lines=[]; Pl.hides=false; Pl.cont=C; Pl.col=COL_K; Pl.kind='plate'; Pl.layer='floor';
+      var add=function(a,b){ if(dist3([(a[0]+b[0])/2,(a[1]+b[1])/2,0])>=dn) return;
+        Pl.lines.push({a:a, b:b, f0:1, f1:1, col:COL_K, kind:'seam'}); TAL.seams.push(dist3([(a[0]+b[0])/2,(a[1]+b[1])/2,0])); };
+      for(var s0=Math.ceil(C.s0/0.5)*0.5; s0<C.s1-1e-6; s0+=0.5){
+        if(s0>C.s0+1e-6) add(P3(s0,sd,0,0),P3(s0,sd,HALFW,0));
+        var s1=Math.min(C.s1,s0+0.5);
+        [0.5].forEach(function(o){ if(o<HALFW-1e-6) add(P3(s0,sd,o,0),P3(s1,sd,o,0)); });
+        if(sd===1) add(P3(s0,1,0,0),P3(s1,1,0,0));
+      }
+      C.parts.push(Pl);
+    });
+  }
+  function laneCommit(parts,layers){
+    var all=[], ok=true;
+    parts.forEach(function(P){ if(!ok) return; var pcs=slabPieces(P); if(!pcs){ ok=false; return; }
+      pcs.forEach(function(Q){ Q.kind=P.kind; Q.col=P.col; Q.layer=P.layer; all.push(Q); }); });
+    return ok && commit(all,layers);
+  }
+  function foreground(dn,df){
+    var R=sub(0,2,SALT_V2), u=[]; for(var i=0;i<12;i++) u.push(R());
+    TAL.first=null; TAL.stool=null; TAL.piles=[];
+    if(CARTS>=1){
+      var st=SCAM+2.0+2.5*u[0]+0.42, sd=u[1]<0.5?1:-1;
+      var cp=cartParts(st,sd,dn,df,-99,'cart'), rec={s:st, side:sd, placed:false, books:cp.books};
+      if(laneCommit(cp.parts,['furn','cart','sign','book','floorstuff'])) rec.placed=true;
+      TAL.first=rec;
+    }
+    if(u[2]<0.6){
+      var ss=SCAM+0.8+2.2*u[3], ssd=u[4]<0.5?1:-1, Xs=rowFrame(ss,ssd), ring=[];
+      for(var q=0;q<10;q++){ var a=TAU*q/10, v=Xs(ss+Math.cos(a)*0.2,HALFW-0.29+Math.sin(a)*0.2,0); ring.push([v[0],v[1]]); }
+      var stl=tag(prismN(ring,0,0.4),'stool',COL_GREY,'floorstuff');
+      TAL.stool={s:ss, side:ssd, placed:laneCommit([stl],['furn','cart','sign','book','floorstuff'])};
+    }
+    var np=Math.floor(3*u[5]);
+    for(var pi=0;pi<np;pi++){
+      var RP2=sub(0,10+pi,SALT_V2), ps0=SCAM+1+5*RP2(), psd=RP2()<0.5?1:-1, nb=2+Math.floor(4*RP2()), Xp=rowFrame(ps0,psd), z=0, pparts=[];
+      for(var b=0;b<nb;b++){
+        var Lb=0.17+0.12*RP2(), Db=0.14+0.08*RP2(), Tb=0.015+0.045*RP2(), off=(RP2()-0.5)*0.06, col=bookCol(RP2());
+        pparts.push(tag(boxAt(Xp,ps0-Lb/2+off,ps0+Lb/2+off,HALFW-0.09-Db,HALFW-0.09,z,z+Tb),'floorbook',col,'floorstuff'));
+        z+=Tb+0.001;
+      }
+      TAL.piles.push({s:ps0, side:psd, books:nb, placed:laneCommit(pparts,['furn','cart','sign','book','floorstuff'])});
+    }
+  }
+  /* ---- v2 THE END WALL (row 64): its own container past the aisle's end,
+     spanning the aisle and both ranges, checked disjoint from every lot and
+     slab. A window with a reading table and two chairs (60%), or a door with
+     an exit sign and a clock. */
+  var WE=PBACK+0.35, WS0=LEN+0.05, WS1=LEN+2.05, WALL=null;
+  (function(){
+    var Q=[PL(WS0,-WE),PL(WS1,-WE),PL(WS1,WE),PL(WS0,WE)], bb=[1e18,1e18,-1e18,-1e18];
+    Q.forEach(function(v){ bb[0]=Math.min(bb[0],v[0]); bb[1]=Math.min(bb[1],v[1]); bb[2]=Math.max(bb[2],v[0]); bb[3]=Math.max(bb[3],v[1]); });
+    function sep(A,B){ var Ps=[A,B]; for(var pi=0;pi<2;pi++){ var P=Ps[pi]; for(var e=0;e<P.length;e++){
+      var a=P[e], b=P[(e+1)%P.length], nx=b[1]-a[1], ny=a[0]-b[0], a0=1e18,a1=-1e18,b0=1e18,b1=-1e18, m;
+      for(m=0;m<A.length;m++){ var t=A[m][0]*nx+A[m][1]*ny; a0=Math.min(a0,t); a1=Math.max(a1,t); }
+      for(m=0;m<B.length;m++){ var t2=B[m][0]*nx+B[m][1]*ny; b0=Math.min(b0,t2); b1=Math.max(b1,t2); }
+      if(a1<=b0+1e-9 || b1<=a0+1e-9) return true; } } return false; }
+    var clash=conts.some(function(C){ return !sep(Q,C.poly); });
+    var RW=sub(0,3,SALT_V2), uw=[]; for(var i=0;i<6;i++) uw.push(RW());
+    TAL.wall={type:uw[0]<0.6?'window':'door', placed:!clash, clash:clash, poly:Q, u:uw};
+    if(!clash){ WALL={kind:'wall', side:1, s0:WS0, s1:WS1, poly:Q, bb:bb, parts:[]}; conts.push(WALL); }
+  })();
+  function endWall(dn){
+    if(!WALL) return;
+    var W=TAL.wall, X=rowFrame((WS0+WS1)/2,1), tD=(function(){ var a=X(0,0,0), b=X(-1,0,0); return [b[0]-a[0],b[1]-a[1],0]; })();
+    var Cl=prismN(WALL.poly,CEILZ,CEILZ+0.05); Cl.lines=[]; Cl.hides=false; WALL.ceil=Cl; tag(Cl,'ceiling',COL_K,'ceil');
+    TAL.ceilings++; TAL.ceilList.push({kind:'wall', z:CEILZ});
+    var back=tag(boxAt(X,WS1-0.15,WS1,-WE,WE,0,CEILZ),'endwall',COL_K,'wall'), fb=faceIx(back,tD), parts=[Cl,back];
+    var F=function(o,z){ return X(WS1-0.15,o,z); };
+    function rect(P,fi,o0,o1,z0,z1,col,kind){ var q=[[o0,z0],[o1,z0],[o1,z1],[o0,z1]];
+      for(var i=0;i<4;i++){ var a=q[i], b=q[(i+1)%4]; P.lines.push({a:X(P.sFace,a[0],a[1]), b:X(P.sFace,b[0],b[1]), f0:fi, f1:fi, col:col, kind:kind}); } }
+    back.sFace=WS1-0.15;
+    var BRN='#8b5a2b';
+    if(W.type==='window'){
+      var wz0=0.7, wz1=Math.min(2.7,CEILZ-0.12);
+      rect(back,fb,-0.75,0.75,wz0,wz1,COL_K,'window');
+      [-0.25,0.25].forEach(function(o){ back.lines.push({a:F(o,wz0), b:F(o,wz1), f0:fb, f1:fb, col:COL_K, kind:'mullion'}); });
+      for(var r=1;r<4;r++){ var zr=wz0+(wz1-wz0)*r/4; back.lines.push({a:F(-0.75,zr), b:F(0.75,zr), f0:fb, f1:fb, col:COL_K, kind:'mullion'}); }
+      parts.push(tag(boxAt(X,WS1-0.21,WS1-0.15,-0.8,0.8,wz0-0.04,wz0),'sill',COL_K,'wall'));
+      var ts1=WS1-0.4, ts0=ts1-0.9;
+      parts.push(tag(boxAt(X,ts0,ts1,-0.9,0.9,0.71,0.75),'table',BRN,'wall'));
+      [[ts0+0.05,-0.85],[ts0+0.05,0.8],[ts1-0.1,-0.85],[ts1-0.1,0.8]].forEach(function(c){
+        parts.push(tag(boxAt(X,c[0],c[0]+0.05,c[1],c[1]+0.05,0,0.71),'table',BRN,'wall')); });
+      [-0.45,0.45].forEach(function(o){ var c0=ts0-0.5, c1=ts0-0.06;
+        parts.push(tag(boxAt(X,c0,c1,o-0.21,o+0.21,0.42,0.46),'chair',BRN,'wall'));
+        parts.push(tag(boxAt(X,c0,c0+0.03,o-0.21,o+0.21,0.46,0.9),'chair',BRN,'wall'));
+        [[c0,o-0.21],[c0,o+0.18],[c1-0.03,o-0.21],[c1-0.03,o+0.18]].forEach(function(l){
+          parts.push(tag(boxAt(X,l[0],l[0]+0.03,l[1],l[1]+0.03,0,0.42),'chair',BRN,'wall')); }); });
+    } else {
+      var dz1=Math.min(2.1,CEILZ-0.35);
+      rect(back,fb,-0.45,0.45,0,dz1,COL_K,'door');
+      rect(back,fb,-0.1,0.1,dz1*0.62,dz1*0.86,COL_K,'door');
+      [0.48,0.5].forEach(function(f){ back.lines.push({a:F(-0.35,dz1*f), b:F(0.35,dz1*f), f0:fb, f1:fb, col:COL_K, kind:'door'}); });
+      /* the exit sign: a box over the door, EXIT in red on its face */
+      var ez0=dz1+0.05, ez1=ez0+0.2, ex=tag(boxAt(X,WS1-0.21,WS1-0.15,-0.15,0.15,ez0,ez1),'exit',COL_K,'wall'), fe2=faceIx(ex,tD);
+      var Ce=X(WS1-0.21,0,(ez0+ez1)/2), Me=surf(Ce,tD,0.3,0.2), polys=[], uu=0.05, s2=0.11, txt='EXIT';
+      for(var i=0;i<txt.length;i++){ var G=glyphStrokes(txt[i],'futural'); if(!G) continue;
+        G.strokes.forEach(function(st){ polys.push(st.map(function(qq){ return [uu+qq[0]*s2, 0.05+qq[1]*s2]; })); }); uu+=G.adv*s2; }
+      drawOn(ex,fe2,Me,polys,'#d42a2a','exit',-1);
+      parts.push(ex);
+      /* a clock beside the door, its hands from the seed */
+      var cz=Math.min(1.9,CEILZ-0.3), co=WE-0.2, cp=[], hh=TAU*W.u[1], mm=TAU*W.u[2];
+      for(var k=0;k<=16;k++){ var a=TAU*k/16; cp.push(F(co+0.15*Math.cos(a),cz+0.15*Math.sin(a))); }
+      for(var k2=1;k2<cp.length;k2++) back.lines.push({a:cp[k2-1], b:cp[k2], f0:fb, f1:fb, col:COL_K, kind:'clock'});
+      back.lines.push({a:F(co,cz), b:F(co+0.07*Math.sin(hh),cz+0.07*Math.cos(hh)), f0:fb, f1:fb, col:COL_K, kind:'clock'});
+      back.lines.push({a:F(co,cz), b:F(co+0.12*Math.sin(mm),cz+0.12*Math.cos(mm)), f0:fb, f1:fb, col:COL_K, kind:'clock'});
+    }
+    parts.forEach(function(P){ P.cont=WALL; WALL.parts.push(P); });
+  }
+  /* a cart's parts CENTRED at st (its ends 0.42 m either side), loaded, keyed on j */
+  function cartParts(st0,sd,dn,df,j,layer){
+    /* 9 cm off the shelf face: a pulled-out book stands up to 8 cm proud */
+    var st=st0, X=rowFrame(st,sd), o1=HALFW-0.09, parts=[], d=dist3(X(st,o1-0.2,0.5)), nb=0;
+    var band=d<dn?'near':d<df?'mid':'';
+    var L0=st-0.42, L1=st+0.42, oa=o1-0.42;
+    [[L0,oa],[L1-0.025,oa],[L0,o1-0.025],[L1-0.025,o1-0.025]].forEach(function(c){
+      parts.push(tag(boxAt(X,c[0],c[0]+0.025,c[1],c[1]+0.025,0.12,0.95),'cartpost',COL_K,layer));
+      parts.push(tag(boxAt(X,c[0]-0.01,c[0]+0.035,c[1]+0.0,c[1]+0.025,0,0.10),'wheel',COL_K,layer));
+    });
+    [0.20,0.60].forEach(function(z,si){
+      parts.push(tag(boxAt(X,L0+0.025,L1-0.025,oa,o1,z,z+0.02),'cartshelf',COL_K,layer));
+      var RB=sub(sd<0?2:1,j*4+si,SALT_CART+1000), run=bookRun(RB,L1-L0-0.06,0.34);
+      TAL.shelves.push({side:sd, idx:-1-j, k:si, W:L1-L0-0.06, used:run.used, pitch:0.36, cart:true});
+      run.books.forEach(function(B){ nb++; TAL.books.push({side:sd, idx:-1-j, k:si, x0:B.x0, w:B.w, h:B.h, lean:B.lean, col:B.col, pitch:0.36, W:L1-L0-0.06, cart:true}); });
+      placeBooks(run,null,X,L0+0.03,oa+0.02,z+0.02,band,layer,sd<0?4:3,j*4+si,sd).forEach(function(P){ parts.push(P); });
+    });
+    return {parts:parts, books:nb};
   }
   function carts(dn,df){
     TAL.carts=[]; TAL.stools=[];
@@ -18120,21 +18415,9 @@ function libraryTheme(K){
         var R=sub(sd<0?2:1,j,SALT_CART), u=R(), us=R(), ub=R();
         var pc=CARTS/40, ps=CARTS/80;
         if(!(u<pc+ps)) continue;
-        var isCart=u<pc, st=j*5+0.6+3.6*us, X=rowFrame(st,sd), o1=HALFW-0.05, parts=[], d=dist3(X(st,o1-0.2,0.5));
-        var band=d<dn?'near':d<df?'mid':'';
+        var isCart=u<pc, st=j*5+0.6+3.6*us, X=rowFrame(st,sd), o1=HALFW-0.05, parts=[];
         if(isCart){
-          var L0=st-0.42, L1=st+0.42, oa=o1-0.42;
-          [[L0,oa],[L1-0.025,oa],[L0,o1-0.025],[L1-0.025,o1-0.025]].forEach(function(c){
-            parts.push(tag(boxAt(X,c[0],c[0]+0.025,c[1],c[1]+0.025,0.12,0.95),'cartpost',COL_K,'cart'));
-            parts.push(tag(boxAt(X,c[0]-0.01,c[0]+0.035,c[1]+0.0,c[1]+0.025,0,0.10),'wheel',COL_K,'cart'));
-          });
-          [0.20,0.60].forEach(function(z,si){
-            parts.push(tag(boxAt(X,L0+0.025,L1-0.025,oa,o1,z,z+0.02),'cartshelf',COL_K,'cart'));
-            var RB=sub(sd<0?2:1,j*4+si,SALT_CART+1000), run=bookRun(RB,L1-L0-0.06,0.34);
-            TAL.shelves.push({side:sd, idx:-1-j, k:si, W:L1-L0-0.06, used:run.used, pitch:0.36, cart:true});
-            run.books.forEach(function(B){ TAL.books.push({side:sd, idx:-1-j, k:si, x0:B.x0, w:B.w, h:B.h, lean:B.lean, col:B.col, pitch:0.36, W:L1-L0-0.06, cart:true}); });
-            placeBooks(run,null,X,L0+0.03,oa+0.02,z+0.02,band,'cart',sd<0?4:3,j*4+si,sd).forEach(function(P){ parts.push(P); });
-          });
+          parts=cartParts(st,sd,dn,df,j,'cart').parts;
         } else {
           var ring=[]; for(var i=0;i<10;i++){ var a=TAU*i/10, q=X(st+Math.cos(a)*0.2,o1-0.22+Math.sin(a)*0.2,0); ring.push([q[0],q[1]]); }
           parts.push(tag(prismN(ring,0,0.4),'stool',COL_GREY,'cart'));
@@ -18143,17 +18426,18 @@ function libraryTheme(K){
         parts.forEach(function(P){ if(!ok) return; var pcs=slabPieces(P); if(!pcs){ ok=false; return; }
           pcs.forEach(function(Q){ Q.kind=P.kind; Q.col=P.col; Q.layer=P.layer; all.push(Q); }); });
         var rec={s:st, side:sd, cart:isCart, placed:false};
-        if(ok && commit(all,['furn','cart','sign','lamp'])) rec.placed=true;
+        if(ok && commit(all,['furn','cart','sign','lamp','book','floorstuff'])) rec.placed=true;
         (isCart?TAL.carts:TAL.stools).push(rec);
       }
     });
   }
   return {
     dress:dress, signsFor:function(){},
-    furnish:function(dn,df){ ceilings(df); signs(); lamps(); carts(dn,df); },
+    furnish:function(dn,df){ ceilings(df); endWall(dn); signs(); ceilingFace(dn,df); floors(dn); foreground(dn,df); carts(dn,df); },
     cars:[], dots:[],
     info:function(){ return ' · '+TAL.books.length+' books · '+TAL.signs.filter(function(s){ return s.placed; }).length+' range signs · '+
-      TAL.carts.filter(function(c){ return c.placed; }).length+' carts'; }
+      (TAL.carts.filter(function(c){ return c.placed; }).length+(TAL.first&&TAL.first.placed?1:0))+' carts'+
+      (TAL.wall?' · an end wall with a '+TAL.wall.type:''); }
   };
 }
 function marketTheme(K){
@@ -20831,6 +21115,7 @@ function buildCorridor(p,THM){
     /* the mirror's tally too, per pass (row 59): set once per BUILD, an
        over-budget build handed the gate the reflections of every pass */
     STRTTALLY.refl=[]; STRTTALLY.rpre=[]; STRTTALLY.rparts=[]; STRTTALLY.rsil=[];
+    STRTTALLY.mirrorSkip=THM.mirrorSkip||[]; STRTTALLY.pudMinMM=THM.pudMinMM||0;
     STRTTALLY.elems=[]; STRTTALLY.bld=[]; STRTTALLY.hfaces=[];
     STRTTALLY.signs=[]; STRTTALLY.graff=[]; STRTTALLY.cars=[]; STRTTALLY.upr=[]; STRTTALLY.urows=[]; STRTTALLY.unsepPairs=[];
     conts.forEach(function(C){ C.parts=[]; });
@@ -21005,13 +21290,19 @@ function buildCorridor(p,THM){
           poly.push(scr([a[0]+(b[0]-a[0])*t, a[1]+(b[1]-a[1])*t, NEAR]));
         }
       }
+      /* a theme may leave a puddle shorter than THM.pudMinMM on the sheet
+         unreflected (row 64: what it would hold is shelving squashed below
+         the paper floor, and it read as a stain) */
+      if(poly.length>=3 && THM.pudMinMM){ var yb=bbox2(poly); if((yb[3]-yb[1])*PAGEMM<THM.pudMinMM) poly=[]; }
       if(poly.length>=3){ P.scr=poly; P.scb=bbox2(poly); P.parc=arcOf(P.pud.hull); }
     });
     pudVis=pudVis.filter(function(P){ return !!P.scr; });
     function mirror(P){
       function mz(q){ return [q[0],q[1],-q[2]]; }
       return {faces:P.faces.map(function(f){ return {n:[f.n[0],f.n[1],-f.n[2]], d:f.d, pts:f.pts.map(mz)}; }),
-              lines:P.lines.map(function(Ln){ return {a:mz(Ln.a), b:mz(Ln.b), f0:Ln.f0, f1:Ln.f1,
+              /* a theme may name line kinds the water never shows (row 64: the
+                 library's back-panel hatch) */
+              lines:(THM.mirrorSkip?P.lines.filter(function(Ln){ return THM.mirrorSkip.indexOf(Ln.kind)<0; }):P.lines).map(function(Ln){ return {a:mz(Ln.a), b:mz(Ln.b), f0:Ln.f0, f1:Ln.f1,
                                                       col:Ln.col||P.col, kind:Ln.kind||'edge'}; }),
               ins:mz(P.ins), cont:P.cont, col:P.col, kind:P.kind, layer:P.layer, hides:P.hides,
               seeThru:P.seeThru, nolod:P.nolod, mirror:true};
@@ -21313,7 +21604,7 @@ function buildCorridor(p,THM){
            (dropped?' · '+dropped+' lots dropped (overlap)':'')+
            (CT.info?CT.info(nsigns):' · '+nsigns+' signs · '+cables.length+' cables · '+CT.cars.length+' cars · '+CT.dots.length+' particles')+
            ' · '+(puds.length-(heroRec?heroRec.pieces.length:0))+' '+(THM.pudWord||'puddles')+
-           (heroRec?' + a front puddle in '+heroRec.pieces.length+' pieces':'')+heroInfo+(RR.npud?' ('+RR.npud+' in view, '+RR.nmirror.toLocaleString()+' parts reflected)':'')+
+           (heroRec?' + '+(THM.heroWord||'a front puddle')+' in '+heroRec.pieces.length+' pieces':'')+heroInfo+(RR.npud?' ('+RR.npud+' in view, '+RR.nmirror.toLocaleString()+' parts reflected)':'')+
            (DPEN?' · depth pens: pen-up '+(penup0/1000).toFixed(1)+' m \u2192 '+(penup1/1000).toFixed(1)+' m (\u00d7'+
                  (penup0>0?penup1/penup0:0).toFixed(2)+')':'')+
            (tries?' · OVER BUDGET: detail pulled in to '+DN.toFixed(0)+' / '+DF.toFixed(0)+' m, LOD '+LODE.toFixed(1)+' mm'+
@@ -22955,6 +23246,7 @@ var HELP={
 'libr.carts':'Book carts per 100 m of aisle, with half as many kick-stools: a trolley with two shelves of books and four wheels at the aisle\u2019s edge.',
 'libr.shine':'How many patches of polish the floor has. Each shows the stacks reflected in it, upside down, with no edge drawn.',
 'libr.pudsz':'How big the polished patches are.',
+'libr.hero':'One large polished patch on the floor right in front of you, where the floor first comes into view at the bottom of the sheet, showing the stacks upside down. 0 is none.',
 'libr.ripple':'How far the reflection wobbles sideways, in millimetres on the sheet. A polished floor is still, so 0.',
 'libr.cams':'Where the camera stands, as a share of the aisle length. Near 0 you see the whole aisle ahead.',
 'libr.camx':'The camera across the aisle, as a share of half its width: 0 is the middle.',
