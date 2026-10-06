@@ -424,7 +424,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v287</a> &mdash; HARBOUR TRUCKS AND GANTRIES v2 -- terminal tractors, skeletal trailers with dressed loads, rubber-tyred gantries (queue row 63)</span></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v288</a> &mdash; REFACTOR ONLY -- the corridor kit's hooks for a canal: whole-channel water, the quay's kind, a lot's quay and plaster; no zero-length reflection (queue row 53)</span></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <div class="tabs" id="tabs"></div>
@@ -19064,7 +19064,7 @@ function streetTheme(K){
     var sfrac=((L.s0+L.s1)/2)/LEN;
     var nMid=Math.max(1,Math.round(FLOORS*(0.45+0.55*R())*(1+CANYON*sfrac*1.5)));
     var midH=THM.midH[0]+R()*spanOf(THM.midH);
-    var F0=Math.max(PBACK,L.fe), front=F0, back=L.back, z=KERB, st=[], n;
+    var F0=Math.max(L.quay===false?KOFF:PBACK,L.fe), front=F0, back=L.back, z=KERB, st=[], n;
     for(n=0;n<nBase+nMid;n++){
       var u1=R(), u2=R(), u3=R(), u4=R();
       var h=(n<nBase)?baseH:midH;
@@ -19519,7 +19519,7 @@ function streetTheme(K){
           if(v1-v0<1e-6) continue;
           var pa=wp(HT,cc+v0,B.z0+v0,0), pb2=wp(HT,cc+v1,B.z0+v1,0);
           if(dist3([(pa[0]+pb2[0])/2,(pa[1]+pb2[1])/2,(pa[2]+pb2[2])/2])>=df) continue;
-          BP.lines.push({a:pa,b:pb2,f0:fk,f1:fk,col:COL_HATCH,kind:'hatch'});
+          BP.lines.push({a:pa,b:pb2,f0:fk,f1:fk,col:L.plaster||COL_HATCH,kind:'hatch'});
         }
         STRTTALLY.hfaces.push({part:BP, f:fk, sp:sp, c:wp(HT,Wh/2,(B.z0+B.z1)/2,0)});
       }
@@ -19528,7 +19528,7 @@ function streetTheme(K){
        stepped crown, 20 plant deck, 15 gable; every draw is taken whatever
        the type, so the type never moves another lot's numbers. */
     var TB=L.blocks[nb0-1], zt=TB.z1, FT=wallOf(L,TB), dep=TB.bk-TB.fr;
-    var type=topU<0.45?'flat':topU<0.65?'crown':topU<0.85?'plant':'gable';
+    var type=FL.topFlat?'flat':topU<0.45?'flat':topU<0.65?'crown':topU<0.85?'plant':'gable';
     BREC.top=type;
     function strip(fA,fB,sA,sB,z0,z1,kind){
       var Q=[P3(sA,L.side,fA,0),P3(sB,L.side,fA,0),P3(sB,L.side,fB,0),P3(sA,L.side,fB,0)].map(function(v){ return [v[0],v[1]]; });
@@ -20138,7 +20138,7 @@ function streetTheme(K){
           if(Math.abs(zb-ZEBRA-3)<1e-9) ln(P3(zb,sd,o,0),P3(zb,sd,o+0.5,0));
         }
         var RS=sub(sd<0?2:1,k,SALT_ROAD), um=RS(), us2=RS();
-        if(um<0.18){
+        if(um<0.18 && FL.manholes!==false){
           var sm=C.s0+0.6+(C.s1-C.s0-1.2)*us2, cm=P3(sm,sd,HALFW/2,0), F=frame(sm), prev=null;
           for(var j=0;j<=32;j++){ var an=TAU*j/32, X=[cm[0]+Math.cos(an)*0.35, cm[1]+Math.sin(an)*0.35, 0];
             if(prev) Pl.lines.push({a:prev, b:X, f0:1, f1:1, kind:'manhole'}); prev=X; }
@@ -21052,6 +21052,16 @@ function buildCorridor(p,THM){
       heroRec.pieces.push(pc); puds.push(pc); hn++;
     });
   }
+  /* A THEME WHOSE WHOLE ROAD IS WATER (row 53: the canal) hands every slab's
+     water, centreline to quay face, to the mirror as one puddle each, with no
+     outline and one ripple phase, so the reflection runs on across the seams */
+  if(THM.channel) conts.forEach(function(C){
+    if(C.kind!=='slab') return;
+    var Qw=[P3(C.s0,C.side,0,0),P3(C.s1,C.side,0,0),P3(C.s1,C.side,HALFW,0),P3(C.s0,C.side,HALFW,0)];
+    puds.push({id:2000+puds.length, channel:true, C:C, side:C.side, s:(C.s0+C.s1)/2, o:HALFW/2, len:C.s1-C.s0, wid:HALFW,
+               ring:Qw.map(function(v){ return [v[0],v[1],0]; }), hull:hull2(Qw.map(function(v){ return [v[0],v[1]]; })),
+               ph:0, rid:2000, outline:[]});
+  });
   STRTTALLY.puds=puds.map(function(pd){ return {id:pd.id, side:pd.side, s0:pd.C.s0, s1:pd.C.s1, poly:pd.C.poly,
     s:pd.s, o:pd.o, len:pd.len, wid:pd.wid, ring:pd.ring, hero:!!pd.hero, outline:pd.outline}; });
   STRTTALLY.hero=heroRec?{ring:heroRec.ring, s0:heroRec.s0, s1:heroRec.s1, g0:heroRec.g0, o:heroRec.o, wid:heroRec.wid,
@@ -21479,7 +21489,7 @@ function buildCorridor(p,THM){
          start of the next piece's kerb line, and the kerb read as a dashed line
          every 4 m. It is 0.15 m tall; what it could hide is not worth that. */
       P.hides=false;
-      P.cont=C; P.col='#1a1a1a'; P.kind='kerb'; C.parts.push(P);
+      P.cont=C; P.col='#1a1a1a'; P.kind=THM.kerbKind||'kerb'; C.parts.push(P);
     });
     CT.furnish(dn,df,tries);
     cablesInto();
@@ -21505,6 +21515,7 @@ function buildCorridor(p,THM){
     if(puds.length || (CT.cars||[]).length) conts.forEach(function(C){ C.parts.forEach(function(P){
       STRTTALLY.allparts.push({faces:P.faces.map(function(f){ return {n:f.n, d:f.d}; }), V:verts(P), kind:P.kind||'',
         hides:P.hides!==false, seeThru:!!P.seeThru, car:P.car, cpart:P.cpart, wh:P.wh, ab:P.ab, sk:P.sk, nside:P.nside, bump:P.bump, mir:P.mir, seg:P.seg, truck:P.truck, gant:P.gant, pk:P.pk,
+        bridge:P.bridge, boat:P.boat, postPair:P.postPair,
         lines:P.lines.map(function(Ln){ return {a:Ln.a, b:Ln.b, f0:Ln.f0, f1:Ln.f1, col:Ln.col||P.col, kind:Ln.kind, tag:Ln.tag}; })});
     }); });
     conts.forEach(function(C){
@@ -21815,7 +21826,14 @@ function buildCorridor(p,THM){
           meta.push({pre:gi, iza:1/a[2], izb:1/b[2], A:A, B:B, col:Ln.col||P.col, kind:Ln.kind||'edge'});
           if(a[2]>maxz) maxz=a[2]; if(b[2]>maxz) maxz=b[2];
         });
+        /* A REFLECTION RUN WITH NO LENGTH IS NOT DRAWN (row 53). The clip at a
+           water polygon's edge leaves slivers ~1e-13 long, and the occluder
+           cuts by arc length: a run with none is never cut, so it went to the
+           pen as a dot behind whatever stands in front of it. On the canal,
+           whose water is every slab, those edges are everywhere. */
         if(P.refl) P.refl.forEach(function(R){
+          var rl=0, rk; for(rk=1;rk<R.pts.length;rk++) rl+=Math.hypot(R.pts[rk][0]-R.pts[rk-1][0],R.pts[rk][1]-R.pts[rk-1][1]);
+          if(!(rl>1e-9)) return;
           var RR=rippled(R.pts,P.pud);
           STRTTALLY.refl.push({pud:P.pud.id, rp:R.rp, col:R.col, src:RR.src, dsp:RR.dsp});
           pp.push(RR.dsp);
@@ -23546,8 +23564,8 @@ var HELP={
 'harb.pave':'A strip of bare apron between the lane and the container doors, in metres. 0 puts the doors at the lane edge.',
 'harb.tiers':'How high the containers are stacked. Each column holds 1 to this many, and one roll in three takes its top one off. The gantry girders stand clear above the highest tier.',
 'harb.hc':'How many containers are high cubes, 2.896 m tall instead of 2.591 m.',
-'harb.gantry':'Gantry cranes per 100 m of lane: yellow legs on rail bogies at both edges, a box girder across the lane with its truss drawn on, and a trolley lowering a spreader on four hoist lines.',
-'harb.trucks':'Yard trucks per 100 m of lane, on both sides together: a tractor and a skeletal trailer, half of them carrying a 40-foot container.',
+'harb.gantry':'Rubber-tyred gantry cranes per 100 m of lane: sills on eight tyres at both edges, four box legs, two box girders across the lane, a trolley with a hanging cab, and a spreader on four ropes, half the time carrying a container. The first stands 30-50 m ahead of the eye.',
+'harb.trucks':'Yard trucks per 100 m of lane, on both sides together: a terminal tractor with its cab to one side and a skeletal trailer, half of them carrying a 40-foot container and some two 20-foot ones, painted and lettered like the stacks.',
 'harb.puddles':'How many puddles lie on the lane, each showing the stacks and cranes mirrored in the water.',
 'harb.pudsz':'How big the puddles are. At 100 a puddle is up to 3.8 m along the lane.',
 'harb.ripple':'How far the reflection wobbles sideways, in millimetres on the sheet. 0 is a still mirror.',
