@@ -424,7 +424,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v283</a> &mdash; REFACTOR ONLY — the corridor kit hands a theme the camera's forward and up vectors and the drawable margin; every engine byte-identical</span></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v284</a> &mdash; PARTICLES UP CLOSE -- pnear, placed in the view and sized by depth (queue row 61)</span></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <div class="tabs" id="tabs"></div>
@@ -2108,7 +2108,7 @@ var SPEC={
     ['cars','Cars',0,20,1,3,[1,'/100 m']],['puddles','Puddles',0,40,1,9],
     ['pudsz','Puddle size',5,100,1,40,[100,'%']],['ripple','Ripple',0,30,1,6,[10,' mm']],
     ['hero','Front puddle',0,100,1,60,[100,'%']],['rvar','Ripple variety',0,100,1,60,[100,'%']],
-    ['dots','Particles',0,3000,10,420],['graff','Graffiti',0,100,1,20,[100,'%']],
+    ['dots','Particles',0,3000,10,420],['pnear','Particles near',0,100,1,50,[100,'%']],['graff','Graffiti',0,100,1,20,[100,'%']],
     ['hatch','Tone hatch',0,100,1,55,[100,'%']],['hatchmode','Hatch spacing',0,1,1,0],
     ['sun','Light from',0,359,1,300,[1,'°']],
     ['cams','Camera along',0,90,1,12,[100,'%']],['camx','Camera side',-100,100,1,-10,[100,'%']],
@@ -18905,7 +18905,8 @@ function corridorScripts(sub,SALT_GLYPH,words){
 function streetTheme(K){
   /* SWITCHES a theme may turn off (row 50). Street sets none of them, and an
      unset switch is the street as it was. */
-  var THM=K.THM, P3=K.P3, add3=K.add3, addCable=K.addCable, cam=K.cam, dist3=K.dist3, drawOn=K.drawOn, faceC=K.faceC, faceIx=K.faceIx, frame=K.frame, hitsAny=K.hitsAny, inConv=K.inConv, lateral=K.lateral, mmPerM=K.mmPerM, paperGap=K.paperGap, para=K.para, polyFromLoops=K.polyFromLoops, prism=K.prism, prismN=K.prismN, splitPart=K.splitPart, sub=K.sub, surf=K.surf, vec=K.vec, verts=K.verts, wallOf=K.wallOf, wp=K.wp, CANTI=K.CANTI, CANYON=K.CANYON, CE=K.CE, FF=K.FF, FLOORS=K.FLOORS, HALFW=K.HALFW, HW=K.HW, KERB=K.KERB, KOFF=K.KOFF, LEN=K.LEN, NEAR=K.NEAR, PBACK=K.PBACK, RT=K.RT, SALT_BLD=K.SALT_BLD, STEPB=K.STEPB, ZUP=K.ZUP, cables=K.cables, conts=K.conts, lots=K.lots, slabsBySide=K.slabsBySide, p=K.p;
+  var THM=K.THM, P3=K.P3, add3=K.add3, addCable=K.addCable, cam=K.cam, dist3=K.dist3, drawOn=K.drawOn, faceC=K.faceC, faceIx=K.faceIx, frame=K.frame, hitsAny=K.hitsAny, inConv=K.inConv, lateral=K.lateral, mmPerM=K.mmPerM, paperGap=K.paperGap, para=K.para, polyFromLoops=K.polyFromLoops, prism=K.prism, prismN=K.prismN, splitPart=K.splitPart, sub=K.sub, surf=K.surf, vec=K.vec, verts=K.verts, wallOf=K.wallOf, wp=K.wp, CANTI=K.CANTI, CANYON=K.CANYON, CE=K.CE, FF=K.FF, FLOORS=K.FLOORS, HALFW=K.HALFW, HW=K.HW, KERB=K.KERB, KOFF=K.KOFF, LEN=K.LEN, NEAR=K.NEAR, PBACK=K.PBACK, RT=K.RT, SALT_BLD=K.SALT_BLD, STEPB=K.STEPB, ZUP=K.ZUP, cables=K.cables, conts=K.conts, lots=K.lots, slabsBySide=K.slabsBySide, p=K.p,
+      FW=K.FW, UP=K.UP, PAD=K.PAD, SLAB=THM.slabLen;
   var i, j, k, FL=THM.flags||{}, SALT_GOODS=151;
   /* ---- §2.4 the box stack. Every storey draws the SAME number of values
      whatever the knobs say, so moving Step-back or Cantilever changes which
@@ -19675,21 +19676,64 @@ function streetTheme(K){
   /* ---- §5.7 PARTICLES: placed along the street with density rising
      linearly toward its far end (s = LEN sqrt(u)), over the road, 2.2-16 m up;
      refused only at a slab face or a crossarm */
-  var dots=[], drej=0;
+  /* ROW 61: PARTICLES UP CLOSE (`pnear`). A particle is NEAR when its first
+     roll from its own substream sub(0, i, SALT_PNEAR = 241) is under Particles
+     near; it is then placed in the VIEW -- a point uniform over the drawable
+     sheet at a camera depth 1.5-25 m (more near than far), back-projected --
+     and kept if it is over a road slab, 1.8-16 m up and clear of a crossarm;
+     four attempts, every number drawn every time, then the legacy place
+     (counted). Its own five SALT_DOT numbers are drawn first as always, so at
+     0 nothing moves; its colour stays theirs. */
+  var dots=[], drej=0, PNEAR=Math.max(0,Math.min(1,(isFinite(p.pnear)?+p.pnear:0)/100)), SALT_PNEAR=241, pnFall=0;
+  function backProj(sx,sy,zc){
+    var xc=(sx-PGW/2)/(FF*HW)*zc, yc=-(sy-PGH/2)/(FF*HW)*zc;
+    return [CE[0]+zc*FW[0]+xc*RT[0]+yc*UP[0], CE[1]+zc*FW[1]+xc*RT[1]+yc*UP[1], CE[2]+zc*FW[2]+xc*RT[2]+yc*UP[2]];
+  }
+  function slabAt(P){
+    var k, C;
+    for(k=0;k<conts.length;k++){ C=conts[k]; if(C.kind==='slab' && P[0]>=C.bb[0]&&P[0]<=C.bb[2]&&P[1]>=C.bb[1]&&P[1]<=C.bb[3] && inConv(C.poly,P)) return C; }
+    return null;
+  }
   {
     var RDT=sub(0,0,SALT_DOT), q;
     for(i=0;i<DOTS;i++){
       var us=RDT(), ul2=RDT(), uz=RDT(), ucol=RDT(), usd=RDT();
       var s2=LEN*Math.sqrt(us), sd2=usd<0.5?1:-1, o2=0.1+(KOFF-0.15)*ul2, z2=2.2+14*uz*uz, f2=s2-4*Math.floor(s2/4);
       var dcol=ucol<0.5?COL_ORANGE:ucol<0.8?COL_LBLUE:COL_PINK;
+      if(PNEAR>0){
+        var RN=sub(0,i,SALT_PNEAR), un=[]; for(q=0;q<13;q++) un.push(RN());
+        if(un[0]<PNEAR){
+          var got=null, t;
+          for(t=0;t<4 && !got;t++){
+            var sxs=PAD+(PGW-2*PAD)*un[1+3*t], sys=PAD+(PGH-2*PAD)*un[2+3*t], zc=1.5+23.5*Math.pow(un[3+3*t],1.6);
+            var cand=backProj(sxs,sys,zc);
+            if(!(cand[2]>=1.8 && cand[2]<=16)) continue;
+            var slabC=slabAt(cand);
+            if(!slabC) continue;
+            var sC2=sOfPlan(cand,slabC), ocand=lateral(cand,sC2,slabC.side), arm=false;
+            for(q=0;q<poles.length && !arm;q++) if(poles[q].side===slabC.side && Math.abs(poles[q].s-sC2)<0.6 && ocand>HALFW-1.7) arm=true;
+            if(arm) continue;
+            got={P:cand, side:slabC.side, slabC:slabC, zc:zc, o:ocand};
+          }
+          if(got){ dots.push({s:sOfPlan(got.P,got.slabC), side:got.side, o:got.o, z:got.P[2], col:dcol, slab:Math.round(got.slabC.s0/SLAB),
+                              P:got.P, near:true, zc:got.zc}); continue; }
+          pnFall++;
+        }
+      }
       var bad=(s2>LEN-0.3)||f2<0.05||f2>3.95;
       for(q=0;q<poles.length && !bad;q++) if(poles[q].side===sd2 && Math.abs(poles[q].s-s2)<0.6 && o2>HALFW-1.7) bad=true;
       if(bad){ drej++; continue; }
       dots.push({s:s2, side:sd2, o:o2, z:z2, col:dcol, slab:Math.floor(s2/4)});
     }
   }
-  STRTTALLY.dots={asked:DOTS, placed:dots.length, rejected:drej,
-                  list:dots.map(function(d){ return {P:P3(d.s,d.side,d.o,d.z), col:d.col, s:d.s}; })};
+  /* the arc position of a plan point inside a slab: projected on the slab's
+     own centreline chord */
+  function sOfPlan(P,C){
+    var A=P3(C.s0,C.side,0,0), B=P3(C.s1,C.side,0,0), dx=B[0]-A[0], dy=B[1]-A[1], L2=dx*dx+dy*dy;
+    return C.s0+(C.s1-C.s0)*Math.max(0,Math.min(1,((P[0]-A[0])*dx+(P[1]-A[1])*dy)/L2));
+  }
+  STRTTALLY.dots={asked:DOTS, placed:dots.length, rejected:drej, pnear:PNEAR, fallback:pnFall, halfw:HALFW,
+                  list:dots.map(function(d){ return {P:d.P||P3(d.s,d.side,d.o,d.z), col:d.col, s:d.s, o:d.o, near:!!d.near, zc:d.zc, slab:d.slab, side:d.side}; })};
 
   function facadeAt(L,zWant){
     if(!L || L.cableU===null || !L.attach.length) return null;
@@ -19915,7 +19959,7 @@ function streetTheme(K){
     Pt.lines.forEach(function(Ln){ Ln.kind=kind; });
     C.parts.push(Pt); return Pt;
   }
-  function furnish(dn,df){
+  function furnish(dn,df,step){
     conts.forEach(function(C){
       if(C.kind!=='slab') return;
       var sd=C.side, k=Math.round(C.s0/4);
@@ -20125,15 +20169,37 @@ function streetTheme(K){
        (the station's beacon): 0.35 mm on the sheet along the camera's level
        right vector, which leaves its depth unchanged, so the length is exact
        near and far. It hides nothing and is never dropped for size. */
+    STRTTALLY.dots.drawn=[];
     dots.forEach(function(dt){
       var C=slabsBySide[dt.side][dt.slab]; if(!C) return;
-      var P=P3(dt.s,dt.side,dt.o,dt.z), c=cam(P);
+      var P=dt.P||P3(dt.s,dt.side,dt.o,dt.z), c=cam(P);
       if(!(c[2]>2*NEAR)) return;
+      /* A NEAR PARTICLE IS SIZED BY ITS DEPTH (row 61): clamp(0.35 + 2.5 / zc,
+         0.35, 1.4) mm on the sheet, and from 0.5 mm a closed ring of ten
+         segments in the plane facing the camera, every vertex in its slab.
+         A ring is 20 points against a stroke's 2 and the budget cannot shed a
+         particle, so the budget's NINTH step draws the near ones as strokes */
+      var dmm=dt.near&&!(step>=9)?Math.max(0.35,Math.min(1.4,0.35+2.5/c[2])):0.35;
+      if(dt.near && dmm>=0.5){
+        var rw=dmm/2*c[2]/(PAGEMM*FF*HW), hr=0.005, nz=[UP[0],UP[1],UP[2]], ring=[], k;
+        for(k=0;k<=10;k++){ var an=TAU*k/10; ring.push([P[0]+rw*(Math.cos(an)*RT[0]+Math.sin(an)*nz[0]), P[1]+rw*(Math.cos(an)*RT[1]+Math.sin(an)*nz[1]), P[2]+rw*(Math.cos(an)*RT[2]+Math.sin(an)*nz[2])]); }
+        var cz=[FW[0]*hr,FW[1]*hr,FW[2]*hr];
+        var o0=[P[0]-rw*RT[0]-rw*nz[0]-cz[0], P[1]-rw*RT[1]-rw*nz[1]-cz[1], P[2]-rw*RT[2]-rw*nz[2]-cz[2]];
+        var Pr=para(o0,[RT[0]*2*rw,RT[1]*2*rw,RT[2]*2*rw],[nz[0]*2*rw,nz[1]*2*rw,nz[2]*2*rw],[cz[0]*2,cz[1]*2,cz[2]*2]);
+        if(!verts(Pr).every(function(v){ return inConv(C.poly,v); }) || hitsAny(Pr,C,['furn'])) return;
+        Pr.lines=[]; for(k=1;k<ring.length;k++) Pr.lines.push({a:ring[k-1], b:ring[k], f0:0, f1:0, kind:'dot', col:dt.col});
+        Pr.cont=C; Pr.col=dt.col; Pr.kind='dot'; Pr.layer='dot'; Pr.hides=false; Pr.seeThru=true; Pr.nolod=true;
+        C.parts.push(Pr);
+        STRTTALLY.dots.drawn.push({near:true, zc:c[2], dmm:dmm, ring:true, P:P});
+        return;
+      }
+      if(dt.near) STRTTALLY.dots.drawn.push({near:true, zc:c[2], dmm:dmm, ring:false, P:P});
       var Lw=0.35*c[2]/(PAGEMM*FF*HW), h=0.005, hz=[-RT[1],RT[0],0];
       var a=add3(P,RT,-Lw/2), b=add3(P,RT,Lw/2);
       var Pd=para([a[0]-hz[0]*h, a[1]-hz[1]*h, a[2]-h],[RT[0]*Lw,RT[1]*Lw,0],[hz[0]*2*h,hz[1]*2*h,0],[0,0,2*h]);
       if(!verts(Pd).every(function(v){ return inConv(C.poly,v); }) || hitsAny(Pd,C,['furn'])) return;
       Pd.lines=[{a:a, b:b, f0:0, f1:0, kind:'dot', col:dt.col}];
+      if(!dt.near) STRTTALLY.dots.drawn.push({near:false, zc:c[2], dmm:0.35, ring:false, P:P});
       Pd.cont=C; Pd.col=dt.col; Pd.kind='dot'; Pd.layer='dot'; Pd.hides=false; Pd.seeThru=true; Pd.nolod=true;
       C.parts.push(Pd);
     });
@@ -21152,7 +21218,7 @@ function buildCorridor(p,THM){
       P.hides=false;
       P.cont=C; P.col='#1a1a1a'; P.kind='kerb'; C.parts.push(P);
     });
-    CT.furnish(dn,df);
+    CT.furnish(dn,df,tries);
     cablesInto();
     /* the puddles: a plate 4 mm thin under the road's surface, its outline
        on the top face. It hides nothing; it carries the reflection (below). */
@@ -21578,7 +21644,9 @@ function buildCorridor(p,THM){
     /* A NINTH STEP DROPS THE REFLECTIONS (row 59): a front puddle mirrors
        thousands of points that no band or cutoff reaches -- 10,738 on the
        10k stress sheet with the ripple off. Only a drawing still over budget
-       after the eight steps gets here, so every one that fits is untouched. */
+       after the eight steps gets here, so every one that fits is untouched.
+       The Street's near particles (row 61) are drawn as plain strokes there
+       too: about 180 rings cost 3,200 points on that sheet. */
     if(npts0<=BUDG || tries>=9) break;
     if(tries<8){ DN*=0.7; DF=Math.max(DN,DF*0.75); LODE=LODE+0.3; }
     tries++;
@@ -21602,14 +21670,15 @@ function buildCorridor(p,THM){
            (cycles?' · CYCLES '+cycles:' · cycles 0')+
            (splits?' · '+splits+' split':'')+
            (dropped?' · '+dropped+' lots dropped (overlap)':'')+
-           (CT.info?CT.info(nsigns):' · '+nsigns+' signs · '+cables.length+' cables · '+CT.cars.length+' cars · '+CT.dots.length+' particles')+
+           (CT.info?CT.info(nsigns):' · '+nsigns+' signs · '+cables.length+' cables · '+CT.cars.length+' cars · '+CT.dots.length+' particles'+
+            (STRTTALLY.dots && STRTTALLY.dots.fallback?' ('+STRTTALLY.dots.fallback+' near fell back to the street)':''))+
            ' · '+(puds.length-(heroRec?heroRec.pieces.length:0))+' '+(THM.pudWord||'puddles')+
            (heroRec?' + '+(THM.heroWord||'a front puddle')+' in '+heroRec.pieces.length+' pieces':'')+heroInfo+(RR.npud?' ('+RR.npud+' in view, '+RR.nmirror.toLocaleString()+' parts reflected)':'')+
            (DPEN?' · depth pens: pen-up '+(penup0/1000).toFixed(1)+' m \u2192 '+(penup1/1000).toFixed(1)+' m (\u00d7'+
                  (penup0>0?penup1/penup0:0).toFixed(2)+')':'')+
            (tries?' · OVER BUDGET: detail pulled in to '+DN.toFixed(0)+' / '+DF.toFixed(0)+' m, LOD '+LODE.toFixed(1)+' mm'+
                   (RR.nrefl&&RIPMM>0?', ripple sampled every '+RSTEPMM().toFixed(1)+' mm':'')+
-                  (tries>=9?', and the water left unreflected':''):'');
+                  (tries>=9?', and the water left unreflected'+((CT.dots||[]).some(function(d){ return d.near; })?', the near particles drawn as dots':''):''):'');
   return res;
   function KIT(){ return {slabPieces:slabPieces, bbHit:bbHit, MINSP:0.7, FW:FW, UP:UP, PAD:PAD, NS:NS, THM:THM, P3:P3, add3:add3, addCable:addCable, cam:cam, dist3:dist3, drawOn:drawOn, faceC:faceC, faceIx:faceIx, frame:frame, hitsAny:hitsAny, inConv:inConv, lateral:lateral, mmPerM:mmPerM, paperGap:paperGap, para:para, polyFromLoops:polyFromLoops, prism:prism, prismN:prismN, splitPart:splitPart, sub:sub, surf:surf, vec:vec, verts:verts, wallOf:wallOf, wp:wp, CANTI:CANTI, CANYON:CANYON, CE:CE, FF:FF, FLOORS:FLOORS, HALFW:HALFW, HW:HW, KERB:KERB, KOFF:KOFF, LEN:LEN, NEAR:NEAR, PBACK:PBACK, RT:RT, SALT_BLD:SALT_BLD, STEPB:STEPB, ZUP:ZUP, cables:cables, conts:conts, lots:lots, slabsBySide:slabsBySide, p:p}; }
 }
@@ -23339,6 +23408,7 @@ var HELP={
 'strt.puddles':'How many puddles lie on the road. Each sits inside one 4 m stretch of one side of the carriageway, drawn as a light blue outline, and shows the street above it mirrored in the water: the buildings, signs, cables and particles, upside down, hidden where something real stands in front of the puddle.',
 'strt.pudsz':'How big the puddles are. At 100 a puddle is up to 3.8 m along the street, the length of one stretch of road; each draws its own size and shape below that, and they lie toward the kerb, where water collects.',
 'strt.ripple':'How far the reflection wobbles sideways, in millimetres on the sheet. With Ripple variety at 0 it is a wave plus a little noise that changes with height on the paper; above 0 it is the wobble at 5 m away, larger nearer and smaller farther. 0 is a still, perfect mirror.',
+'strt.pnear':'The share of particles placed close to the camera and spread over the whole sheet, drawn larger the closer they are. 0 keeps them all along the street, thickening toward the far end.',
 'strt.hero':'One big puddle right in front of the camera, where the road first comes into view at the bottom of the sheet: 2.5 m long at 1 and 10 m at 100, up to most of the road\u2019s width, crossing the middle line if it has to. Small puddles it would touch are left out. 0 is none.',
 'strt.rvar':'How much the ripple lives on the water rather than on the paper: two sets of waves at different angles, calm and choppy patches, and waves that get bigger and longer toward you. At 0 every edge in the water wobbles in step with the others; at 100 none do.',
 'strt.dots':'How many coloured particles hang in the air over the road, thickening toward the far end of the street: orange, light blue and pink, 5 : 3 : 2. Each is a 0.35 mm stroke on the sheet however far away it is.',
