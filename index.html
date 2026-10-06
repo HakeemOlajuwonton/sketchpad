@@ -424,7 +424,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v286</a> &mdash; REFACTOR ONLY -- the harbour's container dressing is one function, dressContainer, for stacks, trucks and spreaders (queue row 63)</span></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v287</a> &mdash; HARBOUR TRUCKS AND GANTRIES v2 -- terminal tractors, skeletal trailers with dressed loads, rubber-tyred gantries (queue row 63)</span></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <div class="tabs" id="tabs"></div>
@@ -17543,7 +17543,7 @@ function harbourTheme(K){
   function kn(v,d,lo,hi){ return Math.max(lo,Math.min(hi,isFinite(v)?+v:d)); }
   var TIERS=Math.round(kn(p.tiers,4,1,8)), HCS=kn(p.hc,40,0,100)/100, GANTRY=kn(p.gantry,1,0,4), TRUCKS=kn(p.trucks,2,0,10);
   var SALT_CONT=163, SALT_GANT=167, SALT_TRUCK=173, SALT_MAST=179, TMAX=8;
-  var COL_K='#1a1a1a', COL_YEL='#f2c230', COL_GREY='#8a8a8a';
+  var COL_K='#1a1a1a', COL_YEL='#f2c230', COL_GREY='#8a8a8a', COL_OR='#ec7a1c', COL_DG='#4a4a4a';
   var PAINT=[['#8e1b25',25],['#2156c7',20],['#8a8a8a',15],['#1e5a32',12],['#ec7a1c',10],['#137a6e',8],['#1f2f6b',6],['#c8962e',4]];
   function paintOf(u){ var a=0; for(var i=0;i<PAINT.length;i++){ a+=PAINT[i][1]; if(u*100<a) return PAINT[i][0]; } return PAINT[PAINT.length-1][0]; }
   var L20=HARB_ISO.L20, L40=HARB_ISO.L40, W=HARB_ISO.W;
@@ -17695,11 +17695,51 @@ function harbourTheme(K){
     for(var i=0;i<pcs.length;i++) if(hitsAny(pcs[i],pcs[i].cont,layers)) return false;
     pcs.forEach(function(Q){ Q.cont.parts.push(Q); }); return true;
   }
-  function wheel(Lx,x,y0,y1,r){
+  /* ROW 63 (docs/specs/2026-10-04-vehicles-cranes.md §2): a TYRE in any
+     frame F(along, across, z) -- n sides, rolling along, its axle across, a
+     flat at the bottom so it touches the ground -- and a horizontal n-gon
+     disc. Every part below is still convex: the order keeps its pairs. */
+  function tyre(F,xc,y0,y1,r,n){
+    /* the flat at the bottom: the vertices straddle 3pi/2 by pi/n, for any n
+       -- (k + 0.5) / n puts a VERTEX there whenever n is 2 mod 4, and a
+       10-gon then stood 2.4 cm into the road. And a nanometre up: sin of
+       those angles is -cos(pi/n) only to an ulp, and the harbour's lane plate
+       is the plane z = 0 */
+    var A=[], B=[], k, lp, cz=r*Math.cos(Math.PI/n)+1e-9;
+    for(k=0;k<n;k++){ var an=TAU*k/n+1.5*Math.PI+Math.PI/n; A.push(F(xc+Math.cos(an)*r,y0,cz+Math.sin(an)*r)); B.push(F(xc+Math.cos(an)*r,y1,cz+Math.sin(an)*r)); }
+    lp=[A,B]; for(k=0;k<n;k++){ var k2=(k+1)%n; lp.push([A[k],A[k2],B[k2],B[k]]); }
+    var P=polyFromLoops(lp); P.nside=n; return P;
+  }
+  function disc(F,xc,yc,r,n,z0,z1){
     var A=[], B=[], k, lp;
-    for(k=0;k<8;k++){ var an=TAU*(k+0.5)/8; A.push(Lx(x+Math.cos(an)*r,y0,r+Math.sin(an)*r)); B.push(Lx(x+Math.cos(an)*r,y1,r+Math.sin(an)*r)); }
-    lp=[A,B]; for(k=0;k<8;k++){ var k2=(k+1)%8; lp.push([A[k],A[k2],B[k2],B[k]]); }
+    for(k=0;k<n;k++){ var an=TAU*k/n; A.push(F(xc+Math.cos(an)*r,yc+Math.sin(an)*r,z0)); B.push(F(xc+Math.cos(an)*r,yc+Math.sin(an)*r,z1)); }
+    lp=[A,B]; for(k=0;k<n;k++){ var k2=(k+1)%n; lp.push([A[k],A[k2],B[k2],B[k]]); }
     return polyFromLoops(lp);
+  }
+  /* lines on face fi of P: a closed polygon or an open run, in world points */
+  function fl(P,fi,pts,closed,col,kind){
+    for(var q=1;q<pts.length+(closed?1:0);q++) P.lines.push({a:pts[q-1], b:pts[q%pts.length], f0:fi, f1:fi, col:col, kind:kind});
+  }
+  /* a container on a vehicle or a spreader, dressed by the stacks' own
+     function: F(along, across, z) is its carrier's frame, the door end at x0 */
+  function carried(F,x0,x1,z0,BD,near,far){
+    var Xc=function(s2,o,z){ return F(o,s2,z); }, h=HARB_ISO.H;
+    var a=Xc(-W/2,x0,z0), b=Xc(W/2,x0,z0), c=Xc(-W/2,x1,z0), ea=[b[0]-a[0],b[1]-a[1],0], eb=[c[0]-a[0],c[1]-a[1],0];
+    var P=para(a,ea,eb,[0,0,h]), dc=dist3(Xc(0,(x0+x1)/2,z0+h/2)), band=dc<near?'solid':dc<far?'outline':'';
+    dressContainer(P,Xc,0,x0,x1,z0,h,ea,eb,BD.col,BD.code,BD.word,band,true);
+    return {P:P, rec:{code:BD.code, col:BD.col, word:BD.word, len:x1-x0, band:band, z0:z0}};
+  }
+  /* a part list committed whole or not at all, every piece tagged with its
+     owner and its own index, so the gate can count parts, not pieces; the
+     pieces if it went in, null if it did not */
+  function commitAll(pt,layer,tag,id,against){
+    var all=[], ok=true;
+    pt.forEach(function(q,qi){ if(!ok) return;
+      var pcs=laneParts(q[1],q[0],q[2],layer); if(!pcs){ ok=false; return; }
+      pcs.forEach(function(Q){ Q[tag]=id; Q.pk=qi; if(q[1].nside) Q.nside=q[1].nside;
+        if(q[1].seeThru){ Q.hides=false; Q.seeThru=true; } });
+      all=all.concat(pcs); });
+    return ok && commit(all,against)?all:null;
   }
   function plates(){
     conts.forEach(function(C){
@@ -17726,81 +17766,174 @@ function harbourTheme(K){
       ms+=60+30*ums;
     }
   }
-  function gantries(){
-    var Hg=TIERS*2.9+3, k;
+  /* RUBBER-TYRED GANTRIES (row 63 §2.4), spanning the lane. Per side a sill
+     7 m long on two bogie platforms, each over two tyres side by side; four
+     box legs from the sills at +-3.0 m; a knee brace (a gusset) from each leg
+     to the girder over it; two box girders at the leg lines, their underside
+     at Hg as before; a trolley on them with its machinery house; the
+     operator's cab hanging under it in the gap between the girders; four
+     ropes to a headblock and a spreader, 20' or 40', carrying a dressed
+     container half the time, its bottom never below 4.5 m. Near: tyres, a
+     genset on one sill end, a stair up one leg, hazard stripes on the sill
+     ends, the cab's glass. Out to Outline detail to: no tyres, genset, stair
+     or stripes. Beyond: legs, girders and trolley.
+     THE FIRST GANTRY stands 30-50 m ahead of the camera, from its own
+     substream, so one always reads large; the 25 m slots then skip any slot
+     within 25 m of it. */
+  function gantries(near,far){
+    var Hg=TIERS*2.9+3, k, SCAM=(isFinite(p.cams)?+p.cams:12)/100*LEN, slots=[];
+    if(GANTRY>=1){
+      /* drawn over 32-48 m and snapped to the nearest slab centre, so it
+         lands in 30-50 m whatever the snap does */
+      var RF=sub(0,0,SALT_GANT+2), sF=SCAM+32+16*RF(), sF2=SLAB*Math.round((sF-SLAB/2)/SLAB)+SLAB/2;
+      if(sF2+6.6<LEN && sF2-6.6>0) slots.push({s:sF2, R:RF, first:true});
+    }
     /* one roll per 25 m slot; a slot at 2 mod 4 so the bogies sit in one slab */
     for(k=0;(k+1)*25<=LEN;k++){
-      var R=sub(0,k,SALT_GANT), u=R(), us=R(), uo=R(), uz=R(), usd=R();
+      var R=sub(0,k,SALT_GANT), u=R(), us=R();
       if(!(u<GANTRY/4)) continue;
-      var sg=k*25+SLAB*Math.floor((4+16*us)/SLAB)+SLAB/2, X=laneFrame(sg,1), parts=[];
+      var sg0=k*25+SLAB*Math.floor((4+16*us)/SLAB)+SLAB/2;
+      if(slots.length && slots[0].first && Math.abs(sg0-slots[0].s)<25) continue;
+      slots.push({s:sg0, R:R, first:false});
+    }
+    slots.forEach(function(G){
+      var R=G.R, sg=G.s, uo=R(), uz=R(), usd=R(), ulen=R(), uload=R(), ugen=R(), Fg, Lc2;
+      var X=laneFrame(sg,1), dg=dist3(X(sg,0,Hg/2)), NR=dg<near, MID=dg<far, id=TAL.gantries.length, parts=[];
+      var oS0=HALFW-1.3, oS1=HALFW-0.4, gsd=ugen<0.5?1:-1;
+      var add=function(kind,P,col){ parts.push([kind,P,col]); return P; };
       [1,-1].forEach(function(sd){
         var Xs=laneFrame(sg,sd);
-        parts.push(['bogie',boxAt(Xs,sg-1.7,sg+1.7,HALFW-0.8,HALFW-0.4,0,0.6),COL_YEL]);
+        if(MID){
+          var SL=add('sill',boxAt(Xs,sg-3.5,sg+3.5,oS0,oS1,0.9,1.8),COL_YEL);
+          /* hazard stripes on both sill ends, black on the yellow */
+          if(NR) [[4,sg-3.5],[5,sg+3.5]].forEach(function(fe){ for(var q=0;q<4;q++){ var oa=oS0+0.1+0.2*q;
+            SL.lines.push({a:Xs(fe[1],oa,0.95), b:Xs(fe[1],oa+0.15,1.75), f0:fe[0], f1:fe[0], col:COL_K, kind:'stripe'}); } });
+        }
         [-1,1].forEach(function(e){
-          var f0=Xs(sg+e*1.3-0.15,HALFW-0.75,0.61), wv=Xs(sg+e*1.3+0.15,HALFW-0.75,0.61), nv=Xs(sg+e*1.3-0.15,HALFW-0.45,0.61);
-          var top=Xs(sg+e*0.3-0.15,HALFW-0.75,Hg-0.01);
-          parts.push(['leg',para(f0,[wv[0]-f0[0],wv[1]-f0[1],0],[nv[0]-f0[0],nv[1]-f0[1],0],[top[0]-f0[0],top[1]-f0[1],top[2]-f0[2]]),COL_YEL]);
+          var gen=NR && sd===gsd && e===1, oIn=gen?HALFW-2.4:oS0;
+          var sA=e>0?sg+3.5:sg-5.2, sB=e>0?sg+(gen?6.6:5.2):sg-3.5;
+          if(MID) add('bogie',boxAt(Xs,sA,sB,oIn,oS1,1.65,2.1),COL_YEL);
+          if(NR) [[oS0,oS0+0.42],[oS1-0.42,oS1]].forEach(function(oo){ add('tyre',tyre(Xs,sg+e*4.35,oo[0],oo[1],0.8,16),COL_K); });
+          if(gen) add('genset',boxAt(Xs,sg+3.55,sg+6.55,HALFW-2.4,oS1,2.1,4.6),COL_YEL);
+          var LG=add('leg',boxAt(Xs,sg+e*3.0-0.45,sg+e*3.0+0.45,oS0,oS1,1.8,Hg),COL_YEL);
+          /* a stair up one leg, as lines on its outer face */
+          if(NR && sd===gsd && e===-1){ var zz=2.0, flip=0, pts=[];
+            while(zz<Hg-0.5){ pts.push(Xs(sg+e*3.0+(flip?0.35:-0.35),oS1,zz)); zz+=2.5; flip=1-flip; }
+            if(pts.length>1) fl(LG,3,pts,false,COL_K,'stair'); }
+          if(MID){
+            /* the knee brace: a gusset in the corner between the leg's inner
+               face and the girder's underside, touching both */
+            var sc2=sg+e*3.0, T3=[[oS0,Hg-1.5],[oS0,Hg],[oS0-1.5,Hg]];
+            var A=T3.map(function(q){ return Xs(sc2-0.15,q[0],q[1]); }), B=T3.map(function(q){ return Xs(sc2+0.15,q[0],q[1]); });
+            add('brace',polyFromLoops([A,B,[A[0],A[1],B[1],B[0]],[A[1],A[2],B[2],B[1]],[A[2],A[0],B[0],B[2]]]),COL_YEL);
+          }
         });
       });
-      /* the girder across the lane, sitting on the legs, its truss on the two
-         faces that look along the lane */
-      var oe=HALFW-0.4, G=boxAt(X,sg-0.5,sg+0.5,oe,-oe,Hg,Hg+1.2), tl=frame(sg), dlt=[tl[2],tl[3],0];
-      var gs=faceIx(G,[-dlt[0],-dlt[1],0]), gn=faceIx(G,dlt), nb=Math.max(4,Math.round(2*oe/1.6)), q;
-      [[gs,sg-0.5],[gn,sg+0.5]].forEach(function(fg){
-        for(q=0;q<nb;q++){ var oa=oe-2*oe*q/nb, ob=oe-2*oe*(q+1)/nb;
-          G.lines.push({a:X(fg[1],oa,Hg+(q%2?1.2:0)), b:X(fg[1],ob,Hg+(q%2?0:1.2)), f0:fg[0], f1:fg[0], col:COL_YEL, kind:'truss'}); }
-      });
-      parts.push(['girder',G,COL_YEL]);
-      /* the trolley under it, over either half of the lane; the spreader along
-         the lane on four hoist lines, never lower than 4.5 m */
-      var sgn=usd<0.5?1:-1, ot=sgn*(1.5+Math.max(0,HALFW-3.7)*uo), zt=Hg-1.0, zs=Hg-3-4*uz;
-      parts.push(['trolley',boxAt(X,sg-0.6,sg+0.6,ot-1.0,ot+1.0,zt,Hg-0.01),COL_YEL]);
-      var spread=zs>=4.5;
-      if(spread){
-        parts.push(['spreader',boxAt(X,sg-3.03,sg+3.03,ot-1.22,ot+1.22,zs,zs+0.35),COL_YEL]);
-        var HB=boxAt(X,sg-0.5,sg+0.5,ot-0.9,ot+0.9,zs+0.36,zt-0.01);
-        HB.lines=[]; [[-0.45,-0.85],[0.45,-0.85],[-0.45,0.85],[0.45,0.85]].forEach(function(c2){
-          HB.lines.push({a:X(sg+c2[0],ot+c2[1],zt-0.01), b:X(sg+c2[0],ot+c2[1],zs+0.36), f0:0, f1:0, col:COL_K, kind:'hoist'}); });
-        HB.hides=false; HB.seeThru=true;
-        parts.push(['hoist',HB,COL_K]);
+      /* two box girders across the lane, at the two leg lines */
+      [-1,1].forEach(function(e){ add('girder',boxAt(X,sg+e*3.0-0.45,sg+e*3.0+0.45,oS1,-oS1,Hg,Hg+1.6),COL_YEL); });
+      /* the trolley on them, over either half of the lane, its spreader clear
+         of the legs and the genset */
+      var sgn=usd<0.5?1:-1, ot=sgn*Math.max(0,Math.min(HALFW-3.7,1.5+Math.max(0,HALFW-3.7)*uo));
+      add('trolley',boxAt(X,sg-3.2,sg+3.2,ot-2.0,ot+2.0,Hg+1.6,Hg+2.2),COL_YEL);
+      var rec={id:id, s:sg, Hg:Hg, first:G.first, near:NR, mid:MID, ot:ot, spreader:false, LS:0, load:null, placed:false, girder:0};
+      if(MID){
+        add('house',boxAt(X,sg-1.8,sg+1.8,ot-1.6,ot+1.6,Hg+2.2,Hg+4.0),COL_YEL);
+        /* the operator's cab, hanging under the trolley on its outer side, in
+           the gap between the girders, on a hanger */
+        var oc0=ot>=0?ot+0.2:ot-2.0, CB=add('cab',boxAt(X,sg+0.5,sg+2.5,oc0,oc0+1.8,Hg-2.2,Hg),COL_YEL);
+        if(NR) [[2,'s',oc0],[3,'s',oc0+1.8],[4,'o',sg+0.5],[5,'o',sg+2.5]].forEach(function(gf){
+          var r4=gf[1]==='s'?[[sg+0.65,gf[2]],[sg+2.35,gf[2]]]:[[gf[2],oc0+0.15],[gf[2],oc0+1.65]];
+          fl(CB,gf[0],[X(r4[0][0],r4[0][1],Hg-1.5),X(r4[1][0],r4[1][1],Hg-1.5),X(r4[1][0],r4[1][1],Hg-0.35),X(r4[0][0],r4[0][1],Hg-0.35)],true,COL_K,'glass'); });
+        add('hanger',boxAt(X,sg+1.2,sg+1.8,oc0+0.6,oc0+1.2,Hg,Hg+1.6),COL_YEL);
+        /* the spreader's bottom never below 4.5 m: it hangs there rather than
+           lower, and only where that still clears the cab (not at Tiers 1) */
+        var zs=Math.max(4.5,Hg-3-4*uz), LS=ulen<0.5?6.06:12.19;
+        rec.zs=zs; rec.spreader=zs<=Hg-3; rec.LS=LS;
+        if(rec.spreader){
+          var SP=add('spreader',boxAt(X,sg-LS/2,sg+LS/2,ot-1.22,ot+1.22,zs,zs+0.4),COL_YEL);
+          /* its twist-lock posts at the four corners */
+          [[2,ot-1.22],[3,ot+1.22]].forEach(function(gf){ [sg-LS/2+0.15,sg+LS/2-0.15].forEach(function(sp2){
+            SP.lines.push({a:X(sp2,gf[1],zs+0.02), b:X(sp2,gf[1],zs+0.38), f0:gf[0], f1:gf[0], col:COL_K, kind:'twistlock'}); }); });
+          add('headblock',boxAt(X,sg-0.6,sg+0.6,ot-0.6,ot+0.6,zs+0.4,zs+0.8),COL_YEL);
+          /* four ropes, vertical, from the trolley to the headblock */
+          var HB=boxAt(X,sg-0.5,sg+0.5,ot-0.5,ot+0.5,zs+0.8,Hg+1.6);
+          HB.lines=[]; [[-0.45,-0.45],[0.45,-0.45],[-0.45,0.45],[0.45,0.45]].forEach(function(c2){
+            HB.lines.push({a:X(sg+c2[0],ot+c2[1],Hg+1.6), b:X(sg+c2[0],ot+c2[1],zs+0.8), f0:0, f1:0, col:COL_DG, kind:'rope'}); });
+          HB.hides=false; HB.seeThru=true;
+          add('ropes',HB,COL_DG);
+          if(uload<0.5){
+            Fg=function(a2,c2,z){ return X(sg+a2,ot+c2,z); }; Lc2=LS<10?L20:L40;
+            var CR=carried(Fg,-Lc2/2,Lc2/2,zs-HARB_ISO.H,drawsOf(sub(0,id,SALT_GANT+1)),near,far);
+            add('load',CR.P,CR.rec.col); rec.load=CR.rec;
+          }
+        }
       }
-      var rec={s:sg, Hg:Hg, spreader:spread, girder:0, placed:false}, all=[], ok=true;
-      parts.forEach(function(pp){
-        if(!ok) return;
-        var pcs=laneParts(pp[1],pp[0],pp[2],'gantry');
-        if(!pcs){ ok=false; return; }
-        if(pp[0]==='hoist') pcs.forEach(function(Q){ Q.hides=false; Q.seeThru=true; });
-        if(pp[0]==='girder') rec.girder=pcs.length;
-        all=all.concat(pcs);
-      });
-      if(ok && commit(all,['furn','gantry'])) rec.placed=true;
+      var got=commitAll(parts,'gantry','gant',id,['furn','gantry']);
+      if(got){ rec.placed=true;
+        /* each girder's pieces: two or more is a girder cut at the centreline */
+        var gc={}; got.forEach(function(Q){ if(Q.kind==='girder') gc[Q.pk]=(gc[Q.pk]||0)+1; });
+        rec.girder=Math.min.apply(null,Object.keys(gc).map(function(k2){ return gc[k2]; })); }
+      rec.parts=parts.map(function(q){ return q[0]; });
       TAL.gantries.push(rec);
-    }
+    });
   }
-  function trucks(near){
-    /* a slot every 20 m a side, driving on its own side of the lane. NONE
-       WITHIN 12 m OF THE EYE in plan: a 17 m rig parked at the camera fills
-       half the sheet with one container end (the first render did) */
+  /* TERMINAL TRACTORS AND SKELETAL TRAILERS (row 63 §§2.2-2.3). A slot every
+     20 m a side, driving on its own side of the lane. NONE WITHIN 12 m OF THE
+     EYE in plan: a 17 m rig parked at the camera fills half the sheet with one
+     container end (the first render did). Truck-local x forward, y out from
+     the centreline, z up: the tractor x 2.0-8.0 with its single-seat cab
+     offset to the driver's side (-y, toward the centreline), the trailer
+     x -8.4-4.1 with its kingpin over the fifth wheel at x 3.2. */
+  function trucks(near,far){
     [1,-1].forEach(function(sd){
       for(var k=0;(k+1)*20<=LEN;k++){
         var R=sub(sd<0?2:1,k,SALT_TRUCK), u=R(), ul=R(), ucar=R(), ucp=R();
+        /* row 63: the cab's paint, after every number row 51 drew */
+        var ucab=R();
         if(!(u<TRUCKS/5)) continue;
-        var st=k*20+9.5+ul, Xt=laneFrame(st,sd), ol=Math.max(1.4,HALFW*0.5), dir=sd;
+        var st=k*20+9.5+ul, Xt=laneFrame(st,sd), ol=Math.max(1.4,HALFW*0.5), dir=sd, id=TAL.trucks.length;
         var Lx=function(x,y,z){ return Xt(st+x*dir,ol+y,z); };
         var bx=function(x0,x1,y0,y1,z0,z1){ var a=Lx(x0,y0,z0), b=Lx(x1,y0,z0), c=Lx(x0,y1,z0);
           return para(a,[b[0]-a[0],b[1]-a[1],0],[c[0]-a[0],c[1]-a[1],0],[0,0,z1-z0]); };
-        var pt=[['cab',bx(5.6,8.0,-1.25,1.25,1.05,3.3),COL_K],['chassis',bx(3.0,5.6,-0.6,0.6,0.7,1.2),COL_K],
-                ['trailer',bx(-9.0,3.0,-1.2,1.2,1.15,1.45),COL_K]];
-        var carry=ucar<0.5, ccol=paintOf(ucp), d=dist3(Lx(0,0,1.5));
-        if(carry) pt.push(['box',bx(-8.95,-8.95+L40,-W/2,W/2,1.46,1.46+HARB_ISO.H),ccol]);
-        if(d<near) [6.8,4.3,-6.6,-7.8].forEach(function(xw){
-          pt.push(['wheel',wheel(Lx,xw,0.65,1.15,0.5),COL_K]); pt.push(['wheel',wheel(Lx,xw,-1.15,-0.65,0.5),COL_K]); });
-        var all=[], ok=true;
-        pt.forEach(function(q){ if(!ok) return;
-          var pcs=laneParts(q[1],q[0],q[2],'truck'); if(!pcs){ ok=false; return; } all=all.concat(pcs); });
+        var d=dist3(Lx(0,0,1.5)), NR=d<near, MID=d<far, CC=ucab<0.5?COL_OR:COL_YEL, pt=[];
+        var add=function(kind,P,col){ pt.push([kind,P,col]); return P; };
+        /* the tractor: a single-seat cab 1.7 x 1.4 x 1.9 m on the frame, its
+           roof at 3.05 m, front and side glass and grab rails near */
+        var CAB=add('cab',bx(6.3,8.0,-1.25,0.15,1.15,3.05),CC);
+        if(NR){
+          fl(CAB,5,[Lx(8.0,-1.1,2.15),Lx(8.0,0.0,2.15),Lx(8.0,0.0,2.9),Lx(8.0,-1.1,2.9)],true,COL_K,'glass');
+          [[2,-1.25],[3,0.15]].forEach(function(gf){
+            fl(CAB,gf[0],[Lx(6.45,gf[1],2.15),Lx(7.85,gf[1],2.15),Lx(7.85,gf[1],2.9),Lx(6.45,gf[1],2.9)],true,COL_K,'glass'); });
+          [6.4,7.9].forEach(function(xr){ fl(CAB,2,[Lx(xr,-1.25,1.4),Lx(xr,-1.25,2.0)],false,COL_K,'rail'); });
+        }
+        add('engine',bx(4.4,8.0,0.25,1.15,1.15,2.3),CC);
+        add('frame',bx(2.0,8.0,-0.55,-0.35,0.9,1.15),COL_K); add('frame',bx(2.0,8.0,0.35,0.55,0.9,1.15),COL_K);
+        add('exhaust',bx(6.05,6.25,-0.5,-0.3,1.15,3.3),COL_K);
+        add('fifth',disc(Lx,3.2,0,0.5,12,1.15,1.2),COL_K);
+        [[-1.25,-0.6],[0.6,1.25]].forEach(function(yy){ add('guard',bx(2.6,3.8,yy[0],yy[1],1.05,1.12),COL_K); });
+        /* the 40' skeletal trailer: two main beams, cross members every 1.5 m,
+           end members, twist-lock pins at the four corners, landing legs */
+        add('beam',bx(-8.4,4.1,-0.6,-0.4,1.25,1.45),COL_K); add('beam',bx(-8.4,4.1,0.4,0.6,1.25,1.45),COL_K);
+        [-8.0,-6.5,-5.0,-3.5,-2.0,-0.5,1.0].forEach(function(xc){ add('cross',bx(xc-0.06,xc+0.06,-1.22,1.22,1.15,1.25),COL_K); });
+        [[-8.4,-8.1],[3.75,4.05]].forEach(function(xe){ [[-1.22,-0.6],[0.6,1.22]].forEach(function(yy){ add('endbeam',bx(xe[0],xe[1],yy[0],yy[1],1.25,1.45),COL_K); }); });
+        [[-8.3,-8.18],[3.77,3.89]].forEach(function(xp){ [[-1.17,-1.05],[1.05,1.17]].forEach(function(yy){ add('pin',bx(xp[0],xp[1],yy[0],yy[1],1.45,1.52),COL_K); }); });
+        [[-0.58,-0.42],[0.42,0.58]].forEach(function(yy){ add('legs',bx(1.4,1.55,yy[0],yy[1],0.35,1.25),COL_K); });
+        /* tyres, all 1.0 m: singles on the steer axle, duals behind and on the
+           trailer's tandem (1.31 m apart); 16 sides near, 10 out to Outline
+           detail to, none beyond */
+        var NT=NR?16:MID?10:0, DUAL=[[-1.25,-0.97],[-0.93,-0.65],[0.65,0.93],[0.97,1.25]];
+        if(NT) [[7.15,[[-1.25,-0.95],[0.95,1.25]]],[3.2,DUAL],[-6.6,DUAL],[-7.91,DUAL]].forEach(function(ax){
+          ax[1].forEach(function(yy){ add('tyre',tyre(Lx,ax[0],yy[0],yy[1],0.5,NT),COL_K); }); });
+        /* the load: one 40' half the time, two 20's 15%, each dressed like the stacks */
+        var load=ucar<0.5?'40':ucar<0.65?'20':'', loads=[];
+        if(load) (load==='40'?[[-8.3,-8.3+L40]]:[[-8.3,-8.3+L20],[-8.3+L20+HARB_ISO.GAP20,-8.3+L40]]).forEach(function(sp2,j){
+          var CR=carried(Lx,sp2[0],sp2[1],1.52,drawsOf(sub(sd<0?2:1,k*4+j,SALT_TRUCK+1)),near,far);
+          add('load',CR.P,CR.rec.col); loads.push(CR.rec); });
         var mid=Lx(0,0,0), atEye=Math.hypot(mid[0]-CE[0],mid[1]-CE[1])<12;
-        var rec={s:st, side:sd, carry:carry, col:carry?ccol:'', placed:false, eye:atEye};
-        if(ok && !atEye && commit(all,['furn','gantry','truck'])) rec.placed=true;
+        var rec={id:id, s:st, side:sd, carry:load, col:loads.length?loads[0].col:'', loads:loads, placed:false, eye:atEye,
+                 near:NR, mid:MID, tyres:NT, cab:CC, width:2.5};
+        if(!atEye && commitAll(pt,'truck','truck',id,['furn','gantry','truck'])) rec.placed=true;
+        rec.parts=pt.map(function(q){ return q[0]; });
         TAL.trucks.push(rec);
       }
     });
@@ -17832,7 +17965,7 @@ function harbourTheme(K){
   return {
     dress:dress, signsFor:function(){},
     furnish:function(dn,df){ TAL.gantries=[]; TAL.trucks=[]; TAL.masts=[]; TAL.bays=0;
-      plates(); masts(); gantries(); trucks(dn); bays(df); },
+      plates(); masts(); gantries(dn,df); trucks(dn,df); bays(df); },
     cars:[], dots:[],
     info:function(){ return ' · '+TAL.containers.length+' containers · '+
       TAL.gantries.filter(function(g){ return g.placed; }).length+' gantries · '+
@@ -21371,7 +21504,7 @@ function buildCorridor(p,THM){
     STRTTALLY.allparts=[];
     if(puds.length || (CT.cars||[]).length) conts.forEach(function(C){ C.parts.forEach(function(P){
       STRTTALLY.allparts.push({faces:P.faces.map(function(f){ return {n:f.n, d:f.d}; }), V:verts(P), kind:P.kind||'',
-        hides:P.hides!==false, seeThru:!!P.seeThru, car:P.car, cpart:P.cpart, wh:P.wh, ab:P.ab, sk:P.sk, nside:P.nside, bump:P.bump, mir:P.mir, seg:P.seg,
+        hides:P.hides!==false, seeThru:!!P.seeThru, car:P.car, cpart:P.cpart, wh:P.wh, ab:P.ab, sk:P.sk, nside:P.nside, bump:P.bump, mir:P.mir, seg:P.seg, truck:P.truck, gant:P.gant, pk:P.pk,
         lines:P.lines.map(function(Ln){ return {a:Ln.a, b:Ln.b, f0:Ln.f0, f1:Ln.f1, col:Ln.col||P.col, kind:Ln.kind, tag:Ln.tag}; })});
     }); });
     conts.forEach(function(C){
@@ -21710,7 +21843,7 @@ function buildCorridor(p,THM){
         STRTTALLY.parts.push({faces:P.faces.map(function(fc){ return {n:fc.n, d:fc.d}; }),
                               V:verts(P), cont:C.kind, split:P.split||0, hides:P.hides!==false,
                               kind:P.kind||'', seeThru:!!P.seeThru, cidx:cidx, layer:P.layer||'struct',
-                              sign:P.sign===undefined?-1:P.sign, cable:P.cable, car:P.car, cut:!!P.cut, cpart:P.cpart, wh:P.wh, ab:P.ab, sk:P.sk, nside:P.nside});
+                              sign:P.sign===undefined?-1:P.sign, cable:P.cable, car:P.car, cut:!!P.cut, cpart:P.cpart, wh:P.wh, ab:P.ab, sk:P.sk, nside:P.nside, truck:P.truck, gant:P.gant, pk:P.pk});
         STRTTALLY.sil.push(P.sil);
         if(P.sil && P.hides!==false) occl.push(P.sil);
       });
