@@ -424,7 +424,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v285</a> &mdash; STREET CARS v2 -- proportions by type, arches cut into slices, wheels inboard, mirrors, bumpers, plates (queue row 62)</span></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v286</a> &mdash; REFACTOR ONLY -- the harbour's container dressing is one function, dressContainer, for stacks, trucks and spreaders (queue row 63)</span></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <div class="tabs" id="tabs"></div>
@@ -17574,8 +17574,11 @@ function harbourTheme(K){
   });
   /* a container's own numbers: its paint, its code and its wordmark, from a
      substream keyed on WHERE it is, so no knob moves another one's */
-  function boxDraws(L,sl,tr,hi){
-    var R=sub(L.side<0?2:1,L.idx*64+sl*16+tr*2+hi,SALT_CONT+1), own='', d='', w='', n, i;
+  function boxDraws(L,sl,tr,hi){ return drawsOf(sub(L.side<0?2:1,L.idx*64+sl*16+tr*2+hi,SALT_CONT+1)); }
+  /* a container's paint, code and wordmark from a substream (row 63: the
+     trucks' and the spreaders' loads draw theirs the same way) */
+  function drawsOf(R){
+    var own='', d='', w='', n, i;
     var col=paintOf(R());
     for(i=0;i<3;i++) own+=LETT[Math.floor(R()*26)];
     for(i=0;i<6;i++) d+=Math.floor(R()*10);
@@ -17591,6 +17594,48 @@ function harbourTheme(K){
       G.strokes.forEach(function(st){ polys.push(st.map(function(q){ return [u+q[0]*s2, v0+q[1]*s2]; })); });
       u+=G.adv*s2; }
     drawOn(Pq,fi,M,polys,col,kind,-1);
+  }
+  /* A CONTAINER'S DRESSING (row 63, docs/specs/2026-10-04-vehicles-cranes.md
+     §2.1), one function for the stacks, the trucks and the spreaders. P is the
+     box; X(s,o,z) its frame -- s across it about sc, o along it from o0 (the
+     door end) to o1, z up from z; ea and eb its width and length edges. Paint
+     and outline, corrugation by band, and with `lane` (its door end shows) the
+     code, the wordmark, the doors, lock bars and handles; castings near. */
+  function dressContainer(P,X,sc,o0,o1,z,h,ea,eb,col,code,word,band,lane){
+    var len=o1-o0;
+    P.lines.forEach(function(Ln){ Ln.col=col; Ln.kind='container'; });
+    var tl=[ea[0]/W,ea[1]/W,0], ol=[eb[0]/len,eb[1]/len,0];
+    var fS0=faceIx(P,[-tl[0],-tl[1],0]), fS1=faceIx(P,tl), fD=faceIx(P,[-ol[0],-ol[1],0]), fB=faceIx(P,ol);
+    if(band){
+      [[fS0,sc-W/2],[fS1,sc+W/2]].forEach(function(fw){
+        /* the 0.28 m set, or every other line of it; none when that
+           is under the paper floor */
+        var g=paperGap(X(fw[1],(o0+o1)/2,z+h/2),[0,0,1],ol), st=band==='solid'?1:2, n=Math.floor(len/0.28), q;
+        if(!(g>0) || st*len/n*g<MINSP) return;
+        for(q=st;q<n;q+=st) P.lines.push({a:X(fw[1],o0+q*len/n,z+0.04), b:X(fw[1],o0+q*len/n,z+h-0.04),
+                                        f0:fw[0], f1:fw[0], col:col, kind:'corrugation'});
+      });
+    }
+    var Dc=X(sc,o0,z+h/2), Nd=[-ol[0],-ol[1],0], MD=surf(Dc,Nd,W,h), mm=mmPerM(Dc,Nd);
+    if(lane && band){
+      if(0.1*mm>=1.0) letters(P,fD,MD,code,COL_K,'code',0.2,h-0.32,0.1);
+      if(0.3*mm>=1.2) letters(P,fD,MD,word,col,'wordmark',0.2,h*0.55,0.3);
+    }
+    if(band==='solid'){
+      var gl=function(fi,M,u1,v1,u2,v2,kind){ P.lines.push({a:M(u1,v1), b:M(u2,v2), f0:fi, f1:fi, col:COL_K, kind:kind}); };
+      var cast=function(fi,M){ [[0,0],[W-0.16,0],[0,h-0.12],[W-0.16,h-0.12]].forEach(function(c2){
+        gl(fi,M,c2[0],c2[1],c2[0]+0.16,c2[1],'casting'); gl(fi,M,c2[0]+0.16,c2[1],c2[0]+0.16,c2[1]+0.12,'casting');
+        gl(fi,M,c2[0]+0.16,c2[1]+0.12,c2[0],c2[1]+0.12,'casting'); gl(fi,M,c2[0],c2[1]+0.12,c2[0],c2[1],'casting'); }); };
+      cast(fD,MD);
+      cast(fB,surf(X(sc,o1,z+h/2),ol,W,h));
+      if(lane){
+        gl(fD,MD,W/2,0.12,W/2,h-0.12,'door');
+        [0.3,0.85,W/2+0.35,W/2+0.9].forEach(function(ub){
+          gl(fD,MD,ub,0.14,ub,h-0.14,'lockbar');
+          gl(fD,MD,ub,h*0.42,ub+0.14,h*0.42-0.06,'handle');
+        });
+      }
+    }
   }
   /* a lot's straight local frame: s along the lane, o out from the
      centreline, z up. On a bend the row is the chord's; whatever leaves the
@@ -17617,40 +17662,9 @@ function harbourTheme(K){
           var P=para(a,ea,eb,[0,0,T.h]), V=verts(P);
           if(!V.every(function(v){ return inConv(L.poly,v); })){ TAL.refused++; return; }
           var BD=boxDraws(L,sl,tr,hi), col=BD.col, code=BD.code, word=BD.word;
-          P.lines.forEach(function(Ln){ Ln.col=col; Ln.kind='container'; });
           var cen=X(sc,(o0+o1)/2,z+T.h/2), d=dist3(cen), band=d<dn?'solid':d<df?'outline':'';
-          var tl=[ea[0]/W,ea[1]/W,0], ol=[eb[0]/len,eb[1]/len,0];
-          var fS0=faceIx(P,[-tl[0],-tl[1],0]), fS1=faceIx(P,tl), fD=faceIx(P,[-ol[0],-ol[1],0]), fB=faceIx(P,ol);
-          if(band){
-            [[fS0,sc-W/2],[fS1,sc+W/2]].forEach(function(fw){
-              /* the 0.28 m set, or every other line of it; none when that
-                 is under the paper floor */
-              var g=paperGap(X(fw[1],(o0+o1)/2,z+T.h/2),[0,0,1],ol), st=band==='solid'?1:2, n=Math.floor(len/0.28), q;
-              if(!(g>0) || st*len/n*g<MINSP) return;
-              for(q=st;q<n;q+=st) P.lines.push({a:X(fw[1],o0+q*len/n,z+0.04), b:X(fw[1],o0+q*len/n,z+T.h-0.04),
-                                              f0:fw[0], f1:fw[0], col:col, kind:'corrugation'});
-            });
-          }
-          var lane=sl===0 && hi===0, Dc=X(sc,o0,z+T.h/2), Nd=[-ol[0],-ol[1],0], MD=surf(Dc,Nd,W,T.h), mm=mmPerM(Dc,Nd);
-          if(lane && band){
-            if(0.1*mm>=1.0) letters(P,fD,MD,code,COL_K,'code',0.2,T.h-0.32,0.1);
-            if(0.3*mm>=1.2) letters(P,fD,MD,word,col,'wordmark',0.2,T.h*0.55,0.3);
-          }
-          if(band==='solid'){
-            var gl=function(fi,M,u1,v1,u2,v2,kind){ P.lines.push({a:M(u1,v1), b:M(u2,v2), f0:fi, f1:fi, col:COL_K, kind:kind}); };
-            var cast=function(fi,M){ [[0,0],[W-0.16,0],[0,T.h-0.12],[W-0.16,T.h-0.12]].forEach(function(c2){
-              gl(fi,M,c2[0],c2[1],c2[0]+0.16,c2[1],'casting'); gl(fi,M,c2[0]+0.16,c2[1],c2[0]+0.16,c2[1]+0.12,'casting');
-              gl(fi,M,c2[0]+0.16,c2[1]+0.12,c2[0],c2[1]+0.12,'casting'); gl(fi,M,c2[0],c2[1]+0.12,c2[0],c2[1],'casting'); }); };
-            cast(fD,MD);
-            cast(fB,surf(X(sc,o1,z+T.h/2),ol,W,T.h));
-            if(lane){
-              gl(fD,MD,W/2,0.12,W/2,T.h-0.12,'door');
-              [0.3,0.85,W/2+0.35,W/2+0.9].forEach(function(ub){
-                gl(fD,MD,ub,0.14,ub,T.h-0.14,'lockbar');
-                gl(fD,MD,ub,T.h*0.42,ub+0.14,T.h*0.42-0.06,'handle');
-              });
-            }
-          }
+          var lane=sl===0 && hi===0;
+          dressContainer(P,X,sc,o0,o1,z,T.h,ea,eb,col,code,word,band,lane);
           P.cont=L; P.col=col; P.kind='container'; P.layer='struct';
           L.parts.push(P);
           TAL.containers.push({side:L.side, idx:L.idx, slot:sl, tier:tr, half:hi, lay:T.lay, len:len, h:T.h, z0:z, z1:z+T.h,
