@@ -424,7 +424,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v288</a> &mdash; REFACTOR ONLY -- the corridor kit's hooks for a canal: whole-channel water, the quay's kind, a lot's quay and plaster; no zero-length reflection (queue row 53)</span></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v289</a> &mdash; CANAL CITY -- a water channel that is all mirror, plastered houses with arched windows and water gates, bridges, gondolas, mooring posts, laundry (queue row 53)</span></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <div class="tabs" id="tabs"></div>
@@ -2170,6 +2170,31 @@ var SPEC={
     ['pitch','Pitch',-45,45,0.5,2,[1,'°']],['fov','Field of view',25,120,1,75,[1,'°']],
     ['dnear','Solid detail to',1,40,0.5,6,[1,' m']],['dfar','Outline detail to',2,120,1,20,[1,' m']],
     ['dpen','Depth pens',0,1,1,0],['dsplit','Depth split',2,120,1,15,[1,' m']],
+    ['lod','LOD cutoff',0,60,1,4,[10,' mm']],['budg','Size budget',10,300,5,90,[1,' k points']],
+    ['occ','Gap',0,30,1,4,[10,' mm']]]],
+  /* CANAL CITY, queue row 53 (docs/specs/2026-10-04-corridor-themes.md §6) */
+  canal:['Canal',[
+    ['len','Canal length',60,600,10,220,[1,' m']],['bend','Bend',0,60,1,10,[1,'°/100 m']],
+    ['width','Canal width',4,20,0.5,7,[1,' m']],['pave','Quay',0,4,0.25,1.5,[1,' m']],
+    ['quays','Quay share',0,100,1,40,[100,'%']],
+    ['lotmin','House min',3,20,0.5,5,[1,' m']],['lotmax','House max',4,40,0.5,10,[1,' m']],
+    ['alley','Alley chance',0,60,1,18,[100,'%']],['floors','Storeys',1,12,1,4],
+    ['canyon','Canyon rise',0,100,1,0,[100,'%']],['stepb','Step-back',0,60,1,8,[100,'%']],
+    ['canti','Cantilever',0,60,1,0,[100,'%']],
+    ['glow','Lit windows',0,100,1,15,[100,'%']],['uvar','Upper variety',0,100,1,30,[100,'%']],
+    ['signs','Signs',0,100,1,10,[100,'%']],['lang','Script',0,3,1,2],
+    ['cables','Laundry lines',0,100,1,45,[100,'%']],['sag','Line sag',0,30,1,6,[100,'%']],
+    ['laundry','Laundry',0,100,1,30,[100,'%']],
+    ['bridges','Bridges',0,4,1,1,[1,'/100 m']],['bclear','Bridge clearance',1.8,3.5,0.1,2.2,[1,' m']],
+    ['boats','Boats',0,12,1,3,[1,'/100 m']],['waves','Waves',0,100,1,35,[100,'%']],
+    ['ripple','Ripple',0,30,1,10,[10,' mm']],['rvar','Ripple variety',0,100,1,60,[100,'%']],
+    ['hatch','Tone hatch',0,100,1,55,[100,'%']],['hatchmode','Hatch spacing',0,1,1,0],
+    ['sun','Light from',0,359,1,300,[1,'°']],
+    ['cams','Camera along',0,90,1,5,[100,'%']],['camx','Camera side',-100,100,1,15,[100,'%']],
+    ['camz','Camera height',0.2,80,0.1,1.2,[1,' m']],['look','Look ahead',5,300,1,50,[1,' m']],
+    ['pitch','Pitch',-45,45,0.5,3,[1,'°']],['fov','Field of view',25,120,1,70,[1,'°']],
+    ['dnear','Solid detail to',2,80,1,18,[1,' m']],['dfar','Outline detail to',10,400,5,90,[1,' m']],
+    ['dpen','Depth pens',0,1,1,0],['dsplit','Depth split',5,300,5,60,[1,' m']],
     ['lod','LOD cutoff',0,60,1,4,[10,' mm']],['budg','Size budget',10,300,5,90,[1,' k points']],
     ['occ','Gap',0,30,1,4,[10,' mm']]]],
   chuck:['Geometric chuck',[
@@ -15848,7 +15873,7 @@ function buildIsoImg(p){
 
 var ENG={record:buildRecord, flow:buildFlow, growth:buildGrowth, contour:buildContour, ridge:buildRidge,
          pack:buildPack, voronoi:buildVoronoi, truchet:buildTruchet, maze:buildMaze, hilbert:buildHilbert,
-         rows:buildRows, poin:buildPoincare, flag:buildFlag, stat:buildStation, strt:buildStreet, mkt:buildMarket, harb:buildHarbour, libr:buildLibrary,
+         rows:buildRows, poin:buildPoincare, flag:buildFlag, stat:buildStation, strt:buildStreet, mkt:buildMarket, harb:buildHarbour, libr:buildLibrary, canal:buildCanal,
          harmo:buildHarmo, chladni:buildChladni, moire:buildMoire, disc:buildChladniDisc, fan:buildFan,
   string:buildString, fermat:buildFermat, logsp:buildLogSpiral, chuck:buildChuck,
          apoll:buildApollonian, wave:buildWave, sform:buildSuper,
@@ -17452,7 +17477,16 @@ var STHEMES={
         mirrorSkip:['hatch'], pudMinMM:3,
         lotGen:function(R,p,li,sd){ return libraryLotGen(R,p,li,sd); },
         fixed:{alley:0, cars:0, dots:0, graff:0, signs:0, cables:0, canyon:0, stepb:0, canti:0},
-        content:function(K){ return libraryTheme(K); }}
+        content:function(K){ return libraryTheme(K); }},
+  /* §6: a water channel between plastered houses; the whole road is water and
+     the mirror; the kerb is the quay's edge, 0.8 m over the water */
+  canal:{key:'canal', label:'Canal', lotDepth:[8,16], alleyW:[1.0,2.2], baseN2:0, baseH:[3.0,3.6],
+         midH:[2.8,3.2], edgeZ:0.8, slabLen:4, clear:3.0, ztop:200, mirror:'channel', minWidth:4,
+         strip:0.25, channel:true, kerbKind:'quay', pudCol:null, pudWord:'slabs of water',
+         cableAvoid:['bridge','boat','post'],
+         fixed:{cars:0, dots:0, graff:0, neon:0, puddles:0, hero:0, fire:0},
+         flags:{poles:false, roadMarks:false, bollards:false, manholes:false, topFlat:true, arch:true, leaves:0.4},
+         content:function(K){ return canalTheme(K); }}
 };
 /* the width of a [lo,hi] range, rounded to the nearest nanometre so that a
    [1.2,2.5] range spans the 1.3 the code always multiplied by, not the
@@ -17462,6 +17496,7 @@ function buildStreet(p){ return buildCorridor(p,STHEMES.street); }
 function buildMarket(p){ return buildCorridor(p,STHEMES.mkt); }
 function buildHarbour(p){ return buildCorridor(p,STHEMES.harb); }
 function buildLibrary(p){ return buildCorridor(p,STHEMES.libr); }
+function buildCanal(p){ return buildCorridor(p,STHEMES.canal); }
 /* THE NIGHT MARKET THEME (queue row 50, docs/specs/2026-10-04-corridor-themes.md
    §3): a narrow lane between two- to four-storey shophouses, stalls along both
    edges, lantern strings overhead, steam over the food stalls. The shophouses
@@ -18869,6 +18904,324 @@ function marketTheme(K){
 /* §5.3 THE SCRIPTS, as a factory (lifted out of streetTheme at row 52,
    unchanged): the pseudo-kanji and pseudo-hangul banks drawn once per seed
    from SALT_GLYPH, the Latin word list, and setText. */
+/* THE CANAL CITY THEME (queue row 53, docs/specs/2026-10-04-corridor-themes.md
+   §6): a water channel between plastered houses that stand straight in the
+   water or behind a narrow quay, seen low, as if from a boat. The houses are
+   the street theme's own, switched: arched window heads, shutter leaves,
+   flat roofs with funnel chimneys, a water gate on a house with no quay, each
+   house's tone hatch in its own plaster colour. The whole road is water and
+   the whole of it is the mirror (THM.channel); the kerb is the quay's stone
+   edge. Here: bridges, boats, mooring posts, waves, laundry on the lines,
+   name panels at the alley mouths, steps from the water gates. */
+function canalTheme(K){
+  var p=K.p, P3=K.P3, frame=K.frame, sub=K.sub, para=K.para, polyFromLoops=K.polyFromLoops, prismN=K.prismN,
+      inConv=K.inConv, hitsAny=K.hitsAny, slabsBySide=K.slabsBySide, slabPieces=K.slabPieces, conts=K.conts, lots=K.lots,
+      dist3=K.dist3, verts=K.verts, faceIx=K.faceIx, drawOn=K.drawOn, wallOf=K.wallOf, wp=K.wp, cables=K.cables,
+      HALFW=K.HALFW, KOFF=K.KOFF, PBACK=K.PBACK, KERB=K.KERB, LEN=K.LEN, SLAB=K.THM.slabLen;
+  function kn(v,d,lo,hi){ return Math.max(lo,Math.min(hi,isFinite(v)?+v:d)); }
+  var QUAYS=kn(p.quays,40,0,100)/100, BRIDGES=kn(p.bridges,1,0,4), BCLEAR=kn(p.bclear,2.2,1.8,3.5), BOATS=kn(p.boats,3,0,12),
+      WAVES=kn(p.waves,35,0,100)/100, LAUNDRY=kn(p.laundry,30,0,100)/100, SCAM=kn(p.cams,5,0,90)/100*LEN;
+  var SALT_QUAY=251, SALT_PLASTER=257, SALT_BRIDGE=263, SALT_BOAT=269, SALT_POST=271, SALT_WAVE=277, SALT_LAUNDRY=281,
+      SALT_CHIM=283, SALT_STEP=293, SALT_NAME=307;
+  var COL_K='#1a1a1a', COL_LBLUE='#5aa9e6', COL_BLUE='#2156c7', COL_BROWN='#8b5a2b';
+  var PLASTER=[['#c8962e',30],['#ec7a1c',20],['#8e1b25',18],['#e8729a',12],['#d8c08e',12],['#d42a2a',8]];
+  var POSTCOL=['#d42a2a','#2156c7','#22a7b4'], CLOTH=['#e8729a','#5aa9e6','#f2c230','#d42a2a','#ec7a1c','#8cc44a','#a58fd0'];
+  var TAL={bridges:[], boats:[], posts:[], waves:0, cloths:0, gates:0, steps:0, chimneys:0, panels:0, lots:[]};
+  STRTTALLY.canal=TAL;
+  /* ---- the bridges' places first: a house at a bridge always has its quay */
+  var BR=[];
+  (function(){ for(var k=0;(k+1)*25<=LEN;k++){
+    var R=sub(0,k,SALT_BRIDGE), u=R(), us=R(), un=R();
+    if(!(u<BRIDGES/4)) continue;
+    var sb=k*25+SLAB*Math.floor((4+16*us)/SLAB)+SLAB/2;
+    if(Math.abs(sb-SCAM)<4 || sb<3 || sb>LEN-3) continue;
+    BR.push({s:sb, n:8+2*Math.floor(un*3)});
+  } })();
+  lots.forEach(function(L){
+    var RQ=sub(L.side<0?2:1,L.idx,SALT_QUAY), uq=RQ();
+    L.quay=uq<QUAYS || BR.some(function(b){ return L.s1>b.s-3 && L.s0<b.s+3; });
+    L.gate=!L.quay;
+    var up=sub(L.side<0?2:1,L.idx,SALT_PLASTER)()*100, a=0, i;
+    L.plaster=PLASTER[PLASTER.length-1][0];
+    for(i=0;i<PLASTER.length;i++){ a+=PLASTER[i][1]; if(up<a){ L.plaster=PLASTER[i][0]; break; } }
+    TAL.lots.push({side:L.side, idx:L.idx, s0:L.s0, s1:L.s1, quay:L.quay, plaster:L.plaster});
+  });
+  var S=streetTheme(K), SCR=corridorScripts(sub,SALT_NAME);
+  /* a straight frame across the canal at s, o signed (negative: the other side) */
+  function laneFrame(sc){
+    var F=frame(sc);
+    return function(s,o,z){ var b=o>=0?P3(sc,1,o,z):P3(sc,-1,-o,z); return [b[0]+F[2]*(s-sc), b[1]+F[3]*(s-sc), z]; };
+  }
+  /* a prism over a convex profile in (o,z), from s0 to s1 in the frame X */
+  function profPrism(X,s0,s1,Q){
+    var Lo=Q.map(function(q){ return X(s0,q[0],q[1]); });
+    var Hi=Q.map(function(q){ return X(s1,q[0],q[1]); }), lp=[Lo,Hi], e;
+    for(e=0;e<Q.length;e++){ var e2=(e+1)%Q.length; lp.push([Lo[e],Lo[e2],Hi[e2],Hi[e]]); }
+    return polyFromLoops(lp);
+  }
+  /* pieces of P, one per slab, tagged; null if any of it is outside the water */
+  function pieces(P,kind,col,layer,tag){
+    var pcs=slabPieces(P); if(!pcs) return null;
+    pcs.forEach(function(Q){ Q.kind=kind; Q.col=col; Q.layer=layer;
+      Q.lines.forEach(function(Ln){ if(Ln.col===undefined) Ln.col=col; if(!Ln.kind) Ln.kind=kind; });
+      if(tag) for(var k in tag) Q[k]=tag[k]; });
+    return pcs;
+  }
+  /* all of a part list in, or none of it */
+  function commitAll(list,against){
+    var all=[], i;
+    for(i=0;i<list.length;i++){ if(!list[i]) return false; all=all.concat(list[i]); }
+    for(i=0;i<all.length;i++) if(hitsAny(all[i],all[i].cont,against)) return false;
+    all.forEach(function(Q){ Q.cont.parts.push(Q); });
+    return true;
+  }
+  /* a line of P lying in ONE joint plane is a cut, not an edge; `test` names
+     the joint a point lies on (or null) */
+  function dropOn(P,test){ P.lines=P.lines.filter(function(Ln){ var a=test(Ln.a), b=test(Ln.b); return !(a!==null && a!==false && a===b); }); return P; }
+  /* ---- BRIDGES: an arched deck of 8-12 convex segments from quay edge to
+     quay edge, its underside clearing the water by Bridge clearance at the
+     centreline, resting on the stone edge at both ends; treads across the
+     deck for the steps, a solid parapet each side; no line at a joint */
+  function bridges(dn,df){
+    BR.forEach(function(b,bi){
+      var X=laneFrame(b.s), n=b.n, th=0.35, w2=1.3, list=[], k, rec={s:b.s, n:n, clear:BCLEAR, placed:false, segs:0};
+      function zb(o){ var a=Math.min(1,Math.abs(o)/HALFW); return KERB+(BCLEAR-KERB)*(1-a*a); }
+      /* the ends 5 cm short of the stone edge's back: a straight frame on a
+         bend leaves a slab's chord there */
+      var os=[-(KOFF-0.05)]; for(k=0;k<=n;k++) os.push(-HALFW+2*HALFW*k/n); os.push(KOFF-0.05);
+      var joints=os.slice(1,-1);
+      var onJ=function(v){ var l=lateralOf(v); for(var q=0;q<joints.length;q++) if(Math.abs(l-joints[q])<1e-7) return joints[q]; return null; };
+      function lateralOf(v){ var c=X(b.s,0,0), e=X(b.s,1,0); return (v[0]-c[0])*(e[0]-c[0])+(v[1]-c[1])*(e[1]-c[1]); }
+      for(k=0;k+1<os.length;k++){
+        var oa=os[k], ob=os[k+1], ta=zb(oa)+th, tb=zb(ob)+th;
+        var D=dropOn(profPrism(X,b.s-w2,b.s+w2,[[oa,zb(oa)],[ob,zb(ob)],[ob,tb],[oa,ta]]),onJ);
+        /* treads: two lines across the deck on its top face */
+        var ft=faceIx(D,[0,0,1]);
+        [0.33,0.67].forEach(function(f){ var oo=oa+(ob-oa)*f, zz=ta+(tb-ta)*f;
+          D.lines.push({a:X(b.s-w2,oo,zz), b:X(b.s+w2,oo,zz), f0:ft, f1:ft, kind:'tread'}); });
+        list.push(pieces(D,'deck',COL_K,'bridge',{bridge:bi, seg:k}));
+        [[b.s-w2,b.s-w2+0.12],[b.s+w2-0.12,b.s+w2]].forEach(function(sw,pi2){
+          var Pp=dropOn(profPrism(X,sw[0],sw[1],[[oa,ta],[ob,tb],[ob,tb+0.9],[oa,ta+0.9]]),onJ);
+          list.push(pieces(Pp,'parapet',COL_K,'bridge',{bridge:bi, seg:k}));
+        });
+        rec.segs++;
+      }
+      if(commitAll(list,['struct','furn','bridge'])) rec.placed=true;
+      rec.foot=[b.s-w2,b.s+w2];
+      TAL.bridges.push(rec);
+    });
+  }
+  /* ---- STEPS from each water gate down into the canal: 2-4 stone steps
+     standing in the water against the stone edge */
+  function steps(){
+    lots.forEach(function(L){
+      if(!L.gateRec) return;
+      var R=sub(L.side<0?2:1,L.idx,SALT_STEP), ns=2+Math.floor(R()*3);
+      var A0=P3(L.s0,L.side,KOFF,0), A1=P3(L.s1,L.side,KOFF,0), dx=A1[0]-A0[0], dy=A1[1]-A0[1], l2=dx*dx+dy*dy;
+      var sOf=function(v){ return L.s0+(L.s1-L.s0)*((v[0]-A0[0])*dx+(v[1]-A0[1])*dy)/l2; };
+      var sa=sOf(L.gateRec.a), sb2=sOf(L.gateRec.b), lo=Math.min(sa,sb2), hi=Math.max(sa,sb2), list=[], k;
+      for(k=0;k<ns;k++){
+        /* 5 cm off the stone edge: a step's face lies on the arc and the edge
+           on its slab's chord, which bows 21 mm from it at Bend 60 -- and the
+           edge hides nothing, so hitsAny would not refuse the overlap. 1 cm
+           between steps, whose faces are parallelograms on a bend */
+        var o0=HALFW-0.05-0.3*(k+1), o1=HALFW-0.06-0.3*k+(k===0?0.01:0), zt=KERB*(ns-k)/(ns+1);
+        var a=P3(lo,L.side,o0,0), b=P3(hi,L.side,o0,0), c=P3(lo,L.side,o1,0);
+        list.push(pieces(para(a,[b[0]-a[0],b[1]-a[1],0],[c[0]-a[0],c[1]-a[1],0],[0,0,zt]),'step',COL_K,'furn',{gate:L.idx}));
+      }
+      if(commitAll(list,['struct','furn','bridge'])){ TAL.gates++; TAL.steps+=ns; }
+    });
+  }
+  /* ---- MOORING POSTS: pairs in the water near the walls, a stripe band
+     every 0.3 m alternately the pair's colour and bare paper */
+  function posts(dn){
+    [1,-1].forEach(function(sd){
+      for(var k=0;(k+1)*14<=LEN;k++){
+        var R=sub(sd<0?2:1,k,SALT_POST), u=R(), us=R(), uc=R(), uh=R();
+        if(!(u<0.45)) continue;
+        var sp=k*14+2+10*us, col=POSTCOL[Math.floor(uc*3)], H=2.6+0.6*uh, list=[], bands=[];
+        [0,1.0].forEach(function(ds){
+          var c0=P3(sp+ds,sd,HALFW-0.45,0), Q=[], j;
+          for(j=0;j<10;j++){ var an=TAU*j/10; Q.push([c0[0]+0.12*Math.cos(an), c0[1]+0.12*Math.sin(an)]); }
+          var Pp=prismN(Q,0,H), z, bk=0;
+          if(dist3(c0)<dn) for(z=1.0;z+0.3<=H-0.1;z+=0.3,bk++){
+            bands.push(bk%2===0);
+            if(bk%2) continue;
+            [z+0.075,z+0.15,z+0.225].forEach(function(zz){ for(j=0;j<10;j++){ var j2=(j+1)%10;
+              Pp.lines.push({a:[Q[j][0],Q[j][1],zz], b:[Q[j2][0],Q[j2][1],zz], f0:2+j, f1:2+j, col:col, kind:'stripe', z0:z}); } });
+          }
+          list.push(pieces(Pp,'post',COL_K,'post',{postPair:TAL.posts.length}));
+        });
+        var rec={s:sp, side:sd, col:col, h:H, bands:bands, placed:false};
+        if(commitAll(list,['struct','furn','bridge','post'])) rec.placed=true;
+        TAL.posts.push(rec);
+      }
+    });
+  }
+  /* ---- BOATS: a gondola 10.8 x 1.4 m (black, four convex hull pieces and
+     its bow iron), a sandolo 7.0 x 1.2 (brown, three pieces), a motor launch
+     8.5 x 2.2 (blue: a box hull with a cabin). Moored along a wall or under way
+     mid-channel; never under a bridge's footprint. */
+  function boats(dn){
+    var feet=TAL.bridges.filter(function(b){ return b.placed; }).map(function(b){ return b.foot; });
+    [1,-1].forEach(function(sd){
+      for(var k=0;(k+1)*12<=LEN;k++){
+        var R=sub(sd<0?2:1,k,SALT_BOAT), u=R(), ut=R(), um=R(), uj=R();
+        if(!(u<BOATS*0.06)) continue;
+        var type=ut<0.5?'gondola':ut<0.75?'sandolo':'launch';
+        var BL=type==='gondola'?10.8:type==='sandolo'?7.0:8.5, BW=type==='gondola'?1.4:type==='sandolo'?1.2:2.2;
+        var sc=k*12+6+(uj-0.5)*2, moored=um<0.7, oc=moored?HALFW-0.3-BW/2:0.35+BW/2;
+        var rec={type:type, s:sc, side:sd, len:BL, wid:BW, moored:moored, placed:false, underBridge:false};
+        if(sc-BL/2<1 || sc+BL/2>LEN-1 || oc-BW/2<0.05){ TAL.boats.push(rec); continue; }
+        if(feet.some(function(f){ return sc+BL/2>f[0]-0.5 && sc-BL/2<f[1]+0.5; })){ rec.underBridge=true; TAL.boats.push(rec); continue; }
+        var F=frame(sc), t=[F[2]*sd,F[3]*sd,0], c0=P3(sc,sd,oc,0), nv=[-t[1],t[0],0];
+        rec.c=c0; rec.t=t;
+        var Lb=function(x,y,z){ return [c0[0]+t[0]*x+nv[0]*y, c0[1]+t[1]*x+nv[1]*y, z]; };
+        var list=[], col=type==='gondola'?COL_K:type==='sandolo'?COL_BROWN:COL_BLUE, k2;
+        if(type==='launch'){
+          var HP=[[-BL/2,-BW/2],[BL/2-1.2,-BW/2],[BL/2,0],[BL/2-1.2,BW/2],[-BL/2,BW/2]];
+          list.push(pieces(prismPlan(Lb,HP,function(){ return 0.7; }),'hull',col,'boat',{boat:TAL.boats.length}));
+          var CP=[[-BL/2+0.6,-BW/2+0.3],[0.4,-BW/2+0.3],[0.4,BW/2-0.3],[-BL/2+0.6,BW/2-0.3]];
+          list.push(pieces(prismPlan(Lb,CP,function(){ return 1.55; },0.7),'cabin',col,'boat',{boat:TAL.boats.length}));
+        } else {
+          var np=type==='gondola'?4:3, sheer=type==='gondola'?0.55:0.3;
+          var hw=function(x){ var q=1-Math.pow(2*x/BL,2); return BW/2*Math.pow(Math.max(0,q),0.6); };
+          var top=function(x){ return 0.35+sheer*Math.pow(2*x/BL,4); };
+          for(k2=0;k2<np;k2++){
+            var xa=-BL/2+BL*k2/np, xb=-BL/2+BL*(k2+1)/np, PL=[], m;
+            for(m=0;m<=6;m++){ var x=xa+(xb-xa)*m/6, h=hw(x); PL.push([x,-h]); }
+            for(m=6;m>=0;m--){ var x2=xa+(xb-xa)*m/6, h2=hw(x2); if(h2>1e-9) PL.push([x2,h2]); }
+            var PL2=[]; PL.forEach(function(q){ var l=PL2[PL2.length-1]; if(!l || Math.hypot(l[0]-q[0],l[1]-q[1])>1e-9) PL2.push(q); });
+            if(Math.hypot(PL2[0][0]-PL2[PL2.length-1][0],PL2[0][1]-PL2[PL2.length-1][1])<1e-9) PL2.pop();
+            var H=prismPlan(Lb,PL2,function(x){ return top(xa)+(top(xb)-top(xa))*(x-xa)/(xb-xa); });
+            dropOn(H,function(v){ var lx=(v[0]-c0[0])*t[0]+(v[1]-c0[1])*t[1]; return (k2>0 && Math.abs(lx-xa)<1e-7)?'a':(k2<np-1 && Math.abs(lx-xb)<1e-7)?'b':null; });
+            list.push(pieces(H,'hull',col,'boat',{boat:TAL.boats.length, piece:k2}));
+          }
+          if(type==='gondola' && dist3(c0)<dn){
+            /* the bow iron: a thin blade standing off the bow, its six prongs */
+            var zt=top(BL/2), FE=para(Lb(BL/2,-0.015,zt),[t[0]*0.25,t[1]*0.25,0],[nv[0]*0.03,nv[1]*0.03,0],[0,0,0.75]);
+            FE.lines=[]; var fs=faceIx(FE,nv);
+            FE.lines.push({a:Lb(BL/2,0.015,zt), b:Lb(BL/2+0.08,0.015,zt+0.75), f0:fs, f1:fs, kind:'ferro'});
+            for(m=0;m<6;m++){ var zf=zt+0.15+0.09*m; FE.lines.push({a:Lb(BL/2+0.03+0.08*(zf-zt)/0.75,0.015,zf), b:Lb(BL/2+0.25,0.015,zf), f0:fs, f1:fs, kind:'ferro'}); }
+            FE.hides=false; FE.seeThru=true;
+            list.push(pieces(FE,'ferro',col,'boat',{boat:TAL.boats.length}));
+          }
+        }
+        if(commitAll(list,['struct','furn','bridge','post','boat'])) rec.placed=true;
+        TAL.boats.push(rec);
+      }
+    });
+  }
+  /* a prism over a plan polygon in the boat frame, its top a function of x */
+  function prismPlan(Lb,PL,topOf,z0){
+    var zb0=z0||0, Lo=PL.map(function(q){ return Lb(q[0],q[1],zb0); });
+    var Hi=PL.map(function(q){ return Lb(q[0],q[1],topOf(q[0])); }), lp=[Lo,Hi], e;
+    for(e=0;e<PL.length;e++){ var e2=(e+1)%PL.length; lp.push([Lo[e],Lo[e2],Hi[e2],Hi[e]]); }
+    return polyFromLoops(lp);
+  }
+  /* ---- WAVES: short dashes along the water on each slab's water plate,
+     denser near the camera -- the plate hides nothing and is not mirrored */
+  function waves(df){
+    conts.forEach(function(C){
+      if(C.kind!=='slab') return;
+      var Pl=null; C.parts.forEach(function(P){ if(P.kind==='plate') Pl=P; }); if(!Pl) return;
+      var mid=P3((C.s0+C.s1)/2,C.side,HALFW/2,0), d=dist3(mid);
+      if(!(d<df)) return;
+      var R=sub(C.side<0?2:1,Math.round(C.s0/SLAB),SALT_WAVE), n=Math.round(WAVES*24*Math.max(0.15,Math.min(1,12/d))), k;
+      for(k=0;k<24;k++){
+        var us=R(), uo=R(), ul=R();
+        if(k>=n) continue;
+        /* across the canal -- horizontal on a sheet looking along it -- and
+           as long in metres as the slab is far, so about as long on paper */
+        var sl=Math.max(0.12,Math.min(0.8,(0.15+0.25*ul)*d/8)), sa=C.s0+0.1+(C.s1-C.s0-0.2)*us, oo=0.1+(HALFW-0.2-sl)*uo;
+        if(oo<0.1) continue;
+        Pl.lines.push({a:P3(sa,C.side,oo,0), b:P3(sa,C.side,oo+sl,0), f0:1, f1:1, col:COL_LBLUE, kind:'wave'});
+        TAL.waves++;
+      }
+    });
+  }
+  /* ---- LAUNDRY on the lines over the water: a cloth hanging under a line at
+     each 0.8 m where its own number says so, any colour */
+  function laundry(){
+    cables.forEach(function(cb){
+      var nst=Math.floor(cb.L/0.8), j;
+      for(j=1;j<nst;j++){
+        var R=sub(0,cb.id*256+j,SALT_LAUNDRY), u=R(), uw=R(), uh=R(), uc=R();
+        if(!(u<LAUNDRY)) continue;
+        var t=j/nst, P=cb.at(t), iv=null;
+        cb.ivs.forEach(function(v){ if(v.C.kind==='slab' && t>v.t0 && t<v.t1) iv=v; });
+        if(!iv) continue;
+        var cw=0.4+0.3*uw, ch=0.5+0.4*uh, dx=cb.B[0]-cb.A[0], dy=cb.B[1]-cb.A[1], dl=Math.hypot(dx,dy), e=[dx/dl,dy/dl,0], nn=[-e[1],e[0],0];
+        /* hung below the line's LOWEST point across its own width: a catenary
+           dips toward a cloth's ends, and the line's box went through the top */
+        var dt=cw/2/cb.L, zlo=Math.min(P[2],cb.at(Math.max(0,t-dt))[2],cb.at(Math.min(1,t+dt))[2]);
+        var o=[P[0]-e[0]*cw/2-nn[0]*0.01, P[1]-e[1]*cw/2-nn[1]*0.01, zlo-0.04-ch];
+        var Cl=para(o,[e[0]*cw,e[1]*cw,0],[nn[0]*0.02,nn[1]*0.02,0],[0,0,ch]);
+        if(!verts(Cl).every(function(v){ return inConv(iv.C.poly,v); }) || hitsAny(Cl,iv.C,['struct','furn','bridge','boat','post','laundry'])) continue;
+        var col=CLOTH[Math.floor(uc*CLOTH.length)];
+        Cl.lines.forEach(function(Ln){ Ln.col=col; Ln.kind='cloth'; });
+        Cl.cont=iv.C; Cl.col=col; Cl.kind='cloth'; Cl.layer='laundry';
+        iv.C.parts.push(Cl); TAL.cloths++;
+      }
+    });
+  }
+  /* ---- the houses: funnel chimneys on the flat roof, a name panel at an
+     alley mouth -- on top of the street theme's own dressing */
+  var bySide={'1':[],'-1':[]};
+  lots.forEach(function(L){ bySide[L.side].push(L); });
+  [1,-1].forEach(function(sd){ bySide[sd].sort(function(a,b){ return a.s0-b.s0; }); });
+  function dress(L,dn,df){
+    L.gateRec=null;
+    S.dress(L,dn,df);
+    var nb=L.blocks.length, TB=L.blocks[nb-1], FT=wallOf(L,TB), dep=TB.bk-TB.fr, R=sub(L.side<0?2:1,L.idx,SALT_CHIM);
+    var nc=1+Math.floor(R()*3), k, zt=TB.z1;
+    for(k=0;k<3;k++){
+      var uu=R(), ud=R();
+      /* clear of the band a street billboard stands in, across the roof at
+         half its depth: a chimney that went through one was found by L5's
+         mirror world, and placing chimneys after the signs instead made Signs
+         move them */
+      if(k>=nc || FT.W<2 || dep<2.8) continue;
+      var dd=ud<0.5?0.8+(dep/2-1.4)*(ud*2):dep/2+0.6+(dep/2-1.4)*(ud*2-1);
+      var c=wp(FT,0.8+(FT.W-1.6)*uu,zt,-dd), Q=[], Qf0=[], Qf1=[], j;
+      for(j=0;j<4;j++){ var an=TAU*(j+0.5)/4; Q.push([c[0]+0.2*Math.cos(an), c[1]+0.2*Math.sin(an)]); }
+      var Sh=prismN(Q,zt,zt+1.1);
+      for(j=0;j<8;j++){ var an2=TAU*(j+0.5)/8; Qf0.push([c[0]+0.16*Math.cos(an2), c[1]+0.16*Math.sin(an2), zt+1.1]); Qf1.push([c[0]+0.42*Math.cos(an2), c[1]+0.42*Math.sin(an2), zt+1.7]); }
+      var lp=[Qf0,Qf1]; for(j=0;j<8;j++){ var j2=(j+1)%8; lp.push([Qf0[j],Qf0[j2],Qf1[j2],Qf1[j]]); }
+      var Fu=polyFromLoops(lp), ok=true;
+      [Sh,Fu].forEach(function(P){ if(!verts(P).every(function(v){ return inConv(L.poly,v); }) || hitsAny(P,L,['struct'])) ok=false; });
+      if(!ok) continue;
+      [Sh,Fu].forEach(function(P){ P.cont=L; P.col=COL_K; P.kind='chimney'; P.layer='struct'; L.parts.push(P); });
+      TAL.chimneys++;
+    }
+    /* a name panel on the corner at an alley mouth: the next house along is
+       an alley's width away */
+    var arr=bySide[L.side], ix=arr.indexOf(L), nx=arr[ix+1];
+    if(nx && nx.s0-L.s1>0.8 && L.blocks[0].z1>=KERB+3.5){
+      var B0=L.blocks[0], F0=wallOf(L,B0), BP=L.parts[0], fi=faceIx(BP,F0.n), u0=F0.W-1.35, z0=KERB+2.95;
+      if(dist3(wp(F0,F0.W-0.7,z0,0))<dn){
+        var T=SCR.setText('latin',1.2,0.36,false,sub(L.side<0?2:1,L.idx,SALT_NAME+1),0.03);
+        /* read left to right by someone facing the wall: their right is
+           (-n.y, n.x); where the wall's own axis runs the other way, the text
+           is laid down mirrored in u */
+        var flip=F0.t[0]*-F0.n[1]+F0.t[1]*F0.n[0]<0;
+        var M=function(u,v){ return wp(F0,u0+(flip?1.2-u:u),z0+v,0); };
+        drawOn(BP,fi,M,[[[0,0],[1.2,0],[1.2,0.36],[0,0.36],[0,0]]],COL_K,'namepanel',-1);
+        drawOn(BP,fi,M,T.lines,COL_K,'namepanel',-1);
+        TAL.panels++;
+      }
+    }
+  }
+  return {
+    dress:dress, signsFor:S.signsFor,
+    furnish:function(dn,df,step){ TAL.bridges=[]; TAL.boats=[]; TAL.posts=[]; TAL.waves=0; TAL.cloths=0; TAL.gates=0; TAL.steps=0;
+      S.furnish(dn,df,step); bridges(dn,df); steps(); posts(dn); boats(dn); waves(df); laundry(); },
+    cars:[], dots:[], poles:[],
+    info:function(nsigns){ return ' · '+nsigns+' signs · '+TAL.bridges.filter(function(b){ return b.placed; }).length+' bridges · '+
+      TAL.boats.filter(function(b){ return b.placed; }).length+' boats · '+TAL.posts.filter(function(b){ return b.placed; }).length+' mooring posts · '+
+      cables.length+' laundry lines'; }
+  };
+}
 function corridorScripts(sub,SALT_GLYPH,words){
   /* ---- §5.3 THE SCRIPTS. Both pseudo-scripts are BANKS drawn once per seed,
      so a character recurs across signs the way a real script's do -- an
@@ -19054,7 +19407,7 @@ function streetTheme(K){
      unset switch is the street as it was. */
   var THM=K.THM, P3=K.P3, add3=K.add3, addCable=K.addCable, cam=K.cam, dist3=K.dist3, drawOn=K.drawOn, faceC=K.faceC, faceIx=K.faceIx, frame=K.frame, hitsAny=K.hitsAny, inConv=K.inConv, lateral=K.lateral, mmPerM=K.mmPerM, paperGap=K.paperGap, para=K.para, polyFromLoops=K.polyFromLoops, prism=K.prism, prismN=K.prismN, splitPart=K.splitPart, sub=K.sub, surf=K.surf, vec=K.vec, verts=K.verts, wallOf=K.wallOf, wp=K.wp, CANTI=K.CANTI, CANYON=K.CANYON, CE=K.CE, FF=K.FF, FLOORS=K.FLOORS, HALFW=K.HALFW, HW=K.HW, KERB=K.KERB, KOFF=K.KOFF, LEN=K.LEN, NEAR=K.NEAR, PBACK=K.PBACK, RT=K.RT, SALT_BLD=K.SALT_BLD, STEPB=K.STEPB, ZUP=K.ZUP, cables=K.cables, conts=K.conts, lots=K.lots, slabsBySide=K.slabsBySide, p=K.p,
       FW=K.FW, UP=K.UP, PAD=K.PAD, SLAB=THM.slabLen;
-  var i, j, k, FL=THM.flags||{}, SALT_GOODS=151;
+  var i, j, k, FL=THM.flags||{}, SALT_GOODS=151, SALT_ARCH=311, SALT_LEAF=313, COL_LEAF='#1e5a32';
   /* ---- §2.4 the box stack. Every storey draws the SAME number of values
      whatever the knobs say, so moving Step-back or Cantilever changes which
      storeys move and never which numbers the next storey reads. */
@@ -19138,6 +19491,10 @@ function streetTheme(K){
     var hasEsc=(escB>=0 && escU<FIRE);
     STRTTALLY.bld.push({side:L.side, idx:L.idx, top:'', esc:hasEsc, eligible:escB>=0});
     var BREC=STRTTALLY.bld[STRTTALLY.bld.length-1];
+    /* ROW 53: a canal house's window heads are ARCHED, round or pointed, in
+       8-12 segments -- one shape a building, from its own substream */
+    var ARCHP=false, ARCHN=0;
+    if(FL.arch){ var RAR=sub(sk,L.idx,SALT_ARCH); ARCHP=RAR()<0.4; ARCHN=ARCHP?8+2*Math.floor(RAR()*3):8+Math.floor(RAR()*5); }
     for(bi=0;bi<nb0;bi++){
       var B=L.blocks[bi], BP=L.parts[bi], F=wallOf(L,B), room=Math.max(0,(B.fr-L.fe)*0.95-0.02);
       var RF=sub(sk,L.idx*16+bi,SALT_FAC);
@@ -19302,6 +19659,26 @@ function streetTheme(K){
           var u0=c*bw, u1=(c+1)*bw, uc=(u0+u1)/2, ug=RF(), ua=RF(), ub=RF(), ucol=RF();
           var cen=wp(F,uc,(zs+ze)/2,0), band=bandAt(cen);
           if(!band) continue;
+          if(shop && L.gate){
+            /* ROW 53: a house standing in the water. Its base storey is a
+               WATER GATE on the door bay -- an arched opening at the quay line,
+               which the theme gives steps down into the water -- and a small
+               barred window on each other bay */
+            if(c===doorCol){
+              var gw=Math.min(2.0,bw-0.6), ga=uc-gw/2, gb=uc+gw/2, gt=zs+Math.min(3.0,ze-zs-0.25), grs=Math.min(gw/2,gt-zs-1.6), gp=[[ga,zs],[ga,gt-grs]], gk;
+              for(gk=1;gk<10;gk++){ var gan=Math.PI*(1-gk/10); gp.push([uc+Math.cos(gan)*gw/2, gt-grs+Math.sin(gan)*grs]); }
+              gp.push([gb,gt-grs],[gb,zs]);
+              for(gk=1;gk<gp.length;gk++) line(wp(F,gp[gk-1][0],gp[gk-1][1],0),wp(F,gp[gk][0],gp[gk][1],0),COL_K,'gate');
+              line(wp(F,ga,zs,0),wp(F,gb,zs,0),COL_K,'gate');
+              L.gateRec={a:wp(F,ga,zs,0), b:wp(F,gb,zs,0)};
+              elem('gate',cen,band);
+            } else {
+              rect(uc-0.3,uc+0.3,zs+1.4,zs+2.2,COL_K,'win');
+              for(var gbr=1;gbr<=3;gbr++) line(wp(F,uc-0.3+0.15*gbr,zs+1.4,0),wp(F,uc-0.3+0.15*gbr,zs+2.2,0),COL_K,'grille');
+              elem('win',cen,band);
+            }
+            continue;
+          }
           if(shop && FL.shopOpen){
             /* ROW 50, a market's shopfront: the shutter ROLLED UP into its box
                at the head, the bay open below, and goods hanging in the
@@ -19411,7 +19788,24 @@ function streetTheme(K){
           }
           /* a window: lintel and sill when near and there is room, an
              outline on the wall otherwise; lit ones carry a yellow hatch */
-          if(band==='solid' && room>=0.03){
+          var wspr=wy1;
+          if(FL.arch){
+            /* ROW 53: narrow, with an arched head and a sill, no lintel */
+            wx0=uc-bw*0.2; wx1=uc+bw*0.2;
+            var ww=wx1-wx0, wrise=ARCHP?Math.min(0.866*ww,(wy1-wy0)*0.45):Math.min(ww/2,(wy1-wy0)*0.45), wap=[[wx1,wy0],[wx0,wy0],[wx0,wy1-wrise]], wk;
+            wspr=wy1-wrise;
+            for(wk=1;wk<ARCHN;wk++){
+              var wt=wk/ARCHN, wpx, wpz;
+              if(!ARCHP){ var wan=Math.PI*(1-wt); wpx=uc+Math.cos(wan)*ww/2; wpz=wspr+Math.sin(wan)*wrise; }
+              else if(wt<=0.5){ var wa1=Math.PI-wt*2*Math.PI/3; wpx=wx1+Math.cos(wa1)*ww; wpz=wspr+Math.sin(wa1)*ww*wrise/(0.866*ww); }
+              else { var wa2=Math.PI/3-(wt-0.5)*2*Math.PI/3; wpx=wx0+Math.cos(wa2)*ww; wpz=wspr+Math.sin(wa2)*ww*wrise/(0.866*ww); }
+              wap.push([wpx,wpz]);
+            }
+            wap.push([wx1,wspr],[wx1,wy0]);
+            for(wk=1;wk<wap.length;wk++) line(wp(F,wap[wk-1][0],wap[wk-1][1],0),wp(F,wap[wk][0],wap[wk][1],0),COL_K,'win');
+            if(band==='solid' && room>=0.03)
+              solid(para(wp(F,wx0-0.08,wy0-0.08,0),vec(F,'t',wx1-wx0+0.16),vec(F,'n',Math.min(0.12,room)),vec(F,'z',0.08)),'sill');
+          } else if(band==='solid' && room>=0.03){
             solid(para(wp(F,wx0-0.1,wy1,0),vec(F,'t',wx1-wx0+0.2),vec(F,'n',Math.min(0.08,room)),vec(F,'z',0.15)),'lintel');
             solid(para(wp(F,wx0-0.08,wy0-0.08,0),vec(F,'t',wx1-wx0+0.16),vec(F,'n',Math.min(0.12,room)),vec(F,'z',0.08)),'sill');
             line(wp(F,wx0,wy0,0),wp(F,wx0,wy1,0),COL_K,'win'); line(wp(F,wx1,wy0,0),wp(F,wx1,wy1,0),COL_K,'win');
@@ -19421,8 +19815,18 @@ function streetTheme(K){
             }
           } else rect(wx0,wx1,wy0,wy1,COL_K,'win');
           var lit=ug<GLOW;
-          if(lit) hlines(wx0+0.05,wx1-0.05,wy0+0.05,wy1-0.05,0.18,COL_GLOW,'glow');
+          if(lit) hlines(wx0+0.05,wx1-0.05,wy0+0.05,wspr-0.05,0.18,COL_GLOW,'glow');
           elem(lit?'winlit':'win',cen,band);
+          /* ROW 53: two shutter LEAVES, open beside a share of the windows, in
+             dark green -- each window's own number, so nothing else moves */
+          if(FL.leaves && !S.base){
+            var ulv=sub(sk,((L.idx*16+bi)*64+si)*64+c,SALT_LEAF)(), lvw=Math.min((wx1-wx0)/2,uc-u0-(wx1-wx0)/2-0.08);
+            if(ulv<FL.leaves && lvw>0.2){
+              [[wx0-lvw-0.04,wx0-0.04],[wx1+0.04,wx1+lvw+0.04]].forEach(function(lv){
+                rect(lv[0],lv[1],wy0,wspr,COL_LEAF,'leaf'); hlines(lv[0],lv[1],wy0,wspr,0.15,COL_LEAF,'leaf'); });
+              elem('leaf',cen,band);
+            }
+          }
           if(ZN && !S.base && !(hasEsc && bi===escB && c===escCol)) clutter(ZN.cl[si][c],uc,wx0,wx1,wy0,wy1,zs,lit,band,
                  band==='solid' && room>=0.03 && !S.base && ub<0.12 && room>=0.32);
         }
@@ -22853,6 +23257,7 @@ function draw(){
   if(mode==='mkt' && STRTINFO) txt+=' \u00b7 '+STRTINFO;
   if(mode==='harb' && STRTINFO) txt+=' \u00b7 '+STRTINFO;
   if(mode==='libr' && STRTINFO) txt+=' \u00b7 '+STRTINFO;
+  if(mode==='canal' && STRTINFO) txt+=' \u00b7 '+STRTINFO;
   if(mode==='fan'){
     var fv=vals(), wnd=fv.loops+fv.prec/100;
     txt+=' \u00b7 winding '+(Math.abs(wnd-Math.round(wnd))<1e-9?wnd.toFixed(0):wnd.toFixed(2));
@@ -23089,7 +23494,7 @@ var FAMILIES=[
   ['Lattices',   ['truchet','maze','hilbert','voronoi','pack','rows','poin']],
   ['Curves',     ['harmo','sform','lsys','string','fan','chladni']],
   ['FROM PHOTO 3D', ['isoimg']],
-  ['3D',         ['hil3','harmo3','attract','ruled','knot','spack','flow3','surf','iso','stat','strt','mkt','harb','libr']],
+  ['3D',         ['hil3','harmo3','attract','ruled','knot','spack','flow3','surf','iso','stat','strt','mkt','harb','libr','canal']],
   ['From photo', ['tonehatch','tonespiral']]
 ];
 function mountTabs(){
@@ -23611,6 +24016,47 @@ var HELP={
 'libr.lod':'The smallest part still drawn, as its size on the sheet.',
 'libr.budg':'How many points the drawing may use, in thousands. Over it, the detail distances come in and the LOD cutoff rises until it fits.',
 'libr.occ':'How wide a white gap a nearer object leaves in whatever passes behind it, in millimetres on the sheet.',
+'canal.len':'How far the canal runs, in metres. The camera sits low near its start, as if in a boat, and the houses recede toward the far end.',
+'canal.bend':'How much the canal curves, in degrees per 100 m.',
+'canal.width':'The water between the two lines of houses, in metres. All of it is a mirror.',
+'canal.pave':'How wide a quay is, in metres, where a house has one: a walkway 0.8 m over the water between the canal and the house.',
+'canal.quays':'The share of houses with a quay in front. The others stand straight in the water behind the stone edge, with a water gate and steps down into the canal. Houses at a bridge always have one.',
+'canal.lotmin':'The narrowest house front, in metres.',
+'canal.lotmax':'The widest house front, in metres.',
+'canal.alley':'How often a narrow alley opens between two houses. Each alley mouth carries a name panel on the corner.',
+'canal.floors':'How many storeys the houses have over the water-gate storey, on average.',
+'canal.canyon':'How much taller the houses get toward the far end.',
+'canal.stepb':'How often an upper storey steps back from the one below.',
+'canal.canti':'How often an upper storey juts out over the one below.',
+'canal.glow':'The share of windows lit, drawn with a yellow hatch.',
+'canal.uvar':'How much the upper storeys vary their windows, belts and clutter.',
+'canal.signs':'The share of sign slots that carry a sign.',
+'canal.lang':'The script on the signs and name panels: 0 pseudo-kanji, 1 pseudo-hangul, 2 Latin, 3 mixed.',
+'canal.cables':'How many laundry lines cross the water from house to house, 3 m or more over it.',
+'canal.sag':'How far a laundry line sags at midspan, as a share of its span.',
+'canal.laundry':'How much washing hangs on the lines: the share of each 0.8 m of line that carries a cloth.',
+'canal.bridges':'Arched footbridges per 100 m of canal, each spanning from quay edge to quay edge with steps on its deck.',
+'canal.bclear':'How high a bridge clears the water at the middle of the canal, in metres.',
+'canal.boats':'Boats per 100 m: gondolas in black, smaller sandoli, and motor launches with a cabin, moored along a wall or under way, never under a bridge.',
+'canal.waves':'Short dashes on the water, denser near the camera.',
+'canal.ripple':'How far the reflection wobbles, in millimetres on the sheet at 5 m. 0 is a still mirror.',
+'canal.rvar':'How much the ripple varies across the water: two wave trains, calm and choppy patches, larger near.',
+'canal.hatch':'A tone hatch on the walls facing away from the light, in each house\u2019s own plaster colour.',
+'canal.hatchmode':'0 spaces the hatch in metres on the wall, 1 in millimetres on the sheet.',
+'canal.sun':'Where the light comes from, in degrees: walls facing away from it get the tone hatch.',
+'canal.cams':'Where the camera sits along the canal, as a share of its length.',
+'canal.camx':'The camera across the canal, as a share of half its width: 0 is the middle.',
+'canal.camz':'The camera height over the water in metres. 1.2 is a boat\u2019s eye.',
+'canal.look':'How far ahead the camera aims, in metres along the canal.',
+'canal.pitch':'Tilts the camera up (positive) or down, in degrees.',
+'canal.fov':'The field of view across the sheet, in degrees.',
+'canal.dnear':'Up to this distance, in metres, windows have sills, boats their bow irons and the posts their stripes.',
+'canal.dfar':'Up to this distance, in metres, facades carry their windows and the water its waves; beyond it a house is its outline.',
+'canal.dpen':'1 draws the black lines further away than Depth split in dark grey instead: a near pen and a far pen.',
+'canal.dsplit':'With Depth pens on: how far away, in metres, black turns to dark grey.',
+'canal.lod':'The smallest part still drawn, as its size on the sheet.',
+'canal.budg':'How many points the drawing may use, in thousands. Over it, the detail distances come in and the LOD cutoff rises until it fits; last of all the reflections go.',
+'canal.occ':'How wide a white gap a nearer object leaves in whatever passes behind it, in millimetres on the sheet.',
 'mkt.len':'How far the market lane runs, in metres. The camera stands part-way along it and the stalls, lanterns and shophouses recede toward the far end.',
 'mkt.bend':'How much the lane curves, in degrees per 100 m. 0 is dead straight; a bend turns the far stalls out of sight behind the shophouses.',
 'mkt.width':'The lane between the shophouses, wall to wall, in metres. The stalls stand along both edges, so a narrow lane brings their canopies together over the middle; below about 3 m they reach past it and are split there.',
