@@ -424,7 +424,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v282</a> &mdash; LIBRARY STACKS v2 — a real ceiling (a seeded grid, louvred lights, sprinklers, smoke detectors, diffusers), a foreground (carpet seams, a loaded cart just ahead, a kick-stool, books on the floor, books pulled out of the shelves, a front shine) and an end wall with a window and a reading table or a door, exit sign and clock</span></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v283</a> &mdash; REFACTOR ONLY — the corridor kit hands a theme the camera's forward and up vectors and the drawable margin; every engine byte-identical</span></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <div class="tabs" id="tabs"></div>
@@ -21611,7 +21611,7 @@ function buildCorridor(p,THM){
                   (RR.nrefl&&RIPMM>0?', ripple sampled every '+RSTEPMM().toFixed(1)+' mm':'')+
                   (tries>=9?', and the water left unreflected':''):'');
   return res;
-  function KIT(){ return {slabPieces:slabPieces, bbHit:bbHit, MINSP:0.7, THM:THM, P3:P3, add3:add3, addCable:addCable, cam:cam, dist3:dist3, drawOn:drawOn, faceC:faceC, faceIx:faceIx, frame:frame, hitsAny:hitsAny, inConv:inConv, lateral:lateral, mmPerM:mmPerM, paperGap:paperGap, para:para, polyFromLoops:polyFromLoops, prism:prism, prismN:prismN, splitPart:splitPart, sub:sub, surf:surf, vec:vec, verts:verts, wallOf:wallOf, wp:wp, CANTI:CANTI, CANYON:CANYON, CE:CE, FF:FF, FLOORS:FLOORS, HALFW:HALFW, HW:HW, KERB:KERB, KOFF:KOFF, LEN:LEN, NEAR:NEAR, PBACK:PBACK, RT:RT, SALT_BLD:SALT_BLD, STEPB:STEPB, ZUP:ZUP, cables:cables, conts:conts, lots:lots, slabsBySide:slabsBySide, p:p}; }
+  function KIT(){ return {slabPieces:slabPieces, bbHit:bbHit, MINSP:0.7, FW:FW, UP:UP, PAD:PAD, NS:NS, THM:THM, P3:P3, add3:add3, addCable:addCable, cam:cam, dist3:dist3, drawOn:drawOn, faceC:faceC, faceIx:faceIx, frame:frame, hitsAny:hitsAny, inConv:inConv, lateral:lateral, mmPerM:mmPerM, paperGap:paperGap, para:para, polyFromLoops:polyFromLoops, prism:prism, prismN:prismN, splitPart:splitPart, sub:sub, surf:surf, vec:vec, verts:verts, wallOf:wallOf, wp:wp, CANTI:CANTI, CANYON:CANYON, CE:CE, FF:FF, FLOORS:FLOORS, HALFW:HALFW, HW:HW, KERB:KERB, KOFF:KOFF, LEN:LEN, NEAR:NEAR, PBACK:PBACK, RT:RT, SALT_BLD:SALT_BLD, STEPB:STEPB, ZUP:ZUP, cables:cables, conts:conts, lots:lots, slabsBySide:slabsBySide, p:p}; }
 }
 
 /* ---------- 14. MOIRE : swept section along a 3D spine, ONE path ----------
