@@ -424,7 +424,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v284</a> &mdash; PARTICLES UP CLOSE -- pnear, placed in the view and sized by depth (queue row 61)</span></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v285</a> &mdash; STREET CARS v2 -- proportions by type, arches cut into slices, wheels inboard, mirrors, bumpers, plates (queue row 62)</span></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <div class="tabs" id="tabs"></div>
@@ -19654,22 +19654,32 @@ function streetTheme(K){
   function armTip(q){ return P3(q.s,q.side,HALFW+0.07-1.45,q.h-0.65); }
 
   /* ---- §5.2 CARS: a slot every 6 m on each side, each with its own numbers;
-     Cars per 100 m is the chance a slot is taken (two sides x 100/6 slots) */
+     Cars per 100 m is the chance a slot is taken (two sides x 100/6 slots).
+     Row 62 (docs/specs/2026-10-04-vehicles-cranes.md §1.1): proportions by
+     type -- length, width, height, wheelbase and tyre, in metres. */
+  var CARDIM={sedan:{len:[4.60,4.90], wid:[1.78,1.85], h:[1.42,1.48], wb:[2.70,2.85], tyre:0.64},
+              hatch:{len:[4.00,4.30], wid:[1.72,1.80], h:[1.45,1.52], wb:[2.55,2.65], tyre:0.62},
+              van:  {len:[3.395,3.395], wid:[1.475,1.475], h:[1.85,1.95], wb:[2.40,2.50], tyre:0.56},
+              taxi: {len:[4.55,4.65], wid:[1.69,1.71], h:[1.70,1.76], wb:[2.70,2.80], tyre:0.62}};
   var cars=[];
   [1,-1].forEach(function(sd){
     for(var k=0;k*6+3<LEN;k++){
       var R=sub(sd<0?2:1,k,SALT_CAR), u=R(), um=R(), ul=R(), uw=R(), uj=R(), uc1=R(), uc2=R(), ut=R();
-      var len=3.9+0.7*ul, wid=1.65+0.2*uw, s=3+6*k+(uj-0.5), mode=um<0.65?'park':'lane';
-      /* row 46: the TYPE, rolled after every number the slot already drew, so
-         s, mode, len and wid are what they were. A hatch is 0.85 of the length. */
-      var ctype=ut<0.55?'sedan':ut<0.80?'hatch':ut<0.92?'van':'taxi';
-      if(ctype==='hatch') len*=0.85;
+      /* row 62: the wheelbase and the grille, drawn after every number row 46
+         drew, so the slot, the mode and the type are what they were */
+      var uwb=R(), ugr=R();
+      var ctype=ut<0.55?'sedan':ut<0.80?'hatch':ut<0.92?'van':'taxi', CD=CARDIM[ctype];
+      function rng(r,v){ return r[0]+(r[1]-r[0])*v; }
+      var len=rng(CD.len,ul), wid=rng(CD.wid,uw), s=3+6*k+(uj-0.5), mode=um<0.65?'park':'lane';
       if(!(u<CARS*0.03)) continue;
       if(s-len/2<0.5 || s+len/2>LEN-0.5) continue;
+      /* a mirror stands 0.25 m off each side, and must stay in its own slab:
+         clear of the centreline by 0.05 m */
       var oc=HALFW-0.25-wid/2;
-      if(mode==='lane'){ var ol=HALFW/2; if(ol-wid/2>=0.15 && ol+wid/2<=HALFW-0.1) oc=ol; else mode='park'; }
-      if(oc-wid/2<0.1) continue;
-      cars.push({id:cars.length, s:s, side:sd, mode:mode, len:len, wid:wid, oc:oc, cab:[uc1,uc2], type:ctype});
+      if(mode==='lane'){ var ol=HALFW/2; if(ol-wid/2>=0.30 && ol+wid/2<=HALFW-0.1) oc=ol; else mode='park'; }
+      if(oc-wid/2<0.30) continue;
+      cars.push({id:cars.length, s:s, side:sd, mode:mode, len:len, wid:wid, oc:oc, cab:[uc1,uc2], type:ctype,
+                 h:rng(CD.h,uc1), wb:rng(CD.wb,uwb), tyre:CD.tyre, grille:3+Math.min(2,Math.floor(3*ugr))});
     }
   });
 
@@ -20025,14 +20035,31 @@ function streetTheme(K){
          nearer than Solid detail to; head lamps and RED tail lamps in both
          bands -- the colour the street lacked at road level.
        The front is +x on side 1 and -x on side -1 (traffic keeps left). */
+    /* CARS v2 (row 62, docs/specs/2026-10-04-vehicles-cranes.md §1). Albert:
+       "your cars trucks and cranes need a lot of work". The body is still a
+       side profile extruded across the FULL width, but CUT ALONG ITS LENGTH
+       into convex segments -- rear overhang, rear arch bay, middle, front arch
+       bay, front overhang -- and each arch bay is SIX slices whose bottoms are
+       the chords of a half-circle of radius tyre/2 + 0.05 about the wheel
+       centre, so the six together trace the arch and every slice is still
+       convex. No line is drawn on the part of a cut two segments share. The
+       wheels move INBOARD, under the arches (outer face 0.03 m inside the
+       side): 24-gon tubes with a rim and a hub ring near, 12-gon tubes out to
+       Outline detail to, none beyond. Bumpers stand 0.05 m proud front and
+       rear (near and mid), and near a car has mirrors, number plates,
+       trapezoid head lamps, L-shaped RED tail lamps, a grille, door seams and
+       handles, and two side panes split by the B-pillar.
+       The front is +x on side 1 and -x on side -1 (traffic keeps left). */
     cars.forEach(function(cr){
       var F=frame(cr.s), t=[F[2],F[3],0], n=[-F[3]*cr.side,F[2]*cr.side,0], dir=cr.side;
       var c0=P3(cr.s,cr.side,cr.oc,0), dc=dist3([c0[0],c0[1],0.8]);
-      var near=dc<dn, mid=dc<df, wmode=near?'tube':mid?'arc':'';
+      var near=dc<dn, mid=dc<df, wmode=near?'tube':mid?'tube12':'';
       function Lc(x,y,z){ x*=dir; return [c0[0]+t[0]*x+n[0]*y, c0[1]+t[1]*x+n[1]*y, z]; }
-      var hl=cr.len/2, hw=cr.wid/2, hb=hw-0.15, ps=[];
-      /* body: the side profile, front at +x */
-      var BPF=[[-hl+0.15,0.18],[hl-0.25,0.18],[hl,0.43],[hl,0.72],[hl-0.10,0.85],[-hl+0.05,0.85],[-hl,0.75],[-hl,0.33]];
+      var ty=cr.type, VAN=ty==='van', hl=cr.len/2-0.05, hw=cr.wid/2, ps=[];
+      /* body: the side profile, front at +x, with the bumpers' 0.05 m off each end */
+      var cfF=VAN?0.06:0.25, cfR=VAN?0.04:0.15;
+      var BPF=VAN?[[-hl+cfR,0.18],[hl-cfF,0.18],[hl,0.30],[hl,0.80],[hl-0.04,0.85],[-hl+0.03,0.85],[-hl,0.80],[-hl,0.26]]
+                 :[[-hl+cfR,0.18],[hl-cfF,0.18],[hl,0.43],[hl,0.72],[hl-0.10,0.85],[-hl+0.05,0.85],[-hl,0.75],[-hl,0.33]];
       function extrude(prof,yh){
         var Lf=prof.map(function(q){ return Lc(q[0],-yh,q[1]); });
         var Rf=prof.map(function(q){ return Lc(q[0],yh,q[1]); });
@@ -20040,17 +20067,101 @@ function streetTheme(K){
         for(e=0;e<prof.length;e++){ var e2=(e+1)%prof.length; loops.push([Lf[e],Lf[e2],Rf[e2],Rf[e]]); }
         return polyFromLoops(loops);
       }
-      var body=extrude(BPF,hb);
+      /* the wheels: an arch of radius ra about each wheel centre, the overhangs
+         long enough for the arch, the bumper and the chamfer, the rest shared */
+      var rt=cr.tyre/2, ra=rt+0.05, zA=rt*Math.cos(Math.PI/24);
+      var mF=ra+0.05+cfF+0.01, mR=ra+0.05+cfR+0.01, spare=Math.max(0,(cr.len-cr.wb)-mF-mR), fo=mF+0.55*spare;
+      var xws=[cr.len/2-fo, cr.len/2-fo-cr.wb];
+      /* keep the side of a 2D line where nx*x + nz*z >= c (convex in, convex out) */
+      function clipQ(Q,nx,nz,c){
+        var o=[], k, m=Q.length;
+        for(k=0;k<m;k++){ var a=Q[k], b=Q[(k+1)%m], da=nx*a[0]+nz*a[1]-c, db=nx*b[0]+nz*b[1]-c;
+          if(da>=-1e-12) o.push(a);
+          if((da>=-1e-12)!==(db>=-1e-12)){ var tt=da/(da-db); o.push([a[0]+(b[0]-a[0])*tt, a[1]+(b[1]-a[1])*tt]); } }
+        var r=[]; o.forEach(function(q){ var l=r[r.length-1]; if(!l || Math.abs(l[0]-q[0])>1e-9 || Math.abs(l[1]-q[1])>1e-9) r.push(q); });
+        while(r.length>1 && Math.abs(r[0][0]-r[r.length-1][0])<=1e-9 && Math.abs(r[0][1]-r[r.length-1][1])<=1e-9) r.pop();
+        return r;
+      }
+      var SEG=[];
+      function bay(wi){
+        var xw=xws[wi], k;
+        for(k=0;k<6;k++){ var a0=Math.PI-Math.PI*k/6, a1=Math.PI-Math.PI*(k+1)/6, am=(a0+a1)/2;
+          SEG.push({x0:xw+ra*Math.cos(a0), x1:xw+ra*Math.cos(a1), ch:[Math.cos(am),Math.sin(am),ra*Math.cos(Math.PI/12)], xw:xw, ab:wi, sk:k}); }
+      }
+      /* past Outline detail to there are no wheels, so no arches either: one body */
+      if(mid){ SEG.push({x0:-hl, x1:xws[1]-ra}); bay(1); SEG.push({x0:xws[1]+ra, x1:xws[0]-ra}); bay(0); SEG.push({x0:xws[0]+ra, x1:hl}); }
+      else SEG.push({x0:-hl, x1:hl});
+      SEG.forEach(function(G){
+        var Q=clipQ(clipQ(BPF,1,0,G.x0),-1,0,-G.x1);
+        if(G.ch) Q=clipQ(Q,G.ch[0],G.ch[1],G.ch[2]+G.ch[0]*G.xw+G.ch[1]*zA);
+        G.Q=Q;
+        G.zr=function(xc){ var lo=1e9, hi=-1e9; Q.forEach(function(q){ if(Math.abs(q[0]-xc)<1e-9){ if(q[1]<lo) lo=q[1]; if(q[1]>hi) hi=q[1]; } }); return [lo,hi]; };
+      });
+      /* the shared part of each cut: where both neighbours' profiles meet */
+      var CUTS=[], g;
+      for(g=0;g+1<SEG.length;g++){
+        var za=SEG[g].zr(SEG[g].x1), zb=SEG[g+1].zr(SEG[g+1].x0);
+        CUTS.push({x:SEG[g].x1, zlo:Math.max(za[0],zb[0]), zhi:Math.min(za[1],zb[1])});
+      }
+      function lx(v){ return ((v[0]-c0[0])*t[0]+(v[1]-c0[1])*t[1])*dir; }
+      function ly(v){ return (v[0]-c0[0])*n[0]+(v[1]-c0[1])*n[1]; }
+      SEG.forEach(function(G,gi){
+        var P=extrude(G.Q,hw), keep=[];
+        var mine=[gi>0?CUTS[gi-1]:null, gi<CUTS.length?CUTS[gi]:null].filter(Boolean);
+        P.lines.forEach(function(Ln){
+          var xa=lx(Ln.a), xb=lx(Ln.b), cu=null;
+          mine.forEach(function(C){ if(Math.abs(xa-C.x)<1e-9 && Math.abs(xb-C.x)<1e-9) cu=C; });
+          if(!cu){ keep.push(Ln); return; }
+          var za2=Ln.a[2], zb2=Ln.b[2];
+          if(Math.abs(za2-zb2)<1e-9){ if(za2<cu.zlo-1e-9 || za2>cu.zhi+1e-9) keep.push(Ln); return; }
+          /* a vertical edge on the side face: keep only what lies outside the shared part */
+          var lo=Math.min(za2,zb2), hi=Math.max(za2,zb2), yy=ly(Ln.a);
+          if(lo<cu.zlo-1e-9) keep.push({a:Lc(cu.x,yy,lo), b:Lc(cu.x,yy,Math.min(hi,cu.zlo)), f0:Ln.f0, f1:Ln.f1});
+          if(hi>cu.zhi+1e-9) keep.push({a:Lc(cu.x,yy,Math.max(lo,cu.zhi)), b:Lc(cu.x,yy,hi), f0:Ln.f0, f1:Ln.f1});
+        });
+        P.lines=keep;
+        P.cpart=G.ch?'slice':'body'; P.seg=gi; if(G.ch){ P.ab=G.ab; P.sk=G.sk; }
+        G.P=P; ps.push(['car',P]);
+      });
+      /* a line on the body's side (y = +-hw), given in profile coordinates,
+         clipped to each segment it crosses and put on that segment's side face */
+      function clipSeg(Q,a,b){
+        var t0=0, t1=1, m=Q.length, cx=0, cz=0, k;
+        Q.forEach(function(q){ cx+=q[0]/m; cz+=q[1]/m; });
+        for(k=0;k<m;k++){ var p=Q[k], q=Q[(k+1)%m], nx=-(q[1]-p[1]), nz=q[0]-p[0];
+          if(nx*(cx-p[0])+nz*(cz-p[1])<0){ nx=-nx; nz=-nz; }
+          var num=nx*(a[0]-p[0])+nz*(a[1]-p[1]), den=nx*(b[0]-a[0])+nz*(b[1]-a[1]);
+          if(Math.abs(den)<1e-15){ if(num<0) return null; continue; }
+          var tt=-num/den; if(den>0){ if(tt>t0) t0=tt; } else { if(tt<t1) t1=tt; }
+          if(t0>t1-1e-9) return null; }
+        return [[a[0]+(b[0]-a[0])*t0, a[1]+(b[1]-a[1])*t0],[a[0]+(b[0]-a[0])*t1, a[1]+(b[1]-a[1])*t1]];
+      }
+      function sideLine(a,b,ys,kind,col,tag){
+        SEG.forEach(function(G){ var c=clipSeg(G.Q,a,b); if(!c) return;
+          G.P.lines.push({a:Lc(c[0][0],ys*hw,c[0][1]), b:Lc(c[1][0],ys*hw,c[1][1]), f0:ys<0?0:1, f1:ys<0?0:1, kind:kind, col:col, tag:tag}); });
+      }
+      /* the front and rear faces: the vertical profile edge at +-hl of the end segment */
+      function endFace(G,xe){ for(var e=0;e<G.Q.length;e++){ var a=G.Q[e], b=G.Q[(e+1)%G.Q.length];
+        if(Math.abs(a[0]-xe)<1e-9 && Math.abs(b[0]-xe)<1e-9) return 2+e; } return -1; }
+      var FRONT=SEG[SEG.length-1], REAR=SEG[0], fF=endFace(FRONT,hl), fR=endFace(REAR,-hl);
+      function endLine(front,pts,kind,col,tag){
+        var G=front?FRONT:REAR, fi=front?fF:fR, xe=front?hl:-hl, q;
+        for(q=0;q<pts.length;q++){ var a=pts[q], b=pts[(q+1)%pts.length];
+          G.P.lines.push({a:Lc(xe,a[0],a[1]), b:Lc(xe,b[0],b[1]), f0:fi, f1:fi, kind:kind, col:col, tag:tag}); }
+      }
       /* the cabin, by type */
-      var ty=cr.type, RH, cb0, cb1, wsA, rgA;
-      if(ty==='van'){ RH=1.8; cb0=-hl+0.08; cb1=hl-0.35; wsA=62; rgA=88; }
-      else if(ty==='hatch'){ RH=1.45+0.07*cr.cab[0]; cb0=-hl+0.12; cb1=hl-0.95; wsA=32; rgA=78; }
-      else { RH=1.42+0.10*cr.cab[0]; cb0=-hl+0.55+0.1*cr.cab[1]; cb1=hl-1.05+0.1*cr.cab[1]; wsA=30; rgA=40; }
-      var ch=RH-0.85, wr=ch/Math.tan(wsA*Math.PI/180), rr=ch/Math.tan(rgA*Math.PI/180), yc=hb-0.08;
+      var RH=cr.h, cb0, cb1, wsA, rgA;
+      if(VAN){ cb0=-hl+0.08; cb1=hl-0.35; wsA=62; rgA=88; }
+      else if(ty==='hatch'){ cb0=-hl+0.12; cb1=hl-0.95; wsA=32; rgA=78; }
+      else if(ty==='taxi'){ cb0=-hl+0.35; cb1=hl-0.95; wsA=40; rgA=70; }
+      else { cb0=-hl+0.55+0.1*cr.cab[1]; cb1=hl-1.05+0.1*cr.cab[1]; wsA=30; rgA=40; }
+      var ch=RH-0.85, wr=ch/Math.tan(wsA*Math.PI/180), rr=ch/Math.tan(rgA*Math.PI/180), yc=hw-0.08;
       var CPF=[[cb0,0.85],[cb1,0.85],[cb1-wr,RH],[cb0+rr,RH]];
       var cabin=extrude(CPF,yc);
+      var xb=(cb0+cb1)/2-0.05;
       var CREC={id:cr.id, s:cr.s, side:cr.side, mode:cr.mode, c:c0, dist:dc, wheels:wmode, type:ty, t:t, n:n, dir:dir,
-                hb:hb, yc:yc, len:cr.len, front:4, rear:8};
+                hb:hw, yc:yc, len:2*hl, L:cr.len, wid:cr.wid, h:RH, wb:cr.wb, tyre:cr.tyre, near:near, mid:mid,
+                arch:xws.map(function(xw){ return {x:xw, z:zA, r:ra}; }), cuts:CUTS};
       STRTTALLY.cars.push(CREC);
       function ln(P,fi,a,b,kind,col,tag){ P.lines.push({a:a, b:b, f0:fi, f1:fi, kind:kind, col:col, tag:tag}); }
       function poly3(P,fi,pts,kind,col,tag){ for(var q=0;q<pts.length;q++) ln(P,fi,pts[q],pts[(q+1)%pts.length],kind,col,tag); }
@@ -20067,77 +20178,80 @@ function streetTheme(K){
         return o;
       }
       if(mid){
-        /* lamps, both bands: two head lamps on the front face, two RED tail
-           lamps on the rear face */
+        /* lamps, both bands: two trapezoid head lamps on the front face, two
+           L-shaped RED tail lamps on the rear face */
         [-1,1].forEach(function(sy,li){
-          var y0=sy*(hb-0.36), y1=sy*(hb-0.08);
-          poly3(body,4,[Lc(hl,y0,0.55),Lc(hl,y1,0.55),Lc(hl,y1,0.66),Lc(hl,y0,0.66)],'head',COL_GLOW,'h'+li);
-          poly3(body,8,[Lc(-hl,y0,0.55),Lc(-hl,y1,0.55),Lc(-hl,y1,0.68),Lc(-hl,y0,0.68)],'tail',COL_RED,'t'+li);
+          endLine(true,[[sy*(hw-0.40),0.58],[sy*(hw-0.10),0.56],[sy*(hw-0.10),0.66],[sy*(hw-0.40),0.64]],'head',COL_GLOW,'h'+li);
+          var LT=[[0,0.52],[0,0.70],[0.08,0.70],[0.08,0.60],[0.30,0.60],[0.30,0.52]];
+          endLine(false,LT.map(function(q){ return [sy*(hw-0.06-q[0]),q[1]]; }),'tail',COL_RED,'t'+li);
+        });
+        /* bumpers, 0.05 m proud of each end */
+        [1,-1].forEach(function(e,bi){
+          var o=Lc(e>0?hl:-hl-0.05,-(hw-0.06),0.28);
+          var B=para(o,[t[0]*dir*0.05,t[1]*dir*0.05,0],[n[0]*2*(hw-0.06),n[1]*2*(hw-0.06),0],[0,0,0.22]);
+          B.cpart='bumper'; B.bump=bi;
+          if(near){ var xo=e>0?hl+0.05:-hl-0.05, fo2=e>0?5:4;
+            poly3(B,fo2,[Lc(xo,-0.165,0.3075),Lc(xo,0.165,0.3075),Lc(xo,0.165,0.4725),Lc(xo,-0.165,0.4725)],'plate',COL_K,'p'+bi); }
+          ps.push(['car',B]);
         });
       }
-      var rw=0.31, cz=rw*Math.cos(Math.PI/8), xws=[hl-0.78,-(hl-0.72)];
       if(near){
-        /* glass and seams: side windows split by a B-pillar, windscreen and
-           rear glass frames, a door seam, the wheel arches */
+        /* glass: two side panes split at the B-pillar (A-, B- and C-pillars
+           standing between them), windscreen and rear glass frames */
         var WIN=inset2(CPF,0.07);
         [[0,-yc],[1,yc]].forEach(function(sf){
-          poly3(cabin,sf[0],WIN.map(function(q){ return Lc(q[0],sf[1],q[1]); }),'glass',COL_K);
-          /* the B-pillar: two lines across the side window */
-          var xb=(cb0+cb1)/2-0.05, zt=0;
-          WIN.forEach(function(q,k){ var r2=WIN[(k+1)%WIN.length];
-            if((q[0]-xb)*(r2[0]-xb)<=0 && q[0]!==r2[0]){ var z2=q[1]+(r2[1]-q[1])*(xb-q[0])/(r2[0]-q[0]); if(z2>zt) zt=z2; } });
-          if(zt>0.95){
-            ln(cabin,sf[0],Lc(xb-0.04,sf[1],0.92),Lc(xb-0.04,sf[1],zt),'glass',COL_K);
-            ln(cabin,sf[0],Lc(xb+0.04,sf[1],0.92),Lc(xb+0.04,sf[1],zt),'glass',COL_K);
-          }
+          [clipQ(WIN,-1,0,-(xb-0.04)), clipQ(WIN,1,0,xb+0.04)].forEach(function(W2){
+            if(W2.length>=3) poly3(cabin,sf[0],W2.map(function(q){ return Lc(q[0],sf[1],q[1]); }),'glass',COL_K); });
         });
-        /* windscreen (face 3) and rear glass (face 5): rectangles inset 0.07 */
         [[3,CPF[1],CPF[2]],[5,CPF[3],CPF[0]]].forEach(function(gf){
           var a=gf[1], b=gf[2], dx=b[0]-a[0], dz=b[1]-a[1], dl=Math.hypot(dx,dz), f=0.07/dl;
           if(dl<0.2) return;
           var pa=[a[0]+dx*f, a[1]+dz*f], pb=[b[0]-dx*f, b[1]-dz*f], yy=yc-0.07;
           poly3(cabin,gf[0],[Lc(pa[0],-yy,pa[1]),Lc(pb[0],-yy,pb[1]),Lc(pb[0],yy,pb[1]),Lc(pa[0],yy,pa[1])],'glass',COL_K);
         });
-        [[0,-hb],[1,hb]].forEach(function(sf){
-          var xd=cb1-0.15;
-          ln(body,sf[0],Lc(xd,sf[1],0.26),Lc(xd,sf[1],0.85),'seam',COL_K);
-          xws.forEach(function(xw){
-            var ra=rw+0.05, prv=null;
-            for(var k=0;k<=8;k++){ var an=Math.PI*k/8, X=Lc(xw+Math.cos(an)*ra,sf[1],Math.max(0.18,cz+Math.sin(an)*ra));
-              if(prv) ln(body,sf[0],prv,X,'arch',COL_K); prv=X; }
-          });
+        /* door seams and handles: a front door from the A-pillar to the B, a
+           rear door behind it */
+        var xd=cb1-0.15, xr=Math.max(xb-0.9*(xd-xb), xws[1]-0.3*ra);
+        [-1,1].forEach(function(ys){
+          [xd,xb,xr].forEach(function(xs){ sideLine([xs,0.26],[xs,0.85],ys,'seam',COL_K); });
+          [xb,xr].forEach(function(xh,hi){ sideLine([xh+0.06,0.78],[xh+0.24,0.78],ys,'handle',COL_K,'d'+hi); });
+        });
+        /* the grille, between the head lamps */
+        var gy=hw-0.45;
+        for(var gk=0;gk<cr.grille;gk++){ var gz=0.575+0.07*gk/Math.max(1,cr.grille-1);
+          FRONT.P.lines.push({a:Lc(hl,-gy,gz), b:Lc(hl,gy,gz), f0:fF, f1:fF, kind:'grille', col:COL_K}); }
+        /* side mirrors at the base of the A-pillar, 0.25 m off each side */
+        [-1,1].forEach(function(ys,mi){
+          var o=Lc(cb1-0.22,ys*hw,0.90);
+          var M=para(o,[t[0]*dir*0.15,t[1]*dir*0.15,0],[n[0]*ys*0.25,n[1]*ys*0.25,0],[0,0,0.12]);
+          M.cpart='mirror'; M.mir=mi; ps.push(['car',M]);
         });
       }
-      ps.push(['car',body]); ps.push(['car',cabin]);
-      body.cpart='body'; cabin.cpart='cabin';
+      ps.push(['car',cabin]); cabin.cpart='cabin';
       if(ty==='taxi'){
         var sg=extrude([[-0.25,RH],[0.25,RH],[0.25,RH+0.18],[-0.25,RH+0.18]],0.14);
         sg.lines.forEach(function(Ln){ Ln.col=COL_GLOW; Ln.kind='taxi'; });
         sg.cpart='sign'; ps.push(['car',sg]);
       }
-      if(near){
-        /* wheel tubes, OUTBOARD of the body sides */
+      if(mid){
+        /* wheel tubes, INBOARD under the arches: the outer face 0.03 m inside
+           the body side, 0.20 m wide; 24 sides near with a rim ring at 0.62 and
+           a hub ring at 0.15 of the radius on the outer face, 12 sides beyond.
+           A flat at the bottom, so every tube touches the road */
+        var NW=near?24:12, czw=rt*Math.cos(Math.PI/NW);
         xws.forEach(function(xw,wi){ [-1,1].forEach(function(ey){
-          var y0=ey>0?hb:-hw, y1=ey>0?hw:-hb, WA=[], WB=[], k;
-          for(k=0;k<8;k++){ var an=TAU*(k+0.5)/8;
-            WA.push(Lc(xw+Math.cos(an)*rw,y0,cz+Math.sin(an)*rw)); WB.push(Lc(xw+Math.cos(an)*rw,y1,cz+Math.sin(an)*rw)); }
-          var lp=[WA,WB]; for(k=0;k<8;k++){ var k2=(k+1)%8; lp.push([WA[k],WA[k2],WB[k2],WB[k]]); }
-          var W=polyFromLoops(lp); W.cpart='wheel'; W.wh=wi*2+(ey>0?1:0);
+          var yo=hw-0.03, yi=hw-0.23, y0=ey>0?yi:-yo, y1=ey>0?yo:-yi, WA=[], WB=[], k;
+          for(k=0;k<NW;k++){ var an=TAU*(k+0.5)/NW;
+            WA.push(Lc(xw+Math.cos(an)*rt,y0,czw+Math.sin(an)*rt)); WB.push(Lc(xw+Math.cos(an)*rt,y1,czw+Math.sin(an)*rt)); }
+          var lp=[WA,WB]; for(k=0;k<NW;k++){ var k2=(k+1)%NW; lp.push([WA[k],WA[k2],WB[k2],WB[k]]); }
+          var W=polyFromLoops(lp); W.cpart='wheel'; W.wh=wi*2+(ey>0?1:0); W.nside=NW;
           W.lines.forEach(function(Ln){ Ln.tag='w'+W.wh; });
+          if(near){ var fo3=ey>0?1:0, yy=ey>0?yo:-yo;
+            [[0.62,24],[0.15,12]].forEach(function(rg){ var prv=null;
+              for(k=0;k<=rg[1];k++){ var an2=TAU*k/rg[1], X=Lc(xw+Math.cos(an2)*rt*rg[0],yy,czw+Math.sin(an2)*rt*rg[0]);
+                if(prv) ln(W,fo3,prv,X,'rim',COL_K,'w'+W.wh); prv=X; } }); }
           ps.push(['wheel',W]);
         }); });
-      } else if(mid){
-        /* a half-disc on each body side under each arch, of radius cz so it
-           TOUCHES the road as the tube's flat bottom does -- at rw it dipped
-           2.4 cm below it, and its reflection stood above the water */
-        [[0,-hb],[1,hb]].forEach(function(sf,si4){
-          xws.forEach(function(xw,wi){
-            var prv=null, tg='w'+(wi*2+si4);
-            for(var k=0;k<=8;k++){ var an=Math.PI+Math.PI*k/8, X=Lc(xw+Math.cos(an)*cz,sf[1],cz+Math.sin(an)*cz);
-              if(prv) ln(body,sf[0],prv,X,'wheel',COL_K,tg); prv=X; }
-            ln(body,sf[0],Lc(xw-cz,sf[1],cz),Lc(xw+cz,sf[1],cz),'wheel',COL_K,tg);
-          });
-        });
       }
       /* CUT AT EVERY SLAB FACE the car crosses, so each piece is in one slab */
       var sLo=cr.s-hl-0.1, sHi=cr.s+hl+0.1, bnds=[], sb;
@@ -20160,7 +20274,7 @@ function streetTheme(K){
           var C=slabsBySide[cr.side][pc.k]; if(!C) return;
           var Q2=pc.P; Q2.cont=C; Q2.col=COL_K; Q2.kind=pp[0]; Q2.layer='car'; Q2.car=cr.id; Q2.cut=pc.cut; Q2.split=0;
           Q2.lines.forEach(function(Ln){ if(!Ln.kind) Ln.kind=pp[0]; });
-          Q2.cpart=pp[1].cpart; Q2.wh=pp[1].wh;
+          Q2.cpart=pp[1].cpart; Q2.wh=pp[1].wh; Q2.ab=pp[1].ab; Q2.sk=pp[1].sk; Q2.nside=pp[1].nside; Q2.bump=pp[1].bump; Q2.mir=pp[1].mir; Q2.seg=pp[1].seg;
           C.parts.push(Q2);
         });
       });
@@ -20186,7 +20300,9 @@ function streetTheme(K){
         var cz=[FW[0]*hr,FW[1]*hr,FW[2]*hr];
         var o0=[P[0]-rw*RT[0]-rw*nz[0]-cz[0], P[1]-rw*RT[1]-rw*nz[1]-cz[1], P[2]-rw*RT[2]-rw*nz[2]-cz[2]];
         var Pr=para(o0,[RT[0]*2*rw,RT[1]*2*rw,RT[2]*2*rw],[nz[0]*2*rw,nz[1]*2*rw,nz[2]*2*rw],[cz[0]*2,cz[1]*2,cz[2]*2]);
-        if(!verts(Pr).every(function(v){ return inConv(C.poly,v); }) || hitsAny(Pr,C,['furn'])) return;
+        /* row 62: a kei van stands 1.95 m and a near particle from 1.8 m, so a
+           particle refuses a car as it does street furniture */
+        if(!verts(Pr).every(function(v){ return inConv(C.poly,v); }) || hitsAny(Pr,C,['furn','car'])) return;
         Pr.lines=[]; for(k=1;k<ring.length;k++) Pr.lines.push({a:ring[k-1], b:ring[k], f0:0, f1:0, kind:'dot', col:dt.col});
         Pr.cont=C; Pr.col=dt.col; Pr.kind='dot'; Pr.layer='dot'; Pr.hides=false; Pr.seeThru=true; Pr.nolod=true;
         C.parts.push(Pr);
@@ -20197,7 +20313,7 @@ function streetTheme(K){
       var Lw=0.35*c[2]/(PAGEMM*FF*HW), h=0.005, hz=[-RT[1],RT[0],0];
       var a=add3(P,RT,-Lw/2), b=add3(P,RT,Lw/2);
       var Pd=para([a[0]-hz[0]*h, a[1]-hz[1]*h, a[2]-h],[RT[0]*Lw,RT[1]*Lw,0],[hz[0]*2*h,hz[1]*2*h,0],[0,0,2*h]);
-      if(!verts(Pd).every(function(v){ return inConv(C.poly,v); }) || hitsAny(Pd,C,['furn'])) return;
+      if(!verts(Pd).every(function(v){ return inConv(C.poly,v); }) || hitsAny(Pd,C,['furn','car'])) return;
       Pd.lines=[{a:a, b:b, f0:0, f1:0, kind:'dot', col:dt.col}];
       if(!dt.near) STRTTALLY.dots.drawn.push({near:false, zc:c[2], dmm:0.35, ring:false, P:P});
       Pd.cont=C; Pd.col=dt.col; Pd.kind='dot'; Pd.layer='dot'; Pd.hides=false; Pd.seeThru=true; Pd.nolod=true;
@@ -21241,7 +21357,7 @@ function buildCorridor(p,THM){
     STRTTALLY.allparts=[];
     if(puds.length || (CT.cars||[]).length) conts.forEach(function(C){ C.parts.forEach(function(P){
       STRTTALLY.allparts.push({faces:P.faces.map(function(f){ return {n:f.n, d:f.d}; }), V:verts(P), kind:P.kind||'',
-        hides:P.hides!==false, seeThru:!!P.seeThru, car:P.car, cpart:P.cpart, wh:P.wh,
+        hides:P.hides!==false, seeThru:!!P.seeThru, car:P.car, cpart:P.cpart, wh:P.wh, ab:P.ab, sk:P.sk, nside:P.nside, bump:P.bump, mir:P.mir, seg:P.seg,
         lines:P.lines.map(function(Ln){ return {a:Ln.a, b:Ln.b, f0:Ln.f0, f1:Ln.f1, col:Ln.col||P.col, kind:Ln.kind, tag:Ln.tag}; })});
     }); });
     conts.forEach(function(C){
@@ -21580,7 +21696,7 @@ function buildCorridor(p,THM){
         STRTTALLY.parts.push({faces:P.faces.map(function(fc){ return {n:fc.n, d:fc.d}; }),
                               V:verts(P), cont:C.kind, split:P.split||0, hides:P.hides!==false,
                               kind:P.kind||'', seeThru:!!P.seeThru, cidx:cidx, layer:P.layer||'struct',
-                              sign:P.sign===undefined?-1:P.sign, cable:P.cable, car:P.car, cut:!!P.cut, cpart:P.cpart, wh:P.wh});
+                              sign:P.sign===undefined?-1:P.sign, cable:P.cable, car:P.car, cut:!!P.cut, cpart:P.cpart, wh:P.wh, ab:P.ab, sk:P.sk, nside:P.nside});
         STRTTALLY.sil.push(P.sil);
         if(P.sil && P.hides!==false) occl.push(P.sil);
       });
