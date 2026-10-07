@@ -424,7 +424,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v291</a> &mdash; TRUE COLOUR BUTTON -- Pen map 3, Line pens and Engine layers off, at the top of Copies & pens on every engine; Neon street calls the same function (queue row 66)</span></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v292</a> &mdash; TRUCHET SPREAD AND GAP -- Spread reaches 0 (one line per family), Tile gap goes to -100 (motifs grow past their cell, clipped to the margin), Celtic knot and Seigaiha honour Spread (queue row 68)</span></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <div class="tabs" id="tabs"></div>
@@ -1568,12 +1568,12 @@ var TMOTIF=(function(){
     feat:function(t,dot){return arc(50,33,17,90,-90).replace(/^M/,'M')+arc(50,67,17,-90,-270).replace(/^M[^C]*/,'')+
       (t===0?dot(50,33)+dot(50,67):circ(50,33,4)+circ(50,67,4));},
     det:[circ(50,50,30),circ(50,33,2)+circ(50,67,2),circ(50,50,38)]});
-  add({id:'celtic',col:{out:'#137a6e'},n:'Celtic knot',p:'Arcade',k:'join',draw:function(k){var o=[];for(var t=0;t<k;t++){var r=rr(t,k,20);
+  add({id:'celtic',col:{out:'#137a6e'},n:'Celtic knot',p:'Arcade',k:'join',draw:function(k,sp){if(sp===undefined)sp=0.62;if(sp===0)k=1;var o=[];for(var t=0;t<k;t++){var r=rr(t,k,20*(sp/0.62));
       o.push(arc(0,0,r,4,86)+arc(100,0,r,94,176)+arc(100,100,r,184,266)+arc(0,100,r,274,356));}return o;},rank:'up'});
   add({id:'decofan',col:{out:'#c8962e'},n:'Art-deco fan',p:'Arcade',k:'up',a:[50,86],out:'M50 86L14.64 50.64'+arc(50,86,50,-135,-45).replace(/^M[^C]*/,'')+'Z',
     feat:function(){return rays(50,86,0,50,-135,-45,7);},
     det:[arc(50,86,20,-135,-45),arc(50,86,34,-135,-45),rays(50,86,20,50,-128,-52,6)]});
-  add({id:'seigaiha',col:{out:'#2156c7'},n:'Seigaiha waves',p:'Arcade',k:'join',turn:'none',draw:function(k){var o=[];for(var t=0;t<k;t++){var r=50*(1-t/k*0.85);
+  add({id:'seigaiha',col:{out:'#2156c7'},n:'Seigaiha waves',p:'Arcade',k:'join',turn:'none',draw:function(k,sp){if(sp===undefined)sp=0.62;if(sp===0)k=1;var o=[];for(var t=0;t<k;t++){var r=50*(1-t/k*Math.min(0.95,0.85*(sp/0.62)));
       o.push(arc(50,100,r,180,360)+arc(0,50,r,0,90)+arc(100,50,r,90,180));}return o;},rank:'down'});
 
   /* ======================================================================
@@ -1744,7 +1744,7 @@ var TMOTIF=(function(){
 
   /* strokes(id, o) -> [{p:[[x,y],...], li, lr}] in tile units.
      o.lines (1..10), o.mode (0 nest, 1 detail), o.mm (drawn tile edge on
-     paper, mm), o.spread (0.10..0.95; the engine's Spread/100). */
+     paper, mm), o.spread (0..0.95; the engine's Spread/100). */
   /* ---- TRUE COLOUR ------------------------------------------------------
      Every record carries `c`, the colour that PART of the thing really is. The
      role is already known at the emit site -- it always was -- so this adds a
@@ -1782,7 +1782,11 @@ var TMOTIF=(function(){
       });
     }
     if(m.draw){
-      var parts=m.draw(k);
+      /* Spread reaches the motifs that nest by it (Celtic knot, Seigaiha);
+         every other draw() takes one argument and ignores the second. Spread
+         62 is the scale their constants were written at, so the default
+         draws what it always did. */
+      var parts=m.draw(k,sp);
       parts.forEach(function(d,t){emit(d,t,m.rank==='down'?k-1-t:t,'draw',t);});
       return out;
     }
@@ -1868,7 +1872,7 @@ var SPEC={
     ['sites','Sites',20,320,5,110],['relax','Relax',0,20,1,6],['inset','Inset',0,45,1,14],
     ['rings','Rings',1,6,1,2],['jit','Jitter',0,100,1,100],['pad','Margin',2,20,1,5]]],
   truchet:['Truchet',[
-    ['grid','Grid',1,40,1,14],['rings','Lines per tile',1,10,1,5],['spread','Spread',10,95,1,62],
+    ['grid','Grid',1,40,1,14],['rings','Lines per tile',1,10,1,5],['spread','Spread',0,95,1,62],
     ['mix','Straight mix',0,100,1,0],
     /* A DROPDOWN OF NAMES over an APPEND-ONLY registry (truchet-motifs/
        motifs.js): the stored value is still the index, so 0..8 mean what they
@@ -1877,7 +1881,7 @@ var SPEC={
     ['tiles','Tile set',0,TMOTIF.defs.length-1,1,0,null,{menu:'tmotif'}],
     ['petals','Petals',3,9,1,3],
     ['rot4','Quarter turns',0,1,1,1],['pad','Margin',2,20,1,6],
-    ['tlmode','Lines add detail',0,1,1,0],['tgap','Tile gap',0,90,1,0,[1,'%']],
+    ['tlmode','Lines add detail',0,1,1,0],['tgap','Tile gap',-100,90,1,0,[1,'%']],
     ['tsize','Size from mask',0,100,1,0,[1,'%']],['tsinv','Invert size',0,1,1,0],
     ['tmin','Smallest tile',0,50,1,10,[10,' mm']],['thead','Facing',0,3,1,0]]],
   rows:['Rows',[
@@ -4395,6 +4399,36 @@ function buildVoronoi(p){
 function buildTruchet(p){
   var PG=pageGrid(p.pad/100,p.grid), c=PG.c, mx=PG.x0, my=PG.y0;
   var out=[], k=Math.max(1,p.rings), sp=p.spread/100;
+  /* SPREAD 0 (row 68) puts every line of a legacy family on f = 0.5, so the
+     loop would draw the same arc `k` times and the pen would trace it `k`
+     times. At 0 the legacy sets draw ONE line per family -- what Lines per
+     tile 1 draws. Any Spread above 0 is unchanged. */
+  var kl=sp===0?1:k;
+  /* NEGATIVE TILE GAP (row 68) draws a motif larger than its cell, so the
+     outer ring reaches into Margin. Those strokes are clipped to the margin
+     box -- Liang-Barsky per segment, keeping the inside runs. Nothing is
+     clipped at a gap of 0 or more, so those draw exactly what they did. */
+  var IX0=p.pad/100, IY0=IX0, IX1=PGW-IX0, IY1=PGH-IX0;
+  function boxRuns(pl){
+    var res=[], run=null, i2, k4;
+    for(i2=1;i2<pl.length;i2++){
+      var a=pl[i2-1], b=pl[i2], t0=0, t1=1, dx=b[0]-a[0], dy=b[1]-a[1], ok=true;
+      var P=[-dx,dx,-dy,dy], Q=[a[0]-IX0,IX1-a[0],a[1]-IY0,IY1-a[1]];
+      for(k4=0;k4<4;k4++){
+        if(P[k4]===0){ if(Q[k4]<0){ ok=false; break; } continue; }
+        var r4=Q[k4]/P[k4];
+        if(P[k4]<0){ if(r4>t1){ ok=false; break; } if(r4>t0) t0=r4; }
+        else { if(r4<t0){ ok=false; break; } if(r4<t1) t1=r4; }
+      }
+      if(!ok){ if(run&&run.length>1) res.push(run); run=null; continue; }
+      var A=t0>0?[a[0]+dx*t0,a[1]+dy*t0]:a, B=t1<1?[a[0]+dx*t1,a[1]+dy*t1]:b;
+      if(run && t0===0) run.push(B);
+      else { if(run&&run.length>1) res.push(run); run=[A,B]; }
+      if(t1<1){ res.push(run); run=null; }
+    }
+    if(run&&run.length>1) res.push(run);
+    return res;
+  }
   /* =============== WHICH LINE OF THE SET THIS STROKE IS ==================
      `Lines per tile` is a pure multiplier -- geometry per line index does not
      depend on k, so adding a fourth line does not move the first three. That
@@ -4484,7 +4518,7 @@ function buildTruchet(p){
       } else if(m.k==='join' && m.turn!=='none'){
         deg=((p.rot4||0)>0 ? Math.floor(rnd(j*211+i*47+13)*4) : (rr<0.5?0:1))*90;
       }
-      var ca=Math.cos(deg*Math.PI/180), sa=Math.sin(deg*Math.PI/180), tcx=x0+c/2, tcy=y0+c/2, tsc=e/100;
+      var ca=Math.cos(deg*Math.PI/180), sa=Math.sin(deg*Math.PI/180), tcx=x0+c/2, tcy=y0+c/2, tsc=e/100, tclip=e>c;
       var ms=TMOTIF.strokes(m.index,{lines:k,mode:Math.round(p.tlmode||0),mm:mmT,spread:sp}), tilePts=0;
       for(var z0=0;z0<ms.length;z0++) tilePts+=ms[z0].p.length;
       /* THE POINT BUDGET: stop adding tiles, like every other engine, rather
@@ -4497,12 +4531,16 @@ function buildTruchet(p){
           var ddx=src[w][0]-50, ddy=src[w][1]-50;
           q.push([tcx+(ddx*ca-ddy*sa)*tsc, tcy+(ddx*sa+ddy*ca)*tsc]);
         }
-        ti=ms[z].li; tcol=ms[z].c; put(q, ms[z].lr); tcol=null;
+        /* one put() site still: an unclipped stroke is a list of one run */
+        var rs=tclip?boxRuns(q):[q];
+        for(var z1=0;z1<rs.length;z1++){ q=rs[z1];
+          ti=ms[z].li; tcol=ms[z].c; put(q, ms[z].lr); tcol=null;
+        }
       }
       motifPts+=tilePts;
       continue;
     }
-    for(var t=0;t<k;t++){
+    for(var t=0;t<kl;t++){
       /* A TRUCHET ARC ONLY MEETS ITS NEIGHBOUR AT r = c/2. An arc centred on a
          shared corner leaves the edge at r from that corner; the tile the other
          side leaves the SAME edge at c-r. They coincide only at c/2, so the
@@ -4511,12 +4549,12 @@ function buildTruchet(p){
          The visible picture barely moves, because the radius family is
          symmetric about c/2 and the touch points therefore coincide as a SET
          either way. Kept because it is right, not because it looks different. */
-      var f=k===1?0.5:(0.5+((t/(k-1))-0.5)*sp), r=c*f, r2=c-r;
+      var f=kl===1?0.5:(0.5+((t/(kl-1))-0.5)*sp), r=c*f, r2=c-r;
       /* ti/tj are the ascending and descending places in the family; `put`
          stamps ti as `li` always, and whichever of the two is handed to it as
          `lr`. At k=1 they coincide at 0, which is correct -- one line is both
          the first and the last. */
-      ti=t; tj=k-1-t;
+      ti=t; tj=kl-1-t;
       /* TILE SET. The original vocabulary was two tiles -- a pair of quarter
          arcs one way or the other -- with an optional straight. That is one
          picture with a density knob. Seven vocabularies here, and Quarter turns
@@ -24094,7 +24132,7 @@ var HELP={
 'truchet.petals':'How many arcs ring the tile centre on tile set 4. Three is the original: a trefoil, and the only count where the arc\u2019s own sweep happens to reach its neighbour\u2019s crossing \u2014 every other count needs both the arc radius and its sweep rewritten, which is what this knob does. Five is a sampaguita: five broad petals meeting at a point. Above six the petals start to overlap into a rosette rather than a flower. Ignored by every other tile set. Note that Lines per tile above 1 spills past the tile edge here \u2014 the arc centres stay put while the radius grows with Spread \u2014 so keep it at 1 or 2, or drop Spread, for a field of separate flowers.',
 'truchet.pad':'Margin between the tile field and the sheet edge.',
 'truchet.tlmode':'What Lines per tile adds. Off: each line is another copy of the outline, nested inside the last. On: the outline is drawn once and each extra line adds the tile\u2019s next piece of detail \u2014 scales, veins, feathers, spots. Detail needs room: each extra piece only appears once the tile is big enough on paper, so on a fine grid this adds little and on a coarse one it adds a lot.',
-'truchet.tgap':'Space between tiles, as a share of the cell. 0 packs them edge to edge; 50 draws each tile at half its cell. The grid stays where it is; only the tiles shrink.',
+'truchet.tgap':'Space between tiles, as a share of the cell. 0 draws each tile at its cell size \u2014 most motifs still have room around them, because they are drawn inside their own box. Below 0 the tiles grow past the cell: the motif\u2019s own margin closes, and further down neighbours overlap. 50 draws each tile at half its cell. The grid stays where it is; only the tiles change size.',
 'truchet.tsize':'Let the mask set each tile\u2019s size: dark areas of the mask image keep tiles full size, light areas shrink them, by this much. Each tile picks its own level of detail from its real size, so small tiles simplify rather than smear. Needs a mask loaded (Mask & pins).',
 'truchet.tsinv':'Swap which end of the mask makes tiles big.',
 'truchet.tmin':'Tiles that would come out smaller than this on paper are left out entirely. Under a pen 0.3 mm wide, anything under about 1 mm is a dot of ink.',
