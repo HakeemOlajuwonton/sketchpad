@@ -424,7 +424,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v289</a> &mdash; CANAL CITY -- a water channel that is all mirror, plastered houses with arched windows and water gates, bridges, gondolas, mooring posts, laundry (queue row 53)</span></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v290</a> &mdash; HARBOUR v3 -- varied ripple clamped near, ribs that thin instead of vanishing, side wordmarks, truck sides, shaded gantries with walkways (queue row 65)</span></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <div class="tabs" id="tabs"></div>
@@ -2134,6 +2134,7 @@ var SPEC={
     ['stalls','Stalls',0,10,0.5,3,[1,'/10 m']],['lant','Lanterns',0,100,1,60,[100,'%']],
     ['ban','Banners',0,100,1,30,[100,'%']],['steam','Steam',0,100,1,40,[100,'%']],
     ['puddles','Puddles',0,40,1,3],['pudsz','Puddle size',5,100,1,40,[100,'%']],['ripple','Ripple',0,30,1,6,[10,' mm']],
+    ['hero','Front puddle',0,100,1,0,[100,'%']],['rvar','Ripple variety',0,100,1,60,[100,'%']],
     ['hatch','Tone hatch',0,100,1,55,[100,'%']],['hatchmode','Hatch spacing',0,1,1,0],
     ['sun','Light from',0,359,1,300,[1,'°']],
     ['cams','Camera along',0,90,1,6,[100,'%']],['camx','Camera side',-100,100,1,0,[100,'%']],
@@ -2149,6 +2150,8 @@ var SPEC={
     ['tiers','Tiers',1,8,1,4],['hc','High cubes',0,100,1,40,[100,'%']],
     ['gantry','Gantry cranes',0,4,1,1,[1,'/100 m']],['trucks','Yard trucks',0,10,1,2,[1,'/100 m']],
     ['puddles','Puddles',0,40,1,6],['pudsz','Puddle size',5,100,1,40,[100,'%']],['ripple','Ripple',0,30,1,6,[10,' mm']],
+    ['hero','Front puddle',0,100,1,0,[100,'%']],['rvar','Ripple variety',0,100,1,60,[100,'%']],
+    ['hatch','Tone hatch',0,100,1,50,[100,'%']],['sun','Light from',0,359,1,300,[1,'°']],
     ['cams','Camera along',0,90,1,5,[100,'%']],['camx','Camera side',-100,100,1,-20,[100,'%']],
     ['camz','Camera height',0.2,80,0.1,1.8,[1,' m']],['look','Look ahead',5,300,1,80,[1,' m']],
     ['pitch','Pitch',-45,45,0.5,3,[1,'°']],['fov','Field of view',25,120,1,70,[1,'°']],
@@ -17468,6 +17471,9 @@ var STHEMES={
   /* §4: a yard lane, a container row for a lot, no kerb and no buildings */
   harb:{key:'harb', label:'Harbour', lotDepth:[13,26], alleyW:[0.3,0.4], baseN2:0, baseH:[2.591,2.591],
         midH:[2.591,2.591], edgeZ:0, slabLen:4, clear:4.5, ztop:200, mirror:'puddles', minWidth:6,
+        /* row 65: at the camera's feet the depth factor doubled Ripple, and on a
+           yard of 40 puddles that read as zig-zag: 1.25 here */
+        ripMax:1.25,
         lotGen:function(R,p){ return harbourLotGen(R,p); }, fixed:{alley:100, cars:0, dots:0, graff:0, signs:0, cables:0, canyon:0, stepb:0, canti:0},
         content:function(K){ return harbourTheme(K); }},
   /* §5: an aisle, a shelving section for a lot, a ceiling, floor shine */
@@ -17571,14 +17577,14 @@ function iso6346Check(c10){
   return (sum%11)%10;
 }
 function harbourTheme(K){
-  var p=K.p, P3=K.P3, frame=K.frame, sub=K.sub, para=K.para, polyFromLoops=K.polyFromLoops, prism=K.prism,
+  var p=K.p, P3=K.P3, frame=K.frame, sub=K.sub, para=K.para, polyFromLoops=K.polyFromLoops, prism=K.prism, prismN=K.prismN,
       inConv=K.inConv, hitsAny=K.hitsAny, slabsBySide=K.slabsBySide, slabPieces=K.slabPieces, CE=K.CE,
       HALFW=K.HALFW, PBACK=K.PBACK, LEN=K.LEN, dist3=K.dist3, lots=K.lots, conts=K.conts, mmPerM=K.mmPerM,
       surf=K.surf, drawOn=K.drawOn, verts=K.verts, faceIx=K.faceIx, paperGap=K.paperGap, MINSP=K.MINSP, SLAB=K.THM.slabLen;
   function kn(v,d,lo,hi){ return Math.max(lo,Math.min(hi,isFinite(v)?+v:d)); }
   var TIERS=Math.round(kn(p.tiers,4,1,8)), HCS=kn(p.hc,40,0,100)/100, GANTRY=kn(p.gantry,1,0,4), TRUCKS=kn(p.trucks,2,0,10);
   var SALT_CONT=163, SALT_GANT=167, SALT_TRUCK=173, SALT_MAST=179, TMAX=8;
-  var COL_K='#1a1a1a', COL_YEL='#f2c230', COL_GREY='#8a8a8a', COL_OR='#ec7a1c', COL_DG='#4a4a4a';
+  var COL_K='#1a1a1a', COL_YEL='#f2c230', COL_GREY='#8a8a8a', COL_OR='#ec7a1c', COL_DG='#4a4a4a', COL_RED='#d42a2a';
   var PAINT=[['#8e1b25',25],['#2156c7',20],['#8a8a8a',15],['#1e5a32',12],['#ec7a1c',10],['#137a6e',8],['#1f2f6b',6],['#c8962e',4]];
   function paintOf(u){ var a=0; for(var i=0;i<PAINT.length;i++){ a+=PAINT[i][1]; if(u*100<a) return PAINT[i][0]; } return PAINT[PAINT.length-1][0]; }
   var L20=HARB_ISO.L20, L40=HARB_ISO.L40, W=HARB_ISO.W;
@@ -17619,7 +17625,8 @@ function harbourTheme(K){
     for(i=0;i<6;i++) d+=Math.floor(R()*10);
     n=3+Math.floor(R()*4);
     for(i=0;i<6;i++){ var r=R(); if(i<n) w+=i%2?VOW[Math.floor(r*5)]:CONS[Math.floor(r*CONS.length)]; }
-    return {col:col, code:own+'U '+d+' '+iso6346Check(own+'U'+d), word:w};
+    /* row 65: the side wordmark's height, drawn after every number before it */
+    return {col:col, code:own+'U '+d+' '+iso6346Check(own+'U'+d), word:w, sh:1.0+0.3*R()};
   }
   /* lettering set in (u,v) metres on a face, through surf */
   function letters(Pq,fi,M,str,col,kind,u0,v0,hgt){
@@ -17636,21 +17643,35 @@ function harbourTheme(K){
      door end) to o1, z up from z; ea and eb its width and length edges. Paint
      and outline, corrugation by band, and with `lane` (its door end shows) the
      code, the wordmark, the doors, lock bars and handles; castings near. */
-  function dressContainer(P,X,sc,o0,o1,z,h,ea,eb,col,code,word,band,lane){
+  function dressContainer(P,X,sc,o0,o1,z,h,ea,eb,col,code,word,band,lane,sh){
     var len=o1-o0;
+    P.csh=sh;
     P.lines.forEach(function(Ln){ Ln.col=col; Ln.kind='container'; });
     var tl=[ea[0]/W,ea[1]/W,0], ol=[eb[0]/len,eb[1]/len,0];
     var fS0=faceIx(P,[-tl[0],-tl[1],0]), fS1=faceIx(P,tl), fD=faceIx(P,[-ol[0],-ol[1],0]), fB=faceIx(P,ol);
     if(band){
       [[fS0,sc-W/2],[fS1,sc+W/2]].forEach(function(fw){
-        /* the 0.28 m set, or every other line of it; none when that
-           is under the paper floor */
+        /* the 0.28 m set, or every other line of it -- and where that is
+           under the paper floor, every 4th, 8th, ... (row 65): the finest
+           0.28 x 2^k that clears it, and one rib at the least, so a side
+           thins with distance and never goes bare inside Outline detail to */
         var g=paperGap(X(fw[1],(o0+o1)/2,z+h/2),[0,0,1],ol), st=band==='solid'?1:2, n=Math.floor(len/0.28), q;
-        if(!(g>0) || st*len/n*g<MINSP) return;
+        if(!(g>0)) return;
+        while(st<n && st*len/n*g<MINSP) st*=2;
+        if(st>=n){ q=Math.floor(n/2); P.lines.push({a:X(fw[1],o0+q*len/n,z+0.04), b:X(fw[1],o0+q*len/n,z+h-0.04), f0:fw[0], f1:fw[0], col:col, kind:'corrugation'}); return; }
         for(q=st;q<n;q+=st) P.lines.push({a:X(fw[1],o0+q*len/n,z+0.04), b:X(fw[1],o0+q*len/n,z+h-0.04),
                                         f0:fw[0], f1:fw[0], col:col, kind:'corrugation'});
       });
     }
+    /* row 65: the wordmark along both long sides too, in black, centred, its
+       letters 1.0-1.3 m tall where they stand 1.5 mm or more on the sheet */
+    if(band && sh) [[fS0,sc-W/2,-1],[fS1,sc+W/2,1]].forEach(function(fw){
+      var Cs=X(fw[1],(o0+o1)/2,z+h/2), Ns=[tl[0]*fw[2],tl[1]*fw[2],0], ms=mmPerM(Cs,Ns), hh=Math.min(sh,h-0.5), tw=0, i2;
+      for(i2=0;i2<word.length;i2++){ var G2=glyphStrokes(word[i2],'futural'); tw+=(G2?G2.adv:0.5)*hh; }
+      if(tw>len-0.6){ hh*=(len-0.6)/tw; tw=len-0.6; }
+      if(!(hh*ms>=1.5)) return;
+      letters(P,fw[0],surf(Cs,Ns,len,h),word,COL_K,'sideword',(len-tw)/2,(h-hh)/2,hh);
+    });
     var Dc=X(sc,o0,z+h/2), Nd=[-ol[0],-ol[1],0], MD=surf(Dc,Nd,W,h), mm=mmPerM(Dc,Nd);
     if(lane && band){
       if(0.1*mm>=1.0) letters(P,fD,MD,code,COL_K,'code',0.2,h-0.32,0.1);
@@ -17699,7 +17720,8 @@ function harbourTheme(K){
           var BD=boxDraws(L,sl,tr,hi), col=BD.col, code=BD.code, word=BD.word;
           var cen=X(sc,(o0+o1)/2,z+T.h/2), d=dist3(cen), band=d<dn?'solid':d<df?'outline':'';
           var lane=sl===0 && hi===0;
-          dressContainer(P,X,sc,o0,o1,z,T.h,ea,eb,col,code,word,band,lane);
+          dressContainer(P,X,sc,o0,o1,z,T.h,ea,eb,col,code,word,band,lane,BD.sh);
+          P.cbox=[L.side,L.idx,sl,tr,hi].join(',');
           P.cont=L; P.col=col; P.kind='container'; P.layer='struct';
           L.parts.push(P);
           TAL.containers.push({side:L.side, idx:L.idx, slot:sl, tier:tr, half:hi, lay:T.lay, len:len, h:T.h, z0:z, z1:z+T.h,
@@ -17745,11 +17767,52 @@ function harbourTheme(K){
     lp=[A,B]; for(k=0;k<n;k++){ var k2=(k+1)%n; lp.push([A[k],A[k2],B[k2],B[k]]); }
     var P=polyFromLoops(lp); P.nside=n; return P;
   }
+  function cylX(F,x0,x1,yc,zc,r,n){
+    var A=[], B=[], k, lp;
+    for(k=0;k<n;k++){ var an=TAU*(k+0.5)/n; A.push(F(x0,yc+Math.cos(an)*r,zc+Math.sin(an)*r)); B.push(F(x1,yc+Math.cos(an)*r,zc+Math.sin(an)*r)); }
+    lp=[A,B]; for(k=0;k<n;k++){ var k2=(k+1)%n; lp.push([A[k],A[k2],B[k2],B[k]]); }
+    return polyFromLoops(lp);
+  }
   function disc(F,xc,yc,r,n,z0,z1){
     var A=[], B=[], k, lp;
     for(k=0;k<n;k++){ var an=TAU*k/n; A.push(F(xc+Math.cos(an)*r,yc+Math.sin(an)*r,z0)); B.push(F(xc+Math.cos(an)*r,yc+Math.sin(an)*r,z1)); }
     lp=[A,B]; for(k=0;k<n;k++){ var k2=(k+1)%n; lp.push([A[k],A[k2],B[k2],B[k]]); }
     return polyFromLoops(lp);
+  }
+  /* ROW 65 §3.1, THE SHADE: on a crane's or a truck's faces that look away
+     from the sun, 45-degree lines in the face's own plane, ochre on yellow
+     steel and dark grey on black, spaced by Tone hatch and held to the paper
+     floor; every other line past Solid detail to, none past Outline detail to.
+     Never on a container: its ribs are its tone. */
+  var HATCHH=kn(p.hatch,50,0,100)/100, SUNH=kn(p.sun,300,0,359)*Math.PI/180, SUNV=[Math.sin(SUNH),Math.cos(SUNH)];
+  var HSPH=0.15+1.2*Math.pow(1-HATCHH,1.5), COL_OCHRE='#c8962e', COL_DGH='#4a4a4a';
+  function shade(P,near,far){
+    if(!(HATCHH>0)) return;
+    var hc=(P.col===COL_YEL||P.col===COL_OR)?COL_OCHRE:COL_DGH;
+    P.faces.forEach(function(f,fi){
+      if(Math.abs(f.n[2])>0.3 || f.n[0]*SUNV[0]+f.n[1]*SUNV[1]>=0 || f.pts.length<3) return;
+      var hl=Math.hypot(f.n[0],f.n[1]), u=[-f.n[1]/hl,f.n[0]/hl,0], c=[0,0,0], k;
+      f.pts.forEach(function(q){ c[0]+=q[0]/f.pts.length; c[1]+=q[1]/f.pts.length; c[2]+=q[2]/f.pts.length; });
+      var d=dist3(c); if(!(d<far)) return;
+      var dl=[u[0]*Math.SQRT1_2,u[1]*Math.SQRT1_2,Math.SQRT1_2], dm=[u[0]*Math.SQRT1_2,u[1]*Math.SQRT1_2,-Math.SQRT1_2];
+      var gh=paperGap(c,dl,dm); if(!(gh>0)) return;
+      var sp=Math.max(HSPH,MINSP/gh)*(d<near?1:2);
+      /* the face in (u,v), v up; lines u - v = c, clipped to its polygon */
+      var Q=f.pts.map(function(q){ return [(q[0]-c[0])*u[0]+(q[1]-c[1])*u[1], q[2]-c[2]]; }), lo=1e9, hi=-1e9;
+      Q.forEach(function(q){ var w=q[0]-q[1]; if(w<lo) lo=w; if(w>hi) hi=w; });
+      for(var cc=lo+sp*Math.SQRT2/2;cc<hi;cc+=sp*Math.SQRT2){
+        var t0=-1e9, t1=1e9, ok=true;
+        /* the line: (u,v) = (cc/2 + t, -cc/2 + t); clip by each edge's half-plane */
+        for(k=0;k<Q.length && ok;k++){ var a=Q[k], b=Q[(k+1)%Q.length], ex=b[0]-a[0], ey=b[1]-a[1];
+          var px=cc/2-a[0], py=-cc/2-a[1], cr0=ex*py-ey*px, cr1=ex*1-ey*1, side=ex*(Q[(k+2)%Q.length][1]-a[1])-ey*(Q[(k+2)%Q.length][0]-a[0]);
+          if(side<0){ cr0=-cr0; cr1=-cr1; }
+          if(Math.abs(cr1)<1e-12){ if(cr0<0) ok=false; continue; }
+          var tt=-cr0/cr1; if(cr1>0){ if(tt>t0) t0=tt; } else { if(tt<t1) t1=tt; } }
+        if(!ok || !(t1-t0>1e-6)) continue;
+        var A=[c[0]+u[0]*(cc/2+t0), c[1]+u[1]*(cc/2+t0), c[2]-cc/2+t0], B=[c[0]+u[0]*(cc/2+t1), c[1]+u[1]*(cc/2+t1), c[2]-cc/2+t1];
+        P.lines.push({a:A, b:B, f0:fi, f1:fi, col:hc, kind:'shade'});
+      }
+    });
   }
   /* lines on face fi of P: a closed polygon or an open run, in world points */
   function fl(P,fi,pts,closed,col,kind){
@@ -17761,14 +17824,15 @@ function harbourTheme(K){
     var Xc=function(s2,o,z){ return F(o,s2,z); }, h=HARB_ISO.H;
     var a=Xc(-W/2,x0,z0), b=Xc(W/2,x0,z0), c=Xc(-W/2,x1,z0), ea=[b[0]-a[0],b[1]-a[1],0], eb=[c[0]-a[0],c[1]-a[1],0];
     var P=para(a,ea,eb,[0,0,h]), dc=dist3(Xc(0,(x0+x1)/2,z0+h/2)), band=dc<near?'solid':dc<far?'outline':'';
-    dressContainer(P,Xc,0,x0,x1,z0,h,ea,eb,BD.col,BD.code,BD.word,band,true);
+    dressContainer(P,Xc,0,x0,x1,z0,h,ea,eb,BD.col,BD.code,BD.word,band,true,BD.sh);
     return {P:P, rec:{code:BD.code, col:BD.col, word:BD.word, len:x1-x0, band:band, z0:z0}};
   }
   /* a part list committed whole or not at all, every piece tagged with its
      owner and its own index, so the gate can count parts, not pieces; the
      pieces if it went in, null if it did not */
-  function commitAll(pt,layer,tag,id,against){
+  function commitAll(pt,layer,tag,id,against,near,far){
     var all=[], ok=true;
+    if(far) pt.forEach(function(q){ if(q[0]!=='load' && !q[1].seeThru){ q[1].col=q[2]; shade(q[1],near,far); } });
     pt.forEach(function(q,qi){ if(!ok) return;
       var pcs=laneParts(q[1],q[0],q[2],layer); if(!pcs){ ok=false; return; }
       pcs.forEach(function(Q){ Q[tag]=id; Q.pk=qi; if(q[1].nside) Q.nside=q[1].nside;
@@ -17851,6 +17915,30 @@ function harbourTheme(K){
           if(NR) [[oS0,oS0+0.42],[oS1-0.42,oS1]].forEach(function(oo){ add('tyre',tyre(Xs,sg+e*4.35,oo[0],oo[1],0.8,16),COL_K); });
           if(gen) add('genset',boxAt(Xs,sg+3.55,sg+6.55,HALFW-2.4,oS1,2.1,4.6),COL_YEL);
           var LG=add('leg',boxAt(Xs,sg+e*3.0-0.45,sg+e*3.0+0.45,oS0,oS1,1.8,Hg),COL_YEL);
+          /* row 65 §3.2: plate seams 0.1 m in from each vertical edge, near */
+          if(NR) [[2,'o',oS0],[3,'o',oS1],[4,'s',sg+e*3.0-0.45],[5,'s',sg+e*3.0+0.45]].forEach(function(lf){
+            (lf[1]==='o'?[sg+e*3.0-0.35,sg+e*3.0+0.35].map(function(s5){ return [s5,lf[2]]; }):[oS0+0.1,oS1-0.1].map(function(o5){ return [lf[2],o5]; })).forEach(function(q5){
+              LG.lines.push({a:Xs(q5[0],q5[1],1.9), b:Xs(q5[0],q5[1],Hg-0.1), f0:lf[0], f1:lf[0], col:COL_K, kind:'seam'}); }); });
+          /* a ladder with a cage up one leg (not the stair's), near */
+          if(NR && sd===-gsd && e===1){
+            var so2=oS1+0.02, LD=boxAt(Xs,sg+e*3.0-0.3,sg+e*3.0+0.3,so2,so2+0.3,1.85,Hg-0.05), zr;
+            LD.lines=[]; LD.hides=false; LD.seeThru=true;
+            [-0.2,0.2].forEach(function(ds){ LD.lines.push({a:Xs(sg+e*3.0+ds,so2+0.05,1.85), b:Xs(sg+e*3.0+ds,so2+0.05,Hg-0.05), f0:0, f1:0, col:COL_YEL, kind:'ladder'}); });
+            for(zr=1.85+0.3;zr<Hg-0.05;zr+=0.3) LD.lines.push({a:Xs(sg+e*3.0-0.2,so2+0.05,zr), b:Xs(sg+e*3.0+0.2,so2+0.05,zr), f0:0, f1:0, col:COL_YEL, kind:'rung'});
+            for(zr=1.85+2.4;zr<Hg-0.05;zr+=0.9){ var hp=[[-0.28,0.05],[-0.28,0.28],[0.28,0.28],[0.28,0.05]], hk;
+              for(hk=1;hk<4;hk++) LD.lines.push({a:Xs(sg+e*3.0+hp[hk-1][0],so2+hp[hk-1][1],zr), b:Xs(sg+e*3.0+hp[hk][0],so2+hp[hk][1],zr), f0:0, f1:0, col:COL_YEL, kind:'hoop'}); }
+            add('ladder',LD,COL_YEL);
+          }
+          /* a cable-reel drum on the other side's sill end, near (1.6 m across:
+             the 2.5 m of §3.2 would stand into the leg) */
+          if(NR && sd===-gsd && e===1){
+            var DQ=[], dk; for(dk=0;dk<16;dk++){ var da=TAU*(dk+0.5)/16; DQ.push([sg+4.35+0.8*Math.cos(da), 2.9+0.8*Math.sin(da)]); }
+            var DA=DQ.map(function(q){ return Xs(q[0],oS0+0.15,q[1]); });
+            var DB=DQ.map(function(q){ return Xs(q[0],oS0+0.65,q[1]); });
+            var dl2=[DA,DB];
+            for(dk=0;dk<16;dk++){ var dk2=(dk+1)%16; dl2.push([DA[dk],DA[dk2],DB[dk2],DB[dk]]); }
+            add('reel',polyFromLoops(dl2),COL_YEL);
+          }
           /* a stair up one leg, as lines on its outer face */
           if(NR && sd===gsd && e===-1){ var zz=2.0, flip=0, pts=[];
             while(zz<Hg-0.5){ pts.push(Xs(sg+e*3.0+(flip?0.35:-0.35),oS1,zz)); zz+=2.5; flip=1-flip; }
@@ -17864,21 +17952,43 @@ function harbourTheme(K){
           }
         });
       });
-      /* two box girders across the lane, at the two leg lines */
-      [-1,1].forEach(function(e){ add('girder',boxAt(X,sg+e*3.0-0.45,sg+e*3.0+0.45,oS1,-oS1,Hg,Hg+1.6),COL_YEL); });
+      /* two box girders across the lane, at the two leg lines; near, their webs
+         carry a stiffener every 1.0 m and a seam every 4 m (row 65 §3.2); out to
+         Outline detail to, a red warning lamp at each end and the walkway's rails */
+      [-1,1].forEach(function(e){ var GD=add('girder',boxAt(X,sg+e*3.0-0.45,sg+e*3.0+0.45,oS1,-oS1,Hg,Hg+1.6),COL_YEL), ow;
+        if(NR) [[4,sg+e*3.0-0.45],[5,sg+e*3.0+0.45]].forEach(function(gf){
+          for(ow=-oS1+1.0;ow<oS1-0.05;ow+=1.0) GD.lines.push({a:X(gf[1],ow,Hg+0.05), b:X(gf[1],ow,Hg+1.55), f0:gf[0], f1:gf[0], col:COL_K, kind:'stiffener'});
+          for(ow=-oS1+4.0;ow<oS1-0.05;ow+=4.0) GD.lines.push({a:X(gf[1],ow+0.04,Hg+0.02), b:X(gf[1],ow+0.04,Hg+1.58), f0:gf[0], f1:gf[0], col:COL_K, kind:'seam'});
+        });
+        if(MID){
+          [[2,oS1],[3,-oS1]].forEach(function(lf){ var lo=X(sg+e*3.0,lf[1],Hg+1.6);
+            GD.lines.push({a:[lo[0],lo[1],Hg+1.58], b:[lo[0]+0.001,lo[1],Hg+1.58], f0:lf[0], f1:lf[0], col:COL_RED, kind:'lamp'}); });
+          /* the walkway on the girder's outer edge: posts every 1.5 m near, rails
+             at 1.1 m and 0.55 m and a toe board out to Outline detail to, all on
+             parts that hide nothing */
+          var so=sg+e*3.0+e*0.425, WK=boxAt(X,so-0.025,so+0.025,oS1-0.05,-oS1+0.05,Hg+1.6,Hg+2.75); WK.lines=[]; WK.hides=false; WK.seeThru=true;
+          [1.1,0.55,0.1].forEach(function(hz){ WK.lines.push({a:X(so,oS1-0.05,Hg+1.6+hz), b:X(so,-oS1+0.05,Hg+1.6+hz), f0:0, f1:0, col:COL_YEL, kind:hz>0.2?'rail':'toeboard'}); });
+          add('walkway',WK,COL_YEL);
+          if(NR) for(ow=oS1-0.1;ow>=-oS1+0.1;ow-=1.5){ var PO=boxAt(X,so-0.02,so+0.02,ow-0.02,ow+0.02,Hg+1.6,Hg+2.7); PO.hides=false; PO.seeThru=true; add('post',PO,COL_YEL); }
+        }
+      });
       /* the trolley on them, over either half of the lane, its spreader clear
          of the legs and the genset */
       var sgn=usd<0.5?1:-1, ot=sgn*Math.max(0,Math.min(HALFW-3.7,1.5+Math.max(0,HALFW-3.7)*uo));
       add('trolley',boxAt(X,sg-3.2,sg+3.2,ot-2.0,ot+2.0,Hg+1.6,Hg+2.2),COL_YEL);
       var rec={id:id, s:sg, Hg:Hg, first:G.first, near:NR, mid:MID, ot:ot, spreader:false, LS:0, load:null, placed:false, girder:0};
       if(MID){
-        add('house',boxAt(X,sg-1.8,sg+1.8,ot-1.6,ot+1.6,Hg+2.2,Hg+4.0),COL_YEL);
+        var HS=add('house',boxAt(X,sg-1.8,sg+1.8,ot-1.6,ot+1.6,Hg+2.2,Hg+4.0),COL_YEL);
+        /* row 65: louvres and a door on the machinery house, near */
+        if(NR){ var lz; for(lz=Hg+2.6;lz<Hg+3.6;lz+=0.12) HS.lines.push({a:X(sg-1.8,ot-1.2,lz), b:X(sg-1.8,ot-0.2,lz), f0:4, f1:4, col:COL_K, kind:'louvre'});
+          fl(HS,4,[X(sg-1.8,ot+0.4,Hg+2.2),X(sg-1.8,ot+1.2,Hg+2.2),X(sg-1.8,ot+1.2,Hg+3.9),X(sg-1.8,ot+0.4,Hg+3.9)],false,COL_K,'door'); }
         /* the operator's cab, hanging under the trolley on its outer side, in
            the gap between the girders, on a hanger */
         var oc0=ot>=0?ot+0.2:ot-2.0, CB=add('cab',boxAt(X,sg+0.5,sg+2.5,oc0,oc0+1.8,Hg-2.2,Hg),COL_YEL);
         if(NR) [[2,'s',oc0],[3,'s',oc0+1.8],[4,'o',sg+0.5],[5,'o',sg+2.5]].forEach(function(gf){
           var r4=gf[1]==='s'?[[sg+0.65,gf[2]],[sg+2.35,gf[2]]]:[[gf[2],oc0+0.15],[gf[2],oc0+1.65]];
           fl(CB,gf[0],[X(r4[0][0],r4[0][1],Hg-1.5),X(r4[1][0],r4[1][1],Hg-1.5),X(r4[1][0],r4[1][1],Hg-0.35),X(r4[0][0],r4[0][1],Hg-0.35)],true,COL_K,'glass'); });
+        if(NR) [0.35,1.15].forEach(function(wo){ CB.lines.push({a:X(sg+0.5,oc0+wo,Hg-1.5), b:X(sg+0.5,oc0+wo+0.4,Hg-1.1), f0:4, f1:4, col:COL_K, kind:'wiper'}); });
         add('hanger',boxAt(X,sg+1.2,sg+1.8,oc0+0.6,oc0+1.2,Hg,Hg+1.6),COL_YEL);
         /* the spreader's bottom never below 4.5 m: it hangs there rather than
            lower, and only where that still clears the cab (not at Tiers 1) */
@@ -17903,7 +18013,7 @@ function harbourTheme(K){
           }
         }
       }
-      var got=commitAll(parts,'gantry','gant',id,['furn','gantry']);
+      var got=commitAll(parts,'gantry','gant',id,['furn','gantry'],near,far);
       if(got){ rec.placed=true;
         /* each girder's pieces: two or more is a girder cut at the centreline */
         var gc={}; got.forEach(function(Q){ if(Q.kind==='girder') gc[Q.pk]=(gc[Q.pk]||0)+1; });
@@ -17942,6 +18052,19 @@ function harbourTheme(K){
           [6.4,7.9].forEach(function(xr){ fl(CAB,2,[Lx(xr,-1.25,1.4),Lx(xr,-1.25,2.0)],false,COL_K,'rail'); });
         }
         add('engine',bx(4.4,8.0,0.25,1.15,1.15,2.3),CC);
+        if(NR){
+          /* row 65 §2.4: the door, its handle, two treads under it, a fuel tank
+             and a tool box, mirrors on arms, an amber beacon on the roof */
+          fl(CAB,2,[Lx(6.42,-1.25,1.25),Lx(7.6,-1.25,1.25),Lx(7.6,-1.25,2.98),Lx(6.42,-1.25,2.98)],true,COL_K,'door');
+          fl(CAB,2,[Lx(7.32,-1.25,2.0),Lx(7.48,-1.25,2.0)],false,COL_K,'handle');
+          [0.5,0.85].forEach(function(zs2){ add('step',bx(6.32,6.62,-1.25,-1.0,zs2,zs2+0.05),COL_K); });
+          add('tank',cylX(Lx,4.3,5.7,-0.95,0.7,0.3,16),COL_K);
+          add('toolbox',bx(4.6,5.4,0.6,1.1,0.45,0.95),COL_K);
+          add('mirror',bx(7.9,7.98,-1.6,-1.5,2.2,2.55),COL_K); add('mirrorarm',bx(7.93,7.95,-1.5,-1.25,2.45,2.48),COL_K);
+          add('mirror',bx(7.9,7.98,0.45,0.55,2.35,2.7),COL_K); add('mirrorarm',bx(7.93,7.95,0.15,0.45,2.45,2.48),COL_K);
+          var BQ=[], bk2; for(bk2=0;bk2<10;bk2++){ var ba=TAU*bk2/10, bc=Lx(7.0,-0.6,0); BQ.push([bc[0]+0.09*Math.cos(ba), bc[1]+0.09*Math.sin(ba)]); }
+          add('beacon',prismN(BQ,3.05,3.22),COL_OR);
+        }
         add('frame',bx(2.0,8.0,-0.55,-0.35,0.9,1.15),COL_K); add('frame',bx(2.0,8.0,0.35,0.55,0.9,1.15),COL_K);
         add('exhaust',bx(6.05,6.25,-0.5,-0.3,1.15,3.3),COL_K);
         add('fifth',disc(Lx,3.2,0,0.5,12,1.15,1.2),COL_K);
@@ -17952,13 +18075,38 @@ function harbourTheme(K){
         [-8.0,-6.5,-5.0,-3.5,-2.0,-0.5,1.0].forEach(function(xc){ add('cross',bx(xc-0.06,xc+0.06,-1.22,1.22,1.15,1.25),COL_K); });
         [[-8.4,-8.1],[3.75,4.05]].forEach(function(xe){ [[-1.22,-0.6],[0.6,1.22]].forEach(function(yy){ add('endbeam',bx(xe[0],xe[1],yy[0],yy[1],1.25,1.45),COL_K); }); });
         [[-8.3,-8.18],[3.77,3.89]].forEach(function(xp){ [[-1.17,-1.05],[1.05,1.17]].forEach(function(yy){ add('pin',bx(xp[0],xp[1],yy[0],yy[1],1.45,1.52),COL_K); }); });
-        [[-0.58,-0.42],[0.42,0.58]].forEach(function(yy){ add('legs',bx(1.4,1.55,yy[0],yy[1],0.35,1.25),COL_K); });
+        [[-0.58,-0.42],[0.42,0.58]].forEach(function(yy){ var LG2=add('legs',bx(1.4,1.55,yy[0],yy[1],0.35,1.25),COL_K);
+          /* row 65: the crank handle on the outer face */
+          if(NR){ var yo2=yy[0]<0?yy[0]:yy[1], fo4=yy[0]<0?2:3; fl(LG2,fo4,[Lx(1.45,yo2,0.95),Lx(1.45,yo2,0.75),Lx(1.52,yo2,0.75)],false,COL_K,'crank'); } });
+        /* row 65 §2.3: amber side marker lamps every 3 m on each main beam's
+           outer face (out to Outline detail to), red conspicuity tape near, mud
+           flaps behind the tandem */
+        if(MID) pt.forEach(function(q){ if(q[0]!=='beam') return;
+          var BM=q[1], yb=BM===pt.filter(function(r){ return r[0]==='beam'; })[0][1]?-0.6:0.6;
+          var fb=yb<0?2:3, xm;
+          for(xm=-7.5;xm<=3.0;xm+=3) fl(BM,fb,[Lx(xm-0.06,yb,1.32),Lx(xm+0.06,yb,1.32),Lx(xm+0.06,yb,1.38),Lx(xm-0.06,yb,1.38)],true,COL_OR,'marker');
+          if(NR) for(xm=-8.3;xm+0.3<=4.0;xm+=0.6) fl(BM,fb,[Lx(xm,yb,1.28),Lx(xm+0.3,yb,1.28)],false,COL_RED,'tape');
+        });
+        if(NR) [[-1.25,-0.65],[0.65,1.25]].forEach(function(yy){ add('mudflap',bx(-8.48,-8.45,yy[0],yy[1],0.15,0.95),COL_K); });
+        if(NR){
+          /* air and electrical lines, coiled, from the back of the cab to the
+             trailer's front: sine runs on a part that hides nothing */
+          var AL=bx(4.12,6.28,-0.22,0.22,1.5,2.42); AL.lines=[]; AL.hides=false; AL.seeThru=true;
+          [-0.12,0.12].forEach(function(yl,li2){ var prv=null, kk;
+            for(kk=0;kk<=40;kk++){ var tt2=kk/40, X2=Lx(6.25-2.1*tt2, yl+0.07*Math.sin(TAU*tt2*7+li2), 2.35-0.8*tt2+0.04*Math.cos(TAU*tt2*7+li2));
+              if(prv) AL.lines.push({a:prv, b:X2, f0:0, f1:0, col:COL_K, kind:'airline'}); prv=X2; } });
+          add('airlines',AL,COL_K);
+        }
         /* tyres, all 1.0 m: singles on the steer axle, duals behind and on the
            trailer's tandem (1.31 m apart); 16 sides near, 10 out to Outline
            detail to, none beyond */
         var NT=NR?16:MID?10:0, DUAL=[[-1.25,-0.97],[-0.93,-0.65],[0.65,0.93],[0.97,1.25]];
         if(NT) [[7.15,[[-1.25,-0.95],[0.95,1.25]]],[3.2,DUAL],[-6.6,DUAL],[-7.91,DUAL]].forEach(function(ax){
-          ax[1].forEach(function(yy){ add('tyre',tyre(Lx,ax[0],yy[0],yy[1],0.5,NT),COL_K); }); });
+          ax[1].forEach(function(yy){ var TY=add('tyre',tyre(Lx,ax[0],yy[0],yy[1],0.5,NT),COL_K);
+            /* row 65: a ring of lug nuts on the outer face of the outer tyres */
+            if(NR && Math.abs(Math.abs(yy[0]<0?yy[0]:yy[1])-1.25)<1e-9){ var yo3=yy[0]<0?yy[0]:yy[1], fo5=yy[0]<0?0:1, czy=0.5*Math.cos(Math.PI/NT)+1e-9, nk;
+              for(nk=0;nk<8;nk++){ var na=TAU*nk/8, nx=ax[0]+0.18*Math.cos(na), nz=czy+0.18*Math.sin(na);
+                TY.lines.push({a:Lx(nx-0.012,yo3,nz), b:Lx(nx+0.012,yo3,nz), f0:fo5, f1:fo5, col:COL_K, kind:'lug'}); } } }); });
         /* the load: one 40' half the time, two 20's 15%, each dressed like the stacks */
         var load=ucar<0.5?'40':ucar<0.65?'20':'', loads=[];
         if(load) (load==='40'?[[-8.3,-8.3+L40]]:[[-8.3,-8.3+L20],[-8.3+L20+HARB_ISO.GAP20,-8.3+L40]]).forEach(function(sp2,j){
@@ -17967,7 +18115,7 @@ function harbourTheme(K){
         var mid=Lx(0,0,0), atEye=Math.hypot(mid[0]-CE[0],mid[1]-CE[1])<12;
         var rec={id:id, s:st, side:sd, carry:load, col:loads.length?loads[0].col:'', loads:loads, placed:false, eye:atEye,
                  near:NR, mid:MID, tyres:NT, cab:CC, width:2.5};
-        if(!atEye && commitAll(pt,'truck','truck',id,['furn','gantry','truck'])) rec.placed=true;
+        if(!atEye && commitAll(pt,'truck','truck',id,['furn','gantry','truck'],near,far)) rec.placed=true;
         rec.parts=pt.map(function(q){ return q[0]; });
         TAL.trucks.push(rec);
       }
@@ -21919,7 +22067,7 @@ function buildCorridor(p,THM){
     if(puds.length || (CT.cars||[]).length) conts.forEach(function(C){ C.parts.forEach(function(P){
       STRTTALLY.allparts.push({faces:P.faces.map(function(f){ return {n:f.n, d:f.d}; }), V:verts(P), kind:P.kind||'',
         hides:P.hides!==false, seeThru:!!P.seeThru, car:P.car, cpart:P.cpart, wh:P.wh, ab:P.ab, sk:P.sk, nside:P.nside, bump:P.bump, mir:P.mir, seg:P.seg, truck:P.truck, gant:P.gant, pk:P.pk,
-        bridge:P.bridge, boat:P.boat, postPair:P.postPair,
+        bridge:P.bridge, boat:P.boat, postPair:P.postPair, cbox:P.cbox, csh:P.csh,
         lines:P.lines.map(function(Ln){ return {a:Ln.a, b:Ln.b, f0:Ln.f0, f1:Ln.f1, col:Ln.col||P.col, kind:Ln.kind, tag:Ln.tag}; })});
     }); });
     conts.forEach(function(C){
@@ -22176,7 +22324,7 @@ function buildCorridor(p,THM){
       var wB=Math.sin(TAU*(x*Math.cos(RF.aB)+y*Math.sin(RF.aB))/RF.lB+RF.pB);
       var wN=2*vn(x/0.25+RF.nz, y/0.25, 227)-1;
       var env=0.25+0.75*vn(x/RF.lE+RF.ne, y/RF.lE, 229);
-      return env*(0.55*wA+0.30*wB+0.15*wN)*Math.max(0.4,Math.min(2.0,5/G[2]));
+      return env*(0.55*wA+0.30*wB+0.15*wN)*Math.max(0.4,Math.min(THM.ripMax||2.0,5/G[2]));
     }
     /* y from the PAGE CENTRE, so the wave rides with the drawing when a taller
        sheet shifts it (pagecheck's FRAMED map) */
@@ -23973,7 +24121,11 @@ var HELP={
 'harb.trucks':'Yard trucks per 100 m of lane, on both sides together: a terminal tractor with its cab to one side and a skeletal trailer, half of them carrying a 40-foot container and some two 20-foot ones, painted and lettered like the stacks.',
 'harb.puddles':'How many puddles lie on the lane, each showing the stacks and cranes mirrored in the water.',
 'harb.pudsz':'How big the puddles are. At 100 a puddle is up to 3.8 m along the lane.',
-'harb.ripple':'How far the reflection wobbles sideways, in millimetres on the sheet. 0 is a still mirror.',
+'harb.ripple':'How far the reflection wobbles sideways, in millimetres on the sheet at 5 m. 0 is a still mirror.',
+'harb.hero':'One large puddle on the yard lane where the camera first sees ground, cut where it crosses the slabs. 0 leaves it out.',
+'harb.rvar':'How much the ripple varies across the water: two wave trains on the ground, calm and choppy patches, longer and larger near the camera (at most 1.25 x Ripple). 0 is the old even ripple.',
+'harb.hatch':'A tone hatch on the cranes\u2019 and trucks\u2019 faces that look away from the light: ochre on the yellow steel, dark grey on the black. Never on a container -- its ribs are its tone.',
+'harb.sun':'Where the light comes from, in degrees: the faces turned away from it carry the tone hatch.',
 'harb.cams':'Where the camera stands, as a share of the lane length. Near 0 you see the whole lane ahead.',
 'harb.camx':'The camera across the lane, as a share of half its width: 0 is the middle, 100 or -100 an edge.',
 'harb.camz':'The camera height in metres. 1.8 is a driver\u2019s eye; higher looks down onto the stack tops.',
@@ -24082,6 +24234,8 @@ var HELP={
 'mkt.steam':'How many stalls have a plume of steam rising over the table: 3-6 grey wavy strokes under the canopy.',
 'mkt.puddles':'How many puddles lie on the lane, each showing the market mirrored in the water: lanterns, canopies and fronts, upside down.',
 'mkt.pudsz':'How big the puddles are. At 100 a puddle is up to 3.8 m along the lane.',
+'mkt.hero':'One large puddle on the lane where the camera first sees ground, cut where it crosses the slabs. 0 leaves it out.',
+'mkt.rvar':'How much the ripple varies across the water: two wave trains on the ground, calm and choppy patches, longer and larger near the camera. 0 is the old even ripple.',
 'mkt.ripple':'How far the reflection wobbles sideways, in millimetres on the sheet. 0 is a still mirror.',
 'mkt.hatch':'How dense the shading is on walls facing away from the light. 0 is no shading.',
 'mkt.hatchmode':'0: shading lines evenly spaced on the wall, crowding into the distance. 1: evenly spaced on the paper.',
