@@ -424,7 +424,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v290</a> &mdash; HARBOUR v3 -- varied ripple clamped near, ribs that thin instead of vanishing, side wordmarks, truck sides, shaded gantries with walkways (queue row 65)</span></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v291</a> &mdash; TRUE COLOUR BUTTON -- Pen map 3, Line pens and Engine layers off, at the top of Copies & pens on every engine; Neon street calls the same function (queue row 66)</span></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <div class="tabs" id="tabs"></div>
@@ -23767,13 +23767,31 @@ ENGEXTRA.poin=function(box){
    camera, not any Street knob, not Colours. §6's reference look lives on as
    numbers in the street spec and as strtcheck.js's fixture. ONE FUNCTION, called
    by the button and by the gate; it returns the status message, or false. */
-function applyStrtPreset(name){
+/* TRUE COLOUR, for every engine (row 66, docs/specs/2026-10-04-true-colour-button.md):
+   Pen map 3 at the Colours count, and Line pens and Engine layers off, since
+   they override the pen map. Three writes and nothing else -- not Colours, not
+   the page, not a slider -- shared by the True colour button at the top of
+   Copies & pens and the Street's Neon street button. */
+function applyTrueColour(){
   var G=STATE.g, off=[];
-  if(name!=='neon' || !G) return false;
+  if(!G) return false;
   if(+G.lpen) off.push('Line pens off');
   if(+G.elay) off.push('Engine layers off');
   G.pmap=3; G.lpen=0; G.elay=0;
-  return 'Neon street: Pen map 3 (True colour) at Colours '+G.bands+(off.length?', '+off.join(', '):'');
+  return 'Pen map 3 (True colour) at Colours '+G.bands+(off.length?', '+off.join(', '):'');
+}
+function applyStrtPreset(name){
+  if(name!=='neon' || !STATE.g) return false;
+  var m=applyTrueColour();
+  return m?'Neon street: '+m:m;
+}
+function mountTrueColourUI(body,box){
+  var d=document.createElement('div'); d.className='engx'; d.id='tcx';
+  var b=document.createElement('button'); b.type='button'; b.textContent='True colour';
+  b.title='Colours the drawing by each line\u2019s own colour, at your Colours count (Pen map 3). Turns off Line pens and Engine layers if they are on, since they override the pen map. An engine whose lines carry no colour of their own draws as it did.';
+  b.addEventListener('click',function(){ var m=applyTrueColour(); mountG(); mount(); if(m) msg('True colour: '+m); });
+  d.appendChild(b);
+  body.insertBefore(d,box);
 }
 ENGEXTRA.strt=function(box){
   var d=document.createElement('div');
@@ -25055,7 +25073,7 @@ function mountG(){
     if(grp[0]==='mask') mountMaskUI(body);
     if(grp[0]==='word') mountWordUI(body);
     if(grp[0]==='text') mountTextUI(body);
-    if(grp[0]==='copies') mountPenUI(body);
+    if(grp[0]==='copies'){ mountTrueColourUI(body,box); mountPenUI(body); }
   });
   var left=GSPEC.filter(function(gs){return !placed[gs[0]];});
   if(left.length){
