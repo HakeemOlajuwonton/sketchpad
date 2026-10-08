@@ -424,7 +424,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v294</a> &mdash; FRONT PUDDLE OFF BY DEFAULT -- Street's Front puddle and Library's Front shine default to 0; turn the knob up for one big puddle (queue row 69)</span></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v295</a> &mdash; FRONT PUDDLE SHAPE -- Stretch, Edge, Turn and Shape under Front puddle / Front shine on Street, Night market, Harbour and Library; each the identity at its default (queue row 70)</span></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <div class="tabs" id="tabs"></div>
@@ -2111,7 +2111,9 @@ var SPEC={
     ['cables','Cables',0,100,1,45,[100,'%']],['sag','Cable sag',0,30,1,6,[100,'%']],
     ['cars','Cars',0,20,1,3,[1,'/100 m']],['puddles','Puddles',0,40,1,9],
     ['pudsz','Puddle size',5,100,1,40,[100,'%']],['ripple','Ripple',0,30,1,6,[10,' mm']],
-    ['hero','Front puddle',0,100,1,0,[100,'%']],['rvar','Ripple variety',0,100,1,60,[100,'%']],
+    ['hero','Front puddle',0,100,1,0,[100,'%']],
+    ['hstr','Front puddle stretch',-100,100,1,0,[100,'%']],['hrag','Front puddle edge',0,100,1,50,[100,'%']],['hturn','Front puddle turn',-45,45,1,0,[1,'°']],['hshape','Front puddle shape',0,99,1,0],
+    ['rvar','Ripple variety',0,100,1,60,[100,'%']],
     ['dots','Particles',0,3000,10,420],['pnear','Particles near',0,100,1,50,[100,'%']],['graff','Graffiti',0,100,1,20,[100,'%']],
     ['hatch','Tone hatch',0,100,1,55,[100,'%']],['hatchmode','Hatch spacing',0,1,1,0],
     ['sun','Light from',0,359,1,300,[1,'°']],
@@ -2138,7 +2140,9 @@ var SPEC={
     ['stalls','Stalls',0,10,0.5,3,[1,'/10 m']],['lant','Lanterns',0,100,1,60,[100,'%']],
     ['ban','Banners',0,100,1,30,[100,'%']],['steam','Steam',0,100,1,40,[100,'%']],
     ['puddles','Puddles',0,40,1,3],['pudsz','Puddle size',5,100,1,40,[100,'%']],['ripple','Ripple',0,30,1,6,[10,' mm']],
-    ['hero','Front puddle',0,100,1,0,[100,'%']],['rvar','Ripple variety',0,100,1,60,[100,'%']],
+    ['hero','Front puddle',0,100,1,0,[100,'%']],
+    ['hstr','Front puddle stretch',-100,100,1,0,[100,'%']],['hrag','Front puddle edge',0,100,1,50,[100,'%']],['hturn','Front puddle turn',-45,45,1,0,[1,'°']],['hshape','Front puddle shape',0,99,1,0],
+    ['rvar','Ripple variety',0,100,1,60,[100,'%']],
     ['hatch','Tone hatch',0,100,1,55,[100,'%']],['hatchmode','Hatch spacing',0,1,1,0],
     ['sun','Light from',0,359,1,300,[1,'°']],
     ['cams','Camera along',0,90,1,6,[100,'%']],['camx','Camera side',-100,100,1,0,[100,'%']],
@@ -2154,7 +2158,9 @@ var SPEC={
     ['tiers','Tiers',1,8,1,4],['hc','High cubes',0,100,1,40,[100,'%']],
     ['gantry','Gantry cranes',0,4,1,1,[1,'/100 m']],['trucks','Yard trucks',0,10,1,2,[1,'/100 m']],
     ['puddles','Puddles',0,40,1,6],['pudsz','Puddle size',5,100,1,40,[100,'%']],['ripple','Ripple',0,30,1,6,[10,' mm']],
-    ['hero','Front puddle',0,100,1,0,[100,'%']],['rvar','Ripple variety',0,100,1,60,[100,'%']],
+    ['hero','Front puddle',0,100,1,0,[100,'%']],
+    ['hstr','Front puddle stretch',-100,100,1,0,[100,'%']],['hrag','Front puddle edge',0,100,1,50,[100,'%']],['hturn','Front puddle turn',-45,45,1,0,[1,'°']],['hshape','Front puddle shape',0,99,1,0],
+    ['rvar','Ripple variety',0,100,1,60,[100,'%']],
     ['hatch','Tone hatch',0,100,1,50,[100,'%']],['sun','Light from',0,359,1,300,[1,'°']],
     ['cams','Camera along',0,90,1,5,[100,'%']],['camx','Camera side',-100,100,1,-20,[100,'%']],
     ['camz','Camera height',0.2,80,0.1,1.8,[1,' m']],['look','Look ahead',5,300,1,80,[1,' m']],
@@ -2173,6 +2179,7 @@ var SPEC={
     ['carts','Book carts',0,10,1,2,[1,'/100 m']],
     ['shine','Floor shine',0,40,1,8],['pudsz','Shine size',5,100,1,40,[100,'%']],['ripple','Ripple',0,30,1,0,[10,' mm']],
     ['hero','Front shine',0,100,1,0,[100,'%']],
+    ['hstr','Front shine stretch',-100,100,1,0,[100,'%']],['hrag','Front shine edge',0,100,1,50,[100,'%']],['hturn','Front shine turn',-45,45,1,0,[1,'°']],['hshape','Front shine shape',0,99,1,0],
     ['cams','Camera along',0,90,1,2,[100,'%']],['camx','Camera side',-100,100,1,0,[100,'%']],
     ['camz','Camera height',0.2,3,0.05,1.55,[1,' m']],['look','Look ahead',2,100,1,15,[1,' m']],
     ['pitch','Pitch',-45,45,0.5,2,[1,'°']],['fov','Field of view',25,120,1,75,[1,'°']],
@@ -21743,11 +21750,22 @@ function buildCorridor(p,THM){
      boundary, each segment clipped to the slab it lies in: a cut is never
      drawn. Small puddles are placed exactly as before and then any that meets
      the hero is dropped and counted, so every other one is unmoved. All its
-     numbers come from SALT_HERO (223); at Front puddle 0 nothing here runs. */
+     numbers come from SALT_HERO (223); at Front puddle 0 nothing here runs.
+     ROW 70, FOUR SHAPE KNOBS, EACH THE IDENTITY AT ITS DEFAULT: Stretch
+     multiplies the length by 2^s and the width by 2^-s (area kept until a cap
+     binds); Edge scales the four harmonics by hrag/50, whose sum at 100 is
+     0.86, so the radius stays above 0.14 and the outline cannot cross itself;
+     Turn rotates the finished ring in metres about its centre -- NOT added to
+     hrot, which turns the blob before it is fitted to its length x width box
+     and so cannot turn a smooth puddle at all; Shape picks the substream. */
   var HERO=Math.max(0,Math.min(1,(isFinite(p.hero)?+p.hero:0)/100)), SALT_HERO=223, heroInfo='';
+  var HSTR=Math.pow(2,Math.max(-1,Math.min(1,(isFinite(p.hstr)?+p.hstr:0)/100))),
+      HRAG=Math.max(0,Math.min(2,(isFinite(p.hrag)?+p.hrag:50)/50)),
+      HTURN=Math.max(-45,Math.min(45,isFinite(p.hturn)?+p.hturn:0))*Math.PI/180,
+      HSHAPE=Math.max(0,Math.min(99,Math.round(isFinite(p.hshape)?+p.hshape:0)));
   var heroRec=null;
   if(HERO>0){
-    var RH=sub(0,0,SALT_HERO), uh=[]; for(j=0;j<12;j++) uh.push(RH());
+    var RH=sub(0,HSHAPE,SALT_HERO), uh=[]; for(j=0;j<12;j++) uh.push(RH());
     /* g0: the ray through (centre, bottom of the drawable area) to z = 0 */
     var syB=-(PGH-PAD-PGH/2)/(FF*HW), dB=[FW[0]+syB*UP[0], FW[1]+syB*UP[1], FW[2]+syB*UP[2]], g0=null;
     if(dB[2]<-1e-9){
@@ -21757,10 +21775,10 @@ function buildCorridor(p,THM){
       if(sg0>sC && sg0<LEN-1) g0=sg0;
     }
     if(g0===null){ g0=sC+2; heroInfo=' · front puddle off sheet'; }
-    var hL=2.5+7.5*HERO, hW=Math.min((0.45+0.45*HERO)*WID, WID-0.4), room=Math.max(0,WID-0.4-hW);
+    var hL=(2.5+7.5*HERO)*HSTR, hW=Math.min((0.45+0.45*HERO)*WID/HSTR, WID-0.4), room=Math.max(0,WID-0.4-hW);
     var hs0=g0+0.3, hs1=Math.min(LEN-0.2,hs0+hL);
     var camSide=CAMX<0?-1:1, oside=uh[0]<0.6?camSide:-camSide, hoc=oside*(room/2)*uh[1];
-    var ha2=0.18*uh[2], ha3=0.13*uh[3], ha5=0.07*uh[4], ha7=0.05*uh[5], hrot=(uh[10]-0.5)*0.3, hloc=[], hmx=0, hmy=0;
+    var ha2=0.18*uh[2]*HRAG, ha3=0.13*uh[3]*HRAG, ha5=0.07*uh[4]*HRAG, ha7=0.05*uh[5]*HRAG, hrot=(uh[10]-0.5)*0.3, hloc=[], hmx=0, hmy=0;
     for(j=0;j<64;j++){
       var hth=TAU*j/64;
       var hr=1+ha2*Math.cos(2*hth+TAU*uh[6])+ha3*Math.cos(3*hth+TAU*uh[7])+ha5*Math.cos(5*hth+TAU*uh[8])+ha7*Math.cos(7*hth+TAU*uh[9]);
@@ -21769,7 +21787,10 @@ function buildCorridor(p,THM){
       hloc.push([hqx,hqy]); hmx=Math.max(hmx,Math.abs(hqx)); hmy=Math.max(hmy,Math.abs(hqy));
     }
     var hsc=(hs0+hs1)/2, hlen=hs1-hs0;
-    var hring=hloc.map(function(q){ var v=P3(hsc+q[0]/hmx*hlen/2,1,hoc+q[1]/hmy*hW/2,0); return [v[0],v[1]]; });
+    var hcT=Math.cos(HTURN), hsT=Math.sin(HTURN);
+    var hring=hloc.map(function(q){ var ha=q[0]/hmx*hlen/2, ho=q[1]/hmy*hW/2;
+      if(HTURN){ var ht=ha*hcT-ho*hsT; ho=ha*hsT+ho*hcT; ha=ht; }
+      var v=P3(hsc+ha,1,hoc+ho,0); return [v[0],v[1]]; });
     heroRec={ring:hring, s0:hs0, s1:hs1, g0:g0, o:hoc, wid:hW, len:hlen, ph:TAU*uh[11], pieces:[]};
   }
   /* Sutherland-Hodgman against one convex polygon (either winding) */
@@ -24390,6 +24411,10 @@ var HELP={
 'harb.pudsz':'How big the puddles are. At 100 a puddle is up to 3.8 m along the lane.',
 'harb.ripple':'How far the reflection wobbles sideways, in millimetres on the sheet at 5 m. 0 is a still mirror.',
 'harb.hero':'One large puddle on the yard lane where the camera first sees ground, cut where it crosses the slabs. 0 leaves it out.',
+'harb.hstr':'Stretches the front puddle along the road (up) or across it (down) and keeps its area: 100 is twice as long and half as wide. Does nothing while Front puddle is 0.',
+'harb.hrag':'How ragged the front puddle\u2019s edge is: 0 a smooth oval, 50 as before, 100 a wobbly lake. It never crosses itself. Does nothing while Front puddle is 0.',
+'harb.hturn':'Turns the front puddle on the ground, up to 45\u00b0 either way, so it lies diagonally across the road. Does nothing while Front puddle is 0.',
+'harb.hshape':'Another shape for the front puddle without changing anything else in the drawing: each number is a different outline, tilt and side. Does nothing while Front puddle is 0.',
 'harb.rvar':'How much the ripple varies across the water: two wave trains on the ground, calm and choppy patches, longer and larger near the camera (at most 1.25 x Ripple). 0 is the old even ripple.',
 'harb.hatch':'A tone hatch on the cranes\u2019 and trucks\u2019 faces that look away from the light: ochre on the yellow steel, dark grey on the black. Never on a container -- its ribs are its tone.',
 'harb.sun':'Where the light comes from, in degrees: the faces turned away from it carry the tone hatch.',
@@ -24423,6 +24448,10 @@ var HELP={
 'libr.shine':'How many patches of polish the floor has. Each shows the stacks reflected in it, upside down, with no edge drawn.',
 'libr.pudsz':'How big the polished patches are.',
 'libr.hero':'One large polished patch on the floor right in front of you, where the floor first comes into view at the bottom of the sheet, showing the stacks upside down. 0 is none. Off by default \u2014 turn it up for one big puddle in a drawing you want it in.',
+'libr.hstr':'Stretches the front shine along the aisle (up) or across it (down) and keeps its area: 100 is twice as long and half as wide. Does nothing while Front shine is 0.',
+'libr.hrag':'How ragged the front shine\u2019s edge is: 0 a smooth oval, 50 as before, 100 a wobbly lake. It never crosses itself. Does nothing while Front shine is 0.',
+'libr.hturn':'Turns the front shine on the ground, up to 45\u00b0 either way, so it lies diagonally across the aisle. Does nothing while Front shine is 0.',
+'libr.hshape':'Another shape for the front shine without changing anything else in the drawing: each number is a different outline, tilt and side. Does nothing while Front shine is 0.',
 'libr.ripple':'How far the reflection wobbles sideways, in millimetres on the sheet. A polished floor is still, so 0.',
 'libr.cams':'Where the camera stands, as a share of the aisle length. Near 0 you see the whole aisle ahead.',
 'libr.camx':'The camera across the aisle, as a share of half its width: 0 is the middle.',
@@ -24504,6 +24533,10 @@ var HELP={
 'mkt.puddles':'How many puddles lie on the lane, each showing the market mirrored in the water: lanterns, canopies and fronts, upside down.',
 'mkt.pudsz':'How big the puddles are. At 100 a puddle is up to 3.8 m along the lane.',
 'mkt.hero':'One large puddle on the lane where the camera first sees ground, cut where it crosses the slabs. 0 leaves it out.',
+'mkt.hstr':'Stretches the front puddle along the road (up) or across it (down) and keeps its area: 100 is twice as long and half as wide. Does nothing while Front puddle is 0.',
+'mkt.hrag':'How ragged the front puddle\u2019s edge is: 0 a smooth oval, 50 as before, 100 a wobbly lake. It never crosses itself. Does nothing while Front puddle is 0.',
+'mkt.hturn':'Turns the front puddle on the ground, up to 45\u00b0 either way, so it lies diagonally across the road. Does nothing while Front puddle is 0.',
+'mkt.hshape':'Another shape for the front puddle without changing anything else in the drawing: each number is a different outline, tilt and side. Does nothing while Front puddle is 0.',
 'mkt.rvar':'How much the ripple varies across the water: two wave trains on the ground, calm and choppy patches, longer and larger near the camera. 0 is the old even ripple.',
 'mkt.ripple':'How far the reflection wobbles sideways, in millimetres on the sheet. 0 is a still mirror.',
 'mkt.hatch':'How dense the shading is on walls facing away from the light. 0 is no shading.',
@@ -24560,6 +24593,10 @@ var HELP={
 'strt.ripple':'How far the reflection wobbles sideways, in millimetres on the sheet. With Ripple variety at 0 it is a wave plus a little noise that changes with height on the paper; above 0 it is the wobble at 5 m away, larger nearer and smaller farther. 0 is a still, perfect mirror.',
 'strt.pnear':'The share of particles placed close to the camera and spread over the whole sheet, drawn larger the closer they are. 0 keeps them all along the street, thickening toward the far end.',
 'strt.hero':'One big puddle right in front of the camera, where the road first comes into view at the bottom of the sheet: 2.5 m long at 1 and 10 m at 100, up to most of the road\u2019s width, crossing the middle line if it has to. Small puddles it would touch are left out. 0 is none. Off by default \u2014 turn it up for one big puddle in a drawing you want it in.',
+'strt.hstr':'Stretches the front puddle along the road (up) or across it (down) and keeps its area: 100 is twice as long and half as wide. Does nothing while Front puddle is 0.',
+'strt.hrag':'How ragged the front puddle\u2019s edge is: 0 a smooth oval, 50 as before, 100 a wobbly lake. It never crosses itself. Does nothing while Front puddle is 0.',
+'strt.hturn':'Turns the front puddle on the ground, up to 45\u00b0 either way, so it lies diagonally across the road. Does nothing while Front puddle is 0.',
+'strt.hshape':'Another shape for the front puddle without changing anything else in the drawing: each number is a different outline, tilt and side. Does nothing while Front puddle is 0.',
 'strt.rvar':'How much the ripple lives on the water rather than on the paper: two sets of waves at different angles, calm and choppy patches, and waves that get bigger and longer toward you. At 0 every edge in the water wobbles in step with the others; at 100 none do.',
 'strt.dots':'How many coloured particles hang in the air over the road, thickening toward the far end of the street: orange, light blue and pink, 5 : 3 : 2. Each is a 0.35 mm stroke on the sheet however far away it is.',
 'strt.graff':'How many ground-floor shutters and side walls carry graffiti: tags (scribbled strokes) or throw-ups (bubble outlines of 2-4 letters), in magenta, turquoise, yellow or black, drawn on the wall so they foreshorten with it.',
