@@ -424,7 +424,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v293</a> &mdash; LIBRARY COVERS -- each near book hatched in its own colour at a pitch held on the sheet, cloth / buckram / leather / paperback / jacket, titles in a reserve panel with author and publisher's mark, a vivid share (queue row 67)</span></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v294</a> &mdash; FRONT PUDDLE OFF BY DEFAULT -- Street's Front puddle and Library's Front shine default to 0; turn the knob up for one big puddle (queue row 69)</span></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <div class="tabs" id="tabs"></div>
@@ -2111,7 +2111,7 @@ var SPEC={
     ['cables','Cables',0,100,1,45,[100,'%']],['sag','Cable sag',0,30,1,6,[100,'%']],
     ['cars','Cars',0,20,1,3,[1,'/100 m']],['puddles','Puddles',0,40,1,9],
     ['pudsz','Puddle size',5,100,1,40,[100,'%']],['ripple','Ripple',0,30,1,6,[10,' mm']],
-    ['hero','Front puddle',0,100,1,60,[100,'%']],['rvar','Ripple variety',0,100,1,60,[100,'%']],
+    ['hero','Front puddle',0,100,1,0,[100,'%']],['rvar','Ripple variety',0,100,1,60,[100,'%']],
     ['dots','Particles',0,3000,10,420],['pnear','Particles near',0,100,1,50,[100,'%']],['graff','Graffiti',0,100,1,20,[100,'%']],
     ['hatch','Tone hatch',0,100,1,55,[100,'%']],['hatchmode','Hatch spacing',0,1,1,0],
     ['sun','Light from',0,359,1,300,[1,'°']],
@@ -2172,7 +2172,7 @@ var SPEC={
     ['ceilz','Ceiling',2.4,4,0.05,2.8,[1,' m']],['lamp','Light spacing',1.2,6,0.1,2.4,[1,' m']],
     ['carts','Book carts',0,10,1,2,[1,'/100 m']],
     ['shine','Floor shine',0,40,1,8],['pudsz','Shine size',5,100,1,40,[100,'%']],['ripple','Ripple',0,30,1,0,[10,' mm']],
-    ['hero','Front shine',0,100,1,50,[100,'%']],
+    ['hero','Front shine',0,100,1,0,[100,'%']],
     ['cams','Camera along',0,90,1,2,[100,'%']],['camx','Camera side',-100,100,1,0,[100,'%']],
     ['camz','Camera height',0.2,3,0.05,1.55,[1,' m']],['look','Look ahead',2,100,1,15,[1,' m']],
     ['pitch','Pitch',-45,45,0.5,2,[1,'°']],['fov','Field of view',25,120,1,75,[1,'°']],
@@ -24422,7 +24422,7 @@ var HELP={
 'libr.carts':'Book carts per 100 m of aisle, with half as many kick-stools: a trolley with two shelves of books and four wheels at the aisle\u2019s edge.',
 'libr.shine':'How many patches of polish the floor has. Each shows the stacks reflected in it, upside down, with no edge drawn.',
 'libr.pudsz':'How big the polished patches are.',
-'libr.hero':'One large polished patch on the floor right in front of you, where the floor first comes into view at the bottom of the sheet, showing the stacks upside down. 0 is none.',
+'libr.hero':'One large polished patch on the floor right in front of you, where the floor first comes into view at the bottom of the sheet, showing the stacks upside down. 0 is none. Off by default \u2014 turn it up for one big puddle in a drawing you want it in.',
 'libr.ripple':'How far the reflection wobbles sideways, in millimetres on the sheet. A polished floor is still, so 0.',
 'libr.cams':'Where the camera stands, as a share of the aisle length. Near 0 you see the whole aisle ahead.',
 'libr.camx':'The camera across the aisle, as a share of half its width: 0 is the middle.',
@@ -24559,7 +24559,7 @@ var HELP={
 'strt.pudsz':'How big the puddles are. At 100 a puddle is up to 3.8 m along the street, the length of one stretch of road; each draws its own size and shape below that, and they lie toward the kerb, where water collects.',
 'strt.ripple':'How far the reflection wobbles sideways, in millimetres on the sheet. With Ripple variety at 0 it is a wave plus a little noise that changes with height on the paper; above 0 it is the wobble at 5 m away, larger nearer and smaller farther. 0 is a still, perfect mirror.',
 'strt.pnear':'The share of particles placed close to the camera and spread over the whole sheet, drawn larger the closer they are. 0 keeps them all along the street, thickening toward the far end.',
-'strt.hero':'One big puddle right in front of the camera, where the road first comes into view at the bottom of the sheet: 2.5 m long at 1 and 10 m at 100, up to most of the road\u2019s width, crossing the middle line if it has to. Small puddles it would touch are left out. 0 is none.',
+'strt.hero':'One big puddle right in front of the camera, where the road first comes into view at the bottom of the sheet: 2.5 m long at 1 and 10 m at 100, up to most of the road\u2019s width, crossing the middle line if it has to. Small puddles it would touch are left out. 0 is none. Off by default \u2014 turn it up for one big puddle in a drawing you want it in.',
 'strt.rvar':'How much the ripple lives on the water rather than on the paper: two sets of waves at different angles, calm and choppy patches, and waves that get bigger and longer toward you. At 0 every edge in the water wobbles in step with the others; at 100 none do.',
 'strt.dots':'How many coloured particles hang in the air over the road, thickening toward the far end of the street: orange, light blue and pink, 5 : 3 : 2. Each is a 0.35 mm stroke on the sheet however far away it is.',
 'strt.graff':'How many ground-floor shutters and side walls carry graffiti: tags (scribbled strokes) or throw-ups (bubble outlines of 2-4 letters), in magenta, turquoise, yellow or black, drawn on the wall so they foreshorten with it.',
