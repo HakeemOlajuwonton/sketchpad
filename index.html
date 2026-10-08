@@ -424,7 +424,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v292</a> &mdash; TRUCHET SPREAD AND GAP -- Spread reaches 0 (one line per family), Tile gap goes to -100 (motifs grow past their cell, clipped to the margin), Celtic knot and Seigaiha honour Spread (queue row 68)</span></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v293</a> &mdash; LIBRARY COVERS -- each near book hatched in its own colour at a pitch held on the sheet, cloth / buckram / leather / paperback / jacket, titles in a reserve panel with author and publisher's mark, a vivid share (queue row 67)</span></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <div class="tabs" id="tabs"></div>
@@ -2168,6 +2168,7 @@ var SPEC={
     ['width','Aisle width',0.8,3,0.05,1.1,[1,' m']],['pave','Set-back',0,1,0.05,0,[1,' m']],
     ['range','Range length',3,20,1,8],['shelves','Shelves',3,8,1,6],['fill','Fill',30,100,1,85,[100,'%']],
     ['lang','Script',0,3,1,2],['hatch','Tone hatch',0,100,1,55,[100,'%']],
+    ['cover','Cover texture',0,100,1,65,[100,'%']],['vivid','Vivid share',0,100,1,30,[100,'%']],
     ['ceilz','Ceiling',2.4,4,0.05,2.8,[1,' m']],['lamp','Light spacing',1.2,6,0.1,2.4,[1,' m']],
     ['carts','Book carts',0,10,1,2,[1,'/100 m']],
     ['shine','Floor shine',0,40,1,8],['pudsz','Shine size',5,100,1,40,[100,'%']],['ripple','Ripple',0,30,1,0,[10,' mm']],
@@ -18259,12 +18260,213 @@ function libraryTheme(K){
              ['#c8962e',5],['#8a8a8a',5],['#d42a2a',2],['#ec7a1c',1],['#5aa9e6',1]];
   var LIGHT={'#c8962e':1,'#8a8a8a':1,'#ec7a1c':1,'#5aa9e6':1,'#d42a2a':1};
   function bookCol(u){ var a=0; for(var i=0;i<BOOKC.length;i++){ a+=BOOKC[i][1]; if(u*100<a) return BOOKC[i][0]; } return BOOKC[BOOKC.length-1][0]; }
+  /* COVERS (row 67). Off at Cover texture 0, which draws the version before
+     this byte for byte: every new number comes from SALT_COVER (317), per
+     book, keyed like its title, so no book moves and no title changes its
+     stream. The hatch pitch is held ON THE SHEET: one pen width at 100, four
+     at 0. */
+  var COVER=kn(p.cover,65,0,100)/100, VIVID=kn(p.vivid,30,0,100)/100, SALT_COVER=317;
+  var PENMM=(typeof STATE!=='undefined' && STATE.g && isFinite(STATE.g.pw))?STATE.g.pw/100:0.30;
+  var CPITCH=PENMM*(1+3*(1-COVER));
+  var VIVC=[['#d42a2a',18],['#ec7a1c',16],['#f2c230',12],['#5aa9e6',12],['#22a7b4',12],['#e8729a',10],['#2f9a44',10],['#2156c7',10]];
+  function vivCol(u,not){ var a=0, i;
+    for(i=0;i<VIVC.length;i++){ a+=VIVC[i][1]; if(u*100<a) break; }
+    i=Math.min(i,VIVC.length-1);
+    return VIVC[i][0]===not?VIVC[(i+1)%VIVC.length][0]:VIVC[i][0]; }
+  function coverBooks(bk,ka,kb){
+    if(!(COVER>0)) return;
+    bk.forEach(function(B,bi){
+      var R=sub(ka,kb*512+bi,SALT_COVER), u=[], i;
+      for(i=0;i<16;i++) u.push(R());
+      var viv=u[0]<VIVID, type=viv?(u[1]<0.5?'paperback':'jacket'):(u[1]<0.60?'cloth':u[1]<0.82?'buckram':'leather');
+      if(viv) B.col=vivCol(u[2],null);
+      var ang=65+10*u[4];
+      if(u[5]<0.5) ang=180-ang;
+      B.cov={type:type, viv:viv, col2:viv?vivCol(u[3],B.col):null, ang:ang, fj:0.55+0.15*u[6], nb:u[7]<0.5?4:5,
+             np:u[8]<0.5?2:3, ka:ka+8, kb:kb*512+bi, mark:u[10], ml:u[11]<0.5?2:3, phase:0.15+0.7*u[12]};
+    });
+  }
+  function d3(a,b){ return [b[0]-a[0],b[1]-a[1],b[2]-a[2]]; }
+  /* the inside of a CONVEX polygon (either winding) along the line p.n = t,
+     p = t n + l d: the interval of l, or null */
+  function clipLine(pg,t,nx,ny,dx,dy){
+    var l0=-1e18, l1=1e18, i, ar=0;
+    for(i=0;i<pg.length;i++){ var A=pg[i], B=pg[(i+1)%pg.length]; ar+=A[0]*B[1]-B[0]*A[1]; }
+    var sg=ar<0?-1:1;
+    for(i=0;i<pg.length;i++){
+      var a=pg[i], b=pg[(i+1)%pg.length], inx=-(b[1]-a[1])*sg, iny=(b[0]-a[0])*sg;
+      var f0=(t*nx-a[0])*inx+(t*ny-a[1])*iny, fd=dx*inx+dy*iny;
+      if(Math.abs(fd)<1e-15){ if(f0<0) return null; continue; }
+      var r=-f0/fd;
+      if(fd>0){ if(r>l0) l0=r; } else if(r<l1) l1=r;
+    }
+    return l1>l0+1e-12?[l0,l1]:null;
+  }
+  /* one family of parallel lines at `ang` degrees in a face's own frame M,
+     over a set of convex polygons, `pitch` mm apart ON THE SHEET at their
+     common centre. emit(k,a,b) per piece inside polygon k. Returns the
+     spacing used, in metres. */
+  function hatchFam(polys,M,ang,pitch,phase,emit){
+    var r=ang*Math.PI/180, dx=Math.cos(r), dy=Math.sin(r), nx=-dy, ny=dx, cx=0, cy=0, nv=0, tmin=1e18, tmax=-1e18;
+    polys.forEach(function(pg){ pg.forEach(function(q){ cx+=q[0]; cy+=q[1]; nv++;
+      var t=q[0]*nx+q[1]*ny; if(t<tmin) tmin=t; if(t>tmax) tmax=t; }); });
+    if(!nv) return 0;
+    /* the kit's paperGap steps 5 cm across; a spine a metre from the eye is
+       foreshortened enough over 5 cm to read the pitch 10% out, so the step
+       here is 2 mm (the gap is linear in it) */
+    var O=M(0,0), N3=d3(O,M(nx,ny)), g=paperGap(M(cx/nv,cy/nv),d3(O,M(dx,dy)),[N3[0]*0.04,N3[1]*0.04,N3[2]*0.04])/0.04;
+    if(!(g>0)) return 0;
+    var S=pitch/g, k, t, n=0;
+    if(!(S>0) || (tmax-tmin)/S>4000) return 0;
+    for(t=tmin+S*phase; t<tmax; t+=S) for(k=0;k<polys.length;k++){
+      var L=clipLine(polys[k],t,nx,ny,dx,dy);
+      if(L){ emit(k,[t*nx+L[0]*dx,t*ny+L[0]*dy],[t*nx+L[1]*dx,t*ny+L[1]*dy]); n++; }
+    }
+    /* a spine narrower than one pitch across the hatch still carries a line,
+       through its middle */
+    if(!n) for(k=0;k<polys.length;k++){
+      var pc=[0,0]; polys[k].forEach(function(q){ pc[0]+=q[0]/polys[k].length; pc[1]+=q[1]/polys[k].length; });
+      var L2=clipLine(polys[k],pc[0]*nx+pc[1]*ny,nx,ny,dx,dy), t2=pc[0]*nx+pc[1]*ny;
+      if(L2) emit(k,[t2*nx+L2[0]*dx,t2*ny+L2[0]*dy],[t2*nx+L2[1]*dx,t2*ny+L2[1]*dy]);
+    }
+    return S;
+  }
+  /* [a,b] less a list of [x,y] intervals: the pieces left, in order */
+  function minus(a,b,ex){
+    var out=[[a,b]];
+    ex.forEach(function(e){ var nx2=[];
+      out.forEach(function(I){ if(e[1]<=I[0] || e[0]>=I[1]){ nx2.push(I); return; }
+        if(e[0]>I[0]) nx2.push([I[0],e[0]]); if(e[1]<I[1]) nx2.push([e[1],I[1]]); });
+      out=nx2; });
+    return out.filter(function(I){ return I[1]-I[0]>1e-6; });
+  }
+  /* a NEAR book's spine (row 67): title in a reserve panel, author above it,
+     publisher's mark at the foot, the binding's hatch around them */
+  function coverSpine(P,fi,spU,tu,B,LR,script,mmV,mmH,topM,oS){
+    var cv=B.cov, w=B.w, h=B.h, O=spU(0,0), tg='bk'+TAL.cov.length;
+    var rec={band:'near', type:cv.type, col:B.col, col2:cv.col2, w:w, h:h, O:O, U:d3(O,spU(1,0)), V:d3(O,spU(0,1)),
+             panel:null, title:null, author:null, mark:null, rbands:0, block:false, logo:false, pages:0, cover:COVER, pen:PENMM};
+    TAL.cov.push(rec);
+    var gilt=LIGHT[B.col]?COL_K:COL_OCHRE, lc=cv.type==='paperback'?COL_K:cv.type==='jacket'?cv.col2:gilt;
+    function line(u0,v0,u1,v1,col,kind){ P.lines.push({a:spU(u0,v0), b:spU(u1,v1), f0:fi, f1:fi, col:col, kind:kind, tag:tg}); }
+    function rect(u0,v0,u1,v1,col,kind){ line(u0,v0,u1,v0,col,kind); line(u1,v0,u1,v1,col,kind); line(u1,v1,u0,v1,col,kind); line(u0,v1,u0,v0,col,kind); }
+    function ext(T){ var lo=1e9, hi=-1e9;
+      T.lines.forEach(function(pl){ pl.forEach(function(q){ if(q[1]<lo) lo=q[1]; if(q[1]>hi) hi=q[1]; }); }); return [lo,hi]; }
+    var ex=[], lb=cv.type==='leather', vb=[], i;
+    /* leather: 4-5 raised bands evenly up the spine, and the title in the
+       second compartment from the top, the author in the top one */
+    if(lb) for(i=0;i<cv.nb;i++) vb.push(h*(0.12+0.76*i/(cv.nb-1)));
+    var c0=lb?vb[cv.nb-3]+0.006:0.12*h, c1=lb?vb[cv.nb-2]-0.006:0.88*h;
+    /* a word that fits 45% of the spine is a short one, so where none does
+       the letters shrink -- to half the spine's width at the least, and never
+       under the legibility the plain spine asks for */
+    var TH=Math.min(0.45*h,c1-c0-0.008), T=null, tw=w, tf;
+    for(tf=0;tf<4;tf++){
+      tw=w*[1,0.8,0.64,0.5][tf];
+      if(!(0.76*tw*mmV>=1.0 && 0.76*tw*mmH>=0.33)) break;
+      T=SCR.setText(script,tw,TH,true,LR,0.008);
+      if(T.lines.length) break;
+    }
+    if(T && T.lines.length && T.h*mmV>=1.0 && T.h*mmH>=0.33){
+      var e=ext(T), dv=(c0+c1)/2-(e[0]+e[1])/2, pad=0.25*T.h, dt=(w-tw)/2;
+      var pv0=Math.max(c0,e[0]+dv-pad), pv1=Math.min(c1,e[1]+dv+pad);
+      T.lines.forEach(function(pl){ for(var j=1;j<pl.length;j++) line(tu(dt+pl[j-1][0]),pl[j-1][1]+dv,tu(dt+pl[j][0]),pl[j][1]+dv,lc,'title'); });
+      rect(0.06*w,pv0,0.94*w,pv1,lc,'panel');
+      ex.push([pv0,pv1]); rec.panel=[pv0,pv1]; rec.title=[e[0]+dv,e[1]+dv];
+      TAL.titles.push({script:script, words:T.words, h:T.h});
+      var ha=0.4*T.h, a0=lb?vb[cv.nb-2]+0.006:pv1+0.004, a1=lb?vb[cv.nb-1]-0.006:Math.min(0.92*h,pv1+0.22*h);
+      if(ha*mmV>=0.6 && ha*mmH>=0.25 && a1-a0>3*ha){
+        var Wa=ha/0.76, TA=SCR.setText(script,Wa,a1-a0,true,sub(cv.ka,cv.kb,SALT_COVER),0.002);
+        if(TA.lines.length){
+          var ea=ext(TA), da=lb?(a0+a1)/2-(ea[0]+ea[1])/2:a0+0.3*ha-ea[0], du=(w-Wa)/2;
+          TA.lines.forEach(function(pl){ for(var j=1;j<pl.length;j++) line(tu(du+pl[j-1][0]),pl[j-1][1]+da,tu(du+pl[j][0]),pl[j][1]+da,lc,'author'); });
+          ex.push([ea[0]+da-0.3*ha,ea[1]+da+0.3*ha]); rec.author=[ea[0]+da,ea[1]+da];
+        }
+      }
+    }
+    /* the publisher: a 2-3 letter mark at the foot, or a paperback's block
+       with a logo in a roundel */
+    if(cv.type==='paperback'){
+      var lr=Math.min(0.3*w,0.025*h), lv=0.06*h, ring=[];
+      for(i=0;i<=16;i++) ring.push([w/2+lr*Math.cos(TAU*i/16), lv+lr*Math.sin(TAU*i/16)]);
+      if(lr*Math.min(mmV,mmH)>=0.4){
+        for(i=1;i<ring.length;i++) line(ring[i-1][0],ring[i-1][1],ring[i][0],ring[i][1],COL_K,'logo');
+        ex.push([lv-lr-0.002,lv+lr+0.002]); rec.logo=true;
+      }
+    } else {
+      var wd=SCR.WORDS[Math.min(SCR.WORDS.length-1,Math.floor(cv.mark*SCR.WORDS.length))].slice(0,cv.ml), gl=[], tot=0;
+      for(i=0;i<wd.length;i++){ var G=glyphStrokes(wd[i],'futural'); gl.push(G); tot+=G?G.adv:0.5; }
+      var cap=SCR.latCap(), s2=Math.min(0.7*w/tot,0.05*h/cap), capH=s2*cap, mv=0.045*h-capH/2;
+      if(tot>0 && capH*mmV>=0.8 && tot*s2/wd.length*mmH>=0.33){
+        var uu=(w-tot*s2)/2;
+        gl.forEach(function(G){ if(G) G.strokes.forEach(function(st){ for(var j=1;j<st.length;j++)
+          line(tu(uu+st[j-1][0]*s2),mv+st[j-1][1]*s2,tu(uu+st[j][0]*s2),mv+st[j][1]*s2,lc,'mark'); });
+          uu+=(G?G.adv:0.5)*s2; });
+        ex.push([mv-0.003,mv+capH+0.003]); rec.mark=[mv,mv+capH];
+      }
+    }
+    /* head and tail bands on cloth and buckram; raised bands and gilt panels on leather */
+    if(cv.type==='cloth' || cv.type==='buckram') [0.08,0.92].forEach(function(f){ line(0,h*f,w,h*f,gilt,'band'); });
+    if(lb){
+      vb.forEach(function(v){ line(0,v-0.003,w,v-0.003,COL_OCHRE,'rband'); line(0,v+0.003,w,v+0.003,COL_OCHRE,'rband'); });
+      rec.rbands=vb.length;
+      for(i=0;i+1<vb.length;i++){
+        var g0=vb[i]+0.009, g1=vb[i+1]-0.009, used=ex.some(function(x){ return x[1]>g0 && x[0]<g1; });
+        if(!used && g1-g0>0.01) rect(0.2*w,g0,0.8*w,g1,COL_OCHRE,'gilt');
+      }
+    }
+    /* THE HATCH, around everything above */
+    var fams;
+    if(cv.type==='cloth') fams=[[0,h,cv.ang,1,B.col]];
+    else if(cv.type==='buckram') fams=[[0,h,60,1.3,B.col],[0,h,120,1.3,B.col]];
+    else if(cv.type==='leather') fams=[[0,h,90,1,B.col]];
+    else if(cv.type==='paperback'){ fams=[[0,0.12*h,cv.ang,0.8,cv.col2],[0.12*h,h,cv.ang,0.8,B.col]]; rec.block=true; }
+    else fams=[[0,cv.fj*h,cv.ang,1,B.col],[cv.fj*h,h,cv.ang,1,cv.col2]];
+    rec.fams=[];
+    fams.forEach(function(F,fk){
+      var pieces=minus(F[0],F[1],ex).map(function(I){ return [[0,I[0]],[w,I[0]],[w,I[1]],[0,I[1]]]; });
+      var S=hatchFam(pieces,spU,F[2],CPITCH*F[3],cv.phase,function(k,a,b){
+        P.lines.push({a:spU(a[0],a[1]), b:spU(b[0],b[1]), f0:fi, f1:fi, col:F[4], kind:'cover', tag:tg+':'+fk}); });
+      rec.fams.push({ang:F[2], mult:F[3], col:F[4], v0:F[0], v1:F[1], S:S});
+    });
+    if(cv.type==='jacket') line(0,cv.fj*h,w,cv.fj*h,cv.col2,'split');
+    /* the page block on the top face: the boards and the pages between,
+       running back from the spine, where they stand apart on the sheet */
+    var fT=faceIx(P,rec.V), od=d3(topM(0,oS),topM(0,oS+1)), gp=paperGap(topM(w/2,oS+B.d/2),od,rec.U), sp=(w-0.008)/(cv.np-1);
+    if(gp>0 && sp*gp>=MINSP){
+      for(i=0;i<cv.np;i++){ var uq=0.004+sp*i;
+        P.lines.push({a:topM(uq,oS+0.002), b:topM(uq,oS+B.d), f0:fT, f1:fT, col:COL_GREY, kind:'pages', tag:tg}); }
+      rec.pages=cv.np;
+    }
+  }
+  /* a MID-BAND book's spine, drawn on its row's box: its colour, hatched,
+     upright on leather and on the diagonal otherwise */
+  function coverRow(Rw,fr,bk,X,sA,oF,zf,spines){
+    var M=function(x,z){ return X(sA+x,oF,zf+z); };
+    var quads=bk.map(function(B){ var c=Math.cos(B.lean), sn=Math.sin(B.lean);
+      return [[0,0],[B.w,0],[B.w,B.h],[0,B.h]].map(function(t){ return [B.x0+t[0]*c-t[1]*sn, t[0]*sn+t[1]*c]; }); });
+    var tags=bk.map(function(B,bi){ var c=Math.cos(B.lean), sn=Math.sin(B.lean), O=M(B.x0,0);
+      TAL.cov.push({band:spines?'spine':'bar', type:B.cov.type, col:B.col, col2:B.cov.col2, w:B.w, h:B.h, O:O,
+                    U:d3(O,M(B.x0+c,sn)), V:d3(O,M(B.x0-sn,c)), cover:COVER, pen:PENMM, fams:[]});
+      return {tg:'bk'+(TAL.cov.length-1), rec:TAL.cov[TAL.cov.length-1]}; });
+    function put(k,a,b){ Rw.lines.push({a:M(a[0],a[1]), b:M(b[0],b[1]), f0:fr, f1:fr, col:bk[k].col, kind:'cover', tag:tags[k].tg+':0'}); }
+    if(spines) bk.forEach(function(B,bi){
+      var ang=B.cov.type==='leather'?90:B.cov.ang, S=hatchFam([quads[bi]],M,ang,CPITCH,B.cov.phase,function(k,a,b){ put(bi,a,b); });
+      tags[bi].rec.fams.push({ang:ang, mult:1, col:B.col, S:S});
+    });
+    else {
+      /* a bar of spines: one family across the row, each piece in the colour
+         of the book it crosses */
+      var S=hatchFam(quads,M,70,CPITCH,0.5,put);
+      tags.forEach(function(T2){ T2.rec.fams.push({ang:70, mult:1, col:T2.rec.col, S:S}); });
+    }
+  }
   var SH=2.13, KICK=0.10, BT=0.018, UP=0.025, DEEP=0.28, PITCH=(SH-KICK)/SHELVES;
   var SCR=corridorScripts(sub,SALT_GLYPHL,LIB_WORDS);
   var CLASSES=['B','BF','BL','D','DA','E','F','G','GV','H','HD','HM','J','K','L','ML','N','NA','ND','P','PN','PQ','PR','PS','PT',
                'Q','QA','QB','QC','QD','QH','R','RC','S','T','TA','TK','U','Z'];
   var TAL={books:[], shelves:[], ceilings:0, ceilList:[], lamps:[], signs:[], cards:0, carts:[], stools:[], titles:[], refused:0,
-           pulled:[], lying:[], far:[], ceil:null, seams:[], first:null, stool:null, piles:[], wall:null};
+           pulled:[], lying:[], far:[], ceil:null, seams:[], first:null, stool:null, piles:[], wall:null, cov:[]};
   STRTTALLY.libr=TAL;
   /* ---- call-number ranges: one per range, ascending along each side */
   function callRange(sd,rg){
@@ -18346,21 +18548,25 @@ function libraryTheme(K){
         var fi=faceIx(P,(function(){ var a=X(0,0,0), b=X(0,-1,0); return [b[0]-a[0],b[1]-a[1],0]; })());
         var oS=oF-(B.pull||0), spU=function(u,v){ var c=Math.cos(B.lean), sn=Math.sin(B.lean); return X(s0+u*c-v*sn,oS,zf+u*sn+v*c); };
         var ink=LIGHT[B.col]?COL_K:COL_OCHRE;
-        [0.08,0.92].forEach(function(f){ P.lines.push({a:spU(0,B.h*f), b:spU(B.w,B.h*f), f0:fi, f1:fi, col:ink, kind:'band'}); });
+        if(!B.cov) [0.08,0.92].forEach(function(f){ P.lines.push({a:spU(0,B.h*f), b:spU(B.w,B.h*f), f0:fi, f1:fi, col:ink, kind:'band'}); });
         /* legible ALONG THE SPINE: a spine is seen nearly edge-on down an aisle,
            so the glyph's height is measured on the sheet, and its width must
            still be a third of a millimetre */
         var mid=spU(B.w/2,B.h/2), sdir=(function(){ var a=X(0,0,0), b=X(1,0,0); return [b[0]-a[0],b[1]-a[1],0]; })();
         var mmV=paperGap(mid,sdir,[0,0,1]), mmH=paperGap(mid,[0,0,1],sdir);
         var script=LANG===0?'kanji':LANG===1?'hangul':LANG===2?'latin':(B.u<0.4?'latin':B.u<0.7?'kanji':'hangul');
-        var T=SCR.setText(script,B.w,B.h*0.84,true,LR,0.008);
         /* set left to right AS SEEN FROM THE AISLE: on the right-hand side of
            it, +s runs to the reader's left */
         var tu=C0side>0?function(u){ return u; }:function(u){ return B.w-u; };
-        if(T.h*mmV>=1.0 && T.h*mmH>=0.33){
-          T.lines.forEach(function(pl){ for(var i=1;i<pl.length;i++)
-            P.lines.push({a:spU(tu(pl[i-1][0]),B.h*0.08+pl[i-1][1]), b:spU(tu(pl[i][0]),B.h*0.08+pl[i][1]), f0:fi, f1:fi, col:ink, kind:'title'}); });
-          TAL.titles.push({script:script, words:T.words, h:T.h});
+        if(B.cov) coverSpine(P,fi,spU,tu,B,LR,script,mmV,mmH,function(u,o){ var c=Math.cos(B.lean), sn=Math.sin(B.lean);
+          return X(s0+u*c-B.h*sn,o,zf+u*sn+B.h*c); },oS);
+        else {
+          var T=SCR.setText(script,B.w,B.h*0.84,true,LR,0.008);
+          if(T.h*mmV>=1.0 && T.h*mmH>=0.33){
+            T.lines.forEach(function(pl){ for(var i=1;i<pl.length;i++)
+              P.lines.push({a:spU(tu(pl[i-1][0]),B.h*0.08+pl[i-1][1]), b:spU(tu(pl[i][0]),B.h*0.08+pl[i][1]), f0:fi, f1:fi, col:ink, kind:'title'}); });
+            TAL.titles.push({script:script, words:T.words, h:T.h});
+          }
         }
         P.cont=C;
         /* A PULLED-OUT BOOK (v2) stands proud of the shelf front, so it is CUT
@@ -18400,13 +18606,14 @@ function libraryTheme(K){
         for(var i=0;i<4;i++) Rw.lines.push({a:q[i], b:q[(i+1)%4], f0:fr, f1:fr, col:B.col, kind:'spine'}); });
       else { var q=[[x0,0],[x1,0],[x1,hm],[x0,hm]].map(function(t){ return X(sA+t[0],oF,zf+t[1]); });
         for(var i=0;i<4;i++) Rw.lines.push({a:q[i], b:q[(i+1)%4], f0:fr, f1:fr, col:COL_K, kind:'rowline'}); }
+      if(bk[0].cov) coverRow(Rw,fr,bk,X,sA,oF,zf,gpS*avg>=MINSP);
       tag(Rw,'bookrow',COL_K,layer); Rw.cont=C; parts.push(Rw);
     }
     return parts;
   }
   function dress(L,dn,df){
     if(L===lots[0]){ TAL.books=[]; TAL.shelves=[]; TAL.titles=[]; TAL.cards=0; TAL.ceilings=0; TAL.ceilList=[]; TAL.refused=0;
-                     TAL.pulled=[]; TAL.lying=[]; TAL.far=[]; }
+                     TAL.pulled=[]; TAL.lying=[]; TAL.far=[]; TAL.cov=[]; }
     var g=L.gen||{}, sc=(L.s0+L.s1)/2, X=rowFrame(sc,L.side), s0=L.s0, s1=L.s1;
     var oF=Math.max(L.fe,PBACK)+0.002, oP=oF+DEEP, right=!!g.last;
     var dc=dist3(X(sc,oF,1.2)), band=dc<dn?'near':dc<df?'mid':'';
@@ -18441,8 +18648,10 @@ function libraryTheme(K){
     /* the books, shelf by shelf, then the shelf's label from the section's stream */
     for(k=0;k<SHELVES;k++){
       var zf=KICK+k*PITCH, RB=sub(L.side<0?2:1,L.idx*16+k,SALT_BOOK), run=bookRun(RB,sB-sA,PITCH-0.02);
+      coverBooks(run.books,L.side<0?2:1,L.idx*16+k);
       TAL.shelves.push({side:L.side, idx:L.idx, k:k, W:sB-sA, used:run.used, pitch:PITCH, cart:false});
-      run.books.forEach(function(B){ TAL.books.push({side:L.side, idx:L.idx, k:k, x0:B.x0, w:B.w, h:B.h, lean:B.lean, col:B.col, pitch:PITCH, W:sB-sA}); });
+      run.books.forEach(function(B){ TAL.books.push({side:L.side, idx:L.idx, k:k, x0:B.x0, w:B.w, h:B.h, lean:B.lean, col:B.col, pitch:PITCH, W:sB-sA,
+                                                     type:B.cov?B.cov.type:null, viv:B.cov?B.cov.viv:null}); });
       /* v2: near the camera 6% of books stand 30-80 mm proud and 3% start a
          book lying flat on top of their neighbours -- from SALT_PULL, so the
          run itself is untouched */
@@ -18770,8 +18979,10 @@ function libraryTheme(K){
     [0.20,0.60].forEach(function(z,si){
       parts.push(tag(boxAt(X,L0+0.025,L1-0.025,oa,o1,z,z+0.02),'cartshelf',COL_K,layer));
       var RB=sub(sd<0?2:1,j*4+si,SALT_CART+1000), run=bookRun(RB,L1-L0-0.06,0.34);
+      coverBooks(run.books,sd<0?4:3,j*4+si);
       TAL.shelves.push({side:sd, idx:-1-j, k:si, W:L1-L0-0.06, used:run.used, pitch:0.36, cart:true});
-      run.books.forEach(function(B){ nb++; TAL.books.push({side:sd, idx:-1-j, k:si, x0:B.x0, w:B.w, h:B.h, lean:B.lean, col:B.col, pitch:0.36, W:L1-L0-0.06, cart:true}); });
+      run.books.forEach(function(B){ nb++; TAL.books.push({side:sd, idx:-1-j, k:si, x0:B.x0, w:B.w, h:B.h, lean:B.lean, col:B.col, pitch:0.36, W:L1-L0-0.06, cart:true,
+                                                       type:B.cov?B.cov.type:null, viv:B.cov?B.cov.viv:null}); });
       placeBooks(run,null,X,L0+0.03,oa+0.02,z+0.02,band,layer,sd<0?4:3,j*4+si,sd).forEach(function(P){ parts.push(P); });
     });
     return {parts:parts, books:nb};
@@ -24204,6 +24415,8 @@ var HELP={
 'libr.fill':'How full the shelves are. Below full, gaps open between books, and a gap two spines wide can let the next book lean into it against its neighbour.',
 'libr.lang':'The script of the titles on the nearest spines. 0 pseudo-kanji, 1 pseudo-hangul, 2 Latin words, 3 a mix. Titles only appear where they would be big enough on the sheet to read.',
 'libr.hatch':'How dense the shading on the back panels is, behind and above the books, so the gaps read as depth. 0 is no shading.',
+'libr.cover':'How much of each book\u2019s colour is laid on as ink: books nearer than Outline detail to are hatched in their own colour at a pitch held on the sheet (one pen width at 100, four at 0). Near books show their binding \u2014 cloth, buckram, leather with gilt bands, paperbacks, two-colour jackets \u2014 and a short title in a clear panel. 0 is plain white spines.',
+'libr.vivid':'The share of books that are paperbacks or dust jackets, drawn from a bright palette (red, orange, yellow, light blue, turquoise, pink, green, blue); the rest are cloth, buckram and leather in the library\u2019s own dark colours. Needs Cover texture above 0. 0 is a library of bound books, 100 a paperback shop.',
 'libr.ceilz':'The ceiling height in metres. The lights and range signs hang from it.',
 'libr.lamp':'How far apart the fluorescent fittings are along the aisle, in metres, centre to centre. Each is 1.2 m long.',
 'libr.carts':'Book carts per 100 m of aisle, with half as many kick-stools: a trolley with two shelves of books and four wheels at the aisle\u2019s edge.',
