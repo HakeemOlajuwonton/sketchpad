@@ -424,10 +424,11 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v295</a> &mdash; FRONT PUDDLE SHAPE -- Stretch, Edge, Turn and Shape under Front puddle / Front shine on Street, Night market, Harbour and Library; each the identity at its default (queue row 70)</span></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v296</a> &mdash; ENGINE PICKER FOLDS -- the engine tabs sit in a Pick engine fold, open on a first visit, remembered, its header naming family and engine (queue row 71)</span></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
-<div class="tabs" id="tabs"></div>
+<section class="fold" id="fold_pick"><h2>Pick engine<span class="cnt"></span></h2>
+  <div class="fbody"><div class="tabs" id="tabs"></div></div></section>
 <section class="fold" id="fold_eng"><h2>Engine<span class="cnt"></span></h2>
   <div class="fbody"><div id="sliders"></div></div></section>
 <div id="gwrap"></div>
@@ -23716,6 +23717,10 @@ function draw(){
       'This engine draws from a photo \u2014 open MASK & PINS below and choose an image. '+
       'It uses the same upload as the mask, so the drawing and a mask of the same '+
       'photo line up exactly.';
+    /* the fold headers too (row 71): this return skips the one below, and the
+       picker's header -- and Engine's knob count -- kept naming the engine
+       before the photo engine */
+    if(typeof foldSummaries==='function') foldSummaries();
     return;
   }
   /* Drawn LAST so nothing can hide it, and on the canvas only -- the export
@@ -25000,6 +25005,12 @@ function foldSummaries(){
     if(el) el.textContent=txt;
   }
   put('eng', SPEC[mode]?SPEC[mode][1].length+' knobs':'');
+  /* ROW 71: THE PICKER'S HEADER NAMES WHAT IS PICKED, from here and not from
+     the tab handler -- a preset slot or restore() changes `mode` without a tab
+     click, and this runs on every draw. The family is the first FAMILIES entry
+     holding `mode`, or Other, exactly as mountTabs() places the tab. */
+  var pfam=null; FAMILIES.forEach(function(f){ if(pfam===null && f[1].indexOf(mode)>=0) pfam=f[0]; });
+  put('pick', SPEC[mode]?(pfam||'Other')+' \u00b7 '+SPEC[mode][0]:'');
   /* Line pens OVERRIDES the number this line prints, so it has to be asked
      first or the fold would keep saying "1 pen" while the file carries four.
      penCount is the one place the whole claimant chain lives; re-deriving the
@@ -25375,16 +25386,18 @@ function mountG(){
   }
   foldSummaries();
 }
-(function(){
-  var h=document.querySelector('#fold_eng>h2');
+/* the two folds written into the markup rather than built by makeFold: the
+   Engine knobs and (row 71) the engine picker. Both open on a first visit. */
+['eng','pick'].forEach(function(id){
+  var h=document.querySelector('#fold_'+id+'>h2');
   if(!h) return;
-  var sec=document.getElementById('fold_eng');
-  if(!foldState('eng',true)) sec.classList.add('closed');
+  var sec=document.getElementById('fold_'+id);
+  if(!foldState(id,true)) sec.classList.add('closed');
   h.addEventListener('click',function(){
     sec.classList.toggle('closed');
-    setFold('eng', !sec.classList.contains('closed'));
+    setFold(id, !sec.classList.contains('closed'));
   });
-})();
+});
 /* PAPER PRESETS (row 60): the drawing-pad sizes, in inches x 25.4, written
    exactly. A button writes Page size and Page long and NOTHING else --
    portrait, the bed, the grid and every engine knob stay as they were (row
