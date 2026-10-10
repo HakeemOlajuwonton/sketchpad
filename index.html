@@ -424,7 +424,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v297</a> &mdash; CORRIDOR TURN -- a Turn knob after Look ahead on all five corridor engines faces a row head-on; puddles follow the view, movable things clear of the eye (queue row 72)</span></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v298</a> &mdash; STREET SHOPFRONTS -- Shop variety gives each lot its own shop (closed, noren eatery, convenience, food case, kiosk, stair bar) and Pavement clutter puts bikes, vending machines, plants, crates, A-frames and meters in front (queue row 73)</span></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <section class="fold" id="fold_pick"><h2>Pick engine<span class="cnt"></span></h2>
@@ -2107,6 +2107,7 @@ var SPEC={
     ['canyon','Canyon rise',0,100,1,30,[100,'%']],['stepb','Step-back',0,60,1,18,[100,'%']],
     ['canti','Cantilever',0,60,1,14,[100,'%']],['fire','Fire escapes',0,100,1,25,[100,'%']],
     ['glow','Lit windows',0,100,1,22,[100,'%']],['uvar','Upper variety',0,100,1,55,[100,'%']],
+    ['shopv','Shop variety',0,100,1,60,[100,'%']],['props','Pavement clutter',0,100,1,40,[100,'%']],
     ['signs','Signs',0,100,1,55,[100,'%']],
     ['neon','Neon',0,100,1,60,[100,'%']],['lang','Script',0,3,1,0],
     ['cables','Cables',0,100,1,45,[100,'%']],['sag','Cable sag',0,30,1,6,[100,'%']],
@@ -17512,7 +17513,7 @@ var STHEMES={
      no lane paint, no bollards, no particles (steam instead), no graffiti */
   mkt:{key:'mkt', label:'Night market', lotDepth:[6,12], alleyW:[1.2,2.5], baseN2:0, baseH:[3.2,3.8],
        midH:[2.8,3.2], edgeZ:0.15, slabLen:4, clear:2.6, ztop:200, mirror:'puddles', minWidth:2,
-       fixed:{cars:0, dots:0, graff:0}, flags:{poles:false, roadMarks:false, bollards:false, shopOpen:true, cableEdge:true, attachBase:true, edgeSlots:true},
+       fixed:{shopv:0, props:0, cars:0, dots:0, graff:0}, flags:{poles:false, roadMarks:false, bollards:false, shopOpen:true, cableEdge:true, attachBase:true, edgeSlots:true},
        cableAvoid:['lantern','stall'],
        content:function(K){ return marketTheme(K); }},
   /* §4: a yard lane, a container row for a lot, no kerb and no buildings */
@@ -17521,7 +17522,7 @@ var STHEMES={
         /* row 65: at the camera's feet the depth factor doubled Ripple, and on a
            yard of 40 puddles that read as zig-zag: 1.25 here */
         ripMax:1.25,
-        lotGen:function(R,p){ return harbourLotGen(R,p); }, fixed:{alley:100, cars:0, dots:0, graff:0, signs:0, cables:0, canyon:0, stepb:0, canti:0},
+        lotGen:function(R,p){ return harbourLotGen(R,p); }, fixed:{shopv:0, props:0, alley:100, cars:0, dots:0, graff:0, signs:0, cables:0, canyon:0, stepb:0, canti:0},
         content:function(K){ return harbourTheme(K); }},
   /* §5: an aisle, a shelving section for a lot, a ceiling, floor shine */
   libr:{key:'libr', label:'Library stacks', lotDepth:[0.30,0.30], alleyW:[1.5,1.5], baseN2:0, baseH:[2.13,2.13],
@@ -17529,7 +17530,7 @@ var STHEMES={
         strip:0, minEnv:0.2, pudIn:0.03, pudCol:null, pudWord:'polished patches', heroWord:'a front shine', alias:{puddles:'shine'},
         mirrorSkip:['hatch'], pudMinMM:3,
         lotGen:function(R,p,li,sd){ return libraryLotGen(R,p,li,sd); },
-        fixed:{alley:0, cars:0, dots:0, graff:0, signs:0, cables:0, canyon:0, stepb:0, canti:0},
+        fixed:{shopv:0, props:0, alley:0, cars:0, dots:0, graff:0, signs:0, cables:0, canyon:0, stepb:0, canti:0},
         content:function(K){ return libraryTheme(K); }},
   /* §6: a water channel between plastered houses; the whole road is water and
      the mirror; the kerb is the quay's edge, 0.8 m over the water */
@@ -17537,7 +17538,7 @@ var STHEMES={
          midH:[2.8,3.2], edgeZ:0.8, slabLen:4, clear:3.0, ztop:200, mirror:'channel', minWidth:4,
          strip:0.25, channel:true, kerbKind:'quay', pudCol:null, pudWord:'slabs of water',
          cableAvoid:['bridge','boat','post'],
-         fixed:{cars:0, dots:0, graff:0, neon:0, puddles:0, hero:0, fire:0},
+         fixed:{shopv:0, props:0, cars:0, dots:0, graff:0, neon:0, puddles:0, hero:0, fire:0},
          flags:{poles:false, roadMarks:false, bollards:false, manholes:false, topFlat:true, arch:true, leaves:0.4},
          content:function(K){ return canalTheme(K); }}
 };
@@ -19863,6 +19864,21 @@ function streetTheme(K){
      and every drawing is byte-identical to v269. */
   var SALT_UPR=127, UVAR=Math.max(0,Math.min(1,(isFinite(p.uvar)?+p.uvar:55)/100));
   var UKINDS=['win','bal','shut','louv','blank'], UKW=[0.5,0.15,0.1,0.1,0.15];
+  /* ROW 73 (docs/specs/2026-10-08-strt-shopfronts.md): SHOP VARIETY and
+     PAVEMENT CLUTTER. One shop a lot, from SALT_SHOP, 8 numbers a lot whatever
+     the knobs say; props from SALT_PROP, 4 slots a bay x 6 numbers, likewise.
+     SALT_FAC is not touched, so the windows above never move, and at 0 / 0
+     nothing here draws: every drawing is v297's. A theme that declares neither
+     knob reads 0 for both. */
+  var SALT_SHOP=331, SALT_PROP=337;
+  var SHOPV=Math.max(0,Math.min(1,(isFinite(p.shopv)?+p.shopv:0)/100)), PROPS=Math.max(0,Math.min(1,(isFinite(p.props)?+p.props:0)/100));
+  var SHOPT=['glass','shut','noren','kombi','food','kiosk','stair'], SHOPW=[20,15,15,15,10,10,15];
+  /* which prop a slot holds, by the shop it stands in front of:
+     bike, vending, plants, crates, A-frame, gas meter */
+  var PROPK=['bike','vend','plant','crate','aframe','meter'];
+  var PROPW={glass:[3,3,3,0,0,1], shut:[3,4,0,1,0,2], noren:[1,0,3,2,3,1], kombi:[4,4,0,0,1,1],
+             food:[2,0,1,0,4,1], kiosk:[2,1,0,4,3,1], stair:[4,1,3,0,1,1]};
+  var COL_INDIGO='#24408e', COL_BLUE='#2156c7', COL_LEAFP='#1e5a32', COL_BROWNP='#8b5a2b';
   var COL_K='#1a1a1a', COL_HATCH='#4a4a4a', COL_GLOW='#f2c230', AWN=['#ec7a1c','#d42a2a'];
   var GLOW=Math.max(0,Math.min(1,(isFinite(p.glow)?+p.glow:22)/100));
   var FIRE=Math.max(0,Math.min(1,(isFinite(p.fire)?+p.fire:25)/100));
@@ -19896,6 +19912,11 @@ function streetTheme(K){
       if(nu>best && B.fr-L.fe>=0.9) { best=nu; escB=ix; }
     });
     var hasEsc=(escB>=0 && escU<FIRE);
+    /* row 73: the lot's shop -- eight numbers whatever the knob says */
+    var RSH=sub(sk,L.idx,SALT_SHOP), US=[RSH(),RSH(),RSH(),RSH(),RSH(),RSH(),RSH(),RSH()], STYPE='glass';
+    if(!FL.shopOpen && !L.gate && US[0]<SHOPV){ var wacc=0, wsum=100; for(var ti=0;ti<SHOPT.length;ti++){ wacc+=SHOPW[ti]; if(US[1]*wsum<wacc){ STYPE=SHOPT[ti]; break; } } }
+    STRTTALLY.shops.push({side:L.side, idx:L.idx, type:STYPE});
+    var PROPOCC=[];
     STRTTALLY.bld.push({side:L.side, idx:L.idx, top:'', esc:hasEsc, eligible:escB>=0});
     var BREC=STRTTALLY.bld[STRTTALLY.bld.length-1];
     /* ROW 53: a canal house's window heads are ARCHED, round or pointed, in
@@ -20000,6 +20021,256 @@ function streetTheme(K){
       }
       function elem(kind,cen,band){ STRTTALLY.elems.push({kind:kind, c:cen, band:band}); }
       function bandAt(P){ var d=dist3(P); return d<dn?'solid':d<df?'outline':''; }
+      /* ---- ROW 73: THE SHOP TYPES. Lines on the wall at every band the bay
+         is drawn in; the things that stand off it (awning, food case, counter,
+         lantern, noren, menu board) are solids nearer than Solid detail to and
+         inside `room`, outlines on the wall otherwise -- row 31's rule. */
+      function vlines(u0,u1,v0,v1,sp,col,kind){
+        var g=paperGap(wp(F,(u0+u1)/2,(v0+v1)/2,0),ZUP,F.t);
+        if(!(g>0)) return;
+        sp=Math.max(sp, MINSP/g);
+        for(var u=u0+sp;u<u1-1e-6;u+=sp) BP.lines.push({a:wp(F,u,v0,0), b:wp(F,u,v1,0), f0:2, f1:2, col:col, kind:kind});
+      }
+      function hsh(a,b){ var x=Math.sin(a*12.9898+b*78.233)*43758.5453; return x-Math.floor(x); }
+      function faceLines(Pq,fi,segs,col,kind){ segs.forEach(function(sg){ Pq.lines.push({a:sg[0], b:sg[1], f0:fi, f1:fi, col:col, kind:kind}); }); }
+      function occupy(a,b){ for(var q=0;q<PROPOCC.length;q++) if(a<PROPOCC[q][1] && PROPOCC[q][0]<b) return false; PROPOCC.push([a,b]); return true; }
+      function shopType(c,u0,u1,uc,band,zs){
+        var g0=u0+0.15, g1=u1-0.15, top=zs+2.6, near=band==='solid', T=STYPE, door=c===doorCol;
+        var ink=NEONC[Math.min(4,Math.floor(US[2]*5))];
+        if(T==='shut' || (T==='stair' && !door && US[3]>=0.5)){
+          rect(g0,g1,zs,top,COL_K,'shutterframe');
+          hlines(g0,g1,zs+0.12,top,0.10,COL_K,'shutter');
+          line(wp(F,g0,zs+0.12,0),wp(F,g1,zs+0.12,0),COL_K,'shutterframe');
+          rect(uc-0.05,uc+0.05,zs+0.14,zs+0.26,COL_K,'hasp');
+          rect(u0+0.1,u1-0.1,top,top+0.32,COL_K,'shutterbox');
+          graffiti(L,BP,F,2,g0+0.1,g1-0.1,zs+0.4,top-0.2,'shopshut',1000000+(L.idx*16+bi)*64+c,2);
+          return;
+        }
+        if(T==='stair'){
+          if(door){
+            rect(uc-0.45,uc+0.45,zs,zs+2.2,COL_K,'stairdoor');
+            for(var st2=1;st2<=4;st2++) line(wp(F,uc-0.45,zs+0.35*st2,0),wp(F,uc+0.45,zs+0.35*st2+0.18,0),COL_K,'stairdoor');
+            var nsb=3+Math.floor(US[3]*4), sx0=uc+0.55, sx1=Math.min(u1-0.05,uc+1.05);
+            for(var sb=0;sb<nsb;sb++){ var sz=zs+0.35+sb*0.34, scol=NEONC[Math.floor(hsh(US[4],sb)*5)];
+              if(sz+0.28>top) break;
+              rect(sx0,sx1,sz,sz+0.28,scol,'stairsign'); line(wp(F,sx0+0.06,sz+0.14,0),wp(F,sx1-0.06,sz+0.14,0),scol,'stairsign'); }
+            var mx0=Math.max(u0+0.05,uc-1.1), mx1=uc-0.55;
+            if(mx1-mx0>0.2) for(var mr=0;mr<2;mr++) for(var mc=0;mc<3;mc++){ var mxa=mx0+(mx1-mx0)*mc/3, mxb=mx0+(mx1-mx0)*(mc+1)/3;
+              rect(mxa+0.01,mxb-0.01,zs+1.1+mr*0.18,zs+1.26+mr*0.18,COL_K,'mailbox'); }
+          } else {
+            rect(g0,g1,zs,top,COL_K,'shop'); line(wp(F,g0,zs+2.2,0),wp(F,g1,zs+2.2,0),COL_K,'shop');
+          }
+          return;
+        }
+        if(T==='noren'){
+          if(door){
+            var dl=Math.max(g0,uc-0.8), dr=Math.min(g1,uc+0.8);
+            rect(dl,dr,zs,zs+2.2,COL_K,'shop'); line(wp(F,uc,zs,0),wp(F,uc,zs+2.2,0),COL_K,'shop');
+            vlines(dl,uc,zs+0.1,zs+2.1,0.06,COL_K,'koshi'); vlines(uc,dr,zs+0.1,zs+2.1,0.06,COL_K,'koshi');
+            var ncol=US[4]<0.6?COL_INDIGO:COL_RED, npn=3+Math.floor(US[5]*3), ndep=0.9+0.3*US[6], nw=(dr-dl-0.04*(npn-1))/npn;
+            line(wp(F,dl-0.05,zs+2.25,0.04),wp(F,dr+0.05,zs+2.25,0.04),COL_K,'noren');
+            for(var np=0;np<npn;np++){
+              var na=dl+np*(nw+0.04), nb2=na+nw;
+              if(near && room>=0.1){
+                var NP=solid(para(wp(F,na,zs+2.25-ndep,0.03),vec(F,'t',nw),vec(F,'n',0.02),vec(F,'z',ndep)),'noren',ncol);
+                NP.lines.forEach(function(Ln){ Ln.col=ncol; Ln.kind='noren'; });
+                /* a glyph on the near panels: three to five strokes, black */
+                var gx=na+nw/2, gz=zs+2.25-ndep*0.45, gs=Math.min(nw,ndep)*0.28, gk=Math.floor(hsh(US[7],np)*4);
+                var segs=[[[-1,1],[1,1]],[[0,1.2],[0,-1.2]],[[-1,-0.2],[1,-0.2]]];
+                if(gk&1) segs.push([[-0.9,0.5],[-0.9,-1]],[[0.9,0.5],[0.9,-1]]);
+                if(gk&2) segs.push([[-1,-1],[1,-1]]);
+                faceLines(NP,3,segs.map(function(sg){ return [wp(F,gx+sg[0][0]*gs,gz+sg[0][1]*gs,0.05),wp(F,gx+sg[1][0]*gs,gz+sg[1][1]*gs,0.05)]; }),COL_K,'norenglyph');
+              } else rect(na,nb2,zs+2.25-ndep,zs+2.25,ncol,'noren');
+            }
+            /* the red paper lantern beside the door, and a menu board */
+            var lu=Math.min(u1-0.25,dr+0.3);
+            if(occupy(lu-0.25,lu+0.25)){
+              if(near && room>=0.45){
+                var oc=[], ctr=wp(F,lu,0,0.25);
+                for(var m8=0;m8<8;m8++){ var an=TAU*(m8+0.5)/8; oc.push([ctr[0]+Math.cos(an)*0.17, ctr[1]+Math.sin(an)*0.17]); }
+                var LP=solid(prismN(oc,zs+1.6,zs+2.1),'shoplantern',COL_RED);
+                LP.lines.forEach(function(Ln){ Ln.col=(Ln.f0<=1||Ln.f1<=1)?COL_GLOW:COL_RED; Ln.kind='shoplantern'; });
+              } else rect(lu-0.17,lu+0.17,zs+1.6,zs+2.1,COL_RED,'shoplantern');
+            }
+            var mu2=Math.max(u0+0.3,dl-0.4);
+            if(occupy(mu2-0.25,mu2+0.25)){
+              if(near && room>=0.6){
+                var MB=solid(para(wp(F,mu2-0.22,zs+0.55,0.35),vec(F,'t',0.44),vec(F,'n',0.03),vec(F,'z',0.6)),'menuboard',COL_K);
+                solid(para(wp(F,mu2-0.02,zs,0.35),vec(F,'t',0.04),vec(F,'n',0.03),vec(F,'z',0.55)),'menuboard',COL_K);
+                var ml=[]; for(var mq=1;mq<=3;mq++) ml.push([wp(F,mu2-0.15,zs+0.55+0.15*mq,0.385),wp(F,mu2+0.15,zs+0.55+0.15*mq,0.385)]);
+                faceLines(MB,3,ml,COL_K,'menuboard');
+              } else rect(mu2-0.22,mu2+0.22,zs+0.55,zs+1.15,COL_K,'menuboard');
+            }
+          } else {
+            rect(g0,g1,zs+0.9,zs+2.2,COL_K,'shop'); vlines(g0,g1,zs+0.9,zs+2.2,0.06,COL_K,'koshi');
+            line(wp(F,g0,zs+2.4,0),wp(F,g1,zs+2.4,0),COL_K,'shop');
+          }
+          return;
+        }
+        if(T==='kombi'){
+          rect(u0+0.08,u1-0.08,zs,zs+2.7,COL_K,'shop');
+          if(door){ line(wp(F,uc,zs,0),wp(F,uc,zs+2.2,0),COL_K,'shop'); line(wp(F,uc-0.9,zs+2.2,0),wp(F,uc+0.9,zs+2.2,0),COL_K,'shop'); }
+          line(wp(F,u0+0.08,zs+0.95,0),wp(F,u1-0.08,zs+0.95,0),COL_K,'pricestrip'); line(wp(F,u0+0.08,zs+1.05,0),wp(F,u1-0.08,zs+1.05,0),COL_K,'pricestrip');
+          var npo=door?1:1+Math.floor(hsh(US[3],c)*2);
+          for(var po=0;po<npo;po++){ var pw2=0.45+0.35*hsh(US[4],c*7+po), pz=zs+1.2+0.6*hsh(US[5],c*7+po), pc=u0+0.2+(bw-0.4-pw2)*(po+0.5)/npo;
+            if(door && Math.abs(pc+pw2/2-uc)<1.0) pc=uc+0.95; if(pc+pw2>u1-0.1) continue;
+            rect(pc,pc+pw2,pz,Math.min(zs+2.6,pz+pw2*1.3),NEONC[Math.floor(hsh(US[6],c*7+po)*5)],'poster'); }
+          rect(u0+0.05,u1-0.05,zs+2.78,zs+3.08,ink,'litband'); line(wp(F,u0+0.15,zs+2.93,0),wp(F,u1-0.15,zs+2.93,0),ink,'litband');
+          return;
+        }
+        if(T==='food'){
+          var caseC=nb>1?(doorCol+1)%nb:-1;
+          rect(g0,g1,zs,top,COL_K,'shop'); line(wp(F,g0,zs+2.2,0),wp(F,g1,zs+2.2,0),COL_K,'shop');
+          if(door){ var dw3=Math.min(1.0,(g1-g0)*0.5); rect(uc-dw3/2,uc+dw3/2,zs,zs+2.2,COL_K,'shop'); }
+          if(c===caseC && occupy(u0+0.15,u1-0.15)){
+            var cw=Math.min(1.8,bw-0.4), ca=uc-cw/2, cz0=zs+0.3, cz1=zs+1.2, cd=Math.min(0.5,room-0.02);
+            var shelves=[cz0+0.3,cz0+0.6], dish=[];
+            [cz0+0.02,shelves[0]+0.02,shelves[1]+0.02].forEach(function(zb,sh){
+              var nd=3+Math.floor(hsh(US[3],c*3+sh)*3), dwid=cw/nd;
+              for(var di=0;di<nd;di++){ var dx=ca+dwid*(di+0.5), bowl=hsh(US[4],c*11+sh*5+di)<0.5, r=Math.min(0.11,dwid*0.38), q;
+                if(bowl){ for(q=0;q<6;q++){ var a0=Math.PI*q/6, a1=Math.PI*(q+1)/6; dish.push([[dx-Math.cos(a0)*r,zb+0.1-Math.sin(a0)*0.08],[dx-Math.cos(a1)*r,zb+0.1-Math.sin(a1)*0.08]]); }
+                  dish.push([[dx-r,zb+0.1],[dx+r,zb+0.1]]); }
+                else { dish.push([[dx-r,zb+0.04],[dx+r,zb+0.04]]);
+                  for(q=0;q<4;q++){ var b0=Math.PI*q/4, b1=Math.PI*(q+1)/4; dish.push([[dx-Math.cos(b0)*r*0.6,zb+0.04+Math.sin(b0)*0.07],[dx-Math.cos(b1)*r*0.6,zb+0.04+Math.sin(b1)*0.07]]); } }
+                dish.push([[dx-0.04,zb-0.0],[dx+0.04,zb-0.0]]); } });
+            if(near && cd>=0.3){
+              var FC=solid(para(wp(F,ca,cz0,0.02),vec(F,'t',cw),vec(F,'n',cd),vec(F,'z',cz1-cz0)),'foodcase',COL_K);
+              FC.hides=false; FC.seeThru=true;
+              var fr2=0.02+cd, sl=shelves.map(function(z1){ return [wp(F,ca,z1,fr2),wp(F,ca+cw,z1,fr2)]; });
+              faceLines(FC,3,sl,COL_K,'foodcase');
+              faceLines(FC,3,dish.map(function(d2){ return [wp(F,d2[0][0],d2[0][1],fr2),wp(F,d2[1][0],d2[1][1],fr2)]; }),COL_RED,'food');
+            } else {
+              rect(ca,ca+cw,cz0,cz1,COL_K,'foodcase');
+              shelves.forEach(function(z1){ line(wp(F,ca,z1,0),wp(F,ca+cw,z1,0),COL_K,'foodcase'); });
+            }
+          }
+          return;
+        }
+        if(T==='kiosk'){
+          var kc=(c===doorCol) || (nb>2 && c===(doorCol+1)%nb && US[3]<0.5);
+          if(!kc){ rect(g0,g1,zs,top,COL_K,'shutterframe'); hlines(g0,g1,zs+0.12,top,0.10,COL_K,'shutter'); return; }
+          rect(g0,g1,zs+1.0,zs+2.2,COL_K,'shop');
+          [1.3,1.6,1.9].forEach(function(zh){ line(wp(F,g0,zs+zh,0),wp(F,g1,zs+zh,0),COL_K,'shelf');
+            var gb=paperGap(wp(F,uc,zs+zh,0),ZUP,F.t), bsp=Math.max(0.08,gb>0?MINSP/gb:1e9);
+            for(var bx=g0+bsp;bx<g1-0.05 && gb>0;bx+=bsp) line(wp(F,bx,zs+zh,0),wp(F,bx,zs+zh+0.16,0),COL_K,'bottle'); });
+          if(near && room>=0.4 && occupy(g0,g1)) solid(para(wp(F,g0,zs,0),vec(F,'t',g1-g0),vec(F,'n',Math.min(0.35,room-0.02)),vec(F,'z',1.0)),'counter',COL_K);
+          else line(wp(F,g0,zs+1.0,0),wp(F,g1,zs+1.0,0),COL_K,'counter');
+          var dpk=Math.min(0.6,room-0.02);
+          if(near && dpk>=0.3) solid(para(wp(F,u0+0.1,zs+2.45,0),vec(F,'t',u1-u0-0.2),add3(vec(F,'n',dpk),ZUP,-0.2),vec(F,'z',0.05)),'awning',AWN[US[5]<0.5?0:1]);
+          else line(wp(F,u0+0.1,zs+2.45,0),wp(F,u1-0.1,zs+2.45,0),AWN[US[5]<0.5?0:1],'awning');
+          return;
+        }
+      }
+      /* ---- ROW 73: PAVEMENT PROPS, in the lot's own container in front of
+         its shop face and inside `room`; a prop that does not fit -- too deep
+         for the room, or where another already stands -- is dropped and
+         counted. Solids nearer than Solid detail to, outlines on the wall to
+         Outline detail to. */
+      function propAt(c,u0,u1,band,W,zs){
+        var wts=PROPW[STYPE], tot=0, acc=0, k, kind='bike';
+        for(k=0;k<6;k++) tot+=wts[k];
+        for(k=0;k<6;k++){ acc+=wts[k]; if(W[1]*tot<acc){ kind=PROPK[k]; break; } }
+        var near=band==='solid', rec={side:L.side, idx:L.idx, kind:kind, band:band, placed:false};
+        STRTTALLY.props.push(rec);
+        var nv=1+Math.floor(W[3]*3), npl=2+Math.floor(W[3]*4), ncr=2+Math.floor(W[3]*3);
+        var len=kind==='bike'?1.7:kind==='vend'?1.0*nv:kind==='plant'?0.62*npl:kind==='crate'?0.45:kind==='aframe'?0.6:0.4;
+        var dep=kind==='bike'?0.55:kind==='vend'?0.75:kind==='plant'?0.6:kind==='crate'?0.3:kind==='aframe'?0.5:0;
+        if(len>u1-u0-0.2) return;
+        var ua=u0+0.1+(u1-u0-0.2-len)*W[2], ub=ua+len;
+        if(dep>room-0.05) return;
+        if(!occupy(ua,ub)) return;
+        rec.placed=true;
+        var K='prop'+kind, z0=zs;
+        if(kind==='meter'){
+          rect(ua+0.05,ua+0.35,z0+1.2,z0+1.65,COL_K,K);
+          line(wp(F,ua+0.12,z0+1.2,0),wp(F,ua+0.12,z0,0),COL_K,K); line(wp(F,ua+0.28,z0+1.2,0),wp(F,ua+0.28,z0,0),COL_K,K);
+          return;
+        }
+        if(!near){
+          /* outline on the wall plane */
+          if(kind==='bike'){ [0.33,1.37].forEach(function(wx){ var pts=[]; for(var q=0;q<=12;q++){ var an=TAU*q/12; pts.push(wp(F,ua+wx+Math.cos(an)*0.33,z0+0.33+Math.sin(an)*0.33,0)); }
+              for(q=1;q<pts.length;q++) line(pts[q-1],pts[q],COL_K,K); });
+            line(wp(F,ua+0.33,z0+0.33,0),wp(F,ua+0.8,z0+0.85,0),COL_K,K); line(wp(F,ua+0.8,z0+0.85,0),wp(F,ua+1.25,z0+0.85,0),COL_K,K); line(wp(F,ua+1.25,z0+0.85,0),wp(F,ua+1.37,z0+0.33,0),COL_K,K); }
+          else { var hh=kind==='vend'?1.83:kind==='plant'?0.9:kind==='crate'?0.3*ncr:0.9; rect(ua,ub,z0,z0+hh,kind==='vend'?(W[4]<0.4?COL_RED:W[4]<0.7?COL_BLUE:COL_K):COL_K,K); }
+          return;
+        }
+        if(kind==='bike'){
+          var BK=solid(para(wp(F,ua,z0,0.2),vec(F,'t',1.7),vec(F,'n',0.1),vec(F,'z',1.0)),K,COL_K,{layer:'prop'});
+          BK.lines=[]; BK.hides=false; BK.seeThru=true;
+          var bl=[], on=0.25;
+          function P2(x,z){ return wp(F,ua+x,z0+z,on); }
+          [0.33,1.37].forEach(function(wx){
+            var q, pts=[]; for(q=0;q<=24;q++){ var an=TAU*q/24; pts.push(P2(wx+Math.cos(an)*0.33,0.33+Math.sin(an)*0.33)); }
+            for(q=1;q<pts.length;q++) bl.push([pts[q-1],pts[q]]);
+            var g=paperGap(P2(wx,0.33),ZUP,F.t), nsp=g>0?Math.min(12,Math.floor(TAU*0.33*g/MINSP)):0;
+            if(nsp>=4) for(q=0;q<nsp;q++){ var as=TAU*q/nsp; bl.push([P2(wx,0.33),P2(wx+Math.cos(as)*0.31,0.33+Math.sin(as)*0.31)]); }
+          });
+          bl.push([P2(0.33,0.33),P2(0.85,0.3)],[P2(0.85,0.3),P2(0.75,0.85)],[P2(0.75,0.85),P2(0.33,0.33)],[P2(0.75,0.85),P2(1.25,0.85)],
+                  [P2(1.25,0.85),P2(0.85,0.3)],[P2(1.25,0.85),P2(1.37,0.33)],[P2(0.65,0.92),P2(0.88,0.92)],[P2(1.18,0.98),P2(1.32,0.98)]);
+          if(W[4]<0.5) bl.push([P2(1.3,0.7),P2(1.58,0.7)],[P2(1.58,0.7),P2(1.58,0.9)],[P2(1.58,0.9),P2(1.3,0.9)]);
+          bl.forEach(function(sg){ BK.lines.push({a:sg[0], b:sg[1], f0:2, f1:3, col:COL_K, kind:K}); });
+          return;
+        }
+        if(kind==='vend'){
+          var vcol=W[4]<0.4?COL_RED:W[4]<0.7?COL_BLUE:COL_K;
+          for(var vi=0;vi<nv;vi++){
+            var va=ua+vi*1.0, VM=solid(para(wp(F,va,z0,0.02),vec(F,'t',1.0),vec(F,'n',0.75),vec(F,'z',1.83)),K,vcol,{layer:'prop'});
+            VM.lines.forEach(function(Ln){ Ln.col=vcol; Ln.kind=K; });
+            var fz=0.77, fl=[];
+            function R4(x0,x1,y0,y1){ fl.push([wp(F,va+x0,z0+y0,fz),wp(F,va+x1,z0+y0,fz)],[wp(F,va+x1,z0+y0,fz),wp(F,va+x1,z0+y1,fz)],[wp(F,va+x1,z0+y1,fz),wp(F,va+x0,z0+y1,fz)],[wp(F,va+x0,z0+y1,fz),wp(F,va+x0,z0+y0,fz)]); }
+            R4(0.08,0.92,0.95,1.72); R4(0.15,0.85,0.15,0.35); R4(0.8,0.86,0.75,0.88);
+            fl.push([wp(F,va+0.1,z0+0.88,fz),wp(F,va+0.75,z0+0.88,fz)]);
+            var nbt=6+Math.floor(W[5]*3), gB=paperGap(wp(F,va+0.5,z0+1.3,fz),ZUP,F.t);
+            if(gB>0 && 0.84/nbt*gB>=MINSP) for(var br=0;br<3;br++) for(var bc=0;bc<nbt;bc++){ var bxa=va+0.1+0.84*(bc+0.25)/nbt, bxb=va+0.1+0.84*(bc+0.75)/nbt, bz=1.0+br*0.24;
+              fl.push([wp(F,bxa,z0+bz,fz),wp(F,bxa,z0+bz+0.15,fz)],[wp(F,bxb,z0+bz,fz),wp(F,bxb,z0+bz+0.15,fz)],[wp(F,bxa,z0+bz+0.15,fz),wp(F,bxb,z0+bz+0.15,fz)]); }
+            faceLines(VM,3,fl,vcol,K);
+          }
+          return;
+        }
+        if(kind==='plant'){
+          for(var pi=0;pi<npl;pi++){
+            var pw=0.3+0.28*hsh(W[4],pi), pa=ua+pi*0.62+(0.62-pw)/2, ph=pw*0.9;
+            var PT=solid(para(wp(F,pa,z0,0.05),vec(F,'t',pw),vec(F,'n',pw),vec(F,'z',ph)),K,COL_BROWNP,{layer:'prop'});
+            PT.lines.forEach(function(Ln){ Ln.col=COL_BROWNP; Ln.kind=K; });
+            var LM=solid(para(wp(F,pa,z0+ph,0.05),vec(F,'t',pw),vec(F,'n',pw),vec(F,'z',pw*0.8)),K,COL_LEAFP,{layer:'prop'});
+            LM.lines=[]; LM.hides=false; LM.seeThru=true;
+            var nlv=5+Math.floor(hsh(W[5],pi)*5), mid=0.05+pw/2;
+            for(var lv=0;lv<nlv;lv++){ var la=TAU*lv/nlv, lx=pa+pw/2+Math.cos(la)*pw*0.3, lz=z0+ph+pw*0.35+Math.sin(la)*pw*0.25, q2, prv=null;
+              for(q2=0;q2<=4;q2++){ var aa=la-0.8+0.4*q2, pt=wp(F,lx+Math.cos(aa)*pw*0.18,lz+Math.sin(aa)*pw*0.18,mid); if(prv) LM.lines.push({a:prv, b:pt, f0:2, f1:3, col:COL_LEAFP, kind:K}); prv=pt; } }
+          }
+          return;
+        }
+        if(kind==='crate'){
+          var ccol=W[4]<0.5?COL_GLOW:COL_RED, CR=solid(para(wp(F,ua,z0,0.05),vec(F,'t',0.45),vec(F,'n',0.3),vec(F,'z',0.3*ncr)),K,ccol,{layer:'prop'});
+          CR.lines.forEach(function(Ln){ Ln.col=ccol; Ln.kind=K; });
+          var cl=[], fn=0.35;
+          for(var cr=0;cr<ncr;cr++){ var zc=z0+0.3*cr; if(cr) cl.push([wp(F,ua,zc,fn),wp(F,ua+0.45,zc,fn)]);
+            cl.push([wp(F,ua+0.06,zc+0.2,fn),wp(F,ua+0.39,zc+0.2,fn)],[wp(F,ua+0.06,zc+0.24,fn),wp(F,ua+0.39,zc+0.24,fn)]); }
+          faceLines(CR,3,cl,ccol,K);
+          var gT=paperGap(wp(F,ua+0.22,z0+0.3*ncr,0.2),F.t,F.n);
+          if(gT>0 && 0.09*gT>=MINSP){ var tl=[], zt=z0+0.3*ncr;
+            for(var tx=0;tx<4;tx++) for(var ty=0;ty<3;ty++){ var cx2=ua+0.06+tx*0.11, cn=0.1+ty*0.1;
+              tl.push([wp(F,cx2-0.02,zt,cn),wp(F,cx2+0.02,zt,cn)],[wp(F,cx2,zt,cn-0.02),wp(F,cx2,zt,cn+0.02)]); }
+            faceLines(CR,1,tl,COL_K,K); }
+          return;
+        }
+        if(kind==='aframe'){
+          var A0=wp(F,ua,z0,0.05), Bf=wp(F,ua,z0,0.55), Ap=wp(F,ua,z0+0.9,0.3), tv=vec(F,'t',0.6);
+          var A1=add3(A0,tv,1), B1=add3(Bf,tv,1), Ap1=add3(Ap,tv,1);
+          var AF=polyFromLoops([[A0,Bf,Ap],[A1,B1,Ap1],[A0,A1,B1,Bf],[Bf,B1,Ap1,Ap],[A0,Ap,Ap1,A1]]);
+          solid(AF,K,COL_K,{layer:'prop'}); AF.lines.forEach(function(Ln){ Ln.kind=K; });
+          /* the chalk panel and three lines of lettering on the street-side leaf */
+          function onLeaf(x,h){ var f=h/0.9; return [ua+x, z0+h, 0.55-0.25*f]; }
+          var al=[], pz=[[0.08,0.15],[0.52,0.15],[0.52,0.75],[0.08,0.75]];
+          for(var e2=0;e2<4;e2++){ var p1=onLeaf(pz[e2][0],pz[e2][1]), p2=onLeaf(pz[(e2+1)%4][0],pz[(e2+1)%4][1]);
+            al.push([wp(F,p1[0],p1[1],p1[2]+0.005),wp(F,p2[0],p2[1],p2[2]+0.005)]); }
+          for(var lt=0;lt<3;lt++){ var lh=0.6-lt*0.15, wl=0.2+0.2*hsh(W[5],lt), q1=onLeaf(0.12,lh), q3=onLeaf(0.12+wl,lh);
+            al.push([wp(F,q1[0],q1[1],q1[2]+0.005),wp(F,q3[0],q3[1],q3[2]+0.005)]); }
+          faceLines(AF,3,al,COL_K,K);
+          return;
+        }
+      }
+
       /* ROW 45 §2.4: one window's clutter, each item at its own rate x Upper
          variety. An AC unit and a planter are SOLIDS nearer than Solid detail
          to (inside `room`, the envelope rule) and outlines further out;
@@ -20114,6 +20385,16 @@ function streetTheme(K){
             }
             elem('shop',cen,band);
             continue;
+          }
+
+          if(shop && !FL.shopOpen && !L.gate){
+            /* ROW 73: the pavement in front of this bay -- four slots of six
+               numbers, drawn whatever the knob says -- then the shop itself */
+            var RPP=sub(sk,(L.idx*16+bi)*64+c,SALT_PROP), PU=[];
+            for(var pk=0;pk<24;pk++) PU.push(RPP());
+            if(STYPE!=='glass'){ shopType(c,u0,u1,uc,band,zs); elem('shop',cen,band); }
+            for(var ps=0;ps<4;ps++) if(PU[ps*6]<PROPS) propAt(c,u0,u1,band,PU.slice(ps*6,ps*6+6),zs);
+            if(STYPE!=='glass') continue;
           }
           if(shop){
             /* the shopfront: glass, mullions, a transom, one door, an awning
@@ -21283,9 +21564,9 @@ function streetTheme(K){
      2-4 pseudo-glyphs -- each glyph's strokes drawn as fat tubes, which is
      what a bubble letter is. Its own substream per wall, drawn in a fixed
      count; not drawn where it would be under 2 mm tall on the sheet. */
-  function graffiti(L,Pt,FR,fi,u0,u1,v0,v1,wall,key){
+  function graffiti(L,Pt,FR,fi,u0,u1,v0,v1,wall,key,rate){
     var sk=L.side<0?2:1, RG=sub(sk,key,SALT_GRAF), uP=RG(), uS=RG(), uC=RG(), uW=RG(), uX=RG();
-    var rec={style:uS<0.55?'tag':'throw', wall:wall, side:L.side, idx:L.idx, placed:uP<GRAFF};
+    var rec={style:uS<0.55?'tag':'throw', wall:wall, side:L.side, idx:L.idx, placed:uP<GRAFF*(rate||1)};
     STRTTALLY.graff.push(rec);
     if(!rec.placed) return;
     var col=[COL_MAG,COL_TURQ,COL_GLOW,COL_K][Math.min(3,Math.floor(uC*4))];
@@ -22325,6 +22606,7 @@ function buildCorridor(p,THM){
     STRTTALLY.mirrorSkip=THM.mirrorSkip||[]; STRTTALLY.pudMinMM=THM.pudMinMM||0;
     STRTTALLY.elems=[]; STRTTALLY.bld=[]; STRTTALLY.hfaces=[];
     STRTTALLY.signs=[]; STRTTALLY.graff=[]; STRTTALLY.cars=[]; STRTTALLY.upr=[]; STRTTALLY.urows=[]; STRTTALLY.unsepPairs=[];
+    STRTTALLY.shops=[]; STRTTALLY.props=[];
     conts.forEach(function(C){ C.parts=[]; });
     lots.forEach(function(L){
       L.blocks.forEach(function(B){
@@ -22857,7 +23139,8 @@ function buildCorridor(p,THM){
              elems:STRTTALLY.elems.length, signs:nsigns, cables:cables.length, cars:(CT.cars||[]).length,
              dots:(CT.dots||[]).length, penup0:penup0, penup1:penup1, dsplit:DSPLIT,
              puddles:puds.length-(heroRec?heroRec.pieces.length:0), heroPieces:heroRec?heroRec.pieces.length:0, pudRejected:prej, rstep:RSTEPMM(), pudVisible:RR.npud, mirrored:RR.nmirror,
-             reflRuns:RR.nrefl, rcycles:RR.rcycles, rsplits:RR.rsplits, runsep:RR.runsep, eyeclr:EYECLR, eyein:EYEIN};
+             reflRuns:RR.nrefl, rcycles:RR.rcycles, rsplits:RR.rsplits, runsep:RR.runsep, eyeclr:EYECLR, eyein:EYEIN,
+             propdrop:(STRTTALLY.props||[]).filter(function(r){ return !r.placed; }).length};
   STRTINFO=lots.length+' lots · '+committed.length.toLocaleString()+' parts · '+
            res.length.toLocaleString()+' paths'+
            (cycles?' · CYCLES '+cycles:' · cycles 0')+
@@ -24682,6 +24965,8 @@ var HELP={
 'strt.budg':'How many points the drawing may use, in thousands. If the street needs more, the two detail distances come in toward you and the LOD cutoff rises until it fits, and the status line says so.',
 'strt.lod':'The smallest part still drawn, as its size on the sheet. Far buildings shrink toward nothing near the vanishing point; below this they are left out rather than drawn as a blob the pen cannot resolve. 0 draws everything.',
 'strt.uvar':'How much the upper floors vary. Storeys fall into zones of 2-5; each zone may re-roll its bays (windows, balconies, shutters, louvres, blank), become a ribbon of windows, tall pairs or a plant storey, get a belt course, and its windows carry AC units, laundry, planters, curtains or grilles. 0 is one scheme top to bottom.',
+'strt.props':'Things on the pavement in front of the shops, chosen by the shop: bicycles parked along the wall, vending machines, potted plants, beer crates, A-frame boards, gas meters. Each stands inside its own lot. 0 is a bare pavement.',
+'strt.shopv':'How many lots have their own kind of shop: closed shutters, an eatery with a noren and a red lantern, a convenience store with posters, a plastic-food case, a counter kiosk, a stair to the bars upstairs. 0 is plain glass shopfronts everywhere; at 60 about half the lots are glass.',
 'strt.signs':'How many of the places a sign could go carry one: the shop\u2019s fascia, a billboard on a flat roof, and slots up each bay line of the facade for blade signs, tall banners, lightboxes and round emblems. 0 is a street with no signs; 100 fills every slot.',
 'strt.neon':'How many signs are neon. A neon sign\u2019s lettering becomes tubes (two lines a glyph\u2019s 4% apart, round at the ends) in one neon ink -- magenta, pink, turquoise, light blue or orange -- with a double border; close enough, the tubes show as tubes, further off as single strokes.',
 'strt.lang':'The script on the signs. 0 pseudo-kanji (1-3 radicals of 2-6 strokes), 1 pseudo-hangul (blocks of 2-3 parts), 2 Latin (real words in the Hershey sans face), 3 a mix, one script per sign. The invented characters recur across signs, so they read as a script rather than as scribbles.',
