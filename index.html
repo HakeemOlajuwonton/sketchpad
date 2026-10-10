@@ -424,7 +424,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v296</a> &mdash; ENGINE PICKER FOLDS -- the engine tabs sit in a Pick engine fold, open on a first visit, remembered, its header naming family and engine (queue row 71)</span></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v297</a> &mdash; CORRIDOR TURN -- a Turn knob after Look ahead on all five corridor engines faces a row head-on; puddles follow the view, movable things clear of the eye (queue row 72)</span></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <section class="fold" id="fold_pick"><h2>Pick engine<span class="cnt"></span></h2>
@@ -2119,7 +2119,7 @@ var SPEC={
     ['hatch','Tone hatch',0,100,1,55,[100,'%']],['hatchmode','Hatch spacing',0,1,1,0],
     ['sun','Light from',0,359,1,300,[1,'°']],
     ['cams','Camera along',0,90,1,12,[100,'%']],['camx','Camera side',-100,100,1,-10,[100,'%']],
-    ['camz','Camera height',0.2,80,0.1,1.6,[1,' m']],['look','Look ahead',5,300,1,60,[1,' m']],
+    ['camz','Camera height',0.2,80,0.1,1.6,[1,' m']],['look','Look ahead',5,300,1,60,[1,' m']],['turn','Turn',-90,90,1,0,[1,'°']],
     ['pitch','Pitch',-45,45,0.5,6,[1,'°']],['fov','Field of view',25,120,1,72,[1,'°']],
     ['dnear','Solid detail to',2,80,1,18,[1,' m']],['dfar','Outline detail to',10,400,5,90,[1,' m']],
     ['dpen','Depth pens',0,1,1,0],['dsplit','Depth split',5,300,5,60,[1,' m']],
@@ -2147,7 +2147,7 @@ var SPEC={
     ['hatch','Tone hatch',0,100,1,55,[100,'%']],['hatchmode','Hatch spacing',0,1,1,0],
     ['sun','Light from',0,359,1,300,[1,'°']],
     ['cams','Camera along',0,90,1,6,[100,'%']],['camx','Camera side',-100,100,1,0,[100,'%']],
-    ['camz','Camera height',0.2,80,0.1,1.6,[1,' m']],['look','Look ahead',5,300,1,25,[1,' m']],
+    ['camz','Camera height',0.2,80,0.1,1.6,[1,' m']],['look','Look ahead',5,300,1,25,[1,' m']],['turn','Turn',-90,90,1,0,[1,'°']],
     ['pitch','Pitch',-45,45,0.5,4,[1,'°']],['fov','Field of view',25,120,1,80,[1,'°']],
     ['dnear','Solid detail to',2,80,1,18,[1,' m']],['dfar','Outline detail to',10,400,5,90,[1,' m']],
     ['dpen','Depth pens',0,1,1,0],['dsplit','Depth split',5,300,5,60,[1,' m']],
@@ -2164,7 +2164,7 @@ var SPEC={
     ['rvar','Ripple variety',0,100,1,60,[100,'%']],
     ['hatch','Tone hatch',0,100,1,50,[100,'%']],['sun','Light from',0,359,1,300,[1,'°']],
     ['cams','Camera along',0,90,1,5,[100,'%']],['camx','Camera side',-100,100,1,-20,[100,'%']],
-    ['camz','Camera height',0.2,80,0.1,1.8,[1,' m']],['look','Look ahead',5,300,1,80,[1,' m']],
+    ['camz','Camera height',0.2,80,0.1,1.8,[1,' m']],['look','Look ahead',5,300,1,80,[1,' m']],['turn','Turn',-90,90,1,0,[1,'°']],
     ['pitch','Pitch',-45,45,0.5,3,[1,'°']],['fov','Field of view',25,120,1,70,[1,'°']],
     ['dnear','Solid detail to',2,80,1,18,[1,' m']],['dfar','Outline detail to',10,400,5,90,[1,' m']],
     ['dpen','Depth pens',0,1,1,0],['dsplit','Depth split',5,300,5,60,[1,' m']],
@@ -2182,7 +2182,7 @@ var SPEC={
     ['hero','Front shine',0,100,1,0,[100,'%']],
     ['hstr','Front shine stretch',-100,100,1,0,[100,'%']],['hrag','Front shine edge',0,100,1,50,[100,'%']],['hturn','Front shine turn',-45,45,1,0,[1,'°']],['hshape','Front shine shape',0,99,1,0],
     ['cams','Camera along',0,90,1,2,[100,'%']],['camx','Camera side',-100,100,1,0,[100,'%']],
-    ['camz','Camera height',0.2,3,0.05,1.55,[1,' m']],['look','Look ahead',2,100,1,15,[1,' m']],
+    ['camz','Camera height',0.2,3,0.05,1.55,[1,' m']],['look','Look ahead',2,100,1,15,[1,' m']],['turn','Turn',-90,90,1,0,[1,'°']],
     ['pitch','Pitch',-45,45,0.5,2,[1,'°']],['fov','Field of view',25,120,1,75,[1,'°']],
     ['dnear','Solid detail to',1,40,0.5,6,[1,' m']],['dfar','Outline detail to',2,120,1,20,[1,' m']],
     ['dpen','Depth pens',0,1,1,0],['dsplit','Depth split',2,120,1,15,[1,' m']],
@@ -2207,7 +2207,7 @@ var SPEC={
     ['hatch','Tone hatch',0,100,1,55,[100,'%']],['hatchmode','Hatch spacing',0,1,1,0],
     ['sun','Light from',0,359,1,300,[1,'°']],
     ['cams','Camera along',0,90,1,5,[100,'%']],['camx','Camera side',-100,100,1,15,[100,'%']],
-    ['camz','Camera height',0.2,80,0.1,1.2,[1,' m']],['look','Look ahead',5,300,1,50,[1,' m']],
+    ['camz','Camera height',0.2,80,0.1,1.2,[1,' m']],['look','Look ahead',5,300,1,50,[1,' m']],['turn','Turn',-90,90,1,0,[1,'°']],
     ['pitch','Pitch',-45,45,0.5,3,[1,'°']],['fov','Field of view',25,120,1,70,[1,'°']],
     ['dnear','Solid detail to',2,80,1,18,[1,' m']],['dfar','Outline detail to',10,400,5,90,[1,' m']],
     ['dpen','Depth pens',0,1,1,0],['dsplit','Depth split',5,300,5,60,[1,' m']],
@@ -18993,6 +18993,8 @@ function libraryTheme(K){
                                                        type:B.cov?B.cov.type:null, viv:B.cov?B.cov.viv:null}); });
       placeBooks(run,null,X,L0+0.03,oa+0.02,z+0.02,band,layer,sd<0?4:3,j*4+si,sd).forEach(function(P){ parts.push(P); });
     });
+    /* row 72: one id for the whole cart, so the eye-clear filter drops it whole */
+    parts.forEach(function(P){ P.cartId=j; });
     return {parts:parts, books:nb};
   }
   function carts(dn,df){
@@ -21334,6 +21336,8 @@ function buildCorridor(p,THM){
   var CAMS=(isFinite(p.cams)?+p.cams:12)/100, CAMX=(isFinite(p.camx)?+p.camx:-10)/100;
   var CAMZ=Math.max(0.2,isFinite(p.camz)?+p.camz:1.6);
   var LOOK=Math.max(5,+p.look||60), PITCH=(isFinite(p.pitch)?+p.pitch:6)*Math.PI/180;
+  /* row 72: Turn, positive LEFT (counter-clockwise in plan) */
+  var TURN=Math.max(-90,Math.min(90,isFinite(p.turn)?+p.turn:0))*Math.PI/180;
   var FOV=Math.max(25,Math.min(120,isFinite(p.fov)?+p.fov:72))*Math.PI/180;
   var LODMM=Math.max(0,(isFinite(p.lod)?+p.lod:4)/10);
   var GAP=((p.occ||0)/10)/PAGEMM;
@@ -21518,6 +21522,11 @@ function buildCorridor(p,THM){
   var CE=P3(sC,1,CAMX*HALFW,CAMZ), TG=P3(sC+LOOK,1,0,CAMZ);
   var fx=TG[0]-CE[0], fy=TG[1]-CE[1], fl=Math.hypot(fx,fy)||1;
   fx/=fl; fy/=fl;
+  /* ROW 72, TURN: the plan direction rotated after it is normalised and before
+     FW is built. `Look ahead` still picks the base direction -- the street's
+     tangent near the eye -- and Turn rotates from there, so on a bent street
+     Turn 90 faces the facade opposite the eye. At 0 nothing runs. */
+  if(TURN!==0){ var tca=Math.cos(TURN), tsa=Math.sin(TURN), tgx=fx*tca-fy*tsa, tgy=fx*tsa+fy*tca; fx=tgx; fy=tgy; }
   var FW=[fx*Math.cos(PITCH), fy*Math.cos(PITCH), Math.sin(PITCH)];
   var RT=[FW[1], -FW[0], 0], rl=Math.hypot(RT[0],RT[1])||1;
   RT=[RT[0]/rl, RT[1]/rl, 0];
@@ -21768,17 +21777,25 @@ function buildCorridor(p,THM){
   if(HERO>0){
     var RH=sub(0,HSHAPE,SALT_HERO), uh=[]; for(j=0;j<12;j++) uh.push(RH());
     /* g0: the ray through (centre, bottom of the drawable area) to z = 0 */
-    var syB=-(PGH-PAD-PGH/2)/(FF*HW), dB=[FW[0]+syB*UP[0], FW[1]+syB*UP[1], FW[2]+syB*UP[2]], g0=null;
+    var syB=-(PGH-PAD-PGH/2)/(FF*HW), dB=[FW[0]+syB*UP[0], FW[1]+syB*UP[1], FW[2]+syB*UP[2]], g0=null, GBo=null;
     if(dB[2]<-1e-9){
       var tB=-CE[2]/dB[2], GB=[CE[0]+dB[0]*tB, CE[1]+dB[1]*tB], bi=0, bd=1e18;
       for(j=0;j<NS;j++){ var dd=(SX[j]-GB[0])*(SX[j]-GB[0])+(SY[j]-GB[1])*(SY[j]-GB[1]); if(dd<bd){ bd=dd; bi=j; } }
       var Fg=frame(bi*DS), sg0=bi*DS+(GB[0]-Fg[0])*Fg[2]+(GB[1]-Fg[1])*Fg[3];
-      if(sg0>sC && sg0<LEN-1) g0=sg0;
+      /* row 72: turned, the ray can land at the eye's own arc or behind it, so
+         only the street's ends bound it; GBo is its lateral offset */
+      if((TURN!==0?sg0>0.5:sg0>sC) && sg0<LEN-1){ g0=sg0; if(TURN!==0) GBo=(GB[0]-Fg[0])*(-Fg[3])+(GB[1]-Fg[1])*Fg[2]; }
     }
     if(g0===null){ g0=sC+2; heroInfo=' · front puddle off sheet'; }
     var hL=(2.5+7.5*HERO)*HSTR, hW=Math.min((0.45+0.45*HERO)*WID/HSTR, WID-0.4), room=Math.max(0,WID-0.4-hW);
     var hs0=g0+0.3, hs1=Math.min(LEN-0.2,hs0+hL);
     var camSide=CAMX<0?-1:1, oside=uh[0]<0.6?camSide:-camSide, hoc=oside*(room/2)*uh[1];
+    /* row 72: turned, it is CENTRED on where the bottom of the frame meets the
+       road, along and across, and kept 0.2 m inside the road's edges */
+    if(GBo!==null){
+      hs0=Math.max(0.2,Math.min(LEN-0.2-hL,g0-hL/2)); hs1=Math.min(LEN-0.2,hs0+hL);
+      var hcap=Math.max(0,HALFW-0.2-hW/2); hoc=Math.max(-hcap,Math.min(hcap,GBo));
+    }
     var ha2=0.18*uh[2]*HRAG, ha3=0.13*uh[3]*HRAG, ha5=0.07*uh[4]*HRAG, ha7=0.05*uh[5]*HRAG, hrot=(uh[10]-0.5)*0.3, hloc=[], hmx=0, hmy=0;
     for(j=0;j<64;j++){
       var hth=TAU*j/64;
@@ -21823,18 +21840,46 @@ function buildCorridor(p,THM){
     return inside(A[0],B) || inside(B[0],A);
   }
   var sPud0=Math.min(LEN-4,CAMS*LEN+3), sPud1=Math.min(LEN-0.5,CAMS*LEN+63);
+  /* ROW 72: TURNED, THE PUDDLES ARE PLACED IN THE VIEW. Same substream, same
+     numbers, same shapes. §2.2 moved only the arc (sF +- W) and that is
+     REFUTED, measured: from the defaults' camera, 0.35 m off the centreline,
+     a turned frame sees a 0.4-1.1 m strip of road, and arc-only placement put
+     5% and 0% of the puddles' area in frame at Turn +-90. So a puddle's centre
+     is a ground point IN the frame: at a plan depth between where the bottom
+     of the frame meets the road and where the view leaves it, and across 80%
+     of the frame's width there -- which fixes its arc, its side and its
+     offset, each then clamped to its slab as before. With no road in the
+     frame (pitched up, or none between the two) the arc moves alone. */
+  var PV=null;
+  if(TURN!==0){
+    var Fe=frame(sC), fnE=fx*(-Fe[3])+fy*Fe[2], oE=CAMX*HALFW;
+    var syV=-(PGH-PAD-PGH/2)/(FF*HW), dV=[FW[0]+syV*UP[0], FW[1]+syV*UP[1], FW[2]+syV*UP[2]];
+    if(dV[2]<-1e-9 && Math.abs(fnE)>1e-6){
+      var tV=-CE[2]/dV[2], dNr=tV*(dV[0]*fx+dV[1]*fy), dFr=((fnE>0?HALFW:-HALFW)-oE)/fnE;
+      if(dFr>dNr+0.3) PV={dn:Math.max(0,dNr), df:dFr};
+    }
+  }
   var puds=[], prej=0;
   for(i=0;i<PUDN;i++){
     var RPD=sub(0,i,SALT_PUD), ud=[];
     for(j=0;j<14;j++) ud.push(RPD());
     var sdP=ud[1]<0.5?1:-1, slP=slabsBySide[sdP];
-    var sPd=Math.min(LEN-0.5, sPud0+(sPud1-sPud0)*ud[0]*ud[0]);
+    var sPd=Math.min(LEN-0.5, sPud0+(sPud1-sPud0)*ud[0]*ud[0]), pvO=null;
+    if(PV){
+      var dP=PV.dn+(PV.df-PV.dn)*ud[5], hP=(2*ud[0]-1)*0.8*dP/FF;
+      var GX=CE[0]+fx*dP+fy*hP, GY=CE[1]+fy*dP-fx*hP, gi=0, gd=1e18;
+      for(j=0;j<NS;j++){ var dg=(SX[j]-GX)*(SX[j]-GX)+(SY[j]-GY)*(SY[j]-GY); if(dg<gd){ gd=dg; gi=j; } }
+      var Fq=frame(gi*DS), oG=(GX-Fq[0])*(-Fq[3])+(GY-Fq[1])*Fq[2];
+      sPd=Math.max(3,Math.min(LEN-4,gi*DS+(GX-Fq[0])*Fq[2]+(GY-Fq[1])*Fq[3]));
+      sdP=oG>=0?1:-1; slP=slabsBySide[sdP]; pvO=Math.abs(oG);
+    }
     var CP=slP[Math.max(0,Math.min(slP.length-1,Math.floor(sPd/SLAB)))];
     var lenP=Math.min(CP.s1-CP.s0-0.3,(0.7+3.1*PUDSZ)*(0.6+0.4*ud[2]));
     var widP=Math.min(HALFW-2*PUDIN,lenP*(0.35+0.4*ud[3]));
     if(!(lenP>=0.3 && widP>=0.15)){ prej++; continue; }
     var scP=CP.s0+0.15+lenP/2+(CP.s1-CP.s0-0.3-lenP)*ud[4];
     var oloP=PUDIN+widP/2, ohiP=HALFW-PUDIN-widP/2, ocP=oloP+(ohiP-oloP)*Math.sqrt(ud[5]);
+    if(pvO!==null){ scP=Math.max(CP.s0+0.15+lenP/2,Math.min(CP.s1-0.15-lenP/2,sPd)); ocP=Math.max(oloP,Math.min(ohiP,pvO)); }
     var a2=0.18*ud[6], a3=0.13*ud[7], a5=0.07*ud[8], rot=(ud[12]-0.5)*0.6, loc=[], mx=0, my=0, m2;
     for(m2=0;m2<PUDNP;m2++){
       var th=TAU*m2/PUDNP;
@@ -22270,7 +22315,7 @@ function buildCorridor(p,THM){
      of §4 can run it again at tighter detail; it is called once until then.
      Everything above it -- the spline, the lots, the stacks, the camera -- is
      built once and never depends on the detail settings. */
-  var LODNOW=LODMM;
+  var LODNOW=LODMM, EYECLR=0, EYEIN=0;
   function render(lodmm,dn,df){
     LODNOW=lodmm; out=[];
     STRTTALLY.parts=[]; STRTTALLY.pre=[]; STRTTALLY.sil=[]; STRTTALLY.conts=[];
@@ -22328,6 +22373,50 @@ function buildCorridor(p,THM){
       Pq.pud=pd; Pq.refl=[];
       pd.C.parts.push(Pq);
     });
+
+    /* ---- ROW 72: THE EYE STAYS CLEAR. A movable thing -- a car, a stall, a
+       yard truck or gantry, a cart, a boat, a mooring post, a pile of books, a
+       bollard, a pole; NOT the proud end of a shelved book, which is the
+       shelf's -- that reaches the eye's height and whose plan
+       footprint comes within max(NEAR, 0.6 m) of the eye is dropped WHOLE
+       (every part carrying its car / truck / gantry / stall / boat / cart / post id),
+       and counted in eyeclr. A lot is never touched: an eye inside one is the
+       camera's own placement, counted in eyein. Runs at every Turn; looking
+       down the street it finds something only where a car already stood at
+       the lens (Street seed 8). */
+    EYECLR=0; EYEIN=0;
+    (function(){
+      var CLR=Math.max(NEAR,0.6), EP=[CE[0],CE[1]], drop={}, eid=0;
+      var MOV={car:1,stall:1,truck:1,gantry:1,cart:1,boat:1,floorstuff:1,post:1}, FURN={bollard:1,pole:1,arm:1,mast:1};
+      function movable(P){ return MOV[P.layer]===1 || (P.layer==='furn' && FURN[P.kind]===1); }
+      function key(P){ return P.car!==undefined?'c'+P.car:P.truck!==undefined?'t'+P.truck:P.gant!==undefined?'g'+P.gant:
+        P.stall!==undefined?'s'+P.stall:P.boat!==undefined?'b'+P.boat:P.cartId!==undefined?'k'+P.cartId:P.postPair!==undefined?'p'+P.postPair:(P.eyeId||(P.eyeId='x'+(++eid))); }
+      /* A PART WHOLLY ABOVE OR BELOW THE EYE (by more than the clearance) IS
+         NOT IN THE WAY: an eye under a gantry's girder looks out from under it,
+         and an eye 6 m up looks down on a truck. Measured: plan alone dropped
+         the whole first gantry on Harbour seeds 7 and 41 for its trolley house,
+         and a truck under strtcheck's 6 m harbour camera. */
+      function near(P){
+        var V=verts(P), b=[1e18,1e18,-1e18,-1e18], zlo=1e18, zhi=-1e18, m;
+        V.forEach(function(v){ if(v[0]<b[0])b[0]=v[0]; if(v[1]<b[1])b[1]=v[1]; if(v[0]>b[2])b[2]=v[0]; if(v[1]>b[3])b[3]=v[1]; if(v[2]<zlo) zlo=v[2]; if(v[2]>zhi) zhi=v[2]; });
+        if(zlo>CE[2]+CLR || zhi<CE[2]-CLR) return false;
+        if(EP[0]<b[0]-CLR || EP[0]>b[2]+CLR || EP[1]<b[1]-CLR || EP[1]>b[3]+CLR) return false;
+        var H=hull2(V.map(function(v){ return [v[0],v[1]]; })); if(!H) return false;
+        if(inConv(H,EP)) return true;
+        for(m=0;m<H.length;m++){ var a=H[m], c=H[(m+1)%H.length], dx=c[0]-a[0], dy=c[1]-a[1], L2=dx*dx+dy*dy;
+          var t=L2>0?Math.max(0,Math.min(1,((EP[0]-a[0])*dx+(EP[1]-a[1])*dy)/L2)):0;
+          if(Math.hypot(EP[0]-a[0]-t*dx,EP[1]-a[1]-t*dy)<CLR) return true; }
+        return false;
+      }
+      conts.forEach(function(C){
+        if(C.kind==='lot' && inConv(C.poly,EP)) EYEIN++;
+        if(C.kind!=='slab') return;
+        C.parts.forEach(function(P){ if(movable(P) && near(P)) drop[key(P)]=P.layer+'/'+P.kind; });
+      });
+      STRTTALLY.eyeDrop=Object.keys(drop).map(function(k){ return k+' '+drop[k]; });
+      EYECLR=Object.keys(drop).length;
+      if(EYECLR) conts.forEach(function(C){ if(C.kind==='slab') C.parts=C.parts.filter(function(P){ return !(movable(P) && drop[key(P)]); }); });
+    })();
 
     var live=[], nparts=0;
     /* THE WHOLE STREET, before the frustum, the LOD cut or any mirror filter,
@@ -22768,7 +22857,7 @@ function buildCorridor(p,THM){
              elems:STRTTALLY.elems.length, signs:nsigns, cables:cables.length, cars:(CT.cars||[]).length,
              dots:(CT.dots||[]).length, penup0:penup0, penup1:penup1, dsplit:DSPLIT,
              puddles:puds.length-(heroRec?heroRec.pieces.length:0), heroPieces:heroRec?heroRec.pieces.length:0, pudRejected:prej, rstep:RSTEPMM(), pudVisible:RR.npud, mirrored:RR.nmirror,
-             reflRuns:RR.nrefl, rcycles:RR.rcycles, rsplits:RR.rsplits, runsep:RR.runsep};
+             reflRuns:RR.nrefl, rcycles:RR.rcycles, rsplits:RR.rsplits, runsep:RR.runsep, eyeclr:EYECLR, eyein:EYEIN};
   STRTINFO=lots.length+' lots · '+committed.length.toLocaleString()+' parts · '+
            res.length.toLocaleString()+' paths'+
            (cycles?' · CYCLES '+cycles:' · cycles 0')+
@@ -22778,6 +22867,7 @@ function buildCorridor(p,THM){
             (STRTTALLY.dots && STRTTALLY.dots.fallback?' ('+STRTTALLY.dots.fallback+' near fell back to the street)':''))+
            ' · '+(puds.length-(heroRec?heroRec.pieces.length:0))+' '+(THM.pudWord||'puddles')+
            (heroRec?' + '+(THM.heroWord||'a front puddle')+' in '+heroRec.pieces.length+' pieces':'')+heroInfo+(RR.npud?' ('+RR.npud+' in view, '+RR.nmirror.toLocaleString()+' parts reflected)':'')+
+           (EYECLR?' · '+EYECLR+' cleared from the eye':'')+
            (DPEN?' · depth pens: pen-up '+(penup0/1000).toFixed(1)+' m \u2192 '+(penup1/1000).toFixed(1)+' m (\u00d7'+
                  (penup0>0?penup1/penup0:0).toFixed(2)+')':'')+
            (tries?' · OVER BUDGET: detail pulled in to '+DN.toFixed(0)+' / '+DF.toFixed(0)+' m, LOD '+LODE.toFixed(1)+' mm'+
@@ -24427,6 +24517,7 @@ var HELP={
 'harb.camx':'The camera across the lane, as a share of half its width: 0 is the middle, 100 or -100 an edge.',
 'harb.camz':'The camera height in metres. 1.8 is a driver\u2019s eye; higher looks down onto the stack tops.',
 'harb.look':'How far ahead the camera aims, in metres along the lane.',
+'harb.turn':'Turns the camera left (+) or right (\u2212) from looking down the yard lane: 0 looks along it, \u00b190 faces one row of stacks head-on. Put the camera at the opposite side (Camera side \u2213100%) and raise Pitch for the top tiers. Lane width frames it: at 24 m a whole run of stacks fits.',
 'harb.pitch':'Tilts the camera up (positive) or down, in degrees, after it aims along the lane. Up shows more of the cranes.',
 'harb.fov':'The field of view across the sheet, in degrees.',
 'harb.dnear':'Up to this distance, in metres, containers carry their full corrugation, door bars, handles and corner castings.',
@@ -24462,6 +24553,7 @@ var HELP={
 'libr.camx':'The camera across the aisle, as a share of half its width: 0 is the middle.',
 'libr.camz':'The camera height in metres. 1.55 is eye height.',
 'libr.look':'How far ahead the camera aims, in metres along the aisle.',
+'libr.turn':'Turns the camera left (+) or right (\u2212) from looking down the aisle: 0 looks along it, \u00b190 faces one shelf range head-on. The aisle is about 1.1 m, so facing a shelf needs Field of view 100 or more to see a section whole; raise Pitch for the top shelves.',
 'libr.pitch':'Tilts the camera up (positive) or down, in degrees. Up shows more of the ceiling and the signs.',
 'libr.fov':'The field of view across the sheet, in degrees.',
 'libr.dnear':'Up to this distance, in metres, every book is drawn as a solid with its bands and title, and shelves carry their labels.',
@@ -24503,6 +24595,7 @@ var HELP={
 'canal.camx':'The camera across the canal, as a share of half its width: 0 is the middle.',
 'canal.camz':'The camera height over the water in metres. 1.2 is a boat\u2019s eye.',
 'canal.look':'How far ahead the camera aims, in metres along the canal.',
+'canal.turn':'Turns the camera left (+) or right (\u2212) from looking down the canal: 0 looks along it, \u00b190 faces one row of houses head-on. Put the camera at the opposite quay (Camera side \u2213100%) and raise Pitch for the upper floors. Canal width frames it: wide shows whole houses.',
 'canal.pitch':'Tilts the camera up (positive) or down, in degrees.',
 'canal.fov':'The field of view across the sheet, in degrees.',
 'canal.dnear':'Up to this distance, in metres, windows have sills, boats their bow irons and the posts their stripes.',
@@ -24551,6 +24644,7 @@ var HELP={
 'mkt.camx':'The camera across the lane, as a share of half its width: 0 is the middle.',
 'mkt.camz':'The camera height in metres. 1.6 is eye height, looking under the lanterns.',
 'mkt.look':'How far ahead the camera aims, in metres along the lane.',
+'mkt.turn':'Turns the camera left (+) or right (\u2212) from looking down the lane: 0 looks along it, \u00b190 faces one row of shophouses head-on. Put the camera at the opposite side (Camera side \u2213100%) and raise Pitch for the upper floors. Lane width frames it: narrow shows a shopfront or two, wide shows whole fronts.',
 'mkt.pitch':'Tilts the camera up (positive) or down, in degrees, after it aims along the lane. Up shows more lanterns and signs.',
 'mkt.fov':'The field of view across the sheet, in degrees. Wide makes the lane close in around you.',
 'mkt.dnear':'Up to this distance, in metres, the fronts are solid: sills, lintels, balconies and AC units stand out and hide what is behind them.',
@@ -24575,6 +24669,7 @@ var HELP={
 'strt.camx':'The camera’s position across the street, as a share of half the road’s width: 0 is the centre line, -100 and 100 the kerbs.',
 'strt.camz':'The camera’s height in metres. 1.6 is standing eye height; raise it for a view from a window or a rooftop. The horizon stays where Pitch puts it; the street drops away below it as you go up.',
 'strt.look':'How far ahead the camera aims, in metres along the street. On a bent street this is what turns the camera to follow the curve.',
+'strt.turn':'Turns the camera left (+) or right (\u2212) from looking down the street: 0 looks along it, \u00b190 faces one row head-on. Put the camera on the opposite kerb (Camera side \u2213100%) and raise Pitch to take in the upper floors. Road width frames it: at 7 m about two lots and three storeys, at 24 m whole buildings, four to six lots.',
 'strt.pitch':'Tilts the camera up (positive) or down, in degrees, after it aims along the street. Up shows more building and sky; down shows more road.',
 'strt.fov':'The camera’s field of view across the sheet, in degrees. Narrow is a long lens and flattens the street; wide exaggerates the perspective and the buildings lean.',
 'strt.fire':'How many buildings carry a fire escape: landings at every floor and a zig-zag stair, in one bay of the street face. Only buildings with room in front of the wall and three or more storeys above the shop can have one.',
