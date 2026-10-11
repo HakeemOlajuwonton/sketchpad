@@ -424,7 +424,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v309</a> &mdash; CORRIDOR KIT HOOKS (refactor only) -- a theme may set its pavement from its own knobs, let the eye stand on its pavement, make its kerb hide with no gap at the seams, and run its lots to the street's end; every existing engine byte-identical (queue row 85)</span></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v310</a> &mdash; EXPORT/LOAD SEAMS (refactor only) -- the file loader is one function the button calls, and the single-pen SVG header is written as its own piece; every export byte-identical (queue row 88)</span></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <section class="fold" id="fold_pick"><h2>Pick engine<span class="cnt"></span></h2>
@@ -27317,12 +27317,12 @@ document.getElementById('pSaveAll').addEventListener('click',exportAll);
 document.getElementById('pLoad').addEventListener('click',function(){
   document.getElementById('pFile').click();
 });
-document.getElementById('pFile').addEventListener('change',function(e){
-  var f=e.target.files&&e.target.files[0]; if(!f)return;
-  var fr=new FileReader();
-  fr.onload=function(){
+/* ONE LOADER FOR EVERY WAY A FILE ARRIVES. The button's handler used to hold
+   this inline; it is a function now so a file dropped on the page goes through
+   exactly the same branches as one picked with the button. */
+function loadText(text){
     try{
-      var o=JSON.parse(fr.result);
+      var o=JSON.parse(text);
       /* one button for both file kinds: a single preset restores into the
          live state, a slots bundle refills the browser slots */
       if(o && o.app==='plotter-sketchpad-slots'){
@@ -27343,7 +27343,11 @@ document.getElementById('pFile').addEventListener('change',function(e){
       }
     }
     catch(err){ msg('load failed: '+err.message); }
-  };
+}
+document.getElementById('pFile').addEventListener('change',function(e){
+  var f=e.target.files&&e.target.files[0]; if(!f)return;
+  var fr=new FileReader();
+  fr.onload=function(){ loadText(fr.result); };
   fr.readAsText(f); e.target.value='';
 });
 
@@ -27540,7 +27544,8 @@ document.getElementById('dl').addEventListener('click',function(){
        only the header carries the aspect. At a square page PGW=PGH=1 and this
        is character for character the header it always wrote. */
     var PW=mmStr(PGW*MM), PH=mmStr(PGH*MM);
-    s=['<svg xmlns="http://www.w3.org/2000/svg" width="'+PW+'mm" height="'+PH+'mm" viewBox="0 0 '+PW+' '+PH+'"><g fill="none" stroke="black" stroke-width="0.3">'];
+    s=['<svg xmlns="http://www.w3.org/2000/svg" width="'+PW+'mm" height="'+PH+'mm" viewBox="0 0 '+PW+' '+PH+'">',
+       '<g fill="none" stroke="black" stroke-width="0.3">'];
     /* groups[0].paths, not cur -- cur is pre-warp and pre-mask, and exporting
        it would silently ship an unmasked file that does not match the canvas */
     var P=groups[0].paths;
