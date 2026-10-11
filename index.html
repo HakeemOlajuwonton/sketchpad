@@ -424,7 +424,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v298</a> &mdash; STREET SHOPFRONTS -- Shop variety gives each lot its own shop (closed, noren eatery, convenience, food case, kiosk, stair bar) and Pavement clutter puts bikes, vending machines, plants, crates, A-frames and meters in front (queue row 73)</span></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v299</a> &mdash; TRUCHET BIG MOTIFS + ROAD -- a motif can cover several cells (a big rig three or four, a freight train three to five), side views flip but never turn, and a Road pack of 28 vehicles with its Mix (queue row 76)</span></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <section class="fold" id="fold_pick"><h2>Pick engine<span class="cnt"></span></h2>
@@ -1720,6 +1720,217 @@ var TMOTIF=(function(){
     det:['M84 40Q88 42 88 46','M16 40Q12 42 12 46','M40 52L60 52']});
   add({id:'mixprehistoric',n:'Mix: Prehistoric',p:'Prehistoric',mix:'Prehistoric'});
 
+  /* ---------------- ROAD (row 76: docs/specs/2026-10-08-truchet-big-motifs-and-new-packs.md §4.1) ----------------
+     SIDE VIEWS. Every one is authored FACING RIGHT (head 0) standing on the
+     ground at y 80, and `side:true`: the engine mirrors it left/right and never
+     turns it. A spanning one is authored in a 100w x 100 box, so its parts are
+     functions of (w,h) where the length varies (big rig, freight train).
+
+     Every SPANNING one is nest:false: ribs shrink about one anchor, and on a
+     body three cells long they converge into a smear (the rig's trailer floor
+     read as a black band in the first render).
+
+     VEH builds a body outline from the ground line up: front bumper to rear
+     along the bottom, ARCHED over each wheel, then the roof profile from the
+     rear back to the front. Points flagged 1 are corners; the rest round off. */
+  function VEH(xf,xr,yb,wh,top){
+    var q=[[xf,yb,1]], W=wh.slice().sort(function(a,b){return b[0]-a[0];});
+    W.forEach(function(w){
+      if(w[1]-w[2]-2.2>=yb) return;           /* a wheel wholly under the body takes no arch */
+      var ra=w[2]+2.2, s=Math.max(-1,Math.min(1,(yb-w[1])/ra)), a0=Math.asin(s), n=10;
+      for(var i=0;i<=n;i++){var a=a0+(-Math.PI-2*a0)*i/n; q.push([w[0]+ra*Math.cos(a), w[1]+ra*Math.sin(a), (i===0||i===n)?1:0]);}
+    });
+    q.push([xr,yb,1]);
+    return smooth(q.concat(top),true);
+  }
+  /* wheels by tier: a ring at tier 0, a tyre and hub at 1, plus a rim at 2 */
+  function WHEELS(t,dot,wh,spokes){
+    var d='';
+    wh.forEach(function(w){
+      d+=circ(w[0],w[1],w[2]);
+      if(t===0) return;
+      d+=circ(w[0],w[1],w[2]*0.45);
+      if(t===2){ d+=circ(w[0],w[1],w[2]*0.72);
+        if(spokes) d+=rays(w[0],w[1],w[2]*0.45,w[2]*0.72,0,315,8); }
+    });
+    return d;
+  }
+  function RECT(x0,y0,x1,y1){return poly([[x0,y0],[x1,y0],[x1,y1],[x0,y1]],true);}
+  function WINROW(x0,x1,y0,y1,n,gap){var d='',w=(x1-x0-gap*(n-1))/n;for(var i=0;i<n;i++){var a=x0+i*(w+gap);d+=RECT(a,y0,a+w,y1);}return d;}
+  var INK='#1f1a17', GLASS='#5aa9e6';
+  /* feat colours by tier: the wheels' subpaths in ink (1, 2 or 3 rings a
+     wheel, plus 8 spokes at tier 2 when spoked), then the rest in order */
+  function FC(nw,rest,spokes){return function(t){var a=[],n=nw*(t===0?1:(t===1?2:(spokes?11:3)));for(var i=0;i<n;i++)a.push(INK);return a.concat(rest);};}
+  function road(o){o.p='Road'; o.side=true; o.head=0; if(!o.k) o.k='up'; return add(o);}
+
+  /* --- the car family: a three-box profile on two wheels --- */
+  var CARW=[[28,72,9],[74,72,9]];
+  function carOut(roofY,cabin){
+    cabin=cabin||[34,72];
+    return VEH(92,8,74,CARW,[[7,62,1],[12,56],[cabin[0]-4,54,1],[cabin[0]+4,roofY,1],[cabin[1]-6,roofY,1],[cabin[1],54,1],[88,56],[93,64,1]]);
+  }
+  function carWin(roofY,cabin,split){
+    cabin=cabin||[34,72]; var y0=roofY+3, y1=53, xa=cabin[0]+3, xb=cabin[1]-3, xm=split||((xa+xb)/2);
+    return poly([[xa,y1],[cabin[0]+6,y0],[xm-1,y0],[xm-1,y1]],true)+poly([[xm+1,y1],[xm+1,y0],[cabin[1]-7,y0],[xb,y1]],true);
+  }
+  road({id:'sedan',n:'Sedan',col:{out:'#2156c7',feat:INK},a:[50,62],out:carOut(40),
+    feat:function(t,dot){var d=WHEELS(t,dot,CARW); if(t===0) return d; d+=carWin(40); if(t===2) d+=seg([52,58],[56,58])+seg([66,58],[70,58])+RECT(89,59,93,63); return d;},
+    det:['M10 64L90 64','M50 54L50 74','M8 60L12 60M88 60L93 60']});
+  road({id:'sportscar',n:'Sports car',col:{out:'#d42a2a',feat:INK},a:[50,64],
+    out:VEH(95,6,75,[[25,73,8],[76,73,8]],[[5,64,1],[7,58,1],[14,57],[36,53,1],[50,45,1],[64,46],[78,53],[94,60],[96,68,1]]),
+    feat:function(t,dot){var d=WHEELS(t,dot,[[25,73,8],[76,73,8]]); if(t===0) return d;
+      d+=poly([[40,53],[51,47],[64,48],[72,53]],true)+poly([[4,57],[4,51],[13,51],[13,57]],false); if(t===2) d+=seg([20,64],[88,62]); return d;},
+    det:['M14 57L36 53','M82 58L92 62','M40 62L60 62']});
+  road({id:'pickup',n:'Pickup',col:{out:'#6b7a2a',feat:INK},a:[50,62],
+    out:VEH(93,6,74,CARW,[[6,58,1],[48,58,1],[50,42,1],[66,42,1],[72,54,1],[90,56],[94,64,1]]),
+    feat:function(t,dot){var d=WHEELS(t,dot,CARW); if(t===0) return d+seg([48,58],[48,74]);
+      d+=poly([[53,54],[54,45],[64,45],[69,54]],true)+seg([48,58],[48,74]); if(t===2) d+=seg([10,62],[44,62])+RECT(89,59,93,63); return d;},
+    det:['M6 58L6 52L46 52','M58 60L62 60','M12 66L44 66']});
+  road({id:'police',n:'Police car',col:{out:INK,feat:FC(2,['#d42a2a','#2156c7',GLASS])},a:[50,62],out:carOut(40),
+    feat:function(t,dot){var d=WHEELS(t,dot,CARW)+RECT(44,36,50,40)+RECT(51,36,57,40); if(t===0) return d;
+      d+=carWin(40)+poly([[34,58],[66,58],[66,72],[34,72]],true); return d;},
+    det:['M10 64L34 64M66 64L90 64','M50 58L50 72','M88 60L93 60']});
+  road({id:'taxi',n:'Taxi',col:{out:'#f2c230',feat:INK},a:[50,62],out:carOut(40),
+    feat:function(t,dot){var d=WHEELS(t,dot,CARW)+RECT(45,34,57,40); if(t===0) return d;
+      d+=carWin(40); var c=''; for(var i=0;i<10;i++){var x=14+i*7; c+=RECT(x,62,x+3.5,65.5);} if(t===2) d+=c; else d+=seg([12,63],[88,63]); return d;},
+    det:['M88 60L93 60','M50 54L50 74','M8 60L12 60']});
+  var VANW=[[24,74,9],[76,74,9]];
+  road({id:'ambulance',n:'Ambulance',col:{out:INK,feat:FC(2,['#d42a2a',INK,'#d42a2a',GLASS])},a:[50,56],
+    out:VEH(94,6,76,VANW,[[6,30,1],[66,30,1],[68,40,1],[82,42],[92,56],[95,66,1]]),
+    feat:function(t,dot){var d=WHEELS(t,dot,VANW)+poly([[30,40],[34,40],[34,36],[38,36],[38,40],[42,40],[42,44],[38,44],[38,48],[34,48],[34,44],[30,44]],true)+RECT(56,26,62,30);
+      if(t===0) return d; d+=poly([[70,42],[80,43],[88,54],[70,54]],true)+seg([66,30],[66,76]); if(t===2) d+=seg([8,58],[64,58])+RECT(90,60,94,64); return d;},
+    det:['M10 36L60 36','M48 40L48 70','M70 58L76 58']});
+  road({id:'campervan',n:'Camper van',col:{out:'#137a6e',feat:FC(2,['#f2f2f2',GLASS,GLASS,GLASS])},a:[50,56],
+    out:VEH(93,7,76,VANW,[[7,40,1],[10,30],[30,27],[70,28],[86,40],[92,52],[94,66,1]]),
+    feat:function(t,dot){var d=WHEELS(t,dot,VANW)+seg([8,56],[93,56]); if(t===0) return d;
+      d+=poly([[72,32],[80,33],[87,44],[72,44]],true)+poly([[60,32],[70,32],[70,44],[60,44]],true)+WINROW(14,54,33,44,3,3); return d;},
+    det:['M44 48L44 70','M8 62L92 62','M30 27Q50 22 70 28']});
+  road({id:'icecream',n:'Ice-cream van',col:{out:'#f2a7c3',feat:FC(2,['#c8962e','#f2a7c3',INK,GLASS])},a:[50,58],
+    out:VEH(94,6,76,VANW,[[6,34,1],[66,34,1],[70,40,1],[84,42],[92,56],[95,66,1]]),
+    feat:function(t,dot){var d=WHEELS(t,dot,VANW)+poly([[32,34],[36,20],[40,34]],true)+circ(36,18,4.5); if(t===0) return d;
+      d+=RECT(14,40,46,56)+poly([[72,43],[82,44],[88,54],[72,54]],true); if(t===2) d+=seg([14,48],[46,48])+seg([8,62],[66,62]); return d;},
+    det:['M14 56L46 56L46 58L14 58','M50 40L50 70','M33 26L39 30M33 30L39 26']});
+  road({id:'towtruck',n:'Tow truck',col:{out:'#f2c230',feat:INK},a:[55,60],
+    out:VEH(94,26,76,[[38,74,9],[80,74,9]],[[26,60,1],[56,60,1],[58,40,1],[74,40,1],[80,54,1],[92,56],[95,66,1]]),
+    feat:function(t,dot){var d=WHEELS(t,dot,[[38,74,9],[80,74,9]])+poly([[44,60],[16,34],[8,34]],false)+'M8 34L8 52'+arc(8,55,3,-90,90); if(t===0) return d;
+      d+=poly([[61,54],[62,44],[72,44],[76,54]],true)+RECT(60,36,66,40); return d;},
+    det:['M30 64L54 64','M20 40L24 44','M88 60L93 60']});
+  road({id:'dumptruck',n:'Dump truck',col:{out:'#f2c230',feat:INK},a:[46,56],
+    out:VEH(95,8,72,[[26,70,12],[80,70,10]],[[8,58,1],[4,30,1],[58,34,1],[62,60,1],[66,60,1],[68,40,1],[84,40,1],[90,52],[96,62,1]]),
+    feat:function(t,dot){var d=WHEELS(t,dot,[[26,70,12],[80,70,10]]); if(t===0) return d;
+      d+=poly([[71,52],[72,44],[82,44],[86,52]],true)+seg([10,40],[58,42]); if(t===2) d+=seg([16,32],[18,56])+seg([30,32],[32,56])+seg([44,33],[46,58]); return d;},
+    det:['M8 58L62 60','M86 58L94 58','M4 30L2 26']});
+  road({id:'tractor',n:'Tractor',col:{out:'#2f9a44',feat:FC(2,['#8a8a8a','#8a8a8a',GLASS],true)},a:[50,58],
+    out:VEH(94,10,62,[[30,66,16],[82,72,9]],[[10,58,1],[18,26,1],[42,26,1],[44,44,1],[72,44,1],[92,48],[95,56,1]]),
+    feat:function(t,dot){var d=WHEELS(t,dot,[[30,66,16],[82,72,9]],true)+seg([66,44],[66,26])+seg([64,26],[68,26]); if(t===0) return d;
+      d+=poly([[22,30],[38,30],[38,44],[22,44]],true); if(t===2) d+=seg([50,48],[90,48])+seg([50,52],[90,52]); return d;},
+    det:['M42 44L46 50','M66 22Q70 18 72 22','M14 54L26 54']});
+  road({id:'monstertruck',n:'Monster truck',col:{out:'#d42a2a',feat:INK},a:[50,40],
+    out:VEH(92,8,48,[[26,70,17],[76,70,17]],[[8,40,1],[12,36],[34,34,1],[40,24,1],[64,24,1],[72,34,1],[88,36],[93,44,1]]),
+    feat:function(t,dot){var W=[[26,70,17],[76,70,17]], d=WHEELS(t,dot,W)+seg([26,48],[26,53])+seg([76,48],[76,53]); if(t===0) return d;
+      d+=poly([[43,34],[45,27],[54,27],[54,34]],true)+poly([[56,34],[56,27],[62,27],[67,34]],true);
+      if(t===2) W.forEach(function(w){for(var i=0;i<12;i++){var a=i*30*Math.PI/180; d+=seg([w[0]+w[2]*Math.cos(a),w[1]+w[2]*Math.sin(a)],[w[0]+(w[2]+3)*Math.cos(a),w[1]+(w[2]+3)*Math.sin(a)]);}});
+      return d;},
+    det:['M20 50L82 50','M16 54L36 54M66 54L86 54','M10 42L90 42']});
+  road({id:'lowrider',n:'Lowrider',col:{out:'#7a2a8a',feat:FC(2,[GLASS],true)},a:[50,64],
+    out:VEH(96,4,74,[[22,73,8],[78,71,8]],[[4,68,1],[6,62],[30,60,1],[38,50,1],[64,50,1],[70,58,1],[92,56],[97,62,1]]),
+    feat:function(t,dot){var d=WHEELS(t,dot,[[22,73,8],[78,71,8]],true); if(t===0) return d;
+      d+=poly([[41,58],[43,53],[50,53],[50,58]],true)+poly([[52,58],[52,53],[62,53],[66,58]],true); if(t===2) d+=seg([8,66],[92,63]); return d;},
+    det:['M10 64L90 61','M50 58L50 72','M92 56L96 54']});
+  road({id:'jeepney',n:'Jeepney',nest:false,span:{w:[2,2],h:[1,1]},col:{out:'#d4d4d4',feat:function(t){return FC(2,t===0?['#f2c230','#d42a2a']:['#f2c230','#d42a2a','#2156c7','#f2c230',GLASS])(t);}},a:[100,56],
+    out:VEH(194,8,76,[[34,74,10],[160,74,10]],[[8,30,1],[16,26],[140,26],[146,40,1],[176,42],[190,52],[195,66,1]]),
+    feat:function(t,dot){var W=[[34,74,10],[160,74,10]], d=WHEELS(t,dot,W)+poly([[186,40],[190,30],[194,40]],true); if(t===0) return d+seg([10,56],[188,56]);
+      d+=seg([10,54],[186,54])+seg([10,60],[186,60])+seg([10,66],[186,66])+WINROW(16,136,32,48,6,4)+poly([[148,42],[172,43],[180,50],[148,50]],true);
+      return d;},
+    det:['M10 26L10 22L142 22L142 26','M24 48L24 70M126 48L126 70','M180 44L184 40']});
+  road({id:'tricycle',n:'Tricycle (sidecar)',col:{out:'#2156c7',feat:INK},a:[46,56],
+    out:VEH(96,8,70,[[22,72,8],[80,72,8]],[[8,46,1],[14,36],[36,34,1],[44,52,1],[60,52,1],[72,42,1],[88,46],[96,58,1]]),
+    feat:function(t,dot){var d=WHEELS(t,dot,[[22,72,8],[80,72,8]]); if(t===0) return d;
+      d+=poly([[14,38],[16,48],[34,48],[36,38]],true)+seg([72,42],[78,36])+seg([76,36],[82,36]); return d;},
+    det:['M50 52L50 70','M8 58L44 58','M62 52L66 46']});
+  road({id:'motorcycle',n:'Motorcycle',nest:false,col:{out:INK,feat:[INK,INK,'#8a8a8a']},a:[50,58],
+    out:smooth([[30,62,1],[34,50],[44,46,1],[52,52,1],[62,44],[72,42,1],[78,46],[74,52],[66,56,1],[60,64,1],[44,64,1]],true),
+    feat:function(t,dot){var W=[[22,70,12],[80,70,12]], d=WHEELS(t,dot,W,true)+seg([72,42],[80,70])+seg([66,40],[74,36])+seg([30,62],[22,70]); if(t===0) return d;
+      d+=seg([36,50],[52,50])+circ(78,44,2.5); return d;},
+    det:['M44 64L52 72L60 64','M30 58L18 56','M84 52Q90 54 90 60']});
+  road({id:'scooter',n:'Scooter',nest:false,col:{out:'#5aa9e6',feat:INK},a:[50,60],
+    out:smooth([[20,66,1],[22,54],[34,50,1],[42,64,1],[60,64,1],[66,48,1],[70,30,1],[74,30,1],[74,46],[80,62,1]],true),
+    feat:function(t,dot){var d=WHEELS(t,dot,[[24,72,8],[78,72,8]])+seg([66,28],[78,28]); if(t===0) return d;
+      d+=seg([26,50],[40,50])+circ(74,36,2); return d;},
+    det:['M42 64L62 64','M28 50L22 46','M70 46L76 50']});
+  road({id:'bicycle',n:'Bicycle',nest:false,col:{out:'#8a8a8a',feat:INK},a:[50,56],
+    out:poly([[26,70],[46,70],[38,46],[26,70]],false)+poly([[46,70],[70,46],[38,46]],false)+seg([70,46],[76,70]),
+    feat:function(t,dot){var d=WHEELS(t,dot,[[26,70,14],[76,70,14]],true)+seg([34,42],[44,42])+seg([66,40],[74,40]); if(t===0) return d;
+      d+=circ(46,70,3)+seg([46,70],[50,76]); return d;},
+    det:['M38 46L36 40','M70 46L68 38','M44 76L54 76']});
+  road({id:'forklift',n:'Forklift',col:{out:'#f2c230',feat:FC(2,['#8a8a8a'])},a:[44,58],
+    out:VEH(76,8,72,[[22,74,8],[64,74,8]],[[8,48,1],[18,46,1],[24,22,1],[56,22,1],[64,48,1],[76,50,1]]),
+    feat:function(t,dot){var d=WHEELS(t,dot,[[22,74,8],[64,74,8]])+seg([80,16],[80,82])+seg([84,16],[84,82])+seg([84,80],[98,80])+seg([84,76],[98,76]); if(t===0) return d;
+      d+=seg([24,22],[24,48])+seg([56,22],[60,48])+seg([30,40],[50,40]); return d;},
+    det:['M8 48L4 44','M80 30L84 30M80 50L84 50','M32 30L48 30']});
+  road({id:'cementtruck',n:'Cement mixer',nest:false,span:{w:[2,2],h:[1,1]},col:{out:'#f2f2f2',feat:FC(3,['#d42a2a',GLASS,'#d42a2a'])},a:[100,56],
+    out:VEH(194,10,72,[[36,72,10],[62,72,10],[164,72,10]],[[10,56,1],[136,56,1],[140,32,1],[170,32,1],[178,48,1],[190,50],[195,62,1]]),
+    feat:function(t,dot){var d=WHEELS(t,dot,[[36,72,10],[62,72,10],[164,72,10]])+ell(72,40,52,18,-12); if(t===0) return d;
+      d+=poly([[144,48],[146,36],[166,36],[172,48]],true); for(var i=1;i<5;i++){var x=34+i*16; d+=seg([x-8,58-i*4+8],[x+8,22+i*1.2]);} return d;},
+    det:['M122 30L132 20L140 24','M10 56L10 44L20 40','M124 56L128 64']});
+  road({id:'garbagetruck',n:'Garbage truck',nest:false,span:{w:[2,2],h:[1,1]},col:{out:'#2f9a44',feat:INK},a:[100,54],
+    out:VEH(194,6,74,[[38,74,10],[64,74,10],[164,74,10]],[[6,64,1],[4,40,1],[16,24,1],[136,24,1],[138,34,1],[170,34,1],[178,50,1],[190,52],[195,64,1]]),
+    feat:function(t,dot){var d=WHEELS(t,dot,[[38,74,10],[64,74,10],[164,74,10]])+seg([18,24],[18,66]); if(t===0) return d;
+      d+=poly([[144,50],[146,38],[166,38],[172,50]],true)+RECT(30,34,124,58); return d;},
+    det:['M4 40L12 50','M30 46L124 46','M182 58L192 58']});
+  road({id:'bus',n:'City bus',nest:false,span:{w:[2,2],h:[1,1]},col:{out:'#2156c7',feat:FC(2,[GLASS])},a:[100,52],
+    out:VEH(194,6,76,[[40,74,10],[158,74,10]],[[6,24,1],[12,20,1],[186,20,1],[194,30],[195,66,1]]),
+    feat:function(t,dot){var d=WHEELS(t,dot,[[40,74,10],[158,74,10]]); if(t===0) return d+seg([8,44],[192,44]);
+      d+=WINROW(12,170,28,44,7,4)+RECT(174,28,190,66)+seg([182,28],[182,66]); if(t===2) d+=RECT(66,50,80,74)+seg([73,50],[73,74]); return d;},
+    det:['M8 52L170 52','M180 20L180 16L120 16','M190 70L194 70']});
+  road({id:'schoolbus',n:'School bus',nest:false,span:{w:[2,2],h:[1,1]},col:{out:'#f2c230',feat:INK},a:[96,52],
+    out:VEH(196,6,76,[[40,74,10],[160,74,10]],[[6,22,1],[12,18,1],[150,18,1],[156,40,1],[184,42],[194,54],[197,66,1]]),
+    feat:function(t,dot){var d=WHEELS(t,dot,[[40,74,10],[160,74,10]])+seg([8,50],[154,50])+seg([8,58],[154,58]); if(t===0) return d;
+      d+=WINROW(12,146,24,40,7,4)+RECT(140,22,150,64); return d;},
+    det:['M8 66L154 66','M184 48L194 48','M150 18L156 12']});
+  road({id:'limo',n:'Stretch limo',nest:false,span:{w:[2,2],h:[1,1]},col:{out:INK,feat:FC(2,[GLASS])},a:[100,62],
+    out:VEH(194,6,74,[[28,72,9],[170,72,9]],[[6,62,1],[12,56],[30,54,1],[38,42,1],[150,42,1],[162,54,1],[188,56],[195,64,1]]),
+    feat:function(t,dot){var d=WHEELS(t,dot,[[28,72,9],[170,72,9]]); if(t===0) return d+seg([40,50],[148,50]);
+      d+=poly([[34,54],[40,45],[52,45],[52,54]],true)+WINROW(56,136,45,54,4,3)+poly([[140,54],[140,45],[148,45],[156,54]],true); return d;},
+    det:['M10 62L190 62','M54 54L54 72M100 54L100 72M138 54L138 72','M188 58L194 58']});
+  road({id:'firetruck',n:'Fire engine',nest:false,span:{w:[3,3],h:[1,1]},col:{out:'#d42a2a',feat:FC(3,['#8a8a8a'])},a:[150,54],
+    out:VEH(294,8,74,[[48,72,11],[78,72,11],[246,72,11]],[[8,30,1],[226,30,1],[228,26,1],[264,26,1],[276,44,1],[290,48],[295,64,1]]),
+    feat:function(t,dot){var d=WHEELS(t,dot,[[48,72,11],[78,72,11],[246,72,11]])+seg([20,22],[230,18])+seg([20,26],[230,22]); if(t===0) return d;
+      for(var i=1;i<14;i++){var x=20+i*15; d+=seg([x,22-i*0.29],[x,26-i*0.29]);}
+      d+=poly([[234,42],[236,30],[262,30],[270,42]],true)+circ(170,50,10)+circ(170,50,4); return d;},
+    det:['M14 40L220 40','M24 48L24 66M110 48L110 66','M232 22L240 16L248 22']});
+  /* THE BIG RIG: sleeper cab at the right, the trailer stretched to the span,
+     five axles at w 4 and three at w 3 */
+  road({id:'bigrig',n:'Big rig',nest:false,span:{w:[3,4],h:[1,1]},col:{out:['#f2f2f2','#d42a2a'],feat:[INK]},
+    a:function(w){return [50*w,52];},
+    out:function(w){var W=100*w, tr=W-86;
+      return RECT(6,22,tr,66)+VEH(W-4,tr+4,72,[[W-62,72,10],[W-20,72,10]],[[tr+4,40,1],[tr+20,40,1],[tr+22,20,1],[W-30,20,1],[W-24,40,1],[W-10,44],[W-3,60,1]]);},
+    feat:function(t,dot,w){var W=100*w, tr=W-86, ax=w>=4?[40,64,W-120,W-96,W-74]:[40,64,W-74], wh=[];
+      ax.forEach(function(x,i){wh.push([x,74,9]);}); wh=wh.filter(function(q){return q[0]<tr;}).concat([[W-62,72,10],[W-20,72,10]]);
+      var d=WHEELS(t,dot,wh)+seg([W-34,20],[W-34,6])+seg([W-30,20],[W-30,8]); if(t===0) return d;
+      d+=poly([[W-28,40],[W-26,24],[W-16,40]],true)+seg([tr,56],[tr+6,56]); if(t===2) d+=seg([10,44],[tr-4,44]); return d;},
+    det:function(w){var W=100*w, tr=W-86; return ['M10 30L'+(tr-4)+' 30','M'+(W-60)+' 52L'+(W-44)+' 52','M'+(W-8)+' 54L'+(W-3)+' 54'];}});
+  road({id:'carcarrier',n:'Car carrier',nest:false,span:{w:[4,4],h:[1,1]},col:{out:'#8a8a8a',feat:FC(5,['#8a8a8a','#d42a2a','#2156c7','#f2c230','#2f9a44','#d42a2a','#2156c7','#f2c230','#2f9a44'])},a:[200,50],
+    out:VEH(394,6,74,[[40,74,9],[64,74,9],[280,74,9],[310,72,10],[372,72,10]],[[6,70,1],[6,46,1],[300,46,1],[300,62,1],[306,40,1],[328,22,1],[372,22,1],[380,40,1],[392,46],[395,62,1]]),
+    feat:function(t,dot){var d=WHEELS(t,dot,[[40,74,9],[64,74,9],[280,74,9],[310,72,10],[372,72,10]])+seg([6,46],[300,30]);
+      if(t===0) return d;
+      for(var i=0;i<4;i++){var x=20+i*70, y=46-i*3.5; d+=poly([[x,y],[x+6,y-8],[x+40,y-8],[x+50,y-4],[x+52,y]],true);}
+      for(i=0;i<4;i++){var x2=20+i*70; d+=poly([[x2,70],[x2+6,62],[x2+40,62],[x2+50,66],[x2+52,70]],true);} return d;},
+    det:['M330 26L330 40','M6 58L298 58','M384 48L392 48']});
+  /* THE FREIGHT TRAIN: a locomotive at the right and (w-1) wagons coupled
+     behind it, one rail line under the whole span */
+  road({id:'train',n:'Freight train',nest:false,span:{w:[3,5],h:[1,1]},nest:false,col:{out:['#2156c7','#8b5a2b','#d42a2a','#6b7a2a','#8a8a8a'],feat:INK},
+    a:function(w){return [50*w,50];},
+    out:function(w){var W=100*w, d=VEH(W-4,W-96,74,[[W-80,74,7],[W-60,74,7],[W-36,74,7],[W-16,74,7]],[[W-96,40,1],[W-60,40,1],[W-58,24,1],[W-30,24,1],[W-26,40,1],[W-10,42],[W-3,60,1]]);
+      for(var i=w-2;i>=0;i--){var x0=i*100+6; d+=RECT(x0,i%2?36:30,x0+88,70);} return d;},
+    feat:function(t,dot,w){var W=100*w, wh=[]; for(var i=0;i<w-1;i++){wh.push([i*100+22,76,6]);wh.push([i*100+78,76,6]);}
+      [W-80,W-60,W-36,W-16].forEach(function(x){wh.push([x,74,7]);});
+      var d=WHEELS(t,dot,wh)+seg([0,84],[W,84]); for(i=0;i<w-1;i++) d+=seg([i*100+94,62],[i*100+106,62]);
+      if(t===0) return d; d+=RECT(W-54,28,W-34,38)+seg([W-80,24],[W-80,14]); if(t===2) for(i=0;i<w*8;i++) d+=seg([i*12.5,84],[i*12.5+4,90]); return d;},
+    det:function(w){var d=[],W=100*w; d.push('M'+(W-90)+' 50L'+(W-62)+' 50'); var r=''; for(var i=0;i<w-1;i++) r+='M'+(i*100+10)+' 48L'+(i*100+90)+' 48'; d.push(r);
+      d.push('M'+(W-80)+' 12Q'+(W-74)+' 6 '+(W-70)+' 10'); return d;}});
+  add({id:'mixroad',n:'Mix: Road',p:'Road',mix:'Road'});
+
   var BY={}; D.forEach(function(m,i){m.index=i; BY[m.id]=m;});
   /* a Mix draws from every library motif in its pack. The legacy classic
      tiles (0..5) are not library motifs -- buildTruchet draws them -- so they
@@ -1736,10 +1947,30 @@ var TMOTIF=(function(){
      (once, then cached), not assumed: a 0.4-of-the-tile guess let a small
      motif's ribs close to 0.3 mm. Closer to the anchor ribs DO converge, and
      for the manta that is the point (they meet at the tail root). */
+  /* KEYED BY SIZE (row 76): a spanning motif's outline is a different shape
+     at each span, so a 4-cell rig must not reuse the 3-cell radius. A 1-cell
+     motif is one key, '1x1', and measures exactly what it always did. */
   function ribR(m){
-    if(m._R===undefined){ var R=0; flatten(m.out,100).forEach(function(p){p.forEach(function(q){
-      R=Math.max(R,Math.hypot(q[0]-m.a[0],q[1]-m.a[1]));});}); m._R=R||1; }
-    return m._R;
+    var key=(m.w||1)+'x'+(m.h||1), B=m.base||m;
+    if(!B._RK) B._RK={};
+    if(B._RK[key]===undefined){ var R=0; flatten(m.out,100).forEach(function(p){p.forEach(function(q){
+      R=Math.max(R,Math.hypot(q[0]-m.a[0],q[1]-m.a[1]));});}); B._RK[key]=R||1; }
+    return B._RK[key];
+  }
+  /* A SPANNING MOTIF (row 76) is authored in a 100w x 100h box, and any of
+     out / det / a may be a function of (w,h), and feat / bands / draw take
+     (w,h) after their own arguments. Resolved once per size into a copy that
+     the rest of strokes() reads exactly like a one-cell motif. */
+  function atSize(m,w,h){
+    if(!m.span) return m;
+    var key=w+'x'+h; if(!m._S) m._S={}; if(m._S[key]) return m._S[key];
+    var r={}, k; for(k in m) if(k!=='_S' && k!=='_RK') r[k]=m[k];
+    function R(v){return typeof v==='function'?v(w,h):v;}
+    r.out=R(m.out); r.a=R(m.a); if(m.det) r.det=R(m.det);
+    if(m.feat) r.feat=function(t,dot){return m.feat(t,dot,w,h);};
+    if(m.bands) r.bands=function(kk){return m.bands(kk,w,h);};
+    if(m.draw) r.draw=function(kk,sp){return m.draw(kk,sp,w,h);};
+    r.w=w; r.h=h; r.base=m; m._S[key]=r; return r;
   }
   function ribCap(mm,sp,m){return Math.max(1,Math.floor(sp*0.75*ribR(m)*mm/100/0.45));}
 
@@ -1772,6 +2003,7 @@ var TMOTIF=(function(){
   }
   function strokes(id,o){
     var m=typeof id==='number'?D[id]:BY[id]; if(!m||m.mix) return [];
+    m=atSize(m,Math.max(1,Math.round(o.w||1)),Math.max(1,Math.round(o.h||1)));
     var k=Math.max(1,Math.min(10,Math.round(o.lines||1))), mm=Math.max(0.5,o.mm||20), sp=o.spread===undefined?0.62:o.spread;
     var tier=T(mm), dot=dotFor(mm), out=[];
     /* `role` and `base` say which colour list this emit reads and where in it
@@ -1807,9 +2039,11 @@ var TMOTIF=(function(){
     var ke=m.nest===false?1:Math.min(k,ribCap(mm,sp,m)), ax=m.a[0], ay=m.a[1];
     for(var t=0;t<ke;t++){
       var s=1-(t/ke)*(sp*0.75), sx=m.axis==='x'?s:s, sy=m.axis==='x'?1:s;
-      flatten(m.out,mm*Math.max(sx,sy)).forEach(function(p){
+      flatten(m.out,mm*Math.max(sx,sy)).forEach(function(p,si){
+        /* a side or spanning motif's body may be several parts in several
+           colours (a rig's cab and trailer); every older motif keeps its one */
         out.push({p:p.map(function(q){return [ax+(q[0]-ax)*sx, ay+(q[1]-ay)*sy];}),li:t,lr:ke-1-t,
-                  c:colOf(m,t===0?'out':'rib',0,tier)});
+                  c:colOf(m,t===0?'out':'rib',(m.side||m.w)?si:0,tier)});
       });
     }
     if(feat) emit(feat,0,ke-1,'feat',0);
@@ -1818,7 +2052,8 @@ var TMOTIF=(function(){
 
   return {defs:D, byId:BY, strokes:strokes, pool:pool, tier:T, flatten:flatten, ribR:ribR,
           KINDS:{join:'Joiner',up:'Upright',roam:'Roamer',rad:'Radial'},
-          PACKS:['Classic','Spooky','Winter','Sea','Garden','Critters','Sky','Things','Arcade','Prehistoric']};
+          PACKS:['Classic','Spooky','Winter','Sea','Garden','Critters','Sky','Things','Arcade','Prehistoric','Road'],
+          atSize:atSize};
 })();
 /* ==== TMOTIF END ==== */
 
@@ -4466,12 +4701,15 @@ function buildTruchet(p){
      `put` exists so a tag cannot be forgotten at one of the eleven push sites:
      a bare out.push() in this function is now a bug, and
      enginetest/linepens.js greps the source for one. */
-  var ti=0, tj=0, tcol=null;
+  var ti=0, tj=0, tcol=null, tblk=null;
+  /* `tblk` (row 76): the motif BLOCK a stroke belongs to -- "i,j,w,h,id,flip,e"
+     -- an expando no export reads, so enginetest/spancheck.js can measure
+     blocks, overlaps and transforms instead of inferring them */
   /* `tcol` rides alongside `ti`, for the same reason `put` exists at all: a
      tag that has to be remembered at eleven push sites is a tag that will be
      forgotten at one of them. It is null for the legacy sets 0..6, which are
      abstract and draw in ink. */
-  function put(q,rk){ out.push(q); q.li=ti; q.lr=rk; if(tcol) q.col=tcol; }
+  function put(q,rk){ out.push(q); q.li=ti; q.lr=rk; if(tcol) q.col=tcol; if(tblk) q.blk=tblk; }
   function arc(cx,cy,r,a0,a1){
     var n=Math.max(8,Math.floor(r*400)), q=[];
     for(var i=0;i<=n;i++){var a=a0+(a1-a0)*i/n; q.push([cx+r*Math.cos(a), cy+r*Math.sin(a)]);}
@@ -4483,6 +4721,16 @@ function buildTruchet(p){
      break: undeclared.py reads a loop label as an undeclared name. The two
      extra loop conditions are inert for sets 0..6, which never set it. */
   var motifPts=0, capped=false;
+  /* ROW 76, THE CLAIM PASS: a motif may cover a w x h block of cells. `occ`
+     marks claimed cells; a cell under an earlier block draws nothing. Only the
+     motif band reads it, so 0..6 are untouched. */
+  var occ=new Uint8Array(PG.gx*PG.gy);
+  function blockFree(i0,j0,w0,h0){
+    if(i0+w0>PG.gx || j0+h0>PG.gy) return false;
+    for(var bj=j0;bj<j0+h0;bj++) for(var bi=i0;bi<i0+w0;bi++) if(occ[bj*PG.gx+bi]) return false;
+    return true;
+  }
+  function pickInt(r,u){ return r[0]+Math.min(r[1]-r[0],Math.floor(u*(r[1]-r[0]+1))); }
   for(var j=0;j<PG.gy&&!capped;j++)for(var i=0;i<PG.gx&&!capped;i++){
     var x0=mx+i*c, y0=my+j*c, rr=rnd(j*97+i*31+5);
     /* THE BAND RULE. 0..6 is the continuity band (set 4 included, a motif
@@ -4499,12 +4747,28 @@ function buildTruchet(p){
          library "Lines per tile" can mean nesting OR added detail, and only
          the motif knows which strokes that is. Spec:
          docs/specs/2026-09-27-truchet-motif-library.md, section 3. */
-      var mi=Math.max(0,Math.min(TMOTIF.defs.length-1,Math.round(p.tiles))), m=TMOTIF.defs[mi];
+      if(occ[j*PG.gx+i]) continue;              /* under an earlier block */
+      var mi=Math.max(0,Math.min(TMOTIF.defs.length-1,Math.round(p.tiles))), m=TMOTIF.defs[mi], pl=null;
       if(m.mix){
         /* same hash key as legacy Mixed, so a wider page appends columns
            without reshuffling the tiles already there */
-        var pl=TMOTIF.pool(m.mix); if(!pl.length) continue;
+        pl=TMOTIF.pool(m.mix); if(!pl.length) continue;
         m=pl[Math.floor(rnd(j*131+i*71+3)*pl.length)];
+      }
+      /* THE BLOCK. A spanning motif picks its size on its own hashes, then
+         shrinks -- width first, then height -- until it fits the grid and the
+         unclaimed cells; one that cannot fit at its minimum is replaced by a
+         one-cell motif from the same Mix, or leaves the cell empty in a single
+         tile set. A one-cell motif is a 1 x 1 block and changes nothing. */
+      var bw=1, bh=1;
+      if(m.span){
+        bw=pickInt(m.span.w,rnd(j*29+i*61+17)); bh=pickInt(m.span.h,rnd(j*43+i*19+23));
+        while(!blockFree(i,j,bw,bh)){ if(bw>m.span.w[0]) bw--; else if(bh>m.span.h[0]) bh--; else break; }
+        if(!blockFree(i,j,bw,bh)){
+          if(!pl) continue;
+          var pl1=pl.filter(function(q){ return !q.span; }); if(!pl1.length) continue;
+          m=pl1[Math.floor(rnd(j*137+i*73+5)*pl1.length)]; bw=1; bh=1;
+        }
       }
       /* SIZE. Tile gap shrinks every tile; Size from mask shrinks each one by
          the mask's tone at the tile centre. The tone is read against STATE.g,
@@ -4513,7 +4777,8 @@ function buildTruchet(p){
          clip and the contours use (rows reads STATE.g.mcontp the same way). */
       var e=c*(1-(p.tgap||0)/100), tsz=(p.tsize||0)/100;
       if(tsz>0 && MASK.ready && typeof STATE!=='undefined' && typeof toneAt==='function'){
-        var tv=toneAt(x0+c/2,y0+c/2,STATE.g); if((p.tsinv||0)>0) tv=1-tv;
+        /* a block reads the tone at ITS centre */
+        var tv=toneAt(x0+c*bw/2,y0+c*bh/2,STATE.g); if((p.tsinv||0)>0) tv=1-tv;
         e*=1-tsz*(1-tv);
       }
       /* the drawn size ON PAPER picks the motif's level of detail, and tiles
@@ -4521,31 +4786,41 @@ function buildTruchet(p){
       var mmT=e*PAGEMM; if(!(mmT>0) || mmT<(p.tmin===undefined?10:p.tmin)/10) continue;
       /* TURN, by kind: upright never; roamers scatter or all face Facing;
          radials scatter or stay; joiners as the legacy sets do */
-      var deg=0;
-      if(m.k==='roam'||m.k==='rad'){
+      var deg=0, flip=false;
+      if(m.side){
+        /* SIDE VIEWS never turn; they mirror left/right -- at random under
+           Quarter turns (traffic both ways), else when Facing is left */
+        flip=(p.rot4||0)>0 ? rnd(j*211+i*47+13)<0.5 : Math.round(p.thead||0)===3;
+      } else if(m.k==='roam'||m.k==='rad'){
         if((p.rot4||0)>0) deg=Math.floor(rnd(j*211+i*47+13)*4)*90;
         else if(m.k==='roam') deg=(-90+90*Math.round(p.thead||0))-(m.head===undefined?-90:m.head);
       } else if(m.k==='join' && m.turn!=='none'){
         deg=((p.rot4||0)>0 ? Math.floor(rnd(j*211+i*47+13)*4) : (rr<0.5?0:1))*90;
       }
-      var ca=Math.cos(deg*Math.PI/180), sa=Math.sin(deg*Math.PI/180), tcx=x0+c/2, tcy=y0+c/2, tsc=e/100, tclip=e>c;
-      var ms=TMOTIF.strokes(m.index,{lines:k,mode:Math.round(p.tlmode||0),mm:mmT,spread:sp}), tilePts=0;
+      var ca=Math.cos(deg*Math.PI/180), sa=Math.sin(deg*Math.PI/180), tcx=x0+c*bw/2, tcy=y0+c*bh/2, tsc=e/100, tclip=e>c;
+      var acx=50*bw, acy=50*bh, fx=flip?-1:1;
+      var ms=TMOTIF.strokes(m.index,{lines:k,mode:Math.round(p.tlmode||0),mm:mmT,spread:sp,w:bw,h:bh}), tilePts=0;
       for(var z0=0;z0<ms.length;z0++) tilePts+=ms[z0].p.length;
       /* THE POINT BUDGET: stop adding tiles, like every other engine, rather
          than thinning them (CLAUDE.md Open item 3). Checked BEFORE the tile is
          emitted, so the total never passes GEOCAP. Legacy sets never get here. */
       if(motifPts+tilePts>GEOCAP){ capped=true; continue; }
+      /* claimed only now, after the budget check, so a capped page leaves no
+         claimed-but-empty block */
+      if(bw>1||bh>1) for(var cj=j;cj<j+bh;cj++) for(var ci=i;ci<i+bw;ci++) occ[cj*PG.gx+ci]=1;
       for(var z=0;z<ms.length;z++){
         var src=ms[z].p, q=[];
         for(var w=0;w<src.length;w++){
-          var ddx=src[w][0]-50, ddy=src[w][1]-50;
+          var ddx=(src[w][0]-acx)*fx, ddy=src[w][1]-acy;
           q.push([tcx+(ddx*ca-ddy*sa)*tsc, tcy+(ddx*sa+ddy*ca)*tsc]);
         }
         /* one put() site still: an unclipped stroke is a list of one run */
         var rs=tclip?boxRuns(q):[q];
+        tblk=i+','+j+','+bw+','+bh+','+m.id+','+(flip?1:0)+','+e;
         for(var z1=0;z1<rs.length;z1++){ q=rs[z1];
           ti=ms[z].li; tcol=ms[z].c; put(q, ms[z].lr); tcol=null;
         }
+        tblk=null;
       }
       motifPts+=tilePts;
       continue;
@@ -24585,7 +24860,7 @@ var HELP={
 'flag.pad':'Margin between the flag and the sheet edge. The cloth is 1.9 wide by 1.0 high and it is fitted with ONE scale on both axes, so it keeps that shape on any sheet and takes the paper either side rather than stretching to fill \\u2014 a flag stretched to the wrong aspect is a different flag. On a sheet close to 1.9:1 this knob is the only thing between the fly and the edge.',
 'flag.fedge':'Draw the outline of every band as well as the fill, on a pen of its own. Off by default because the fill already reads as a stripe and the outline doubles the pen time. The outlines fray exactly as the fill does, so an outlined stripe ends where its own lines end rather than boxing them in. Turning this on adds a third pen to the swatch row.',
 'flag.fstar':'Which star sits on the checkerboard. 0 is the five-point star of Executive Order 10834, one point straight up, and it is the default \u2014 every flag and every preset that predates this knob draws exactly what it always did. 1 is the STAR OF DAVID, drawn as two overlapping equilateral triangles, one pointing up and one pointing down, both inscribed in the same circle. BOTH TRIANGLES ARE WHOLE, so their edges cross and the six crossings outline the hexagon in the middle; a six-pointed OUTLINE is a different shape and is not this. The size and the fifty positions do not change \u2014 the points reach exactly as far as the five-point star\u2019s, so the diameter is still 0.0616 hoists. Each star becomes TWO paths, so the union carries a hundred instead of fifty and there are twice as many pen lifts in it.',
-'truchet.tiles':'Which tile. Grouped by pack: Classic (the six originals and Mix: Classic, the old Mixed), Spooky, Winter, Sea, Garden, Critters, Sky, Things, Arcade, Prehistoric. Each pack\u2019s Mix entry puts a different tile of that pack in every cell. Every tile has a kind that decides what Quarter turns does: joiners meet their neighbours at the edge; upright tiles (faces, anything with a top) are never turned; roamers (seen from above) scatter under Quarter turns or all face one way under Facing; radials look the same whichever way they turn. Every motif simplifies as it gets small on paper \u2014 a mouth becomes one line, eyes become dots \u2014 so a mask can shrink tiles without them turning to smudges.',
+'truchet.tiles':'Which tile. Grouped by pack: Classic (the six originals and Mix: Classic, the old Mixed), Spooky, Winter, Sea, Garden, Critters, Sky, Things, Arcade, Prehistoric, Road. Each pack\u2019s Mix entry puts a different tile of that pack in every cell. Every tile has a kind that decides what Quarter turns does: joiners meet their neighbours at the edge; upright tiles (faces, anything with a top) are never turned; roamers (seen from above) scatter under Quarter turns or all face one way under Facing; radials look the same whichever way they turn. Every motif simplifies as it gets small on paper \u2014 a mouth becomes one line, eyes become dots \u2014 so a mask can shrink tiles without them turning to smudges. Some motifs cover several cells: a big rig takes three or four, a giraffe two stacked. Side-view motifs flip left and right but never turn. A long one that does not fit at the right edge may fit on a wider page, so widening the page can change the last few columns.',
 'truchet.rot4':'Let each tile land in any of four orientations instead of two. This is what stops a set reading as stripes: with two orientations the arcs chain into long diagonals, with four they chain into everything. Upright tiles are never turned; for roamers, off means they all face the Facing direction.',
 
 /* ---- shared 3D view knobs: written once, resolved per engine via the
