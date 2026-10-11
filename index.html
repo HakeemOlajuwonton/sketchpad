@@ -424,7 +424,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v299</a> &mdash; TRUCHET BIG MOTIFS + ROAD -- a motif can cover several cells (a big rig three or four, a freight train three to five), side views flip but never turn, and a Road pack of 28 vehicles with its Mix (queue row 76)</span></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v300</a> &mdash; TRUCHET AIRCRAFT + BOATS -- two packs: planes from above and side views (a two-cell blimp and jumbo, a hot-air balloon two cells tall), boats on the water up to a three-cell container ship and a two-by-two pirate ship (queue row 77)</span></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <section class="fold" id="fold_pick"><h2>Pick engine<span class="cnt"></span></h2>
@@ -1931,6 +1931,95 @@ var TMOTIF=(function(){
       d.push('M'+(W-80)+' 12Q'+(W-74)+' 6 '+(W-70)+' 10'); return d;}});
   add({id:'mixroad',n:'Mix: Road',p:'Road',mix:'Road'});
 
+  /* ---------------- AIRCRAFT (row 77, §4.2) ----------------
+     Top-down ones are ROAMERS: authored nose up (head -90) except the
+     airliner, which the spec authors nose right (head 0). Side views mirror. */
+  function rotR(pts){return pts.map(function(p){return [100-p[1],p[0],p[2]];});}   /* nose up -> nose right */
+  function air(o){o.p='Aircraft'; return add(o);}
+  function plane(o){return smooth(mirror(o),true);}
+  air({id:'airliner',n:'Airliner',k:'roam',head:0,col:{out:'#d4d4d4',feat:['#2156c7','#2156c7','#1f1a17']},a:[50,50],nest:false,
+    out:smooth(rotR([[50,6,1],[54,12],[55,36,1],[92,56,1],[92,61,1],[55,52,1],[54,80,1],[66,88,1],[66,92,1],[52,90,1],[50,94,1],
+                      [48,90,1],[34,92,1],[34,88,1],[46,80,1],[45,52,1],[8,61,1],[8,56,1],[45,36,1],[46,12]]),true),
+    feat:function(t,dot){var e=ell(100-46,72,3,6,90)+ell(100-46,28,3,6,90); if(t===0) return e; return e+seg([88,50],[16,50]);},
+    det:['M84 46L84 54','M70 47L30 47','M8 50L12 50']});
+  air({id:'propplane',n:'Prop plane',k:'roam',col:{out:'#d42a2a',feat:'#1f1a17'},a:[50,48],nest:false,
+    out:plane([[50,12,1],[55,16],[56,34,1],[94,36,1],[94,46,1],[56,48,1],[54,78,1],[68,82,1],[68,88,1],[52,88,1],[50,92,1]]),
+    feat:function(t,dot){var d=seg([40,10],[60,10]); if(t===0) return d; return d+circ(50,12,2.5)+ell(50,26,3,4);},
+    det:['M50 34L50 76','M30 40L70 40','M58 84L62 84']});
+  air({id:'biplane',n:'Biplane',k:'roam',col:{out:'#f2c230',feat:'#1f1a17'},a:[50,48],nest:false,
+    out:plane([[50,10,1],[55,16],[56,24,1],[94,24,1],[94,36,1],[56,36,1],[56,44,1],[90,46,1],[90,56,1],[56,56,1],[54,80,1],[66,84,1],[66,90,1],[52,90,1],[50,94,1]]),
+    feat:function(t,dot){var d=seg([40,8],[60,8]); if(t===0) return d; return d+seg([30,36],[30,46])+seg([70,36],[70,46])+seg([82,36],[82,46])+seg([18,36],[18,46]);},
+    det:['M50 30L50 60','M44 18Q50 14 56 18','M40 50L60 50']});
+  air({id:'fighter',n:'Fighter jet',k:'roam',col:{out:'#8a8a8a',feat:'#1f1a17'},a:[50,55],nest:false,
+    out:plane([[50,6,1],[54,18],[56,40,1],[88,74,1],[88,80,1],[58,76,1],[58,84,1],[66,94,1],[52,92,1],[50,96,1]]),
+    feat:function(t,dot){var d=seg([44,82],[46,94])+seg([56,82],[54,94]); if(t===0) return d; return d+ell(50,26,2.5,7);},
+    det:['M50 40L50 76','M62 56L74 66M38 56L26 66','M47 96L53 96']});
+  air({id:'helicopter',n:'Helicopter',side:true,head:0,k:'up',col:{out:'#2156c7',feat:'#1f1a17'},a:[46,56],
+    out:smooth([[18,46,1],[44,42],[58,36,1],[74,38],[82,48],[80,62],[70,68,1],[48,68,1],[40,58,1],[18,52,1],[10,40,1],[8,36,1],[12,36,1]],true),
+    feat:function(t,dot){var d=seg([14,28],[94,28])+seg([62,28],[62,36])+seg([46,76],[80,76])+seg([52,68],[52,76])+seg([72,68],[72,76]); if(t===0) return d;
+      return d+poly([[64,42],[74,42],[78,52],[64,52]],true)+circ(10,36,5);},
+    det:['M44 46L44 64','M50 56L62 56','M76 74Q82 74 84 70']});
+  air({id:'helitop',n:'Helicopter (top)',k:'roam',col:{out:'#2156c7',feat:'#1f1a17'},a:[50,40],nest:false,
+    out:smooth([[50,20],[60,26],[62,40],[58,52,1],[52,56,1],[52,88,1],[48,88,1],[48,56,1],[42,52,1],[38,40],[40,26]],true),
+    feat:function(t,dot){var d=seg([20,10],[80,70])+seg([20,70],[80,10]); if(t===0) return d+seg([44,86],[56,86]);
+      return d+circ(50,40,3)+seg([42,86],[58,86])+seg([50,80],[50,92]);},
+    det:['M44 30Q50 26 56 30','M50 56L50 84','M46 46L54 46']});
+  air({id:'balloon_hot',n:'Hot-air balloon',k:'up',nest:false,span:{w:[1,1],h:[2,2]},col:{out:'#d42a2a',feat:['#f2c230','#2156c7','#f2c230','#2156c7','#8b5a2b','#1f1a17']},a:[50,80],
+    out:smooth([[50,8],[78,22],[88,56],[78,98],[60,124,1],[40,124,1],[22,98],[12,56],[22,22]],true),
+    feat:function(t,dot){var d='M50 8Q30 60 40 124M50 8Q70 60 60 124M50 8Q16 50 30 110M50 8Q84 50 70 110'+RECT(42,160,58,176)+seg([40,124],[43,160])+seg([60,124],[57,160]);
+      if(t===0) return RECT(42,160,58,176)+seg([40,124],[43,160])+seg([60,124],[57,160]); return d;},
+    det:['M22 98Q50 106 78 98','M12 56Q50 66 88 56','M42 168L58 168']});
+  air({id:'blimp',n:'Blimp',side:true,head:0,k:'up',nest:false,span:{w:[2,2],h:[1,1]},col:{out:'#8a8a8a',feat:'#1f1a17'},a:[100,46],
+    out:smooth([[190,46],[176,30],[120,22],[50,26],[22,34,1],[8,22,1],[4,24,1],[10,46,1],[4,68,1],[8,70,1],[22,58,1],[50,66],[120,70],[176,62]],true),
+    feat:function(t,dot){var d=poly([[96,70],[100,80],[124,80],[128,70]],false); if(t===0) return d; return d+WINROW(104,122,72,77,3,1.5)+seg([40,46],[176,46]);},
+    det:['M160 34Q170 46 160 58','M8 46L22 46','M60 30L60 62']});
+  air({id:'glider',n:'Glider',k:'roam',col:{out:'#f2f2f2',feat:'#1f1a17'},a:[50,40],nest:false,
+    out:plane([[50,16,1],[53,22],[53,36,1],[98,38,1],[98,42,1],[53,44,1],[52,84,1],[62,86,1],[62,90,1],[51,90,1],[50,94,1]]),
+    feat:function(t,dot){return t===0?'':ell(50,28,2.2,5);},
+    det:['M50 44L50 82','M20 40L80 40','M46 88L54 88']});
+  air({id:'jumbo',n:'Jumbo jet',side:true,head:0,k:'up',nest:false,span:{w:[2,2],h:[1,1]},col:{out:'#f2f2f2',feat:FC(3,['#1f1a17','#1f1a17','#2156c7','#2156c7'])},a:[100,50],
+    out:smooth([[196,52],[190,40],[176,32],[150,30,1],[30,34,1],[14,10,1],[6,10,1],[10,40,1],[8,52,1],[30,60,1],[160,62],[188,60]],true),
+    feat:function(t,dot){var d=WHEELS(t,dot,[[150,72,4],[80,72,4],[90,72,4]])+seg([150,62],[150,68])+seg([85,62],[85,68]);
+      if(t===0) return d+seg([30,46],[180,46]); return d+WINROW(40,170,42,46,16,3)+poly([[172,36],[182,38],[186,44],[172,44]],true)+ell(110,62,12,4);},
+    det:['M150 30L156 26L176 26','M10 40L30 40','M60 52L150 54']});
+  add({id:'mixaircraft',n:'Mix: Aircraft',p:'Aircraft',mix:'Aircraft'});
+
+  /* ---------------- BOATS (row 77, §4.3): side views on a waterline at y 74 ---------------- */
+  function boat(o){o.p='Boats'; o.side=true; o.head=0; if(!o.k) o.k='up'; return add(o);}
+  function WAVE(x0,x1,y,n){var d='M'+x0+' '+y; var w=(x1-x0)/n; for(var i=0;i<n;i++) d+='Q'+(x0+w*(i+0.5))+' '+(y-(i%2?-2.5:2.5))+' '+(x0+w*(i+1))+' '+y; return d;}
+  boat({id:'sailboat',n:'Sailboat',col:{out:'#2156c7',feat:['#1f1a17','#f2f2f2','#f2f2f2','#5aa9e6']},a:[50,70],
+    out:poly([[10,62],[92,62],[80,78],[22,78]],true),
+    feat:function(t,dot){var d=seg([50,62],[50,8])+poly([[52,10],[52,58],[88,58]],true)+poly([[48,16],[48,58],[18,58]],true); if(t===0) return d; return d+WAVE(4,96,84,6);},
+    det:['M50 8L46 4L50 4','M24 70L76 70','M30 66L34 66M60 66L64 66']});
+  boat({id:'speedboat',n:'Speedboat',col:{out:'#d42a2a',feat:['#5aa9e6','#1f1a17']},a:[50,62],
+    out:poly([[8,52],[70,52],[94,60],[82,72],[14,72]],true),
+    feat:function(t,dot){var d=poly([[52,52],[60,40],[66,40],[62,52]],false); if(t===0) return d; return d+'M8 76L2 80M14 78L6 84M20 78L14 86'+seg([20,62],[86,62]);},
+    det:['M30 52L30 44L40 44','M70 56L80 60','M20 66L60 66']});
+  boat({id:'tugboat',n:'Tugboat',col:{out:'#d42a2a',feat:['#f2c230','#f2c230','#f2c230','#1f1a17']},a:[50,58],
+    out:poly([[6,58],[34,58],[34,38],[44,38],[44,24],[66,24],[66,58],[94,54],[86,76],[14,76]],true),
+    feat:function(t,dot){var d=circ(26,70,4)+circ(50,70,4)+circ(74,70,4); if(t===0) return d; return d+RECT(48,30,62,38)+seg([52,24],[52,12])+seg([48,12],[56,12]);},
+    det:['M6 64L92 62','M36 44L42 44','M70 40L74 36']});
+  boat({id:'submarine',n:'Submarine',nest:false,span:{w:[2,2],h:[1,1]},col:{out:'#f2c230',feat:'#1f1a17'},a:[100,58],
+    out:smooth([[190,60],[170,46],[120,44,1],[116,26,1],[90,26,1],[86,44,1],[30,46],[12,52,1],[4,44,1],[2,46,1],[6,58,1],[2,70,1],[4,72,1],[12,64,1],[30,72],[170,72]],true),
+    feat:function(t,dot){var d=seg([104,26],[104,10])+seg([104,10],[112,10]); if(t===0) return d; return d+circ(60,58,4)+circ(80,58,4)+circ(140,58,4)+circ(160,58,4)+WAVE(0,200,90,10);},
+    det:['M30 58L180 58','M96 30L110 30','M188 58L196 58']});
+  boat({id:'cargoship',n:'Container ship',nest:false,span:{w:[3,3],h:[1,1]},col:{out:'#d42a2a',feat:['#1f1a17','#2156c7','#2f9a44','#f2c230','#8a8a8a','#d42a2a','#2156c7','#f2c230','#2f9a44','#8a8a8a']},a:[150,60],
+    out:poly([[4,60],[296,60],[280,82],[24,82]],true),
+    feat:function(t,dot){var d=RECT(20,26,58,60), x; if(t===0) return d+RECT(70,42,270,60);
+      for(var i=0;i<9;i++){x=70+i*22; d+=RECT(x,i%2?42:32,x+20,60);} d+=seg([30,26],[30,14]); if(t===2) d+=WINROW(24,54,32,38,3,3); return d;},
+    det:['M10 70L290 70','M286 60L294 54','M40 14L44 10']});
+  boat({id:'canoe',n:'Canoe',nest:false,col:{out:'#8b5a2b',feat:'#1f1a17'},a:[50,64],
+    out:smooth([[4,56,1],[20,62],[50,64],[80,62],[96,56,1],[86,70],[50,74],[14,70]],true),
+    feat:function(t,dot){var d=seg([30,30],[70,82])+ell(70,80,3,6,-50); if(t===0) return d; return d+WAVE(2,98,82,6);},
+    det:['M20 66L80 66','M10 60L14 62M86 62L90 60','M40 62L40 70M60 62L60 70']});
+  boat({id:'pirateship',n:'Pirate ship',nest:false,span:{w:[2,2],h:[2,2]},col:{out:'#8b5a2b',feat:['#1f1a17','#1f1a17','#1f1a17','#f2f2f2','#f2f2f2','#f2f2f2','#1f1a17']},a:[100,140],
+    out:poly([[10,130],[34,124],[166,124],[190,112],[178,164],[30,164],[14,150]],true),
+    feat:function(t,dot){var d=seg([60,124],[60,30])+seg([104,124],[104,16])+seg([148,124],[148,40]);
+      d+=poly([[62,40],[96,46],[94,74],[62,80]],true)+poly([[106,26],[142,32],[140,66],[106,72]],true)+poly([[106,82],[140,86],[138,112],[106,116]],true)+poly([[104,16],[124,20],[104,24]],true);
+      if(t===0) return d; d+=seg([114,20],[118,22])+seg([114,22],[118,20]); for(var i=0;i<5;i++) d+=circ(56+i*22,142,3); return d;},
+    det:['M30 136L176 136','M10 130L2 118','M150 40L196 112']});
+  add({id:'mixboats',n:'Mix: Boats',p:'Boats',mix:'Boats'});
+
   var BY={}; D.forEach(function(m,i){m.index=i; BY[m.id]=m;});
   /* a Mix draws from every library motif in its pack. The legacy classic
      tiles (0..5) are not library motifs -- buildTruchet draws them -- so they
@@ -2052,7 +2141,7 @@ var TMOTIF=(function(){
 
   return {defs:D, byId:BY, strokes:strokes, pool:pool, tier:T, flatten:flatten, ribR:ribR,
           KINDS:{join:'Joiner',up:'Upright',roam:'Roamer',rad:'Radial'},
-          PACKS:['Classic','Spooky','Winter','Sea','Garden','Critters','Sky','Things','Arcade','Prehistoric','Road'],
+          PACKS:['Classic','Spooky','Winter','Sea','Garden','Critters','Sky','Things','Arcade','Prehistoric','Road','Aircraft','Boats'],
           atSize:atSize};
 })();
 /* ==== TMOTIF END ==== */
