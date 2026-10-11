@@ -424,7 +424,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v308</a> &mdash; STREET COLOUR ONLY IN REFLECTIONS -- the world plots in black and colour lives only in the puddles: 1 the front puddle, 2 every puddle (queue row 84)</span></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v309</a> &mdash; CORRIDOR KIT HOOKS (refactor only) -- a theme may set its pavement from its own knobs, let the eye stand on its pavement, make its kerb hide with no gap at the seams, and run its lots to the street's end; every existing engine byte-identical (queue row 85)</span></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <section class="fold" id="fold_pick"><h2>Pick engine<span class="cnt"></span></h2>
@@ -22735,6 +22735,9 @@ function buildCorridor(p,THM){
   if(THM.alias){ p=Object.assign({},p); for(var ak in THM.alias) p[ak]=p[THM.alias[ak]]; }
   var LEN=Math.max(THM.minLen||60,+p.len||220), BEND=Math.max(0,+p.bend||0);
   var WID=Math.max(THM.minWidth||4,+p.width||7), PAVE=Math.max(0,isFinite(p.pave)?+p.pave:2.5);
+  /* ROW 85: a theme may say how deep its pavement is from knobs of its own
+     (the station's is a platform and a back lane, two knobs) */
+  if(THM.paveOf) PAVE=THM.paveOf(p);
   var LOTMIN=Math.max(3,+p.lotmin||5), LOTMAX=Math.max(LOTMIN,+p.lotmax||11);
   var ALLEY=(p.alley||0)/100, FLOORS=Math.max(1,Math.round(p.floors||9));
   var CANYON=(p.canyon||0)/100, STEPB=(p.stepb||0)/100, CANTI=(p.canti||0)/100;
@@ -22885,6 +22888,10 @@ function buildCorridor(p,THM){
       var LGX=null;
       if(THM.lotGen){ LGX=THM.lotGen(R,p,li,sd); wl=LGX.wl; depth=LGX.depth; }
       var b0=cursor, b1=cursor+wl;
+      /* ROW 85: a theme whose lots must reach the street's end (a platform
+         has no hole in it) widens the last lot to the end, or the one before
+         it when what would be left is narrower than Building min */
+      if(THM.lotsToEnd && b0<cum[cum.length-1]-1e-9 && b1>cum[cum.length-1]-LOTMIN) b1=cum[cum.length-1];
       if(b1>cum[cum.length-1]) break;
       cursor=b1+(LGX && LGX.gap!==undefined?LGX.gap:(ua<ALLEY?aw:0));
       var s0=arcOfBack(b0), s1=arcOfBack(b1);
@@ -22924,7 +22931,11 @@ function buildCorridor(p,THM){
 
   /* ---- the camera, §3.1 --------------------------------------------------- */
   var sC=CAMS*LEN;
-  var CE=P3(sC,1,CAMX*HALFW,CAMZ), TG=P3(sC+LOOK,1,0,CAMZ);
+  /* ROW 85: Camera side is a share of HALFW, so it reached the kerb and never
+     the pavement. A theme may let it reach CREACH metres further (the
+     station's eye stands on its platform); absent, HALFW+0 is HALFW exactly */
+  var CREACH=THM.camReach?THM.camReach(p):0;
+  var CE=P3(sC,1,CAMX*(HALFW+CREACH),CAMZ), TG=P3(sC+LOOK,1,0,CAMZ);
   var fx=TG[0]-CE[0], fy=TG[1]-CE[1], fl=Math.hypot(fx,fy)||1;
   fx/=fl; fy/=fl;
   /* ROW 72, TURN: the plan direction rotated after it is normalised and before
@@ -23258,7 +23269,7 @@ function buildCorridor(p,THM){
      frame (pitched up, or none between the two) the arc moves alone. */
   var PV=null;
   if(TURN!==0){
-    var Fe=frame(sC), fnE=fx*(-Fe[3])+fy*Fe[2], oE=CAMX*HALFW;
+    var Fe=frame(sC), fnE=fx*(-Fe[3])+fy*Fe[2], oE=CAMX*(HALFW+CREACH);
     var syV=-(PGH-PAD-PGH/2)/(FF*HW), dV=[FW[0]+syV*UP[0], FW[1]+syV*UP[1], FW[2]+syV*UP[2]];
     if(dV[2]<-1e-9 && Math.abs(fnE)>1e-6){
       var tV=-CE[2]/dV[2], dNr=tV*(dV[0]*fx+dV[1]*fy), dFr=((fnE>0?HALFW:-HALFW)-oE)/fnE;
@@ -23531,6 +23542,37 @@ function buildCorridor(p,THM){
     return ring.length>=3?ring:null;
   }
 
+  /* ROW 85: A GAPLESS OCCLUDER. hlrConvex offsets every edge of an occluder
+     outward by the gap (each plane's d by +gap, so the corners are mitred),
+     and a run of abutting solids -- a platform cut into 4 m pieces, a rail per
+     slab -- then trims the start of every next piece's lines: a dashed edge.
+     A part marked `gapless` hands over its outline offset INWARD by the same
+     mitre, so the gap puts it back exactly where it is. A silhouette too small
+     to take the inset keeps its own outline. */
+  function gapIn(S){
+    if(!(GAP>0) || !S || S.length<3) return S;
+    var n=S.length, cx=0, cy=0, L=[], m;
+    for(m=0;m<n;m++){ cx+=S[m][0]/n; cy+=S[m][1]/n; }
+    for(m=0;m<n;m++){
+      var a=S[m], b=S[(m+1)%n], ex=b[0]-a[0], ey=b[1]-a[1], l=Math.hypot(ex,ey);
+      if(l<1e-12) continue;
+      var nx=ey/l, ny=-ex/l; if(nx*(cx-a[0])+ny*(cy-a[1])>0){ nx=-nx; ny=-ny; }
+      L.push([nx,ny,nx*a[0]+ny*a[1]-GAP]);
+    }
+    if(L.length<3) return S;
+    var o=[];
+    for(m=0;m<L.length;m++){
+      var A=L[(m+L.length-1)%L.length], B=L[m], det=A[0]*B[1]-A[1]*B[0];
+      if(Math.abs(det)<1e-12) return S;
+      o.push([(A[2]*B[1]-A[1]*B[2])/det, (A[0]*B[2]-A[2]*B[0])/det]);
+    }
+    /* every inset corner strictly inside every inset plane's neighbours: if
+       an edge collapsed, the inset is not the outline's and is not used */
+    for(m=0;m<o.length;m++) for(var k=0;k<L.length;k++)
+      if(L[k][0]*o[m][0]+L[k][1]*o[m][1]-L[k][2]>1e-9) return S;
+    return o;
+  }
+
   /* ---- splitting a part at a plane (the cycle breaker) ------------------- */
   function clipPoly(pts,n,d,keepAbove){
     var o=[], m;
@@ -23764,6 +23806,11 @@ function buildCorridor(p,THM){
          start of the next piece's kerb line, and the kerb read as a dashed line
          every 4 m. It is 0.15 m tall; what it could hide is not worth that. */
       P.hides=false;
+      /* ROW 85: A KERB THAT HIDES (a 1.30 m platform face must). It hides with
+         NO GAP: its occluder is its exact outline, so the next piece's coping
+         line is not trimmed at every seam -- the dashed line this note
+         describes. `gapless` below is how. */
+      if(THM.kerbHides){ P.hides=true; P.gapless=true; }
       P.cont=C; P.col='#1a1a1a'; P.kind=THM.kerbKind||'kerb'; C.parts.push(P);
     });
     CT.furnish(dn,df,tries);
@@ -24182,7 +24229,7 @@ function buildCorridor(p,THM){
                               kind:P.kind||'', seeThru:!!P.seeThru, cidx:cidx, layer:P.layer||'struct',
                               sign:P.sign===undefined?-1:P.sign, cable:P.cable, car:P.car, cut:!!P.cut, cpart:P.cpart, wh:P.wh, ab:P.ab, sk:P.sk, nside:P.nside, truck:P.truck, gant:P.gant, pk:P.pk});
         STRTTALLY.sil.push(P.sil);
-        if(P.sil && P.hides!==false) occl.push(P.sil);
+        if(P.sil && P.hides!==false) occl.push(P.gapless?gapIn(P.sil):P.sil);
       });
     });
 
