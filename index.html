@@ -424,7 +424,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v306</a> &mdash; TRUCHET FANTASY + CITY + SPACE -- a dragon and a castle two by two and a sword two cells tall, a street of landmarks with skyscrapers two or three cells tall, and a space station three cells long (queue row 83)</span></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v307</a> &mdash; TRUE COLOUR DROPS INKS NOTHING USES -- the selection returned pens no colour was assigned to, two empty layers on a ten-colour street at Colours 24 (queue row 84, found by its gate)</span></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <section class="fold" id="fold_pick"><h2>Pick engine<span class="cnt"></span></h2>
@@ -11005,14 +11005,16 @@ function pickInks(cols,w,N){
     for(j=0;j<chosen.length;j++) if(d2[i][chosen[j]]<m2){ m2=d2[i][chosen[j]]; mk=chosen[j]; }
     of.push(mk); used[mk]=1;
   }
-  /* WHAT DROPS AN INK IS THE EARLY STOP, NOT A FILTER HERE. Greedy only adds
-     an ink that STRICTLY lowers the error, which means at least one colour
-     becomes nearest to it; the swap preserves that for the same reason. So
-     every chosen ink is used, always -- measured over 3,600 random selections,
-     `chosen` and the set actually assigned to never once differed. The filter
-     this line used to carry was dead, and a dead line is one no sabotage can
-     redden: `sel-keeps-unused-inks` stayed green against every cell here. */
-  var keep=chosen.slice();
+  /* DROP THE INKS NOTHING IS ASSIGNED TO. Greedy only adds an ink that
+     STRICTLY lowers the error, so each one is nearest to some colour WHEN IT
+     IS ADDED -- and a later ink can take every one of them. The v258 note here
+     called that impossible off 3,600 random colour sets and deleted this
+     filter; random colours are almost never exactly inks. A Street sheet's
+     colours ARE inks: ten of them at Colours 24 picked grey and brown first as
+     compromises, then the ten exact inks, and the error reached 0 with twelve
+     -- two pens and two SVG layers holding nothing (row 84). The error is the
+     same without them: no colour is nearest to an unused ink. */
+  var keep=chosen.filter(function(k2){ return used[k2]; });
   /* LIGHT TO DARK, so black is plotted last and lies on top of everything. */
   keep.sort(function(a,b){ return oklabOf(INKS[b].hex)[0]-oklabOf(INKS[a].hex)[0]; });
   return {inks:keep, err:errWith(chosen), of:of};
