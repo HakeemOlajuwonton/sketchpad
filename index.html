@@ -424,7 +424,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v303</a> &mdash; TRUCHET BUGS + BEACH -- insects from above with a two-cell caterpillar and a side-on mantis, and a day at the shore with a palm tree and a surfboard two cells tall (queue row 80)</span></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v304</a> &mdash; TRUCHET FOOD + MUSIC -- snacks and meals with a two-cell hot dog, and instruments with guitars two cells tall and a keyboard two or three cells long (queue row 81)</span></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <section class="fold" id="fold_pick"><h2>Pick engine<span class="cnt"></span></h2>
@@ -2393,6 +2393,124 @@ var TMOTIF=(function(){
     det:['M50 10L50 6','M50 90L50 94','M30 50L34 50']});
   add({id:'mixbeach',n:'Mix: Beach',p:'Beach',mix:'Beach'});
 
+  /* ---------------- FOOD (row 81, §4.11). `icecreamcone`, not the spec's
+     `icecream`: Road's ice-cream van took that id first, and ids are unique. */
+  function food(o){o.p='Food'; if(o.side) o.head=0; return add(o);}
+  food({id:'pizza',n:'Pizza slice',k:'roam',col:{out:'#f2c230',feat:['#c8962e','#d42a2a']},a:[50,46],
+    out:smooth([[50,90,1],[16,20],[26,12],[50,8],[74,12],[84,20]],true),
+    feat:function(t,dot){var d='M16 20Q50 4 84 20M20 26Q50 12 80 26'; if(t===0) return d; return d+circ(50,34,6)+circ(38,50,5)+circ(60,56,5)+circ(48,70,4)+circ(64,32,4);},
+    det:['M30 40L32 44M70 44L68 48','M46 50L50 52','M52 80L50 84']});
+  food({id:'burger',n:'Burger',k:'up',nest:false,col:{out:'#c8962e',feat:['#2f9a44','#8b5a2b','#f2c230','#c8962e','#f2f2f2']},a:[50,52],
+    out:smooth([[10,46,1],[14,28],[30,16],[50,12],[70,16],[86,28],[90,46,1]],true)+smooth([[12,70,1],[88,70,1],[86,84],[70,90],[30,90],[14,84]],true),
+    feat:function(t,dot){var d='M10 50Q20 56 30 50Q40 56 50 50Q60 56 70 50Q80 56 90 50'+RECT(10,56,90,66)+'M12 66L88 66L82 70L18 70Z'; if(t===0) return d; return d+'M30 26L32 28M44 20L46 22M58 24L60 26M70 30L72 32M38 34L40 36';},
+    det:['M10 46L90 46','M20 78Q50 82 80 78','M50 12L50 8']});
+  food({id:'taco',n:'Taco',k:'up',nest:false,col:{out:'#f2c230',feat:['#2f9a44','#d42a2a','#8b5a2b']},a:[50,60],
+    out:smooth([[6,80,1],[10,56],[26,36],[50,30],[74,36],[90,56],[94,80,1]],true)+seg([6,80],[94,80]),
+    feat:function(t,dot){var d='M14 52Q20 40 28 46Q34 34 42 40Q50 30 58 40Q66 34 72 46Q80 40 86 52'; if(t===0) return d; return d+circ(32,52,4)+circ(50,48,4)+circ(68,52,4)+'M40 58L44 56M56 58L60 56';},
+    det:['M20 70Q50 62 80 70','M10 80L90 80','M30 44L32 40']});
+  food({id:'sushi',n:'Sushi roll',k:'rad',col:{out:'#1f1a17',feat:['#f2f2f2','#f28c28','#2f9a44']},a:[50,50],
+    out:circ(50,50,38),
+    feat:function(t,dot){var d=circ(50,50,30); if(t===0) return d; return d+circ(46,46,9)+ell(58,56,6,5)+'M30 40L34 42M66 30L68 34M64 70L60 72M30 64L34 62';},
+    det:['M50 12L50 20','M20 50L28 50','M76 72L72 68']});
+  food({id:'donut',n:'Donut',k:'rad',col:{out:'#c8962e',feat:['#f2a7c3','#c8962e','#d42a2a','#2156c7','#f2c230','#2f9a44']},a:[50,50],
+    out:circ(50,50,40)+circ(50,50,13),
+    feat:function(t,dot){var d=polar(50,50,function(a){return 32+3*Math.sin(7*a);},120); if(t===0) return d; var s=''; [[34,30],[66,28],[74,56],[60,74],[30,66],[26,46],[48,24],[70,42]].forEach(function(p,i){s+=seg(p,[p[0]+3*Math.cos(i),p[1]+3*Math.sin(i)]);}); return d+circ(50,50,18)+s;},
+    det:['M20 56Q18 50 20 44','M50 90L50 94','M80 44Q82 50 80 56']});
+  food({id:'icecreamcone',n:'Ice-cream cone',k:'up',nest:false,col:{out:'#c8962e',feat:['#f2a7c3','#c8962e','#c8962e']},a:[50,60],
+    out:poly([[30,50],[70,50],[50,96]],true),
+    feat:function(t,dot){var d=smooth([[28,50],[26,38],[36,30],[50,28],[64,30],[74,38],[72,50]],false)+smooth([[34,30],[38,16],[50,10],[62,16],[66,30]],false); if(t===0) return d;
+      return d+'M36 58L60 70M40 66L56 74M64 58L40 70M60 66L44 74'+seg([30,50],[70,50]);},
+    det:['M42 20L44 18M56 22L58 20','M30 40L34 38','M50 10L50 6']});
+  food({id:'avocado',n:'Avocado half',k:'up',col:{out:'#2f9a44',feat:['#8b5a2b','#6b7a2a']},a:[50,56],
+    out:smooth([[50,10],[66,18],[72,36],[84,60],[80,82],[50,94],[20,82],[16,60],[28,36],[34,18]],true),
+    feat:function(t,dot){var d=circ(50,64,14); return t===0?d:d+smooth([[50,18],[62,26],[66,40],[76,60],[72,78],[50,86],[28,78],[24,60],[34,40],[38,26]],true);},
+    det:['M44 60Q48 56 52 58','M50 10L50 6','M30 84L34 82']});
+  food({id:'watermelon',n:'Watermelon slice',k:'up',nest:false,col:{out:'#2f9a44',feat:['#d42a2a','#1f1a17']},a:[50,50],
+    out:'M6 30L94 30'+arc(50,30,44,0,180),
+    feat:function(t,dot){var d=arc(50,30,38,0,180)+seg([12,30],[88,30]); if(t===0) return d;
+      var s=''; [[36,42],[50,46],[64,42],[42,56],[58,56],[50,64]].forEach(function(p){s+=ell(p[0],p[1],1.8,3);}); return d+s;},
+    det:['M6 30L6 26L94 26L94 30','M50 74L50 70','M24 40L28 42']});
+  food({id:'boba',n:'Boba tea',k:'up',nest:false,col:{out:'#c8962e',feat:['#5aa9e6','#d42a2a','#1f1a17']},a:[50,60],
+    out:poly([[24,34],[76,34],[68,92],[32,92]],true),
+    feat:function(t,dot){var d=smooth([[22,34],[30,24],[50,20],[70,24],[78,34]],false)+poly([[56,22],[62,2],[68,2],[62,22]],false); if(t===0) return d;
+      var s=''; [[38,84],[46,82],[54,84],[62,82],[42,76],[50,76],[58,76]].forEach(function(p){s+=circ(p[0],p[1],3);}); return d+s+seg([26,44],[74,44]);},
+    det:['M30 60L70 60','M24 34L76 34','M32 92L68 92']});
+  food({id:'hotdog',n:'Hot dog',side:true,k:'up',nest:false,span:{w:[2,2],h:[1,1]},col:{out:'#c8962e',feat:['#d42a2a','#f2c230']},a:[100,56],
+    out:smooth([[14,56],[24,74],[60,82],[140,82],[176,74],[186,56],[170,62],[140,66],[60,66],[30,62]],true),
+    feat:function(t,dot){var d=smooth([[8,54],[16,44],[60,40],[140,40],[184,44],[192,54],[184,62],[140,64],[60,64],[16,62]],true); if(t===0) return d;
+      var z='M30 50'; for(var i=0;i<14;i++) z+='L'+(36+i*10)+' '+(i%2?50:44); return d+z;},
+    det:['M40 72Q100 78 160 72','M10 56L4 56','M190 56L196 56']});
+  food({id:'pretzel',n:'Pretzel',k:'up',col:{out:'#8b5a2b',feat:'#f2f2f2'},a:[50,50],
+    out:'M50 86Q20 86 14 56Q10 26 34 20Q50 18 54 36Q58 54 50 62Q42 54 46 36Q50 18 66 20Q90 26 86 56Q80 86 50 86',
+    feat:function(t,dot){return t===0?'':dot(30,40)+dot(70,40)+dot(24,60)+dot(76,60)+dot(50,78)+dot(40,26)+dot(60,26);},
+    det:['M30 70L36 66','M70 70L64 66','M50 62L50 70']});
+  food({id:'cherry',n:'Cherries',k:'up',nest:false,col:{out:'#d42a2a',feat:['#2f9a44','#2f9a44','#2f9a44']},a:[50,64],
+    out:circ(32,72,16)+circ(68,68,16),
+    feat:function(t,dot){var d='M32 56Q36 30 54 12M68 52Q64 30 54 12'; return t===0?d:d+lensPetal(54,12,-30,1,22,6)+'M26 66Q28 62 32 62';},
+    det:['M62 62Q64 58 68 58','M30 86L34 86','M54 12L54 8']});
+  food({id:'friedegg',n:'Fried egg',k:'rad',col:{out:'#f2f2f2',feat:['#f2c230','#1f1a17']},a:[50,50],
+    out:polar(50,50,function(a){return 38+5*Math.sin(3*a)+3*Math.sin(5*a+1);},120),
+    feat:function(t,dot){var d=circ(52,48,13); return t===0?d:d+'M46 42Q50 38 54 40';},
+    det:['M20 60Q24 64 28 62','M76 30Q80 34 78 38','M50 86L50 90']});
+  food({id:'lumpia',n:'Lumpia',k:'roam',nest:false,col:{out:'#c8962e',feat:'#8b5a2b'},a:[50,50],
+    out:smooth([[22,20,1],[78,20,1],[84,30],[84,70],[78,80,1],[22,80,1],[16,70],[16,30]],true),
+    feat:function(t,dot){var d='M40 20L36 80M60 20L64 80'; return t===0?d:d+'M22 20Q30 30 22 40M78 60Q70 70 78 80'+'M26 50L30 50M70 50L74 50';},
+    det:['M30 30L34 32','M66 66L70 68','M50 20L50 80']});
+  add({id:'mixfood',n:'Mix: Food',p:'Food',mix:'Food'});
+
+  /* ---------------- MUSIC (§4.12) ---------------- */
+  function music(o){o.p='Music'; if(o.side) o.head=0; return add(o);}
+  music({id:'guitar',n:'Acoustic guitar',k:'up',nest:false,span:{w:[1,1],h:[2,2]},col:{out:'#c8962e',feat:['#1f1a17','#8b5a2b','#1f1a17']},a:[50,140],
+    out:smooth([[50,104],[64,108],[70,122],[64,136],[76,152],[78,172],[66,190],[50,194],[34,190],[22,172],[24,152],[36,136],[30,122],[36,108]],true),
+    feat:function(t,dot){var d=circ(50,140,8)+RECT(46,20,54,106)+RECT(42,4,58,20)+RECT(40,172,60,178); if(t===0) return d; return d+'M48 22L48 172M52 22L52 172'+'M46 40L54 40M46 56L54 56M46 70L54 70';},
+    det:['M42 10L38 10M58 10L62 10','M42 16L38 16M58 16L62 16','M34 160Q50 166 66 160']});
+  music({id:'eguitar',n:'Electric guitar',k:'up',nest:false,span:{w:[1,1],h:[2,2]},col:{out:'#d42a2a',feat:['#1f1a17','#1f1a17','#1f1a17','#f2f2f2','#f2f2f2']},a:[50,150],
+    out:smooth([[46,108,1],[56,110],[62,100,1],[68,104],[66,124],[80,148],[78,176],[62,190],[40,192],[24,178],[22,156],[32,138],[30,122],[38,112]],true),
+    feat:function(t,dot){var d=RECT(46,16,54,110)+poly([[44,4],[60,2],[58,16],[46,16]],true); if(t===0) return d; return d+RECT(42,132,58,138)+RECT(42,150,58,156)+'M48 18L48 176M52 18L52 176'+circ(64,170,3);},
+    det:['M44 6L40 6M44 12L40 12','M60 162L66 162','M36 176Q50 182 64 176']});
+  music({id:'keyboard',n:'Keyboard',k:'up',nest:false,span:{w:[2,3],h:[1,1]},col:{out:'#1f1a17',feat:['#1f1a17']},a:function(w){return [50*w,56];},
+    out:function(w){return RECT(6,30,100*w-6,84);},
+    feat:function(t,dot,w){var W=100*w, nk=7*w+1, kx=(W-20)/nk, d=RECT(10,46,W-10,80); for(var i=1;i<nk;i++) d+=seg([10+i*kx,46],[10+i*kx,80]);
+      if(t===0) return d; var pat=[1,1,0,1,1,1,0]; for(i=0;i<nk-1;i++) if(pat[i%7]) d+=RECT(10+(i+1)*kx-kx*0.3,46,10+(i+1)*kx+kx*0.3,66); return d+circ(20,38,3)+circ(30,38,3)+RECT(W/2-20,34,W/2+20,42);},
+    det:function(w){return ['M40 38L60 38','M'+(100*w-30)+' 36L'+(100*w-14)+' 36','M6 84L'+(100*w-6)+' 84'];}});
+  music({id:'drum',n:'Drum',k:'up',nest:false,col:{out:'#d42a2a',feat:['#f2f2f2','#8a8a8a','#c8962e','#c8962e']},a:[50,60],
+    out:smooth([[14,40,1],[86,40,1],[86,80,1],[14,80,1]],true),
+    feat:function(t,dot){var d=ell(50,40,36,9)+'M18 44L30 80M42 44L54 80M66 44L78 80M30 44L18 80M54 44L42 80M78 44L66 80'; if(t===0) return ell(50,40,36,9)+'M30 30L70 10M70 30L30 10'; return d+'M30 30L70 10M70 30L30 10';},
+    det:['M14 60L86 60','M28 84L30 92M72 84L70 92','M70 10L74 8']});
+  music({id:'trumpet',n:'Trumpet',side:true,k:'up',nest:false,col:{out:'#f2c230',feat:'#1f1a17'},a:[50,50],
+    out:smooth([[6,44,1],[50,44],[70,40],[84,28],[94,24,1],[94,76,1],[84,72],[70,60],[50,56],[6,56,1]],true),
+    feat:function(t,dot){var d='M24 56Q14 66 24 74L54 74Q64 66 54 56'+seg([34,44],[34,32])+seg([42,44],[42,32])+seg([50,44],[50,32]); if(t===0) return d; return d+RECT(31,28,37,32)+RECT(39,28,45,32)+RECT(47,28,53,32)+RECT(2,46,8,54);},
+    det:['M60 50L80 50','M24 64L50 64','M94 50L98 50']});
+  music({id:'sax',n:'Saxophone',k:'up',nest:false,col:{out:'#f2c230',feat:'#1f1a17'},a:[50,56],
+    out:smooth([[36,8,1],[42,8,1],[44,30],[46,60],[50,78],[60,80],[66,64],[62,50,1],[80,40,1],[80,52],[74,80],[60,94],[44,92],[34,78],[32,56],[34,30]],true),
+    feat:function(t,dot){var d=seg([36,8],[30,4])+ell(71,46,9,5,-30); if(t===0) return d; return d+circ(39,30,2.5)+circ(40,40,2.5)+circ(41,50,2.5)+circ(42,60,2.5)+circ(44,70,2.5);},
+    det:['M48 80Q54 86 60 82','M30 4L28 2','M36 20L40 20']});
+  music({id:'headphones',n:'Headphones',k:'up',nest:false,col:{out:'#1f1a17',feat:'#1f1a17'},a:[50,50],
+    out:arc(50,56,36,180,360)+arc(50,56,30,180,360),
+    feat:function(t,dot){var d=smooth([[10,52,1],[24,52,1],[26,70],[24,86,1],[10,86,1],[8,70]],true)+smooth([[76,52,1],[90,52,1],[92,70],[90,86,1],[76,86,1],[74,70]],true); return t===0?d:d+ell(17,69,3,10)+ell(83,69,3,10);},
+    det:['M14 56L14 62','M86 56L86 62','M50 20L50 26']});
+  music({id:'cassette',n:'Cassette',k:'up',nest:false,col:{out:'#1f1a17',feat:['#1f1a17','#1f1a17','#d42a2a','#1f1a17']},a:[50,50],
+    out:smooth([[6,22,1],[94,22,1],[94,80,1],[6,80,1]],true),
+    feat:function(t,dot){var d=circ(32,50,9)+circ(68,50,9); if(t===0) return d; return d+RECT(14,28,86,40)+RECT(24,42,76,60)+poly([[24,80],[30,68],[70,68],[76,80]],false)+rays(32,50,3,8,0,300,6)+rays(68,50,3,8,0,300,6);},
+    det:['M20 34L60 34','M40 74L60 74','M10 26L12 28M88 26L90 28']});
+  music({id:'vinyl',n:'Record',k:'rad',col:{out:'#1f1a17',feat:['#d42a2a','#1f1a17','#1f1a17','#1f1a17']},a:[50,50],
+    out:circ(50,50,42),
+    feat:function(t,dot){var d=circ(50,50,12)+circ(50,50,2); return t===0?d:d+circ(50,50,34)+circ(50,50,26)+circ(50,50,18);},
+    det:['M50 42L54 46','M80 30Q86 40 86 50','M20 70Q14 60 14 50']});
+  music({id:'mic',n:'Microphone',k:'up',nest:false,col:{out:'#8a8a8a',feat:'#1f1a17'},a:[50,40],
+    out:smooth([[50,10],[64,16],[66,30],[60,42],[56,46,1],[44,46,1],[40,42],[34,30],[36,16]],true),
+    feat:function(t,dot){var d=RECT(46,46,54,70)+seg([50,70],[50,90])+seg([30,92],[70,92]); if(t===0) return d; return d+'M38 22L62 22M36 30L64 30M40 38L60 38M44 14L44 42M50 12L50 44M56 14L56 42';},
+    det:['M46 56L54 56','M50 90L44 96M50 90L56 96','M30 92L30 96']});
+  music({id:'notes',n:'Music notes',k:'up',nest:false,col:{out:'#1f1a17',feat:'#1f1a17'},a:[50,50],
+    out:ell(26,74,9,7,-20)+ell(56,68,9,7,-20)+poly([[34,72],[34,22],[64,14],[64,66]],false),
+    feat:function(t,dot){var d=seg([34,30],[64,22])+ell(80,84,7,6,-20)+seg([86,82],[86,46])+'M86 46Q94 52 92 62'; return t===0?ell(80,84,7,6,-20)+seg([86,82],[86,46]):d;},
+    det:['M34 26L64 18','M10 90L94 90','M86 46L90 44']});
+  music({id:'boombox',n:'Boombox',k:'up',nest:false,span:{w:[2,2],h:[1,1]},col:{out:'#8a8a8a',feat:['#1f1a17','#1f1a17','#1f1a17','#1f1a17','#d42a2a']},a:[100,56],
+    out:smooth([[8,30,1],[192,30,1],[192,86,1],[8,86,1]],true),
+    feat:function(t,dot){var d=circ(44,58,20)+circ(156,58,20)+'M60 30L60 14L140 14L140 30'; if(t===0) return d; return d+circ(44,58,8)+circ(156,58,8)+RECT(78,44,122,70)+circ(90,57,5)+circ(110,57,5)+RECT(80,34,120,40);},
+    det:['M78 76L122 76','M20 36L30 36M170 36L180 36','M84 80L88 80M96 80L100 80M108 80L112 80']});
+  add({id:'mixmusic',n:'Mix: Music',p:'Music',mix:'Music'});
+
   var BY={}; D.forEach(function(m,i){m.index=i; BY[m.id]=m;});
   /* a Mix draws from every library motif in its pack. The legacy classic
      tiles (0..5) are not library motifs -- buildTruchet draws them -- so they
@@ -2514,7 +2632,7 @@ var TMOTIF=(function(){
 
   return {defs:D, byId:BY, strokes:strokes, pool:pool, tier:T, flatten:flatten, ribR:ribR,
           KINDS:{join:'Joiner',up:'Upright',roam:'Roamer',rad:'Radial'},
-          PACKS:['Classic','Spooky','Winter','Sea','Garden','Critters','Sky','Things','Arcade','Prehistoric','Road','Aircraft','Boats','Jungle','Safari','Deep sea','Farm','Pets','Bugs','Beach'],
+          PACKS:['Classic','Spooky','Winter','Sea','Garden','Critters','Sky','Things','Arcade','Prehistoric','Road','Aircraft','Boats','Jungle','Safari','Deep sea','Farm','Pets','Bugs','Beach','Food','Music'],
           atSize:atSize};
 })();
 /* ==== TMOTIF END ==== */
