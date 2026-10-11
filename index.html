@@ -424,7 +424,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v304</a> &mdash; TRUCHET FOOD + MUSIC -- snacks and meals with a two-cell hot dog, and instruments with guitars two cells tall and a keyboard two or three cells long (queue row 81)</span></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v305</a> &mdash; TRUCHET WORKSHOP + GADGETS + SPORTS -- bench tools with a handsaw and a pen plotter two cells long, old and new electronics with a server rack two cells tall, and balls and kit with a tennis racket two cells tall (queue row 82)</span></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <section class="fold" id="fold_pick"><h2>Pick engine<span class="cnt"></span></h2>
@@ -2511,6 +2511,151 @@ var TMOTIF=(function(){
     det:['M78 76L122 76','M20 36L30 36M170 36L180 36','M84 80L88 80M96 80L100 80M108 80L112 80']});
   add({id:'mixmusic',n:'Mix: Music',p:'Music',mix:'Music'});
 
+  /* ---------------- WORKSHOP (row 82, §4.13) ---------------- */
+  function work(o){o.p='Workshop'; if(o.side) o.head=0; return add(o);}
+  var STEEL='#8a8a8a', WOOD='#8b5a2b', K1='#1f1a17';
+  work({id:'wrench',n:'Wrench',k:'roam',nest:false,col:{out:STEEL,feat:K1},a:[50,50],
+    out:smooth([[44,30,1],[44,8,1],[34,12],[26,24],[28,38],[40,46,1],[42,84],[50,94],[58,84],[60,46,1],[72,38],[74,24],[66,12],[56,8,1],[56,30,1]],true),
+    feat:function(t,dot){return t===0?'':circ(50,84,5)+seg([50,50],[50,76]);},
+    det:['M44 30L56 30','M46 60L54 60','M46 70L54 70']});
+  work({id:'hammer',n:'Hammer',k:'roam',nest:false,col:{out:STEEL,feat:WOOD},a:[50,40],
+    out:smooth([[16,22,1],[74,16,1],[86,24],[84,30],[74,26,1],[74,36,1],[16,36,1]],true),
+    feat:function(t,dot){var d=RECT(42,36,54,94); return t===0?d:d+seg([42,80],[54,80])+seg([42,84],[54,84]);},
+    det:['M30 22L30 36','M86 24Q92 18 94 10','M48 50L48 76']});
+  work({id:'screwdriver',n:'Screwdriver',k:'roam',nest:false,col:{out:'#d42a2a',feat:STEEL},a:[50,32],
+    out:smooth([[42,6,1],[58,6,1],[62,14],[60,48,1],[40,48,1],[38,14]],true),
+    feat:function(t,dot){var d=RECT(47,48,53,88)+poly([[47,88],[53,88],[51,96],[49,96]],true); return t===0?d:d+seg([45,12],[45,44])+seg([50,12],[50,44])+seg([55,12],[55,44]);},
+    det:['M40 48L60 48','M38 26L62 26','M50 96L50 98']});
+  work({id:'pliers',n:'Pliers',k:'roam',nest:false,col:{out:STEEL,feat:['#d42a2a','#d42a2a',K1]},a:[50,40],
+    out:smooth([[46,6,1],[50,4,1],[50,30],[48,40],[44,30]],true)+smooth([[54,6,1],[50,4,1],[50,30],[52,40],[56,30]],true),
+    feat:function(t,dot){var d=limb([[48,42],[40,66],[30,94]],8,7)+limb([[52,42],[60,66],[70,94]],8,7)+circ(50,40,4); return d;},
+    det:['M47 12L53 12','M47 20L53 20','M50 28L50 34']});
+  work({id:'saw',n:'Handsaw',side:true,k:'up',nest:false,span:{w:[2,2],h:[1,1]},col:{out:STEEL,feat:[WOOD,WOOD,K1]},a:[100,50],
+    out:(function(){var P=[[160,30],[10,44]]; for(var i=0;i<30;i++){var x=10+i*5; P.push([x+2.5,i%2?64:68]);} P.push([160,62]); return poly(P,true);})(),
+    feat:function(t,dot){var d=smooth([[160,26,1],[190,26],[196,40],[192,62],[160,70,1]],true)+smooth([[170,38],[184,38],[186,54],[170,56]],true); return t===0?d:d+circ(150,38,2)+circ(150,56,2);},
+    det:['M20 52L150 46','M160 30L160 62','M180 30L188 30']});
+  work({id:'gear',n:'Gear',k:'rad',nest:false,col:{out:STEEL,feat:K1},a:[50,50],
+    out:polar(50,50,function(a){var u=((a/(TAU/12))%1+1)%1; return u<0.25||u>0.75?40:32;},240),
+    feat:function(t,dot){var d=circ(50,50,10); return t===0?d:d+circ(50,50,22)+'M50 40L50 34';},
+    det:['M50 28L50 32','M72 50L68 50','M50 72L50 68']});
+  work({id:'bolt',n:'Nut and bolt',k:'roam',nest:false,col:{out:STEEL,feat:K1},a:[50,40],
+    out:poly([[30,8],[70,8],[78,22],[70,34],[30,34],[22,22]],true)+RECT(42,34,58,92),
+    feat:function(t,dot){var d=poly([[34,58],[66,58],[72,66],[66,74],[34,74],[28,66]],true); if(t===0) return d; var s=''; for(var i=0;i<6;i++) s+=seg([42,40+i*3],[58,42+i*3])+seg([42,78+i*2.4],[58,80+i*2.4]); return d+s;},
+    det:['M36 14L64 14','M40 66L60 66','M50 92L50 96']});
+  work({id:'drill',n:'Power drill',side:true,k:'up',nest:false,col:{out:'#f2c230',feat:[K1,K1,STEEL]},a:[48,44],
+    out:smooth([[12,20,1],[68,20],[74,28],[68,40,1],[44,42,1],[48,84,1],[30,88,1],[24,42,1],[12,40,1]],true),
+    feat:function(t,dot){var d=RECT(74,26,84,34)+seg([84,30],[98,30])+RECT(26,84,52,94); return t===0?d:d+'M44 46L40 54'+seg([20,24],[20,36])+seg([26,24],[26,36]);},
+    det:['M30 60L42 60','M90 28L90 32','M14 30L18 30']});
+  work({id:'solder',n:'Soldering iron',k:'roam',nest:false,col:{out:'#2156c7',feat:[STEEL,K1]},a:[50,40],
+    out:smooth([[42,30,1],[58,30,1],[60,70],[56,82,1],[44,82,1],[40,70]],true),
+    feat:function(t,dot){var d=RECT(47,10,53,30)+poly([[47,10],[53,10],[50,2]],true)+'M50 82Q50 92 60 90Q70 88 70 96Q72 100 80 98'; return t===0?d:d+seg([44,40],[56,40])+seg([44,48],[56,48]);},
+    det:['M44 60L56 60','M46 24L54 24','M50 30L50 34']});
+  work({id:'tape',n:'Tape measure',k:'up',nest:false,col:{out:'#f2c230',feat:[K1,'#f2c230',K1]},a:[40,50],
+    out:smooth([[12,20,1],[60,20,1],[66,26],[66,74],[60,80,1],[12,80,1],[6,74],[6,26]],true),
+    feat:function(t,dot){var d=circ(36,50,14)+RECT(66,66,96,74); if(t===0) return d; var s=''; for(var i=0;i<6;i++) s+=seg([70+i*5,66],[70+i*5,i%2?70:72]); return d+s+circ(36,50,4);},
+    det:['M14 26L58 26','M96 66L96 62','M20 74L52 74']});
+  work({id:'plotter',n:'Pen plotter',k:'up',nest:false,span:{w:[2,2],h:[1,1]},col:{out:STEEL,feat:[K1,'#2156c7',K1,K1]},a:[100,60],
+    out:RECT(10,74,190,86)+RECT(20,20,34,74),
+    feat:function(t,dot){var d=RECT(34,26,170,36)+RECT(110,22,130,48)+seg([120,48],[120,60]); if(t===0) return d+RECT(50,60,170,74);
+      return d+RECT(50,60,170,74)+'M60 66Q80 62 100 68Q120 72 140 64'+circ(27,30,3)+seg([10,92],[190,92]);},
+    det:['M40 31L164 31','M116 40L124 40','M20 80L184 80']});
+  add({id:'mixworkshop',n:'Mix: Workshop',p:'Workshop',mix:'Workshop'});
+
+  /* ---------------- GADGETS (§4.14) ---------------- */
+  function gad(o){o.p='Gadgets'; return add(o);}
+  gad({id:'robot',n:'Robot',k:'up',nest:false,col:{out:STEEL,feat:[K1,K1,'#d42a2a',K1]},a:[50,56],
+    out:RECT(30,14,70,42)+RECT(22,46,78,84),
+    feat:function(t,dot){var d=circ(41,26,4)+circ(59,26,4)+seg([50,14],[50,4])+circ(50,4,2)+seg([22,56],[10,72])+seg([78,56],[90,72])+seg([36,84],[36,96])+seg([64,84],[64,96]);
+      return t===0?d:d+RECT(40,34,60,38)+RECT(34,54,66,72)+circ(42,63,2)+circ(58,63,2);},
+    det:['M30 28L26 28M70 28L74 28','M40 76L60 76','M46 42L54 46']});
+  gad({id:'tv',n:'Retro TV',k:'up',nest:false,col:{out:'#8b5a2b',feat:[K1,K1,K1,STEEL,STEEL]},a:[50,56],
+    out:smooth([[8,30,1],[92,30,1],[92,86,1],[8,86,1]],true),
+    feat:function(t,dot){var d=smooth([[16,38],[64,36],[68,58],[64,80],[16,78],[12,58]],true)+'M40 30L26 8M60 30L74 8'; return t===0?d:d+circ(80,46,4)+circ(80,60,4)+RECT(74,70,86,78)+seg([20,86],[24,94])+seg([80,86],[76,94]);},
+    det:['M22 44Q28 40 34 44','M74 42L86 42','M40 86L60 86']});
+  gad({id:'floppy',n:'Floppy disk',k:'up',nest:false,col:{out:K1,feat:[STEEL,'#f2f2f2',K1]},a:[50,50],
+    out:poly([[10,10],[80,10],[90,20],[90,90],[10,90]],true),
+    feat:function(t,dot){var d=RECT(28,10,68,36)+RECT(22,52,78,90); return t===0?d:d+RECT(56,14,64,32)+seg([28,62],[72,62])+seg([28,72],[72,72])+seg([28,82],[60,82]);},
+    det:['M14 84L18 84','M84 84L88 84','M30 20L50 20']});
+  gad({id:'controller',n:'Game controller',k:'up',nest:false,col:{out:K1,feat:['#1f1a17','#d42a2a','#2156c7','#2f9a44','#f2c230']},a:[50,50],
+    out:smooth([[22,30],[78,30],[94,50],[92,74],[80,78],[66,62],[34,62],[20,78],[8,74],[6,50]],true),
+    feat:function(t,dot){var d='M22 46L30 46L30 40L34 40L34 46L42 46L42 50L34 50L34 56L30 56L30 50L22 50Z'+circ(70,40,3.5)+circ(78,48,3.5)+circ(62,48,3.5)+circ(70,56,3.5);
+      return t===0?d:d+RECT(44,40,48,44)+RECT(52,40,56,44);},
+    det:['M40 54L60 54','M30 32L40 30M70 30L60 32','M50 62L50 58']});
+  gad({id:'camera',n:'Camera',k:'up',nest:false,col:{out:K1,feat:[K1,K1,STEEL,'#f2c230']},a:[50,54],
+    out:poly([[8,30],[30,30],[36,20],[64,20],[70,30],[92,30],[92,84],[8,84]],true),
+    feat:function(t,dot){var d=circ(50,56,18)+circ(50,56,11); return t===0?d:d+circ(50,56,5)+RECT(76,36,86,44)+RECT(14,24,24,30);},
+    det:['M8 40L32 40','M68 40L92 40','M46 50Q50 46 54 50']});
+  gad({id:'flipphone',n:'Flip phone',k:'up',nest:false,col:{out:STEEL,feat:[K1,'#5aa9e6',K1]},a:[50,50],
+    out:smooth([[30,6,1],[70,6,1],[70,46,1],[30,46,1]],true)+smooth([[30,50,1],[70,50,1],[70,94,1],[30,94,1]],true),
+    feat:function(t,dot){var d=RECT(36,12,64,38); if(t===0) return d+seg([30,48],[70,48]); var k=''; for(var r=0;r<4;r++) for(var c=0;c<3;c++) k+=RECT(38+c*9,58+r*8,44+c*9,62+r*8); return d+k+seg([30,48],[70,48]);},
+    det:['M46 42L54 42','M46 90L54 90','M70 20L74 20']});
+  gad({id:'battery',n:'Battery',k:'roam',nest:false,col:{out:'#f2c230',feat:K1},a:[50,54],
+    out:smooth([[28,16,1],[72,16,1],[72,94,1],[28,94,1]],true)+RECT(42,8,58,16),
+    feat:function(t,dot){var d=poly([[54,30],[40,58],[52,58],[46,80],[62,48],[50,48]],true); return t===0?d:d+seg([28,24],[72,24])+'M40 88L48 88M44 84L44 92';},
+    det:['M28 70L72 70','M30 20L34 20','M60 88L66 88']});
+  gad({id:'plug',n:'Plug',k:'roam',nest:false,col:{out:'#f2f2f2',feat:[STEEL,STEEL,K1]},a:[50,40],
+    out:smooth([[30,20,1],[70,20,1],[70,46],[60,58,1],[40,58,1],[30,46]],true),
+    feat:function(t,dot){var d=RECT(38,6,44,20)+RECT(56,6,62,20)+'M50 58Q50 76 66 76Q82 76 78 88Q74 96 50 96'; return t===0?d:d+seg([36,30],[64,30]);},
+    det:['M40 40L60 40','M44 52L56 52','M50 96L40 96']});
+  gad({id:'serverrack',n:'Server rack',k:'up',nest:false,span:{w:[1,1],h:[2,2]},col:{out:K1,feat:function(t){return t===0?[K1]:[K1,K1,K1,K1,K1,K1,K1,K1,'#2f9a44','#2f9a44','#2f9a44','#2f9a44','#2f9a44','#2f9a44','#2f9a44','#2f9a44'];}},a:[50,100],
+    out:RECT(16,6,84,194),
+    feat:function(t,dot){var d=''; for(var i=0;i<8;i++) d+=RECT(22,14+i*22,78,32+i*22); if(t===0) return d; for(i=0;i<8;i++) d+=circ(30,23+i*22,1.8); return d;},
+    det:['M50 194L50 198','M70 20L74 20M70 42L74 42','M40 186L60 186']});
+  gad({id:'joystick',n:'Joystick',k:'up',nest:false,col:{out:'#d42a2a',feat:[K1,K1,'#d42a2a']},a:[50,56],
+    out:circ(50,24,12),
+    feat:function(t,dot){var d=RECT(46,36,54,70)+smooth([[16,70,1],[84,70,1],[88,90,1],[12,90,1]],true); return t===0?d:d+circ(74,64,4)+seg([20,80],[80,80]);},
+    det:['M44 20Q48 16 52 18','M30 84L36 84','M70 84L76 84']});
+  add({id:'mixgadgets',n:'Mix: Gadgets',p:'Gadgets',mix:'Gadgets'});
+
+  /* ---------------- SPORTS (§4.15). The tennis racket spans 1x2, so it is
+     UPRIGHT: the spec lists it as a roamer, and its own contract says every
+     spanning motif is side or upright (a rotated tall block would change its
+     footprint). ---------------- */
+  function sport(o){o.p='Sports'; if(o.side) o.head=0; return add(o);}
+  sport({id:'soccer',n:'Football (soccer)',k:'rad',col:{out:K1,feat:K1},a:[50,50],
+    out:circ(50,50,40),
+    feat:function(t,dot){var d=star(50,50,5,13,10.5,-90); if(t===0) return d; [-90,-18,54,126,198].forEach(function(a){var r=a*Math.PI/180; d+=seg([50+13*Math.cos(r),50+13*Math.sin(r)],[50+30*Math.cos(r),50+30*Math.sin(r)]);}); return d;},
+    det:['M22 30L30 36','M78 30L70 36','M50 88L50 80']});
+  sport({id:'basketball',n:'Basketball',k:'rad',col:{out:'#f28c28',feat:K1},a:[50,50],
+    out:circ(50,50,40),
+    feat:function(t,dot){return seg([10,50],[90,50])+seg([50,10],[50,90])+(t===0?'':'M22 22Q40 50 22 78M78 22Q60 50 78 78');},
+    det:['M30 14Q34 18 36 14','M64 86Q66 82 70 86','M14 30L18 32']});
+  sport({id:'baseball',n:'Baseball',k:'rad',col:{out:'#f2f2f2',feat:'#d42a2a'},a:[50,50],
+    out:circ(50,50,40),
+    feat:function(t,dot){var d='M24 20Q40 50 24 80M76 20Q60 50 76 80'; if(t===0) return d; var s=''; for(var i=0;i<6;i++){var y=28+i*9; s+=seg([28+(i===0||i===5?-2:2),y],[34,y-2])+seg([72-(i===0||i===5?-2:2),y],[66,y-2]);} return d+s;},
+    det:['M50 12L50 16','M50 84L50 88','M14 50L18 50']});
+  sport({id:'americanfootball',n:'American football',k:'roam',col:{out:'#8b5a2b',feat:'#f2f2f2'},a:[50,50],
+    out:'M50 12Q84 30 50 88Q16 30 50 12Z',
+    feat:function(t,dot){var d=seg([50,34],[50,66]); if(t===0) return d; for(var i=0;i<4;i++) d+=seg([44,38+i*8],[56,38+i*8]); return d+'M36 22Q50 28 64 22M36 78Q50 72 64 78';},
+    det:['M44 20L48 18','M52 82L56 80','M50 12L50 8']});
+  sport({id:'tennis',n:'Tennis racket',k:'up',nest:false,span:{w:[1,1],h:[2,2]},col:{out:'#2f9a44',feat:['#f2c230',K1]},a:[50,70],
+    out:ell(50,56,34,46)+RECT(44,102,56,188),
+    feat:function(t,dot){var d=circ(80,170,7),i,c; if(t===0) return d;
+      for(i=-2;i<=2;i++){c=46*Math.sqrt(1-Math.pow(i*9.3/34,2))-4; d+=seg([50+i*9.3,56-c],[50+i*9.3,56+c]);}
+      for(i=-2;i<=2;i++){c=34*Math.sqrt(1-Math.pow(i*12.5/46,2))-4; d+=seg([50-c,56+i*12.5],[50+c,56+i*12.5]);} return d;},
+    det:['M44 160L56 160','M44 172L56 172','M50 188L50 194']});
+  sport({id:'skateboard',n:'Skateboard',side:true,k:'up',nest:false,col:{out:'#d42a2a',feat:K1},a:[50,50],
+    out:smooth([[4,40,1],[12,48],[30,52],[70,52],[88,48],[96,40,1],[90,54],[70,58],[30,58],[10,54]],true),
+    feat:function(t,dot){var d=circ(26,70,7)+circ(74,70,7)+seg([22,58],[30,62])+seg([78,58],[70,62]); return t===0?d:d+circ(26,70,2.5)+circ(74,70,2.5);},
+    det:['M30 55L70 55','M14 46L20 48','M80 48L86 46']});
+  sport({id:'bowling',n:'Bowling',k:'up',nest:false,col:{out:'#f2f2f2',feat:[K1,'#d42a2a','#d42a2a',K1,K1,K1]},a:[40,50],
+    out:smooth([[34,8],[42,12],[44,24],[40,34],[48,58],[48,80],[42,92,1],[26,92,1],[20,80],[20,58],[28,34],[24,24],[26,12]],true),
+    feat:function(t,dot){var d=circ(72,74,18)+seg([25,30],[43,30])+seg([24,34],[44,34]); return t===0?d:d+circ(66,68,2.5)+circ(74,66,2.5)+circ(70,74,2.5);},
+    det:['M28 60Q34 64 40 60','M24 92L48 92','M34 8L34 4']});
+  sport({id:'trophy',n:'Trophy',k:'up',nest:false,col:{out:'#f2c230',feat:['#f2c230','#f2c230','#8b5a2b']},a:[50,40],
+    out:smooth([[24,10,1],[76,10,1],[74,30],[64,50],[50,56],[36,50],[26,30]],true),
+    feat:function(t,dot){var d='M24 18Q8 18 12 34Q16 44 32 42M76 18Q92 18 88 34Q84 44 68 42'+RECT(44,56,56,70)+RECT(30,70,70,90); return t===0?d:d+star(50,30,5,8,4)+seg([36,80],[64,80]);},
+    det:['M30 14L70 14','M40 90L60 90','M50 56L50 60']});
+  sport({id:'boxing',n:'Boxing glove',k:'roam',nest:false,col:{out:'#d42a2a',feat:['#f2f2f2',K1]},a:[50,46],
+    out:smooth([[30,66,1],[24,40],[30,16],[50,8],[72,14],[80,32],[78,54],[70,66,1]],true),
+    feat:function(t,dot){var d=RECT(30,66,70,92)+'M32 40Q20 36 18 48Q18 58 30 56'; return t===0?d:d+seg([30,76],[70,76])+'M40 20Q50 16 60 22';},
+    det:['M44 30Q56 28 66 34','M34 84L66 84','M50 66L50 72']});
+  sport({id:'golf',n:'Golf flag',k:'up',nest:false,col:{out:K1,feat:['#d42a2a','#2f9a44',K1,'#f2f2f2']},a:[50,50],
+    out:seg([50,8],[50,82]),
+    feat:function(t,dot){var d=poly([[50,8],[80,18],[50,28]],true)+'M8 86Q50 76 92 86'+ell(50,84,8,3); return t===0?d:d+circ(72,80,3);},
+    det:['M50 40L46 40','M20 90L24 88','M80 90L84 88']});
+  add({id:'mixsports',n:'Mix: Sports',p:'Sports',mix:'Sports'});
+
   var BY={}; D.forEach(function(m,i){m.index=i; BY[m.id]=m;});
   /* a Mix draws from every library motif in its pack. The legacy classic
      tiles (0..5) are not library motifs -- buildTruchet draws them -- so they
@@ -2632,7 +2777,7 @@ var TMOTIF=(function(){
 
   return {defs:D, byId:BY, strokes:strokes, pool:pool, tier:T, flatten:flatten, ribR:ribR,
           KINDS:{join:'Joiner',up:'Upright',roam:'Roamer',rad:'Radial'},
-          PACKS:['Classic','Spooky','Winter','Sea','Garden','Critters','Sky','Things','Arcade','Prehistoric','Road','Aircraft','Boats','Jungle','Safari','Deep sea','Farm','Pets','Bugs','Beach','Food','Music'],
+          PACKS:['Classic','Spooky','Winter','Sea','Garden','Critters','Sky','Things','Arcade','Prehistoric','Road','Aircraft','Boats','Jungle','Safari','Deep sea','Farm','Pets','Bugs','Beach','Food','Music','Workshop','Gadgets','Sports'],
           atSize:atSize};
 })();
 /* ==== TMOTIF END ==== */
