@@ -438,7 +438,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v311</a> &mdash; EXPORT NAMES + THE RECIPE IN EVERY SVG -- Download SVG and Save preset name themselves {engine}_{MMDDYY}-{nn}_{what changed} (tag box; the same drawing gets the same name), every SVG carries the recipe that made it, Load takes an SVG by button or drop, an Exports fold restores any export, pins remember their recipe (queue row 88)</span></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v312</a> &mdash; TRAIN STATION -- a new corridor engine on the 3D shelf: a commuter through-station seen from its platform, two narrow-gauge tracks between side platforms, a train at the far platform with its cab toward you, canopy on columns, overhead wires on portals, hanging signs and station name boards, a footbridge, platform furniture, and the city's buildings behind a back lane (queue row 85)</span></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <section class="fold" id="fold_pick"><h2>Pick engine<span class="cnt"></span></h2>
@@ -3309,6 +3309,31 @@ var SPEC={
     ['cams','Camera along',0,90,1,5,[100,'%']],['camx','Camera side',-100,100,1,15,[100,'%']],
     ['camz','Camera height',0.2,80,0.1,1.2,[1,' m']],['look','Look ahead',5,300,1,50,[1,' m']],['turn','Turn',-90,90,1,0,[1,'°']],
     ['pitch','Pitch',-45,45,0.5,3,[1,'°']],['fov','Field of view',25,120,1,70,[1,'°']],
+    ['dnear','Solid detail to',2,80,1,18,[1,' m']],['dfar','Outline detail to',10,400,5,90,[1,' m']],
+    ['dpen','Depth pens',0,1,1,0],['dsplit','Depth split',5,300,5,60,[1,' m']],
+    ['lod','LOD cutoff',0,60,1,4,[10,' mm']],['budg','Size budget',10,300,5,90,[1,' k points']],
+    ['occ','Gap',0,30,1,4,[10,' mm']]]],
+  /* TRAIN STATION, queue row 85 (docs/specs/2026-10-11-stn-train-station.md §3.9) */
+  stn:['Train station',[
+    ['len','Platform length',60,600,10,220,[1,' m']],['bend','Bend',0,20,1,4,[1,'°/100 m']],
+    ['width','Track bed',6.4,14,0.1,7.2,[1,' m']],['platw','Platform width',2.5,10,0.25,5,[1,' m']],
+    ['lane','Back lane',0,10,0.25,3,[1,' m']],
+    ['lotmin','Building min',3,20,0.5,5,[1,' m']],['lotmax','Building max',4,40,0.5,11,[1,' m']],
+    ['floors','Storeys',1,40,1,7],
+    ['canyon','Canyon rise',0,100,1,30,[100,'%']],['stepb','Step-back',0,60,1,18,[100,'%']],
+    ['canti','Cantilever',0,60,1,10,[100,'%']],['fire','Fire escapes',0,100,1,15,[100,'%']],
+    ['glow','Lit windows',0,100,1,22,[100,'%']],['uvar','Upper variety',0,100,1,55,[100,'%']],
+    ['signs','Building signs',0,100,1,45,[100,'%']],['neon','Neon',0,100,1,40,[100,'%']],['lang','Script',0,3,1,0],
+    ['trains','Trains',0,3,1,1],['ncar','Cars',1,15,1,10],['tfront','Train front',0,200,1,30,[1,' m']],
+    ['wires','Overhead wires',0,1,1,1],['sag','Wire sag',0,30,1,6,[100,'%']],
+    ['canopy','Canopy',0,100,1,85,[100,'%']],['colsp','Column spacing',4,15,0.5,8,[1,' m']],['croof','Canopy roof',0,2,1,1],
+    ['psign','Platform signs',0,100,1,60,[100,'%']],['fbridge','Footbridge',0,1,1,1],
+    ['pfurn','Platform furniture',0,100,1,50,[100,'%']],['ballast','Ballast',0,100,1,40,[100,'%']],
+    ['hatch','Tone hatch',0,100,1,55,[100,'%']],['hatchmode','Hatch spacing',0,1,1,0],
+    ['sun','Light from',0,359,1,300,[1,'°']],
+    ['cams','Camera along',0,90,1,6,[100,'%']],['camx','Camera side',-100,100,1,-72,[100,'%']],
+    ['camz','Camera height',0.2,80,0.1,2.9,[1,' m']],['look','Look ahead',5,300,1,60,[1,' m']],['turn','Turn',-90,90,1,0,[1,'°']],
+    ['pitch','Pitch',-45,45,0.5,2,[1,'°']],['fov','Field of view',25,120,1,70,[1,'°']],
     ['dnear','Solid detail to',2,80,1,18,[1,' m']],['dfar','Outline detail to',10,400,5,90,[1,' m']],
     ['dpen','Depth pens',0,1,1,0],['dsplit','Depth split',5,300,5,60,[1,' m']],
     ['lod','LOD cutoff',0,60,1,4,[10,' mm']],['budg','Size budget',10,300,5,90,[1,' k points']],
@@ -17069,7 +17094,7 @@ function buildIsoImg(p){
 
 var ENG={record:buildRecord, flow:buildFlow, growth:buildGrowth, contour:buildContour, ridge:buildRidge,
          pack:buildPack, voronoi:buildVoronoi, truchet:buildTruchet, maze:buildMaze, hilbert:buildHilbert,
-         rows:buildRows, poin:buildPoincare, flag:buildFlag, stat:buildStation, strt:buildStreet, mkt:buildMarket, harb:buildHarbour, libr:buildLibrary, canal:buildCanal,
+         rows:buildRows, poin:buildPoincare, flag:buildFlag, stat:buildStation, strt:buildStreet, mkt:buildMarket, harb:buildHarbour, libr:buildLibrary, canal:buildCanal, stn:buildTrainStation,
          harmo:buildHarmo, chladni:buildChladni, moire:buildMoire, disc:buildChladniDisc, fan:buildFan,
   string:buildString, fermat:buildFermat, logsp:buildLogSpiral, chuck:buildChuck,
          apoll:buildApollonian, wave:buildWave, sform:buildSuper,
@@ -18685,7 +18710,20 @@ var STHEMES={
          cableAvoid:['bridge','boat','post'],
          fixed:{shopv:0, props:0, cars:0, dots:0, graff:0, neon:0, puddles:0, hero:0, fire:0},
          flags:{poles:false, roadMarks:false, bollards:false, manholes:false, topFlat:true, arch:true, leaves:0.4},
-         content:function(K){ return canalTheme(K); }}
+         content:function(K){ return canalTheme(K); }},
+  /* row 85 (docs/specs/2026-10-11-stn-train-station.md §3.0): a commuter
+     through-station. The slabs are the track bed, the kerb the platform's
+     edge (it HIDES, with no gap at its seams), the lots the platform decks
+     with the Street's buildings behind a back lane; the eye stands on the
+     near platform. Alley pinned at 0 so the decks abut. */
+  stn:{key:'stn', label:'Train station', lotDepth:[8,20], alleyW:[0,0], baseN2:0.35, baseH:[3.6,4.5],
+       midH:[2.8,3.2], edgeZ:1.30, slabLen:4, clear:4.6, ztop:200, mirror:'puddles', minWidth:6.4,
+       strip:0.25, kerbKind:'platform', kerbHides:true, lotsToEnd:true,
+       paveOf:function(p){ var k=stationKnobs(p); return k.platw+k.lane; },
+       camReach:function(p){ return stationKnobs(p).platw-1.0; },
+       fixed:{shopv:0, props:0, alley:0, cars:0, dots:0, pnear:0, graff:0, cables:0, puddles:0, hero:0},
+       flags:{poles:false, roadMarks:false, bollards:false, manholes:false},
+       content:function(K){ return trainTheme(K); }}
 };
 /* the width of a [lo,hi] range, rounded to the nearest nanometre so that a
    [1.2,2.5] range spans the 1.3 the code always multiplied by, not the
@@ -18696,6 +18734,7 @@ function buildMarket(p){ return buildCorridor(p,STHEMES.mkt); }
 function buildHarbour(p){ return buildCorridor(p,STHEMES.harb); }
 function buildLibrary(p){ return buildCorridor(p,STHEMES.libr); }
 function buildCanal(p){ return buildCorridor(p,STHEMES.canal); }
+function buildTrainStation(p){ return buildCorridor(p,STHEMES.stn); }
 /* THE NIGHT MARKET THEME (queue row 50, docs/specs/2026-10-04-corridor-themes.md
    §3): a narrow lane between two- to four-storey shophouses, stalls along both
    edges, lantern strings overhead, steam over the food stalls. The shophouses
@@ -20773,6 +20812,1024 @@ function canalTheme(K){
     info:function(nsigns){ return ' · '+nsigns+' signs · '+TAL.bridges.filter(function(b){ return b.placed; }).length+' bridges · '+
       TAL.boats.filter(function(b){ return b.placed; }).length+' boats · '+TAL.posts.filter(function(b){ return b.placed; }).length+' mooring posts · '+
       cables.length+' laundry lines'; }
+  };
+}
+/* THE TRAIN STATION THEME (queue row 85, docs/specs/2026-10-11-stn-train-station.md
+   §§2-3): a Tokyo commuter through-station on the corridor kit. Two side
+   platforms 1.30 m over two narrow-gauge tracks; the kit's kerb is the
+   platform's edge and hides (THM.kerbHides), its lots are the platform decks
+   with the Street's buildings behind a back lane (THM.paveOf), and the eye
+   stands on the near platform (THM.camReach). Every layer draws from its own
+   substream: 347 track, 349 trains, 353 wires, 367 canopy, 373 platform signs
+   (and the clocks, keyed apart), 379 furniture, 383 footbridge, 389 the
+   station's name, 361 the fence or wall a lot carries.
+   - TRACK (slabs): rails per slab, solid nearer than Solid detail to, their
+     lines to Outline detail to, the rail-top line alone to the end; sleepers
+     every 0.6 m, solid near, one line out to Outline detail to (every 2^k-th
+     where the paper floor needs it); ballast dashes near and a shoulder line.
+   - THE PLATFORM: on the kerb part, a coping lip, the face below it hatched,
+     the white edge line as two lines; a deck a lot, the tactile strip on it,
+     and a fence (or on 30% of lots a wall with posters) on its back 0.2 m.
+   - TRAINS (slabs): 20 m cars, the lead car's nose to the camera; doors,
+     windows, livery, bogies, gangways, pantographs; every piece cut at every
+     slab face, and a cut draws nothing.
+   - OVERHEAD WIRES: portals of two masts on the decks and a box-truss beam
+     cut at every container face it crosses; a staggered contact wire, a
+     messenger over it, droppers.
+   - CANOPY: a roof a covered lot on round columns, purlins, rafters, tubes;
+     hanging signs, name boards, clocks; a footbridge with its stair housings;
+     benches, vending machines, bins, extinguisher boxes. */
+function stationKnobs(p){
+  function kn(v,d,lo,hi){ return Math.max(lo,Math.min(hi,isFinite(v)?+v:d)); }
+  return {platw:kn(p.platw,5,2.5,10), lane:kn(p.lane,3,0,10)};
+}
+function trainTheme(K){
+  var THM=K.THM, p=K.p, P3=K.P3, frame=K.frame, sub=K.sub, para=K.para, prism=K.prism, prismN=K.prismN,
+      polyFromLoops=K.polyFromLoops, splitPart=K.splitPart, inConv=K.inConv, hitsAny=K.hitsAny,
+      slabsBySide=K.slabsBySide, slabPieces=K.slabPieces, conts=K.conts, lots=K.lots, dist3=K.dist3,
+      verts=K.verts, faceIx=K.faceIx, paperGap=K.paperGap, surf=K.surf, mmPerM=K.mmPerM, add3=K.add3,
+      bbHit=K.bbHit, lateral=K.lateral, HALFW=K.HALFW, KOFF=K.KOFF, PBACK=K.PBACK, KERB=K.KERB, LEN=K.LEN,
+      CE=K.CE, MINSP=K.MINSP, SLAB=K.THM.slabLen;
+  function kn(v,d,lo,hi){ return Math.max(lo,Math.min(hi,isFinite(v)?+v:d)); }
+  var SK=stationKnobs(p), PLATW=SK.platw, PLATB=HALFW+PLATW;
+  var TRAINS=Math.round(kn(p.trains,1,0,3)), NCAR=Math.round(kn(p.ncar,10,1,15)), TFRONT=kn(p.tfront,30,0,200);
+  var WIRES=Math.round(kn(p.wires,1,0,1)), WSAG=kn(p.sag,6,0,30)/100;
+  var CANOPY=kn(p.canopy,85,0,100)/100, COLSP=kn(p.colsp,8,4,15), CROOF=Math.round(kn(p.croof,1,0,2));
+  var PSIGN=kn(p.psign,60,0,100)/100, FBRIDGE=Math.round(kn(p.fbridge,1,0,1)), PFURN=kn(p.pfurn,50,0,100)/100;
+  var BALLAST=kn(p.ballast,40,0,100)/100;
+  var SALT_TRACK=347, SALT_TRAIN=349, SALT_WIRE=353, SALT_CANOPY=367, SALT_PSIGN=373, SALT_FURN=379,
+      SALT_BRIDGE=383, SALT_NAME=389, SALT_PLAT=361;
+  var COL_K='#1a1a1a', COL_DG='#4a4a4a', COL_GREY='#8a8a8a', COL_YEL='#f2c230', COL_OR='#ec7a1c', COL_RED='#d42a2a',
+      COL_GREEN='#2f9a44', COL_LBLUE='#5aa9e6', COL_BLUE='#2156c7';
+  /* one line colour per train, by weight (§3.3) */
+  var LINES=[[COL_GREEN,30],[COL_OR,20],[COL_YEL,15],[COL_LBLUE,15],[COL_BLUE,10],[COL_RED,10]];
+  function lineOf(u){ var a=0, i; for(i=0;i<LINES.length;i++){ a+=LINES[i][1]; if(u*100<a) return LINES[i][0]; } return LINES[LINES.length-1][0]; }
+  /* §2 the cross-section: one track a side, its centre 1.6 m from the
+     platform edge; gauge between the rail heads' inner faces */
+  var OC=HALFW-1.6, GAUGE=1.067, RHW=0.065, RZ0=0.04, RZ1=0.20, SLP=0.6;
+  var COL_LINE=null;
+  var TAL={tracks:[], decks:[], tactile:[], walls:[], trains:[], portals:[], wires:[], drops:[], roofs:[], columns:[],
+           signs:[], boards:[], clocks:[], bridge:null, housings:[], furn:[], beams:[], name:'', eye:null, oc:OC, gauge:GAUGE,
+           platb:PLATB, kerb:KERB, covered:[0,0], colO:0, sleepers:{}};
+  STRTTALLY.stn=TAL;
+
+  /* the eye: which platform it stands on (Camera side's sign), and its arc */
+  var CAMS=kn(p.cams,6,0,90)/100, sEye=CAMS*LEN, EYESIDE=(isFinite(p.camx)?+p.camx:-72)<0?-1:1;
+  var eyeO=lateral([CE[0],CE[1]],sEye,1);
+  TAL.eye={s:sEye, side:EYESIDE, o:eyeO, z:CE[2]};
+
+  /* ---- the lots: the deck's own front, and the Street's dressing kept off
+     the platform. A lot's front (L.fe) is where the Street's buildings may
+     project to; on a platform that is the deck's back, so it is moved there
+     BEFORE streetTheme reads it, and the deck keeps its own. */
+  lots.forEach(function(L){ L.deckFe=L.fe; L.fe=Math.max(L.fe,PLATB+0.05); L.isWall=sub(L.side<0?2:1,L.idx,SALT_PLAT)()<0.3; });
+  function resetLots(){ TAL.decks=[]; TAL.tactile=[]; TAL.walls=[]; TAL.roofs=[]; TAL.columns=[]; TAL.signs=[]; TAL.boards=[]; TAL.clocks=[]; TAL.furn=[]; }
+  var S=streetTheme(K);
+  var bySide={'1':[],'-1':[]};
+  lots.forEach(function(L){ bySide[L.side].push(L); });
+  [1,-1].forEach(function(sd){ bySide[sd].sort(function(a,b){ return a.s0-b.s0; }); });
+  /* THE SLOT. On a bend the kit pushes a lot back off the slabs -- its long
+     front chord would cut the slabs' 4 m ones -- so a strip up to 0.1 m wide
+     between the kerb's back and the deck belonged to no container, and a
+     portal beam or the footbridge crossing it lost a piece. Each such strip
+     is a container of its own here, one per slab: between the slab's back
+     chord and the lot's front chord, the radial lines at their ends. Convex,
+     and sharing an edge with each neighbour, so the containers stay disjoint
+     and the order exact. A deck piece fills each one. */
+  function cutAt(s,sd,A,B){
+    var P0=P3(s,sd,0,0), P1=P3(s,sd,1,0), dx=P1[0]-P0[0], dy=P1[1]-P0[1], ex=B[0]-A[0], ey=B[1]-A[1];
+    var den=dx*ey-dy*ex; if(Math.abs(den)<1e-15) return null;
+    var t=((A[0]-P0[0])*ey-(A[1]-P0[1])*ex)/den; return [P0[0]+dx*t, P0[1]+dy*t];
+  }
+  var SLOTS=[];
+  lots.forEach(function(L){
+    L.slots=[];
+    if(!(L.deckFe>KOFF+1e-9)) return;
+    var A=P3(L.s0,L.side,L.deckFe,0), B=P3(L.s1,L.side,L.deckFe,0);
+    slabsBySide[L.side].forEach(function(C){
+      var sa=Math.max(C.s0,L.s0), sb=Math.min(C.s1,L.s1); if(sb-sa<1e-6) return;
+      var CA=P3(C.s0,L.side,KOFF,0), CB=P3(C.s1,L.side,KOFF,0);
+      var f0=cutAt(sa,L.side,CA,CB), f1=cutAt(sb,L.side,CA,CB), g0=cutAt(sa,L.side,A,B), g1=cutAt(sb,L.side,A,B);
+      if(!f0||!f1||!g0||!g1) return;
+      var Q=[f0,f1,g1,g0];
+      if(Math.hypot(g0[0]-f0[0],g0[1]-f0[1])<1e-6 && Math.hypot(g1[0]-f1[0],g1[1]-f1[1])<1e-6) return;
+      var b=[1e18,1e18,-1e18,-1e18]; Q.forEach(function(q){ if(q[0]<b[0])b[0]=q[0]; if(q[1]<b[1])b[1]=q[1]; if(q[0]>b[2])b[2]=q[0]; if(q[1]>b[3])b[3]=q[1]; });
+      var Cs={kind:'slot', side:L.side, s0:sa, s1:sb, poly:Q, bb:b, parts:[], lot:L};
+      conts.push(Cs); L.slots.push(Cs); SLOTS.push(Cs);
+    });
+  });
+  TAL.slots=SLOTS.map(function(C){ return {side:C.side, s0:C.s0, s1:C.s1, poly:C.poly, lot:C.lot.idx}; });
+  function lotAt(sd,s,m){ var A=bySide[sd], i; m=m||0;
+    for(i=0;i<A.length;i++) if(A[i].s0+m<=s && s<=A[i].s1-m) return A[i]; return null; }
+
+  /* ---- small geometry ---------------------------------------------------- */
+  function sub3(a,b){ return [a[0]-b[0],a[1]-b[1],a[2]-b[2]]; }
+  /* a straight frame along the track at sc on side sd: (s, o, z) */
+  function sideFrame(sc,sd){ var F=frame(sc); return function(s,o,z){ var b=P3(sc,sd,o,z); return [b[0]+F[2]*(s-sc), b[1]+F[3]*(s-sc), z]; }; }
+  /* a straight frame ACROSS the corridor at sc, o signed (negative: side -1) */
+  function laneFrame(sc){ var F=frame(sc); return function(s,o,z){ var b=o>=0?P3(sc,1,o,z):P3(sc,-1,-o,z); return [b[0]+F[2]*(s-sc), b[1]+F[3]*(s-sc), z]; }; }
+  function boxIn(X,s0,s1,o0,o1,z0,z1){ var a=X(s0,o0,z0); return para(a,sub3(X(s1,o0,z0),a),sub3(X(s0,o1,z0),a),[0,0,z1-z0]); }
+  /* a prism over a plan quad that follows the arc: (s0..s1) x (o0..o1) on side sd */
+  function arcQuad(sd,s0,s1,o0,o1){ return [P3(s0,sd,o0,0),P3(s1,sd,o0,0),P3(s1,sd,o1,0),P3(s0,sd,o1,0)].map(function(v){ return [v[0],v[1]]; }); }
+  function ln(P,a,b,f0,f1,kind,col){ P.lines.push({a:a, b:b, f0:f0, f1:f1, kind:kind, col:col}); }
+  /* an n-gon prism standing at plan point c */
+  function ngon(c,r,n,z0,z1,ph){ var Q=[], j; for(j=0;j<n;j++){ var a=TAU*(j+(ph||0))/n; Q.push([c[0]+r*Math.cos(a), c[1]+r*Math.sin(a)]); } return prismN(Q,z0,z1); }
+  function tag(P,kind,col,layer,extra){
+    P.kind=kind; P.col=col; P.layer=layer;
+    P.lines.forEach(function(Ln){ if(Ln.col===undefined) Ln.col=col; if(!Ln.kind) Ln.kind=kind; });
+    if(extra) for(var k in extra) P[k]=extra[k];
+    return P;
+  }
+  function see(P){ P.hides=false; P.seeThru=true; return P; }
+  /* EVERY CONTAINER, not only slabs: pieces of P, one per container it is in,
+     cut at the container's faces (a cut is a seam and draws nothing). The
+     share of P's plan in no container comes back as `miss` (0..1). */
+  function shClip(R,Q){
+    var ar=0, m; for(m=0;m<Q.length;m++){ var qa=Q[m], qb=Q[(m+1)%Q.length]; ar+=qa[0]*qb[1]-qa[1]*qb[0]; }
+    var sg=ar>0?1:-1, out=R;
+    for(m=0;m<Q.length && out.length;m++){
+      var a=Q[m], b=Q[(m+1)%Q.length], inp=out, k; out=[];
+      for(k=0;k<inp.length;k++){
+        var P0=inp[k], P1=inp[(k+1)%inp.length];
+        var s0=sg*((b[0]-a[0])*(P0[1]-a[1])-(b[1]-a[1])*(P0[0]-a[0])), s1=sg*((b[0]-a[0])*(P1[1]-a[1])-(b[1]-a[1])*(P1[0]-a[0]));
+        if(s0>=0) out.push(P0);
+        if((s0>=0)!==(s1>=0)){ var t=s0/(s0-s1); out.push([P0[0]+(P1[0]-P0[0])*t, P0[1]+(P1[1]-P0[1])*t]); }
+      }
+    }
+    return out;
+  }
+  function area2(Q){ var a=0; for(var m=0;m<Q.length;m++){ var qa=Q[m], qb=Q[(m+1)%Q.length]; a+=qa[0]*qb[1]-qa[1]*qb[0]; } return Math.abs(a)/2; }
+  function hullXY(V){
+    var q=V.map(function(v){ return [v[0],v[1]]; }).sort(function(a,b){ return a[0]-b[0]||a[1]-b[1]; }), lo=[], up=[], m;
+    function cr(o,a,b){ return (a[0]-o[0])*(b[1]-o[1])-(a[1]-o[1])*(b[0]-o[0]); }
+    for(m=0;m<q.length;m++){ while(lo.length>=2 && cr(lo[lo.length-2],lo[lo.length-1],q[m])<=1e-15) lo.pop(); lo.push(q[m]); }
+    for(m=q.length-1;m>=0;m--){ while(up.length>=2 && cr(up[up.length-2],up[up.length-1],q[m])<=1e-15) up.pop(); up.push(q[m]); }
+    return lo.slice(0,-1).concat(up.slice(0,-1));
+  }
+  function contPieces(P){
+    var VP=verts(P), H=hullXY(VP), b=[1e18,1e18,-1e18,-1e18], out=[], cov=0, tot=area2(H), k;
+    VP.forEach(function(v){ if(v[0]<b[0])b[0]=v[0]; if(v[1]<b[1])b[1]=v[1]; if(v[0]>b[2])b[2]=v[0]; if(v[1]>b[3])b[3]=v[1]; });
+    for(k=0;k<conts.length;k++){
+      var C=conts[k]; if(!bbHit(b,C.bb)) continue;
+      var Q=C.poly, piece=P, cx=0, cy=0, e;
+      Q.forEach(function(q){ cx+=q[0]/Q.length; cy+=q[1]/Q.length; });
+      for(e=0;e<Q.length && piece;e++){
+        var a=Q[e], c=Q[(e+1)%Q.length], nx=-(c[1]-a[1]), ny=c[0]-a[0], L=Math.hypot(nx,ny); nx/=L; ny/=L;
+        if(nx*(cx-a[0])+ny*(cy-a[1])<0){ nx=-nx; ny=-ny; }
+        var d=nx*a[0]+ny*a[1], V=verts(piece), lo=1e18, hi=-1e18;
+        V.forEach(function(v){ var w=nx*v[0]+ny*v[1]-d; if(w<lo) lo=w; if(w>hi) hi=w; });
+        if(hi<=1e-9){ piece=null; break; }
+        if(lo<-1e-9){ var Hh=splitPart(piece,[nx,ny,0],d); piece=Hh[0];
+          if(!piece.faces.length || verts(piece).length<4) piece=null; }
+      }
+      if(piece){ piece.cont=C; out.push(piece); cov+=area2(shClip(H,Q)); }
+    }
+    return {pieces:out, miss:tot>1e-12?Math.max(0,1-cov/tot):0};
+  }
+  /* all of a list into its containers, or none of it */
+  function commitAll(list,against){
+    var i, all=[];
+    for(i=0;i<list.length;i++) if(!list[i]) return false; else all=all.concat(list[i]);
+    for(i=0;i<all.length;i++) if(all[i].hides!==false && hitsAny(all[i],all[i].cont,against)) return false;
+    all.forEach(function(Q){ Q.cont.parts.push(Q); });
+    return true;
+  }
+  /* pieces per slab, tagged, null when any of it is off the track bed */
+  function onSlabs(P,kind,col,layer,extra){
+    var pcs=slabPieces(P); if(!pcs) return null;
+    pcs.forEach(function(Q){ tag(Q,kind,col,layer,extra); if(P.hides===false){ Q.hides=false; Q.seeThru=true; } if(P.gapless) Q.gapless=true; });
+    return pcs;
+  }
+  function inLot(P,L){ return verts(P).every(function(v){ return inConv(L.poly,v); }); }
+  /* the number of sleeper spacings between two drawn lines so that they stand
+     at least the paper floor apart: a power of two, so the far ones are a
+     subset of the near ones and the pattern nests */
+  function thin(gapMMperM,step){ var k=1; while(k<64 && gapMMperM*step*k<MINSP) k*=2; return k; }
+
+  /* ---- §3.6 the station's name: generated syllables, never a real station */
+  var SYL=['KA','MI','SA','TO','NO','HA','RA','YA','MA','SHI','TA','KU','RO','NE','BU','ZE','HO','KE','MO','RI','SU','WA','GI','DO','FU','YO','NA','TE','KO','HI'];
+  function nameOf(R){ var n=2+Math.floor(R()*2), w='', k; for(k=0;k<n;k++) w+=SYL[Math.floor(R()*SYL.length)]; return w; }
+  var RN=sub(0,0,SALT_NAME), NAME=nameOf(RN), NBR=[nameOf(RN),nameOf(RN)], NKAN=[];
+  for(var nk=0;nk<3;nk++) NKAN.push(RN());
+  COL_LINE=lineOf(RN());
+  TAL.name=NAME; TAL.nbr=NBR; TAL.lineCol=COL_LINE;
+  /* Latin text as polylines in a W x H box, the word set to fit */
+  function latin(word,W,H){
+    var cap=0, gl=word.split('').map(function(ch){ return glyphStrokes(ch,'futural'); }), tot=0, o=[];
+    var gH=glyphStrokes('H','futural'); if(gH) gH.strokes.forEach(function(s){ s.forEach(function(q){ if(q[1]>cap) cap=q[1]; }); });
+    if(!(cap>0)) cap=0.6;
+    gl.forEach(function(g){ tot+=g?g.adv:0.5; });
+    var s=Math.min(H/cap, W/Math.max(tot,1e-9)), u=(W-tot*s)/2, v=(H-cap*s)/2;
+    gl.forEach(function(g){ if(g) g.strokes.forEach(function(st){ o.push(st.map(function(q){ return [u+q[0]*s, v+q[1]*s]; })); }); u+=(g?g.adv:0.5)*s; });
+    return {lines:o, h:cap*s};
+  }
+  function kanji(idx,W,H){
+    var o=[], n=idx.length, h=Math.min(H,W/n*0.9), u0=(W-n*h*1.05)/2+0.025*h, v0=(H-h)/2, k;
+    for(k=0;k<n;k++){
+      var R=(function(u){ return function(){ return u; }; })(idx[k]);
+      var T=S.setText('kanji',h,h,false,R);
+      T.lines.forEach(function(pl){ o.push(pl.map(function(q){ return [u0+k*h*1.05+q[0], v0+q[1]]; })); });
+    }
+    return {lines:o, h:h};
+  }
+
+  /* ---- §3.7 the footbridge's place first: portals keep 8 m clear of it,
+     the canopy, columns and furniture keep off its stair housings */
+  var FB=null;
+  if(FBRIDGE){
+    var RF=sub(0,0,SALT_BRIDGE), uf=RF(), ud=RF();
+    var sf=sEye+50+60*uf; sf=SLAB*Math.floor(sf/SLAB)+SLAB/2;
+    while(sf>LEN-14) sf-=SLAB;
+    if(sf-sEye>=46) FB={s:sf, zd:7.0, hl:1.7, stair:-1, lst:0, ud:ud};
+  }
+  /* §3.4 the portals: every 40-50 m, each on a slab centre, never within 8 m
+     of the footbridge or 12 m (along) of the eye, both masts in a lot whose
+     deck front is the kerb's back */
+  var PORT=[];
+  if(WIRES){
+    var RW=sub(0,0,SALT_WIRE), sp=2+SLAB*Math.floor(RW()*3);
+    while(sp<LEN-2){
+      var s1=SLAB*Math.floor(sp/SLAB)+SLAB/2, tries=0, ok=false;
+      while(tries<4 && s1<LEN-2){
+        /* 12 m along from the eye, not §3.4's 3: a mast 5 m ahead of the lens
+           fills a third of the sheet */
+        var clear=Math.abs(s1-sEye)>=12 && !(FB && Math.abs(s1-FB.s)<8+FB.hl);
+        var LA=lotAt(1,s1,0.25), LB=lotAt(-1,s1,0.25);
+        if(clear && LA && LB && LA.deckFe<HALFW+0.39 && LB.deckFe<HALFW+0.39){ ok=true; break; }
+        s1+=SLAB; tries++;
+      }
+      /* not placed: keep scanning from where the shifts stopped, so a span
+         is never longer than the shifts the clear zones force */
+      if(ok){ PORT.push({s:s1, st:(PORT.length%2?-0.2:0.2)}); sp=s1+40+10*RW(); } else sp=s1;
+    }
+  }
+  TAL.portals=PORT.map(function(q){ return {s:q.s, stagger:q.st, placed:false}; });
+  /* the messenger's height over arc s on a track, for the footbridge */
+  var MZ=WIRES?6.2:0, CZ=5.2, MSAG=0.7*WSAG/0.30;
+
+  /* ---- §3.5 the canopy: which lots are covered, the column line, the roof */
+  var cov0=LEN*(1-CANOPY)/2, cov1=LEN*(1+CANOPY)/2, OCOL=HALFW+0.6*PLATW, OFR=HALFW+1.0;
+  TAL.covered=[cov0,cov1]; TAL.colO=OCOL;
+  function covered(L){ var c=(L.s0+L.s1)/2; return CANOPY>0 && c>=cov0 && c<=cov1; }
+  /* the stair housings' arcs on each platform */
+  var HOUSE=[];
+  if(FB){
+    var zTop=FB.zd+3.1, lst=(zTop-(KERB+2.6))/Math.tan(30*Math.PI/180);
+    FB.lst=lst;
+    [1,-1].forEach(function(sd){ HOUSE.push({side:sd, s0:FB.s-FB.hl-lst, s1:FB.s-FB.hl, o0:PLATB-1.75, o1:PLATB-0.45}); });
+  }
+  function inHouse(sd,s0,s1,m){ m=m||0; return HOUSE.some(function(h){ return h.side===sd && s1>h.s0-m && s0<h.s1+m; }); }
+  /* the roof's back edge on a lot: the deck's back, or in front of a housing */
+  function roofBack(L){ return inHouse(L.side,L.s0,L.s1,0.05)?PLATB-1.75-0.1:PLATB; }
+  /* THE ROOF IS A PLANE OVER EACH LOT, its height an affine function of plan
+     position from the roof's front chord -- so its four corners are coplanar
+     on a bend too, where P3's corners twist */
+  function roofPlane(L){
+    var A=P3(L.s0,L.side,OFR,0), B=P3(L.s1,L.side,OFR,0), tx=B[0]-A[0], ty=B[1]-A[1], tl=Math.hypot(tx,ty)||1;
+    var nx=-ty/tl, ny=tx/tl, Bk=P3((L.s0+L.s1)/2,L.side,PLATB,0);
+    if(nx*(Bk[0]-A[0])+ny*(Bk[1]-A[1])<0){ nx=-nx; ny=-ny; }
+    var span=PLATB-OFR, ocol=OCOL-OFR;
+    return function(v){
+      var d=nx*(v[0]-A[0])+ny*(v[1]-A[1]);
+      if(CROOF===1) return KERB+3.1+0.4*(1-d/span);
+      if(CROOF===2) return KERB+3.1+0.35*Math.abs(d-ocol)/Math.max(ocol,span-ocol);
+      return KERB+3.1;
+    };
+  }
+  /* columns: a grid along each platform, in the lot holding the centre, off
+     its faces, never at the eye, never in a stair housing */
+  var COLS={'1':[],'-1':[]};
+  if(CANOPY>0) [1,-1].forEach(function(sd){
+    for(var sc=COLSP/2; sc<LEN; sc+=COLSP){
+      if(sc<cov0 || sc>cov1) continue;
+      var s=sc, L=lotAt(sd,s,0); if(!L || !covered(L)) continue;
+      var r=0.15, mg=0.2+r;
+      if(s<L.s0+mg) s=L.s0+mg; if(s>L.s1-mg) s=L.s1-mg;
+      if(L.s1-L.s0<2*mg) continue;
+      var c=P3(s,sd,OCOL,0), guard=0;
+      while(Math.hypot(c[0]-CE[0],c[1]-CE[1])<0.6+r && guard<40){ s+=0.1; if(s>L.s1-mg){ s=L.s0+mg; } c=P3(s,sd,OCOL,0); guard++; }
+      if(inHouse(sd,s-r,s+r,0.3)) continue;
+      COLS[sd].push({s:s, lot:L});
+    }
+  });
+
+  /* ---- §3.2 the lot: deck, tactile strip, fence or wall; §3.5 roof and
+     columns; §3.8 furniture. After the Street's dressing, which assumes the
+     building blocks are the lot's first parts. */
+  function dress(L,dn,df){
+    if(L===lots[0]) resetLots();
+    S.dress(L,dn,df);
+    var sd=L.side, sk=sd<0?2:1, mid=P3((L.s0+L.s1)/2,sd,(L.deckFe+PLATB)/2,KERB), dl=dist3(mid), k;
+    /* the deck */
+    var DQ=arcQuad(sd,L.s0,L.s1,L.deckFe,PLATB), D=prism(DQ,0,KERB);
+    var e0=L.s0<1e-9, e1=L.s1>LEN-1e-9;
+    ln(D,[DQ[3][0],DQ[3][1],KERB],[DQ[2][0],DQ[2][1],KERB],1,4,'deck');
+    ln(D,[DQ[3][0],DQ[3][1],0],[DQ[2][0],DQ[2][1],0],0,4,'deck');
+    if(e0){ ln(D,[DQ[0][0],DQ[0][1],KERB],[DQ[3][0],DQ[3][1],KERB],1,5,'deck'); ln(D,[DQ[3][0],DQ[3][1],0],[DQ[3][0],DQ[3][1],KERB],4,5,'deck'); }
+    if(e1){ ln(D,[DQ[1][0],DQ[1][1],KERB],[DQ[2][0],DQ[2][1],KERB],1,3,'deck'); ln(D,[DQ[2][0],DQ[2][1],0],[DQ[2][0],DQ[2][1],KERB],3,4,'deck'); }
+    /* the tactile strip: two yellow lines 0.3 m apart, the near one 0.8 m
+       from the coping; domes as dots near, spaced on the paper floor */
+    var t0=HALFW+0.8, t1=HALFW+1.1;
+    if(dl<df){
+      [t0,t1].forEach(function(o){ ln(D,P3(L.s0,sd,o,KERB),P3(L.s1,sd,o,KERB),1,1,'tactile',COL_YEL); });
+      if(dl<dn){
+        var g=paperGap(P3((L.s0+L.s1)/2,sd,t0,KERB),latDir((L.s0+L.s1)/2,sd),vecT((L.s0+L.s1)/2));
+        var stp=Math.max(0.15,g>0?1.4*MINSP/g:1e9);
+        if(stp<1.5) for(var sd2=Math.ceil((L.s0+0.05)/stp)*stp; sd2<L.s1-0.05; sd2+=stp) [t0+0.1,t0+0.2].forEach(function(o){
+          var c=P3(sd2,sd,o,KERB), r=0.018, prev=null;
+          for(var j=0;j<=6;j++){ var a=TAU*j/6, X=[c[0]+r*Math.cos(a), c[1]+r*Math.sin(a), KERB]; if(prev) ln(D,prev,X,1,1,'dome',COL_YEL); prev=X; }
+        });
+      }
+    }
+    TAL.tactile.push({side:sd, idx:L.idx, o0:t0, o1:t1});
+    tag(D,'deck',COL_K,'platform',{gapless:true}); D.cont=L; L.parts.push(D);
+    /* the slot's deck: no lines -- every face of it is a seam */
+    /* it HIDES NOTHING: between the eye and the coping on its own platform,
+       a 5-10 cm sliver cannot take the inset that makes a hiding part
+       gapless, and its spilled gap trimmed the coping and the rails that
+       converge on it. Its faces neighbour only the kerb's back and the deck's
+       front, neither of which draws a line */
+    L.slots.forEach(function(Cs){ var Sd=prism(Cs.poly,0,KERB); tag(Sd,'deck',COL_K,'platform'); Sd.hides=false; Sd.cont=Cs; Cs.parts.push(Sd); });
+    TAL.decks.push({side:sd, idx:L.idx, s0:L.s0, s1:L.s1, fe:L.deckFe, back:PLATB, top:KERB});
+    /* fence or wall, on the deck's back 0.2 m (361: 30% of lots a wall) */
+    var RP=sub(sk,L.idx,SALT_PLAT), uw=RP(), np=2+Math.floor(RP()*3), upos=[RP(),RP(),RP(),RP()];
+    var wall=L.isWall, fo0=PLATB-0.2;
+    if(wall){
+      var WQ=arcQuad(sd,L.s0,L.s1,fo0,PLATB), W=prism(WQ,KERB,KERB+2.4);
+      ln(W,[WQ[0][0],WQ[0][1],KERB+2.4],[WQ[1][0],WQ[1][1],KERB+2.4],1,2,'wall');
+      ln(W,[WQ[3][0],WQ[3][1],KERB+2.4],[WQ[2][0],WQ[2][1],KERB+2.4],1,4,'wall');
+      ln(W,[WQ[0][0],WQ[0][1],KERB],[WQ[1][0],WQ[1][1],KERB],0,2,'wall');
+      var prvL=bySide[sd][bySide[sd].indexOf(L)-1], nxtL=bySide[sd][bySide[sd].indexOf(L)+1];
+      if(!(prvL && prvL.isWall && Math.abs(prvL.s1-L.s0)<1e-9)){ ln(W,[WQ[0][0],WQ[0][1],KERB],[WQ[0][0],WQ[0][1],KERB+2.4],2,5,'wall'); ln(W,[WQ[0][0],WQ[0][1],KERB+2.4],[WQ[3][0],WQ[3][1],KERB+2.4],1,5,'wall'); }
+      if(!(nxtL && nxtL.isWall && Math.abs(nxtL.s0-L.s1)<1e-9)){ ln(W,[WQ[1][0],WQ[1][1],KERB],[WQ[1][0],WQ[1][1],KERB+2.4],2,3,'wall'); ln(W,[WQ[1][0],WQ[1][1],KERB+2.4],[WQ[2][0],WQ[2][1],KERB+2.4],1,3,'wall'); }
+      /* posters on the face toward the tracks */
+      if(dl<df){
+        var FLn=L.s1-L.s0, pw=1.0, ph=1.4, k2;
+        for(k2=0;k2<np;k2++){
+          var u=(k2+0.5+0.6*(upos[k2]-0.5))/np*FLn;
+          if(u-pw/2<0.15 || u+pw/2>FLn-0.15) continue;
+          var sa=L.s0+u-pw/2, sb=L.s0+u+pw/2, za=KERB+0.6, zb=KERB+0.6+ph;
+          [[sa,za,sb,za],[sb,za,sb,zb],[sb,zb,sa,zb],[sa,zb,sa,za]].forEach(function(r){ ln(W,onChord(sd,L.s0,L.s1,fo0,r[0],r[1]),onChord(sd,L.s0,L.s1,fo0,r[2],r[3]),2,2,'poster'); });
+          if(dl<dn) [[sa+0.06,za+0.06,sb-0.06,za+0.06],[sb-0.06,za+0.06,sb-0.06,zb-0.06],[sb-0.06,zb-0.06,sa+0.06,zb-0.06],[sa+0.06,zb-0.06,sa+0.06,za+0.06]]
+            .forEach(function(r){ ln(W,onChord(sd,L.s0,L.s1,fo0,r[0],r[1]),onChord(sd,L.s0,L.s1,fo0,r[2],r[3]),2,2,'poster'); });
+        }
+      }
+      tag(W,'wall',COL_K,'platform',{gapless:true}); W.cont=L; L.parts.push(W);
+    } else {
+      /* posts every 2 m on the global grid, solid; rails and mesh on a
+         see-through panel just behind them */
+      if(dl<df) for(var ps=2*Math.ceil((L.s0+0.12)/2); ps<L.s1-0.12; ps+=2){
+        if(inHouse(sd,ps-0.1,ps+0.1,0.05)) continue;
+        var pc=P3(ps,sd,PLATB-0.11,KERB), F=frame(ps), tt=[F[2],F[3],0], nn=[-F[3]*sd,F[2]*sd,0];
+        var Po=para([pc[0]-tt[0]*0.04-nn[0]*0.04, pc[1]-tt[1]*0.04-nn[1]*0.04, KERB],[tt[0]*0.08,tt[1]*0.08,0],[nn[0]*0.08,nn[1]*0.08,0],[0,0,1.8]);
+        tag(Po,'fencepost',COL_K,'platform'); Po.cont=L; L.parts.push(Po);
+      }
+      /* the panel just behind the posts, one per 2 m between them: a chord as
+         long as the lot sags into the posts on a bend (5 cm at Bend 20) */
+      var om=PLATB-0.025, cuts=[L.s0];
+      for(var cs=2*Math.ceil((L.s0+0.12)/2); cs<L.s1-0.12; cs+=2) cuts.push(cs);
+      cuts.push(L.s1);
+      var gm=dl<dn?paperGap(P3((L.s0+L.s1)/2,sd,om,KERB+0.9),[0,0,1],vecT((L.s0+L.s1)/2)):0;
+      var ms=Math.max(0.25,gm>0?MINSP/gm*1.5:1e9);
+      for(var ci2=0;ci2+1<cuts.length;ci2++){
+        var sa=cuts[ci2], sb=cuts[ci2+1]; if(sb-sa<1e-6) continue;
+        var M=see(prism(arcQuad(sd,sa,sb,PLATB-0.04,PLATB-0.01),KERB,KERB+1.8));
+        ln(M,P3(sa,sd,om,KERB+1.8),P3(sb,sd,om,KERB+1.8),2,2,'fence');
+        if(dl<df) ln(M,P3(sa,sd,om,KERB+0.9),P3(sb,sd,om,KERB+0.9),2,2,'fence');
+        /* palings: vertical bars, the paper floor apart */
+        if(dl<dn && ms<1.2) for(var md=Math.ceil((sa+0.02)/ms)*ms; md<sb-0.02; md+=ms)
+          ln(M,P3(md,sd,om,KERB+0.05),P3(md,sd,om,KERB+1.75),2,2,'mesh');
+        tag(M,'fence',COL_K,'platform'); M.hides=false; M.seeThru=true; M.cont=L; L.parts.push(M);
+      }
+    }
+    TAL.walls.push({side:sd, idx:L.idx, wall:wall});
+    /* the roof and its columns */
+    if(covered(L)) roofFor(L,dl,dn,df);
+    if(dl<df) furnFor(L);
+  }
+  function vecT(s){ var F=frame(s); return [F[2],F[3],0]; }
+  function roofFor(L,dl,dn,df){
+    var sd=L.side, ob=roofBack(L), zp=roofPlane(L), TH=0.15, pieces=[];
+    function slab(oa,obk){
+      var Q=arcQuad(sd,L.s0,L.s1,oa,obk);
+      var lo=Q.map(function(q){ return [q[0],q[1],zp(q)]; }), hi=Q.map(function(q){ return [q[0],q[1],zp(q)+TH]; });
+      var loops=[lo,hi], e; for(e=0;e<4;e++){ var e2=(e+1)%4; loops.push([lo[e],lo[e2],hi[e2],hi[e]]); }
+      var R=polyFromLoops(loops); R.lines=[];
+      /* faces: 0 underside, 1 top, 2 front (o=oa), 3 end s1, 4 back (o=obk), 5 end s0 */
+      return {P:R, lo:lo, hi:hi, oa:oa, ob:obk};
+    }
+    /* a roof pulled in front of a stair housing on a narrow platform can end
+       before the column line: then it is the butterfly's front plate alone,
+       or no roof where there is not half a metre of it */
+    if(ob<OFR+0.5) return;
+    var bfly=CROOF===2 && ob>OCOL+0.3;
+    var parts=bfly?[slab(OFR,OCOL),slab(OCOL,ob)]:[slab(OFR,CROOF===2?Math.min(ob,OCOL):ob)];
+    var prv=bySide[sd][bySide[sd].indexOf(L)-1], nxt=bySide[sd][bySide[sd].indexOf(L)+1];
+    var prvOn=prv && Math.abs(prv.s1-L.s0)<1e-9 && covered(prv), nxtOn=nxt && Math.abs(nxt.s0-L.s1)<1e-9 && covered(nxt);
+    var prvB=prvOn?roofBack(prv):null, nxtB=nxtOn?roofBack(nxt):null;
+    parts.forEach(function(R,ri){
+      var P=R.P, lo=R.lo, hi=R.hi, front=ri===0, back=ri===parts.length-1;
+      if(front){ ln(P,lo[0],lo[1],0,2,'fascia'); ln(P,hi[0],hi[1],1,2,'fascia'); }
+      if(back){ ln(P,lo[3],lo[2],0,4,'roof'); ln(P,hi[3],hi[2],1,4,'roof'); }
+      if(CROOF===2 && front) ln(P,lo[2],lo[1],0,4,'roof');
+      /* the ends: only where no roof abuts, or the part of the end a shorter
+         neighbour leaves bare */
+      function endLines(i0,i1,fi,nbBack){
+        var oa=R.oa, obk=R.ob;
+        if(nbBack===null){ ln(P,lo[i0],lo[i1],0,fi,'roof'); ln(P,hi[i0],hi[i1],1,fi,'roof'); ln(P,lo[i0],hi[i0],fi,fi,'roof'); ln(P,lo[i1],hi[i1],fi,fi,'roof'); return; }
+        if(back && nbBack<obk-1e-6){
+          var f=(nbBack-oa)/(obk-oa), A=[lo[i0][0]+(lo[i1][0]-lo[i0][0])*f, lo[i0][1]+(lo[i1][1]-lo[i0][1])*f, lo[i0][2]+(lo[i1][2]-lo[i0][2])*f];
+          var Ah=[A[0],A[1],A[2]+TH];
+          ln(P,A,lo[i1],0,fi,'roof'); ln(P,Ah,hi[i1],1,fi,'roof'); ln(P,A,Ah,fi,fi,'roof'); ln(P,lo[i1],hi[i1],fi,fi,'roof');
+        }
+      }
+      endLines(0,3,5,prvOn?prvB:null);
+      endLines(1,2,3,nxtOn?nxtB:null);
+      if(dl<df){
+        /* purlins every 1.5 m across, the rafter over each column, a tube
+           (two yellow lines) every other bay -- all on the underside */
+        var oa=R.oa, obk=R.ob;
+        for(var po=oa+1.5; po<obk-0.2; po+=1.5){ var A=P3(L.s0,sd,po,0), B=P3(L.s1,sd,po,0); ln(P,[A[0],A[1],zp(A)],[B[0],B[1],zp(B)],0,0,'purlin'); }
+        COLS[sd].forEach(function(c,ci){
+          if(c.lot!==L) return;
+          var A=onChord(sd,L.s0,L.s1,oa,c.s,0), B=onChord(sd,L.s0,L.s1,obk,c.s,0); ln(P,[A[0],A[1],zp(A)],[B[0],B[1],zp(B)],0,0,'rafter');
+        });
+        if(front) COLS[sd].forEach(function(c,ci){
+          var nx=COLS[sd][ci+1]; if(!nx || ci%2) return;
+          var sm=(c.s+nx.s)/2; if(sm-0.6<L.s0+0.05 || sm+0.6>L.s1-0.05) return;
+          var om2=(OFR+OCOL)/2;
+          [om2-0.03,om2+0.03].forEach(function(oo){ var A=P3(sm-0.6,sd,oo,0), B=P3(sm+0.6,sd,oo,0); ln(P,[A[0],A[1],zp(A)],[B[0],B[1],zp(B)],0,0,'tube'); P.lines[P.lines.length-1].col=COL_YEL; });
+        });
+      }
+      tag(P,'roof',COL_K,'canopy',{gapless:true}); P.cont=L; L.parts.push(P);
+    });
+    TAL.roofs.push({side:sd, idx:L.idx, s0:L.s0, s1:L.s1, o0:OFR, o1:ob, plates:parts.length});
+    COLS[sd].forEach(function(c){
+      if(c.lot!==L) return;
+      var cc=P3(c.s,sd,OCOL,0), n=dl<df?12:6, zt=1e18, j;
+      for(j=0;j<8;j++){ var a=TAU*j/8; zt=Math.min(zt,zp([cc[0]+0.16*Math.cos(a), cc[1]+0.16*Math.sin(a)])); }
+      /* under a butterfly the column stands in the valley, which eight samples
+         round it can miss: its top is the valley's */
+      if(CROOF===2) zt=Math.min(zt,KERB+3.1);
+      var Cp=ngon(cc,0.15,n,KERB,zt-0.001,0.5);
+      Cp.lines=Cp.lines.filter(function(Ln){ return !(Math.abs(Ln.a[2]-Ln.b[2])<1e-9 && Math.abs(Ln.a[2]-(zt-0.001))<1e-9); });
+      tag(Cp,'column',COL_K,'canopy'); Cp.cont=L;
+      if(inLot(Cp,L)){ L.parts.push(Cp); TAL.columns.push({side:sd, s:c.s, o:OCOL, idx:L.idx, x:cc[0], y:cc[1], r:0.15}); }
+    });
+  }
+  /* §3.8 furniture behind the column line: one piece a lot */
+  function furnFor(L){
+    var sd=L.side, sk=sd<0?2:1, R=sub(sk,L.idx,SALT_FURN), u=R(), ut=R(), us=R(), uc=R();
+    if(!(u<PFURN)) return;
+    var o0=OCOL+0.35, o1=PLATB-0.25, band=o1-o0;
+    var type=ut<0.4?'bench':ut<0.6?'vend':ut<0.85?'bins':'extinguisher';
+    var len=type==='bench'?1.8:type==='vend'?1.0:type==='bins'?1.4:0.4, dep=type==='bench'?0.5:type==='vend'?0.75:type==='bins'?0.4:0.25;
+    var rec={side:sd, idx:L.idx, type:type, placed:false};
+    TAL.furn.push(rec);
+    if(band<dep+0.05 || L.s1-L.s0<len+0.6) return;
+    var sc=L.s0+0.3+len/2+(L.s1-L.s0-0.6-len)*us;
+    if(inHouse(sd,sc-len/2,sc+len/2,0.3)) return;
+    var X=sideFrame(sc,sd), oc=o0+(band-dep)/2, list=[], col=type==='bench'?(uc<0.5?COL_OR:COL_BLUE):type==='extinguisher'?COL_RED:COL_K;
+    function bx(s0,s1,oa,ob,z0,z1,kind,cl){ var P=boxIn(X,s0,s1,oa,ob,z0,z1); tag(P,kind,cl,'pfurn'); P.cont=L; list.push(P); return P; }
+    if(type==='bench'){
+      bx(sc-0.85,sc-0.75,oc+0.05,oc+0.45,KERB,KERB+0.40,'bench',COL_K);
+      bx(sc+0.75,sc+0.85,oc+0.05,oc+0.45,KERB,KERB+0.40,'bench',COL_K);
+      var seat=bx(sc-0.9,sc+0.9,oc,oc+0.45,KERB+0.40,KERB+0.45,'bench',col);
+      bx(sc-0.9,sc+0.9,oc+0.45,oc+0.5,KERB+0.45,KERB+0.85,'bench',col);
+      var fs=faceIx(seat,[0,0,1]);
+      [-0.3,0.3].forEach(function(dx){ ln(seat,X(sc+dx,oc,KERB+0.45),X(sc+dx,oc+0.45,KERB+0.45),fs,fs,'bench',col); });
+    } else if(type==='vend'){
+      var V=bx(sc-0.5,sc+0.5,oc,oc+0.75,KERB,KERB+1.83,'vend',COL_K), ff=faceIx(V,sub3(X(sc,oc-1,0),X(sc,oc,0)));
+      var rr=function(a,b,c,d,cl){ [[a,b,c,b],[c,b,c,d],[c,d,a,d],[a,d,a,b]].forEach(function(r){ ln(V,X(sc+r[0],oc,KERB+r[1]),X(sc+r[2],oc,KERB+r[3]),ff,ff,'vend',cl||COL_K); }); };
+      rr(-0.4,0.75,0.4,1.7); for(var j=0;j<4;j++) ln(V,X(sc-0.4,oc,KERB+0.95+0.2*j),X(sc+0.4,oc,KERB+0.95+0.2*j),ff,ff,'vend',COL_K);
+      rr(0.15,0.25,0.4,0.55); rr(-0.4,0.25,-0.05,0.45);
+    } else if(type==='bins'){
+      [-0.5,0,0.5].forEach(function(dx){ bx(sc+dx-0.2,sc+dx+0.2,oc,oc+0.4,KERB,KERB+0.9,'bin',COL_K); });
+    } else {
+      bx(sc-0.2,sc+0.2,oc,oc+0.25,KERB,KERB+0.7,'extinguisher',COL_RED);
+    }
+    if(list.every(function(P){ return inLot(P,L); }) && !list.some(function(P){ return hitsAny(P,L,['struct','platform','canopy','psign','bridge','pfurn','portal']); })){
+      list.forEach(function(P){ L.parts.push(P); }); rec.placed=true; rec.s=sc;
+    }
+  }
+
+  /* ---- §3.6 hanging signs, name boards and clocks (after the roof) ------- */
+  function signsFor(L,dn,df){
+    S.signsFor(L,dn,df);
+    var sd=L.side, sk=sd<0?2:1, dl=dist3(P3((L.s0+L.s1)/2,sd,OCOL,KERB+2.5));
+    if(!covered(L) || !(dl<df)) return;
+    var zp=roofPlane(L), cs=COLS[sd], ci;
+    for(ci=0;ci+1<cs.length;ci++){
+      var sm=(cs[ci].s+cs[ci+1].s)/2; if(sm<L.s0+0.2 || sm>L.s1-0.2) continue;
+      var R=sub(sk,Math.round(sm*10),SALT_PSIGN), u=R(), ut=R(), uw=R(), RT=sub(sk,Math.round(sm*10),SALT_PSIGN+1000);
+      /* a clock every 40-60 m: the bays nearest that grid carry one instead */
+      var clockK=Math.round(sm/50), RC=sub(sk,clockK,SALT_PSIGN+2000), sclock=clockK*50+(RC()-0.5)*20;
+      if(Math.abs(sm-sclock)<(cs[ci+1].s-cs[ci].s)/2){ clockAt(L,sm,zp,dl,dn,df); continue; }
+      if(!(u<PSIGN)) continue;
+      var type=ut<0.1?'board':ut<0.4?'exit':ut<0.8?'dir':'carstop';
+      hangSign(L,sm,type,zp,dl,dn,df,uw,RT);
+    }
+  }
+  function hangSign(L,sm,type,zp,dl,dn,df,uw,RT){
+    var sd=L.side, X=sideFrame(sm,sd);
+    var oa=OFR+0.25, ob=OCOL-0.4, W=type==='carstop'?0.55:Math.min(1.6,ob-oa), H=type==='carstop'?0.35:type==='board'?0.55:0.45;
+    if(W<0.5 || W>ob-oa+1e-9) return;
+    var oc=(oa+ob)/2, o0=oc-W/2, o1=oc+W/2;
+    var zu=Math.min(zp(X(sm,o0,0)),zp(X(sm,o1,0))), zt=zu-0.45, zb=zt-H;
+    var P=boxIn(X,sm-0.025,sm+0.025,o0,o1,zb,zt), rec={side:sd, s:sm, type:type, placed:false, col:null};
+    P.lines=P.lines.filter(function(){ return true; });
+    var face=faceIx(P,sub3(X(sm-1,oc,zb),X(sm,oc,zb)));
+    /* (u,v) on the face toward the camera, read from in front of it */
+    var C0=X(sm-0.025,oc,(zb+zt)/2), N=sub3(X(sm-1,oc,0),X(sm,oc,0)), Nl=Math.hypot(N[0],N[1]); N=[N[0]/Nl,N[1]/Nl,0];
+    var M=surf(C0,N,W,H), mm=mmPerM(C0,N);
+    function poly(pl,col,kind){ for(var i=1;i<pl.length;i++) P.lines.push({a:M(pl[i-1][0],pl[i-1][1]), b:M(pl[i][0],pl[i][1]), f0:face, f1:face, col:col, kind:kind}); }
+    var col=COL_K;
+    if(type==='exit'){
+      col=COL_YEL; rec.col=COL_YEL;
+      if(dl<dn){ var gp=Math.max(0.04,MINSP/Math.max(mm,1e-9)); for(var hv=gp; hv<H-1e-9; hv+=gp) poly([[0,hv],[W,hv]],COL_YEL,'signhatch'); }
+      var T=S.setText(S.LANG===2?'latin':S.LANG===1?'hangul':'kanji',W*0.6,H,false,RT);
+      if(T.h*mm>=S.TEXTMM) T.lines.forEach(function(pl){ poly(pl.map(function(q){ return [q[0]+W*0.35,q[1]]; }),COL_K,'signtext'); });
+      poly([[0.08,H/2],[0.32,H/2]],COL_K,'arrow'); poly([[0.16,H/2+0.08],[0.08,H/2],[0.16,H/2-0.08]],COL_K,'arrow');
+    } else if(type==='dir'){
+      rec.col=COL_LINE;
+      poly([[0,H-0.09],[W,H-0.09]],COL_LINE,'band'); poly([[0,H-0.05],[W,H-0.05]],COL_LINE,'band');
+      var T1=S.setText(S.LANG===2?'latin':S.LANG===1?'hangul':'kanji',W,H*0.42,false,RT);
+      if(T1.h*mm>=S.TEXTMM) T1.lines.forEach(function(pl){ poly(pl.map(function(q){ return [q[0],q[1]+H*0.38]; }),COL_K,'signtext'); });
+      var T2=latin(NBR[uw<0.5?0:1],W*0.8,H*0.22);
+      if(T2.h*mm>=S.TEXTMM) T2.lines.forEach(function(pl){ poly(pl.map(function(q){ return [q[0]+W*0.1,q[1]+0.04]; }),COL_K,'signtext'); });
+    } else if(type==='carstop'){
+      var T3=latin(String(1+Math.floor(uw*15)),W*0.6,H*0.7);
+      if(T3.h*mm>=S.TEXTMM) T3.lines.forEach(function(pl){ poly(pl.map(function(q){ return [q[0]+W*0.2,q[1]+H*0.15]; }),COL_K,'signtext'); });
+    } else {
+      /* the departure board: three rows of orange dash text in a black box */
+      for(var r=0;r<3;r++){ var vv=H*(0.22+0.28*r); for(var dx=0.06; dx<W-0.08; dx+=0.09) poly([[dx,vv],[dx+0.05,vv]],COL_OR,'board'); }
+      poly([[0.03,0.03],[W-0.03,0.03],[W-0.03,H-0.03],[0.03,H-0.03],[0.03,0.03]],COL_K,'board');
+    }
+    P.lines.forEach(function(Ln){ if(Ln.col===undefined) Ln.col=col; });
+    tag(P,'psign',col,'psign'); P.cont=L;
+    /* two rods from the roof: see-through, beside the panel */
+    var Rd=see(boxIn(X,sm-0.01,sm+0.01,o0+0.08,o1-0.08,zt,zu-0.002));
+    var fr=faceIx(Rd,N);
+    [o0+0.09,o1-0.09].forEach(function(oo){ ln(Rd,X(sm-0.01,oo,zt),X(sm-0.01,oo,zu-0.002),fr,fr,'rod',COL_K); });
+    tag(Rd,'rod',COL_K,'psign'); Rd.hides=false; Rd.seeThru=true; Rd.cont=L;
+    if(inLot(P,L) && inLot(Rd,L) && !hitsAny(P,L,['struct','canopy','psign','platform'])){ L.parts.push(P); L.parts.push(Rd); rec.placed=true; }
+    TAL.signs.push(rec);
+  }
+  function clockAt(L,sm,zp,dl,dn,df){
+    var sd=L.side, X=sideFrame(sm,sd), oc=OFR+0.6, zu=zp(X(sm,oc,0)), zc=zu-0.75, r=0.25, Q=[], j;
+    /* a 12-sided disc 0.08 thick, its face toward the camera */
+    for(j=0;j<12;j++){ var a=TAU*j/12; Q.push([oc+r*Math.cos(a), zc+r*Math.sin(a)]); }
+    var lo=Q.map(function(q){ return X(sm-0.04,q[0],q[1]); }), hi=Q.map(function(q){ return X(sm+0.04,q[0],q[1]); }), loops=[lo,hi];
+    for(j=0;j<12;j++){ var j2=(j+1)%12; loops.push([lo[j],lo[j2],hi[j2],hi[j]]); }
+    var Pc=polyFromLoops(loops), f0=faceIx(Pc,sub3(X(sm-1,oc,zc),X(sm,oc,zc)));
+    if(dl<dn){
+      for(j=0;j<12;j++){ var a2=TAU*j/12; ln(Pc,X(sm-0.04,oc+0.2*Math.cos(a2),zc+0.2*Math.sin(a2)),X(sm-0.04,oc+0.24*Math.cos(a2),zc+0.24*Math.sin(a2)),f0,f0,'clock',COL_K); }
+      ln(Pc,X(sm-0.04,oc,zc),X(sm-0.04,oc+0.06,zc+0.12),f0,f0,'clock',COL_K);
+      ln(Pc,X(sm-0.04,oc,zc),X(sm-0.04,oc+0.17,zc-0.04),f0,f0,'clock',COL_K);
+    }
+    tag(Pc,'clock',COL_K,'psign'); Pc.cont=L;
+    /* 1 cm under the roof: the roof slopes across the rod's own width */
+    var Rd=see(boxIn(X,sm-0.01,sm+0.01,oc-0.01,oc+0.01,zc+r,zu-0.01)); ln(Rd,X(sm,oc,zc+r),X(sm,oc,zu-0.01),2,2,'rod',COL_K);
+    tag(Rd,'rod',COL_K,'psign'); Rd.hides=false; Rd.seeThru=true; Rd.cont=L;
+    var rec={side:sd, s:sm, placed:false};
+    if(inLot(Pc,L) && inLot(Rd,L) && !hitsAny(Pc,L,['struct','canopy','psign','platform'])){ L.parts.push(Pc); L.parts.push(Rd); rec.placed=true; }
+    TAL.clocks.push(rec);
+  }
+  /* two name boards a platform, on the column line mid-bay, facing the track */
+  var BOARDS={'1':[],'-1':[]};
+  [1,-1].forEach(function(sd){
+    var lo=CANOPY>0?cov0:0, hi=CANOPY>0?cov1:LEN;
+    [0.33,0.67].forEach(function(f){
+      var want=lo+(hi-lo)*f, cs=COLS[sd], ci, cand=[];
+      /* the real bays, nearest the target first: a bay is irregular where a
+         column was moved or left out, so stepping by Column spacing from one
+         can land on every column there is */
+      if(cs.length>1) for(ci=0;ci+1<cs.length;ci++) cand.push((cs[ci].s+cs[ci+1].s)/2);
+      else for(var tk=-6;tk<=6;tk++) cand.push(Math.round(want)+3*tk);
+      cand.sort(function(a,b){ return Math.abs(a-want)-Math.abs(b-want); });
+      for(var tr=0;tr<cand.length;tr++){
+        var s=cand[tr], L=lotAt(sd,s,1.35);
+        if(!L || inHouse(sd,s-1.3,s+1.3,0.3) || BOARDS[sd].some(function(b){ return Math.abs(b.s-s)<3; })) continue;
+        if(cs.some(function(c){ return Math.abs(c.s-s)<1.5; })) continue;
+        BOARDS[sd].push({s:s, lot:L}); break;
+      }
+    });
+  });
+  function boardParts(L,b,dl,dn,df){
+    var sd=L.side, X=sideFrame(b.s,sd), s=b.s, oc=OCOL, zb=KERB+1.3, zt=KERB+2.3, W=2.4, H=1.0, list=[];
+    var P=boxIn(X,s-W/2,s+W/2,oc-0.03,oc+0.03,zb,zt);
+    var N=sub3(X(s,oc-1,0),X(s,oc,0)), Nl=Math.hypot(N[0],N[1]); N=[N[0]/Nl,N[1]/Nl,0];
+    var face=faceIx(P,N), C0=X(s,oc-0.03,(zb+zt)/2), M=surf(C0,N,W,H), mm=mmPerM(C0,N);
+    function poly(pl,col,kind){ for(var i=1;i<pl.length;i++) P.lines.push({a:M(pl[i-1][0],pl[i-1][1]), b:M(pl[i][0],pl[i][1]), f0:face, f1:face, col:col, kind:kind}); }
+    if(dl<df){
+      var big=S.LANG<=1?kanji(NKAN.map(function(u){ return u; }),W*0.8,H*0.5):latin(NAME,W*0.8,H*0.4);
+      if(big.h*mm>=S.TEXTMM) big.lines.forEach(function(pl){ poly(pl.map(function(q){ return [q[0]+W*0.1,q[1]+H*0.42]; }),COL_K,'name'); });
+      var sm=latin(NAME,W*0.5,H*0.12);
+      if(sm.h*mm>=S.TEXTMM) sm.lines.forEach(function(pl){ poly(pl.map(function(q){ return [q[0]+W*0.25,q[1]+H*0.26]; }),COL_K,'name'); });
+      poly([[0,0.16],[W,0.16]],COL_LINE,'namebar'); poly([[0,0.1],[W,0.1]],COL_LINE,'namebar');
+      poly([[0.12,0.05],[0.04,0.13],[0.12,0.21]],COL_K,'arrow'); poly([[W-0.12,0.05],[W-0.04,0.13],[W-0.12,0.21]],COL_K,'arrow');
+      [[NBR[0],0.15],[NBR[1],W-0.65]].forEach(function(nb){ var t=latin(nb[0],0.5,0.06); if(t.h*mm>=S.TEXTMM*0.6) t.lines.forEach(function(pl){ poly(pl.map(function(q){ return [q[0]+nb[1],q[1]+0.02]; }),COL_K,'name'); }); });
+    }
+    tag(P,'nameboard',COL_K,'psign'); P.cont=L; list.push(P);
+    [s-1.0,s+1.0].forEach(function(ps){ var Q=boxIn(X,ps-0.03,ps+0.03,oc-0.03,oc+0.03,KERB,zb); tag(Q,'boardpost',COL_K,'psign'); Q.cont=L; list.push(Q); });
+    var rec={side:sd, s:s, name:NAME, placed:false};
+    if(list.every(function(Q){ return inLot(Q,L); }) && !list.some(function(Q){ return hitsAny(Q,L,['struct','canopy','psign','platform','pfurn']); })){
+      list.forEach(function(Q){ L.parts.push(Q); }); rec.placed=true;
+    }
+    TAL.boards.push(rec);
+  }
+
+  /* ---- §3.1 the track (slabs) -------------------------------------------- */
+  function track(dn,df){
+    conts.forEach(function(C){
+      if(C.kind!=='slab') return;
+      var sd=C.side, sm=(C.s0+C.s1)/2, d=dist3(P3(sm,sd,OC,0.1)), sk=sd<0?2:1, ki=Math.round(C.s0/SLAB);
+      var rails=[[OC-GAUGE/2-RHW,OC-GAUGE/2],[OC+GAUGE/2,OC+GAUGE/2+RHW]];
+      var e0=C.s0<1e-9, e1=C.s1>LEN-1e-9;
+      rails.forEach(function(r){
+        var Q=arcQuad(sd,C.s0,C.s1,r[0],r[1]), P=prism(Q,RZ0,RZ1);
+        if(d<dn){
+          ln(P,[Q[0][0],Q[0][1],RZ1],[Q[1][0],Q[1][1],RZ1],1,2,'rail'); ln(P,[Q[3][0],Q[3][1],RZ1],[Q[2][0],Q[2][1],RZ1],1,4,'rail');
+          ln(P,[Q[0][0],Q[0][1],RZ0],[Q[1][0],Q[1][1],RZ0],0,2,'rail'); ln(P,[Q[3][0],Q[3][1],RZ0],[Q[2][0],Q[2][1],RZ0],0,4,'rail');
+          if(e0){ ln(P,[Q[0][0],Q[0][1],RZ1],[Q[3][0],Q[3][1],RZ1],1,5,'rail'); }
+          if(e1){ ln(P,[Q[1][0],Q[1][1],RZ1],[Q[2][0],Q[2][1],RZ1],1,3,'rail'); }
+          tag(P,'rail',COL_DG,'track',{gapless:true});
+        } else {
+          var om=(r[0]+r[1])/2;
+          if(d<df){ ln(P,[Q[0][0],Q[0][1],RZ1],[Q[1][0],Q[1][1],RZ1],1,1,'rail'); ln(P,[Q[3][0],Q[3][1],RZ1],[Q[2][0],Q[2][1],RZ1],1,1,'rail'); }
+          else ln(P,P3(C.s0,sd,om,RZ1),P3(C.s1,sd,om,RZ1),1,1,'rail');
+          tag(P,'rail',COL_DG,'track'); see(P);
+        }
+        /* NO LOD CUT on a rail: it runs along the view, so a far 4 m piece is a
+           sliver on the sheet and the cut stopped the rails at ~110 m */
+        P.nolod=true; P.cont=C; C.parts.push(P);
+      });
+      /* sleepers: every 0.6 m on the track's own grid; solid near, one line
+         out to Outline detail to, every 2^k-th where the paper floor needs */
+      var k0=Math.ceil((C.s0-0.12-0.3)/SLP), k1=Math.floor((C.s1+0.12-0.3)/SLP), k;
+      var g=paperGap(P3(sm,sd,OC,RZ0),latDir(sm,sd),vecT(sm)), th=thin(g,SLP);
+      var lineP=null;
+      for(k=k0;k<=k1;k++){
+        var sc=0.3+k*SLP, sa=Math.max(C.s0,sc-0.12), sb=Math.min(C.s1,sc+0.12);
+        if(sb-sa<1e-6 || sc<0.12 || sc>LEN-0.12) continue;
+        if(sc>=C.s0 && sc<C.s1) (TAL.sleepers[sd]||(TAL.sleepers[sd]=[])).push(sc);
+        if(d<dn){
+          var Q=arcQuad(sd,sa,sb,OC-1.0,OC+1.0), P=prism(Q,0,RZ0);
+          /* the ends across the track only where they are the sleeper's own */
+          if(Math.abs(sa-(sc-0.12))<1e-9) ln(P,[Q[0][0],Q[0][1],RZ0],[Q[3][0],Q[3][1],RZ0],1,5,'sleeper');
+          if(Math.abs(sb-(sc+0.12))<1e-9) ln(P,[Q[1][0],Q[1][1],RZ0],[Q[2][0],Q[2][1],RZ0],1,3,'sleeper');
+          ln(P,[Q[0][0],Q[0][1],RZ0],[Q[1][0],Q[1][1],RZ0],1,2,'sleeper'); ln(P,[Q[3][0],Q[3][1],RZ0],[Q[2][0],Q[2][1],RZ0],1,4,'sleeper');
+          tag(P,'sleeper',COL_GREY,'track'); P.cont=C; C.parts.push(P);
+        } else if(d<df && k%th===0 && sc>=C.s0 && sc<C.s1){
+          if(!lineP){ lineP=see(prism(arcQuad(sd,C.s0,C.s1,OC-1.0,OC+1.0),0,RZ0)); }
+          ln(lineP,P3(sc,sd,OC-1.0,RZ0),P3(sc,sd,OC+1.0,RZ0),1,1,'sleeper');
+        }
+      }
+      if(lineP){ tag(lineP,'sleeper',COL_GREY,'track'); see(lineP); lineP.cont=C; C.parts.push(lineP); }
+      /* ballast: dashes between the sleepers near, on the plate; and the
+         shoulder in front of the platform face */
+      var Pl=null; C.parts.forEach(function(P){ if(P.kind==='plate') Pl=P; });
+      if(Pl && d<df){
+        Pl.lines.push({a:P3(C.s0,sd,HALFW-0.35,0), b:P3(C.s1,sd,HALFW-0.35,0), f0:1, f1:1, col:COL_GREY, kind:'ballast'});
+        if(d<dn && BALLAST>0){
+          var RB=sub(sk,ki,SALT_TRACK), gb=paperGap(P3(sm,sd,OC,0),latDir(sm,sd),vecT(sm)), nb=Math.round(BALLAST*40), j;
+          for(j=0;j<40;j++){
+            var us=RB(), uo=RB(), ua=RB();
+            if(j>=nb || !(gb*0.25>=MINSP)) continue;
+            var s2=C.s0+0.1+(C.s1-C.s0-0.2)*us, o2=OC-1.3+2.6*uo, an=ua*Math.PI;
+            var a=P3(s2,sd,o2,0), dd=0.05, b=[a[0]+Math.cos(an)*dd, a[1]+Math.sin(an)*dd, 0];
+            if(!inConv(C.poly,b)) continue;
+            Pl.lines.push({a:a, b:b, f0:1, f1:1, col:COL_GREY, kind:'ballast'});
+          }
+        }
+      }
+    });
+    [1,-1].forEach(function(sd){ TAL.tracks.push({side:sd, oc:OC, gauge:GAUGE, rails:[[OC-GAUGE/2-RHW,OC-GAUGE/2],[OC+GAUGE/2,OC+GAUGE/2+RHW]]}); });
+  }
+  /* A POINT ON A FACE THAT IS A CHORD. A part built from P3 corners has
+     straight faces between them; P3 at an intermediate s is on the ARC, which
+     on a bend is inside the solid on one side -- a line drawn there is hidden
+     by its own part. So: the chord between the face's corners at s0 and s1,
+     at the share s takes of it */
+  function onChord(sd,s0,s1,o,s,z){ var A=P3(s0,sd,o,0), B=P3(s1,sd,o,0), f=(s-s0)/(s1-s0); return [A[0]+(B[0]-A[0])*f, A[1]+(B[1]-A[1])*f, z]; }
+  function latDir(s,sd){ var F=frame(s); return [-F[3]*sd,F[2]*sd,0]; }
+
+  /* ---- §3.2 the platform's edge, on the kit's kerb part ------------------ */
+  function edges(dn,df){
+    conts.forEach(function(C){
+      if(C.kind!=='slab') return;
+      var P=null; C.parts.forEach(function(Q){ if(Q.kind==='platform') P=Q; }); if(!P) return;
+      var sd=C.side, sm=(C.s0+C.s1)/2, d=dist3(P3(sm,sd,HALFW,KERB));
+      P.layer='platform';
+      if(!(d<df)) return;
+      ln(P,P3(C.s0,sd,HALFW,KERB-0.05),P3(C.s1,sd,HALFW,KERB-0.05),2,2,'coping',COL_K);
+      ln(P,P3(C.s0,sd,HALFW+0.05,KERB),P3(C.s1,sd,HALFW+0.05,KERB),1,1,'edgeline',COL_K);
+      ln(P,P3(C.s0,sd,HALFW+0.15,KERB),P3(C.s1,sd,HALFW+0.15,KERB),1,1,'edgeline',COL_K);
+      /* the face below the lip hatched dark grey: vertical lines, the paper
+         floor apart */
+      var g=paperGap(P3(sm,sd,HALFW,KERB/2),[0,0,1],vecT(sm)), stp=Math.max(0.12,g>0?MINSP/g:1e9);
+      if(stp<SLAB) for(var hs=Math.ceil(C.s0/stp)*stp; hs<C.s1-1e-9; hs+=stp)
+        ln(P,onChord(sd,C.s0,C.s1,HALFW,hs,0.05),onChord(sd,C.s0,C.s1,HALFW,hs,KERB-0.07),2,2,'phatch',COL_DG);
+    });
+  }
+
+  /* ---- §3.3 the trains (slabs) ------------------------------------------- */
+  function trains(dn,df){
+    var sides=TRAINS===0?[]:TRAINS===1?[-EYESIDE]:TRAINS===2?[EYESIDE]:[-EYESIDE,EYESIDE];
+    sides.forEach(function(sd,ti){
+      var R=sub(sd<0?2:1,0,SALT_TRAIN), col=lineOf(R()), num=String(Math.floor(10+R()*9990)), udest=R();
+      var rec={side:sd, col:col, number:num, cars:[], id:ti};
+      TAL.trains.push(rec);
+      var sn=sEye+TFRONT, i;
+      for(i=0;i<NCAR;i++){
+        var a=sn+20*i, b=a+19.5;
+        if(b>LEN-0.3 || a<0.3) break;
+        var car=carParts(sd,ti,i,a,b,col,num,i===0,i===NCAR-1 || sn+20*(i+1)+19.5>LEN-0.3,i%2===1,dn,df);
+        if(!car) break;
+        rec.cars.push(car.rec);
+      }
+    });
+  }
+  function carParts(sd,ti,ci,a,b,col,num,lead,last,panto,dn,df){
+    var sA=a+2.85, sB=b-2.85, BA=P3(sA,sd,OC,0), BB=P3(sB,sd,OC,0);
+    var ux=BB[0]-BA[0], uy=BB[1]-BA[1], ul=Math.hypot(ux,uy); ux/=ul; uy/=ul;
+    var nx=-uy, ny=ux, Fm=frame((sA+sB)/2), out=[-Fm[3]*sd,Fm[2]*sd];
+    if(nx*out[0]+ny*out[1]<0){ nx=-nx; ny=-ny; }
+    var Mc=[(BA[0]+BB[0])/2,(BA[1]+BB[1])/2];
+    /* THE NOSE STANDS AT a: the body keeps its 19.5 m and is slid along its
+       axis so its front end is the foot of the track point at a. Centred on
+       the bogie chord it drifted 6 cm on a bend whose curvature changes under
+       the car (Bend 20) */
+    var PA=P3(a,sd,OC,0), xf=(PA[0]-Mc[0])*ux+(PA[1]-Mc[1])*uy, dl0=xf+9.75;
+    Mc=[Mc[0]+ux*dl0, Mc[1]+uy*dl0];
+    /* the chord is 13.8 m of arc's chord; the body is centred on it */
+    function Lc(x,y,z){ return [Mc[0]+ux*x+nx*y, Mc[1]+uy*x+ny*y, z]; }
+    var HL=9.75, HWc=1.475, ZF=RZ1+1.13, ZR=RZ1+3.65, ZS=ZF+1.0, dc=dist3(Lc(0,0,2.5)), mid=dc<df, near=dc<dn;
+    var list=[], recC={i:ci, s0:a, s1:b, A:[BA[0],BA[1]], B:[BB[0],BB[1]], u:[ux,uy], n:[nx,ny], M:Mc, len:2*HL, wid:2*HWc, floor:ZF, roof:ZR, doors:[0,0], panto:null, lead:lead};
+    var prof=lead?[[-HL,ZF],[-HL,ZS],[-HL+(ZR-ZS)*Math.tan(15*Math.PI/180),ZR],[HL,ZR],[HL,ZF]]:[[-HL,ZF],[-HL,ZR],[HL,ZR],[HL,ZF]];
+    var Lf=prof.map(function(q){ return Lc(q[0],-HWc,q[1]); }), Rf=prof.map(function(q){ return Lc(q[0],HWc,q[1]); }), loops=[Lf,Rf], e;
+    for(e=0;e<prof.length;e++){ var e2=(e+1)%prof.length; loops.push([Lf[e],Lf[e2],Rf[e2],Rf[e]]); }
+    var Bd=polyFromLoops(loops);
+    /* faces 0 (y = -) and 1 (y = +) are the sides */
+    function side(fi,y,pl,cl,kind){ for(var q=1;q<pl.length;q++) Bd.lines.push({a:Lc(pl[q-1][0],y,pl[q-1][1]), b:Lc(pl[q][0],y,pl[q][1]), f0:fi, f1:fi, col:cl, kind:kind}); }
+    [[0,-HWc],[1,HWc]].forEach(function(fy){
+      var fi=fy[0], y=fy[1];
+      side(fi,y,[[-HL,ZS+0.02],[HL,ZS+0.02]],col,'livery'); side(fi,y,[[-HL,ZS-0.06],[HL,ZS-0.06]],col,'livery');
+      side(fi,y,[[-HL,ZR-0.15],[HL,ZR-0.15]],col,'livery');
+      if(mid){
+        var DX=[-6.75,-2.25,2.25,6.75], k;
+        DX.forEach(function(xc){
+          side(fi,y,[[xc-0.65,ZF+0.02],[xc-0.65,ZF+1.85],[xc+0.65,ZF+1.85],[xc+0.65,ZF+0.02]],COL_K,'door');
+          side(fi,y,[[xc,ZF+0.02],[xc,ZF+1.85]],COL_K,'door');
+          [[xc-0.55,xc-0.08],[xc+0.08,xc+0.55]].forEach(function(w){ side(fi,y,[[w[0],ZF+1.0],[w[1],ZF+1.0],[w[1],ZF+1.65],[w[0],ZF+1.65],[w[0],ZF+1.0]],COL_K,'window'); });
+          recC.doors[fi]++;
+        });
+        for(k=0;k+1<DX.length;k++) side(fi,y,[[DX[k]+0.85,ZS+0.1],[DX[k+1]-0.85,ZS+0.1],[DX[k+1]-0.85,ZS+0.75],[DX[k]+0.85,ZS+0.75],[DX[k]+0.85,ZS+0.1]],COL_K,'window');
+        if(!lead) side(fi,y,[[-HL+0.4,ZS+0.1],[-7.6,ZS+0.1],[-7.6,ZS+0.75],[-HL+0.4,ZS+0.75],[-HL+0.4,ZS+0.1]],COL_K,'window');
+        side(fi,y,[[7.6,ZS+0.1],[HL-0.4,ZS+0.1],[HL-0.4,ZS+0.75],[7.6,ZS+0.75],[7.6,ZS+0.1]],COL_K,'window');
+      }
+    });
+    /* the cab: headlights, a destination box, the train's number */
+    if(lead && mid){
+      var fF=2, fW=3, xw=(ZR-ZS)*Math.tan(15*Math.PI/180);
+      function fr(y,z,cl,kind,fi){ return Lc(-HL+(z>ZS?(z-ZS)*Math.tan(15*Math.PI/180):0),y,z); }
+      function fpoly(pl,cl,kind){ for(var q=1;q<pl.length;q++){ var A=pl[q-1], B=pl[q], fi=(A[1]>ZS+1e-9||B[1]>ZS+1e-9)?fW:fF;
+        Bd.lines.push({a:fr(A[0],A[1]), b:fr(B[0],B[1]), f0:fi, f1:fi, col:cl, kind:kind}); } }
+      [-1.05,0.75].forEach(function(y0){ fpoly([[y0,ZF+0.45],[y0+0.3,ZF+0.45],[y0+0.3,ZF+0.6],[y0,ZF+0.6],[y0,ZF+0.45]],COL_YEL,'headlight'); });
+      fpoly([[-0.6,ZR-0.4],[0.6,ZR-0.4],[0.6,ZR-0.12],[-0.6,ZR-0.12],[-0.6,ZR-0.4]],COL_K,'dest');
+      for(var dx=-0.5; dx<0.5; dx+=0.12) fpoly([[dx,ZR-0.26],[dx+0.07,ZR-0.26]],COL_OR,'dest');
+      /* two windscreen panes on the raked face, a pillar between them, and a
+         buffer line low on the front */
+      [[-1.3,-0.06],[0.06,1.3]].forEach(function(w){ fpoly([[w[0],ZS+0.12],[w[1],ZS+0.12],[w[1],ZR-0.5],[w[0],ZR-0.5],[w[0],ZS+0.12]],COL_K,'windscreen'); });
+      fpoly([[-1.4,ZF+0.2],[1.4,ZF+0.2]],COL_K,'buffer');
+      if(near){ var T=latin(num,0.5,0.14); T.lines.forEach(function(pl){ fpoly(pl.map(function(q){ return [-0.25+q[0],ZF+0.75+q[1]]; }),COL_K,'number'); }); }
+    }
+    if(last && mid){
+      [-1.05,0.75].forEach(function(y0){ [[y0,ZF+0.45,y0+0.3,ZF+0.45],[y0+0.3,ZF+0.45,y0+0.3,ZF+0.6],[y0+0.3,ZF+0.6,y0,ZF+0.6],[y0,ZF+0.6,y0,ZF+0.45]].forEach(function(r){
+        Bd.lines.push({a:Lc(HL,r[0],r[1]), b:Lc(HL,r[2],r[3]), f0:2+prof.length-2, f1:2+prof.length-2, col:COL_RED, kind:'taillight'}); }); });
+    }
+    var tagc={trn:ti, tcar:ci};
+    list.push(onSlabs(Bd,'body',COL_K,'train',tagc));
+    /* the gangway to the next car */
+    if(!last){ var Gw=para(Lc(HL+0.1,-1.325,ZF+0.1),[ux*0.3,uy*0.3,0],[nx*2.65,ny*2.65,0],[0,0,ZR-ZF-0.3]); list.push(onSlabs(Gw,'gangway',COL_K,'train',tagc)); }
+    /* bogies: frames and wheels near, wheels as 8-gons to Outline detail to */
+    if(mid) [-6.9,6.9].forEach(function(xb){
+      var Fr=para(Lc(xb-1.4,-0.45,0.45),[ux*2.8,uy*2.8,0],[nx*0.9,ny*0.9,0],[0,0,0.35]);
+      list.push(onSlabs(Fr,'bogie',COL_K,'train',tagc));
+      var nw=near?16:8, zc=RZ1+0.43+0.001;
+      [-1.05,1.05].forEach(function(xa){ [-(GAUGE/2+RHW/2),GAUGE/2+RHW/2].forEach(function(yw){
+        var lo=[], hi=[], j;
+        for(j=0;j<nw;j++){ var an=TAU*(j+0.5)/nw; lo.push(Lc(xb+xa+0.43*Math.cos(an),yw-0.06,zc+0.43*Math.sin(an))); hi.push(Lc(xb+xa+0.43*Math.cos(an),yw+0.06,zc+0.43*Math.sin(an))); }
+        var lp=[lo,hi]; for(j=0;j<nw;j++){ var j2=(j+1)%nw; lp.push([lo[j],lo[j2],hi[j2],hi[j]]); }
+        list.push(onSlabs(polyFromLoops(lp),'wheel',COL_K,'train',tagc));
+      }); });
+    });
+    if(near) [[-4.5,-1.0],[1.0,4.5]].forEach(function(xe){
+      list.push(onSlabs(para(Lc(xe[0],-1.2,ZF-0.58),[ux*(xe[1]-xe[0]),uy*(xe[1]-xe[0]),0],[nx*2.4,ny*2.4,0],[0,0,0.55]),'equipment',COL_K,'train',tagc));
+    });
+    /* a pantograph on every other car: lines that hide nothing, its head at
+       the contact wire's height */
+    if(panto && mid){
+      var Pg=see(para(Lc(-1.0,-0.55,ZR),[ux*2.0,uy*2.0,0],[nx*1.1,ny*1.1,0],[0,0,CZ-ZR]));
+      Pg.lines=[];
+      var pl=[[-0.8,0,ZR+0.15],[0.25,0,ZR+0.85],[-0.3,0,CZ]];
+      for(var q=1;q<pl.length;q++) ln(Pg,Lc(pl[q-1][0],pl[q-1][1],pl[q-1][2]),Lc(pl[q][0],pl[q][1],pl[q][2]),0,0,'panto',COL_K);
+      ln(Pg,Lc(-0.3,-0.5,CZ),Lc(-0.3,0.5,CZ),0,0,'panto',COL_K);
+      ln(Pg,Lc(-0.9,-0.4,ZR+0.15),Lc(-0.9,0.4,ZR+0.15),0,0,'panto',COL_K);
+      Pg.hides=false; Pg.seeThru=true;
+      list.push(onSlabs(Pg,'panto',COL_K,'train',tagc));
+      recC.panto=CZ;
+    }
+    var ok=commitAll(list,['struct','platform','track','train']);
+    if(!ok) return null;
+    return {rec:recC};
+  }
+
+  /* ---- §3.4 portals and wires -------------------------------------------- */
+  function clipSegQ(A,B,Q){
+    var t0=0, t1=1, dx=B[0]-A[0], dy=B[1]-A[1], m, ar=0;
+    for(m=0;m<Q.length;m++){ var a0=Q[m], b0=Q[(m+1)%Q.length]; ar+=a0[0]*b0[1]-a0[1]*b0[0]; }
+    var sg=ar>0?1:-1;
+    for(m=0;m<Q.length;m++){
+      var a=Q[m], b=Q[(m+1)%Q.length], nx=-(b[1]-a[1])*sg, ny=(b[0]-a[0])*sg;
+      var num=nx*(A[0]-a[0])+ny*(A[1]-a[1]), den=nx*dx+ny*dy;
+      if(Math.abs(den)<1e-15){ if(num<0) return null; continue; }
+      var t=-num/den;
+      if(den>0){ if(t>t0) t0=t; } else { if(t<t1) t1=t; }
+      if(t0>t1) return null;
+    }
+    return [t0,t1];
+  }
+  /* a wire along at(t), t in [0,1], cut per container and stuck in as thin
+     see-through sticks of at most 0.5 m. NO LOD CUT: a wire runs along the
+     view, so each 0.5 m piece is a sliver on the sheet and the cut dropped
+     six pieces in seven while the wire it belongs to is metres long */
+  function wireInto(at,Lp,kind,col,rec){
+    var A=at(0), B=at(1);
+    conts.forEach(function(C){
+      var r=clipSegQ(A,B,C.poly); if(!r || r[1]-r[0]<1e-9) return;
+      var n=Math.max(1,Math.ceil(Lp*(r[1]-r[0])/0.5)), k;
+      for(k=0;k<n;k++){
+        var ta=r[0]+(r[1]-r[0])*k/n, tb=r[0]+(r[1]-r[0])*(k+1)/n, Pa=at(ta), Pb=at(tb);
+        var St=stick(Pa,Pb,C.poly); if(!St){ rec.dropped++; continue; }
+        St.lines=[{a:Pa, b:Pb, f0:0, f1:0, kind:kind, col:col}];
+        tag(St,kind,col,'wire'); St.hides=false; St.seeThru=true; St.nolod=true; St.cont=C; C.parts.push(St); rec.pieces++;
+      }
+    });
+  }
+  function stick(Pa,Pb,Q){
+    var d=[Pb[0]-Pa[0],Pb[1]-Pa[1],Pb[2]-Pa[2]], L=Math.hypot(d[0],d[1],d[2]), th=0.02, k;
+    if(L<1e-9) return null;
+    var hz=Math.hypot(d[0],d[1])>1e-9?[-d[1]/Math.hypot(d[0],d[1]),d[0]/Math.hypot(d[0],d[1]),0]:[1,0,0];
+    var up=[d[1]*hz[2]-d[2]*hz[1], d[2]*hz[0]-d[0]*hz[2], d[0]*hz[1]-d[1]*hz[0]], ul=Math.hypot(up[0],up[1],up[2]);
+    up=[up[0]/ul,up[1]/ul,up[2]/ul]; var u=[d[0]/L,d[1]/L,d[2]/L], cut=[0,0.012,0.03,0.06,0.12];
+    for(k=0;k<cut.length;k++){
+      var c=Math.min(cut[k],L*0.45), A=add3(Pa,u,c), ea=[u[0]*(L-2*c),u[1]*(L-2*c),u[2]*(L-2*c)];
+      var o=[A[0]-hz[0]*th/2-up[0]*th/2, A[1]-hz[1]*th/2-up[1]*th/2, A[2]-hz[2]*th/2-up[2]*th/2];
+      var Pq=para(o,ea,[hz[0]*th,hz[1]*th,hz[2]*th],[up[0]*th,up[1]*th,up[2]*th]);
+      if(verts(Pq).every(function(v){ return inConv(Q,v); })) return Pq;
+    }
+    return null;
+  }
+  /* the catenary of a span: addCable's maths, the sag from Wire sag */
+  function aOf(S2,Lp){
+    if(!(S2>1e-9)) return Infinity;
+    var lo=Lp*1e-3, hi=Lp*Lp/(8*S2)*4+Lp, it;
+    for(it=0;it<200;it++){ var md=Math.sqrt(lo*hi), sh=Math.sinh(Lp/(4*md)); if(2*md*sh*sh>S2) lo=md; else hi=md; }
+    return Math.sqrt(lo*hi);
+  }
+  function portals(dn,df){
+    PORT.forEach(function(q,pi){
+      var s=q.s, X=laneFrame(s), d=dist3(X(s,0,7.2)), list=[], rec=TAL.portals[pi], k;
+      var mo0=HALFW+0.40, mo1=HALFW+0.70;
+      [1,-1].forEach(function(sd){
+        var L=lotAt(sd,s,0.25); if(!L){ list.push(null); return; }
+        var Mq=arcQuad(sd,s-0.15,s+0.15,mo0,mo1), Mt=prismN(Mq,KERB,7.0);
+        Mt.lines=Mt.lines.filter(function(Ln){ return !(Math.abs(Ln.a[2]-7.0)<1e-9 && Math.abs(Ln.b[2]-7.0)<1e-9); });
+        tag(Mt,'mast',COL_GREY,'portal'); Mt.cont=L; list.push(inLot(Mt,L)?[Mt]:null);
+      });
+      /* the beam, straight across, cut at every container face */
+      var Bm=boxIn(X,s-0.2,s+0.2,-mo1,mo1,7.0,7.4);
+      if(d<df){
+        var fF=faceIx(Bm,sub3(X(s-1,0,7.2),X(s,0,7.2))), fB=faceIx(Bm,sub3(X(s+1,0,7.2),X(s,0,7.2))), st=0.5;
+        for(var o=-mo1; o<mo1-1e-9; o+=st){ var o2=Math.min(mo1,o+st);
+          ln(Bm,X(s-0.2,o,7.0),X(s-0.2,o2,7.4),fF,fF,'truss',COL_GREY); ln(Bm,X(s+0.2,o,7.0),X(s+0.2,o2,7.4),fB,fB,'truss',COL_GREY); }
+      }
+      var cp=contPieces(Bm);
+      rec.beamMiss=cp.miss;
+      if(cp.miss>1e-6){ rec.placed=false; return; }
+      cp.pieces.forEach(function(P){ tag(P,'beam',COL_GREY,'portal'); P.portal=pi; });
+      list.push(cp.pieces);
+      /* a drop tube from the beam over each track, its registration arm out
+         to the contact wire at this portal's stagger */
+      [1,-1].forEach(function(sd){
+        var oc=sd*OC, Dt=see(boxIn(X,s-0.02,s+0.02,oc-0.02,oc+0.02,CZ+0.15,7.0));
+        Dt.lines=[]; var fd=faceIx(Dt,sub3(X(s-1,oc,6),X(s,oc,6)));
+        ln(Dt,X(s-0.02,oc,7.0),X(s-0.02,oc,CZ+0.15),fd,fd,'drop',COL_GREY);
+        tag(Dt,'drop',COL_GREY,'portal'); Dt.hides=false; Dt.seeThru=true;
+        var Ar=see(boxIn(X,s-0.02,s+0.02,oc+Math.min(0,sd*q.st)-0.01,oc+Math.max(0,sd*q.st)+0.01,CZ+0.05,CZ+0.15));
+        Ar.lines=[]; ln(Ar,X(s,oc,CZ+0.15),X(s,oc+sd*q.st,CZ+0.06),0,0,'arm',COL_GREY);
+        tag(Ar,'arm',COL_GREY,'portal'); Ar.hides=false; Ar.seeThru=true;
+        list.push(onSlabs(Dt,'drop',COL_GREY,'portal')); list.push(onSlabs(Ar,'arm',COL_GREY,'portal'));
+      });
+      rec.placed=commitAll(list,['struct','platform','canopy','psign','portal','bridge']);
+      TAL.beams.push({portal:pi, s:s, pieces:cp.pieces.length});
+    });
+    /* the wires, span by span, per track: contact wire level and staggered,
+       the messenger over it on the same plan line, droppers every 5 m */
+    var placed=PORT.filter(function(q,pi){ return TAL.portals[pi].placed; });
+    /* the wires run the whole platform: past the first and last portals to
+       anchors 0.5 m from the ends (off the sheet behind the camera, or at the
+       far end), staggered against their neighbour, with no portal there */
+    if(placed.length){
+      placed=[{s:0.5, st:-placed[0].st, anchor:true}].concat(placed).concat([{s:LEN-0.5, st:-placed[placed.length-1].st, anchor:true}]);
+    }
+    [1,-1].forEach(function(sd){
+      for(var k=0;k+1<placed.length;k++){
+        var qa=placed[k], qb=placed[k+1];
+        var A=P3(qa.s,sd,OC+qa.st,0), B=P3(qb.s,sd,OC+qb.st,0), dx=B[0]-A[0], dy=B[1]-A[1], Lp=Math.hypot(dx,dy);
+        var a=aOf(MSAG,Lp);
+        var cw=function(t){ return [A[0]+dx*t, A[1]+dy*t, CZ]; };
+        var mw=function(t){ var z=MZ+(isFinite(a)?2*a*Math.sinh(t*Lp/(2*a))*Math.sinh((t-1)*Lp/(2*a)):0); return [A[0]+dx*t, A[1]+dy*t, z]; };
+        var rc={side:sd, s0:qa.s, s1:qb.s, kind:'contact', pieces:0, dropped:0, A:A, B:B, z:CZ}, rm={side:sd, s0:qa.s, s1:qb.s, kind:'messenger', pieces:0, dropped:0, A:A, B:B, sag:MSAG, a:a, z:MZ};
+        wireInto(cw,Lp,'contact',COL_DG,rc); wireInto(mw,Lp,'messenger',COL_DG,rm);
+        TAL.wires.push(rc); TAL.wires.push(rm);
+        var nd=Math.floor(Lp/5);
+        for(var j=1;j<=nd;j++){
+          var t=j*5/Lp; if(t>=1-1e-9) continue;
+          var Pc=cw(t), Pm=mw(t);
+          conts.forEach(function(C){
+            if(C.kind!=='slab' || !inConv(C.poly,Pc)) return;
+            var St=stick(Pc,Pm,C.poly); if(!St) return;
+            St.lines=[{a:Pc, b:Pm, f0:0, f1:0, kind:'dropper', col:COL_DG}];
+            tag(St,'dropper',COL_DG,'wire'); St.hides=false; St.seeThru=true; St.nolod=true; St.cont=C; C.parts.push(St);
+            TAL.drops.push({side:sd, a:Pc, b:Pm});
+          });
+        }
+      }
+    });
+  }
+
+  /* ---- §3.7 the footbridge ----------------------------------------------- */
+  function footbridge(dn,df){
+    if(!FB) return;
+    var s=FB.s, X=laneFrame(s), hl=FB.hl, zd=FB.zd, list=[], rec={s:s, zd:zd, placed:false, pieces:0, miss:0, eye:s-sEye};
+    TAL.bridge=rec;
+    function piece(P,kind,col){ var cp=contPieces(P); rec.miss=Math.max(rec.miss,cp.miss); cp.pieces.forEach(function(Q){ tag(Q,kind,col,'bridge'); }); rec.pieces+=cp.pieces.length; list.push(cp.pieces); }
+    var o1=PLATB-0.05;
+    var Dk=boxIn(X,s-hl,s+hl,-o1,o1,zd,zd+0.3); piece(Dk,'fbdeck',COL_K);
+    [[s-hl,s-hl+0.15],[s+hl-0.15,s+hl]].forEach(function(w,wi){
+      var Wl=boxIn(X,w[0],w[1],-o1,o1,zd+0.3,zd+2.9);
+      if(true){
+        var fo=faceIx(Wl,sub3(X(wi?s+1:s-1,0,zd+1),X(s,0,zd+1))), sw=wi?w[1]:w[0];
+        for(var o=-o1+0.6; o<o1-1.0; o+=1.6) [[o,zd+1.3,o+1.0,zd+1.3],[o+1.0,zd+1.3,o+1.0,zd+2.3],[o+1.0,zd+2.3,o,zd+2.3],[o,zd+2.3,o,zd+1.3]]
+          .forEach(function(r){ ln(Wl,X(sw,r[0],r[1]),X(sw,r[2],r[3]),fo,fo,'fbwindow',COL_DG); });
+      }
+      piece(Wl,'fbwall',COL_K);
+    });
+    [[-o1,-o1+0.15],[o1-0.15,o1]].forEach(function(e){ piece(boxIn(X,s-hl+0.15,s+hl-0.15,e[0],e[1],zd+0.3,zd+2.9),'fbwall',COL_K); });
+    piece(boxIn(X,s-hl,s+hl,-o1,o1,zd+2.9,zd+3.1),'fbroof',COL_K);
+    /* the stair housings: wedges along each platform toward the camera,
+       against the fence line, from the bridge's roof down to the deck */
+    HOUSE.forEach(function(h){
+      var sd=h.side, Y=function(ss,o,z){ return X(ss,sd*o,z); };
+      var sa=h.s0, sb=h.s1, za=KERB+2.6, zb=zd+3.1;
+      var prof=[[sa,KERB],[sb,KERB],[sb,zb],[sa,za]];
+      var Lo=prof.map(function(q){ return Y(q[0],h.o0,q[1]); }), Hi=prof.map(function(q){ return Y(q[0],h.o1,q[1]); }), lp=[Lo,Hi], e;
+      for(e=0;e<4;e++){ var e2=(e+1)%4; lp.push([Lo[e],Lo[e2],Hi[e2],Hi[e]]); }
+      var Hs=polyFromLoops(lp);
+      Hs.lines=Hs.lines.filter(function(Ln){ return !(Math.abs(proj(Ln.a)-sb)<1e-6 && Math.abs(proj(Ln.b)-sb)<1e-6); });
+      function proj(v){ var c=X(s,0,0), F=frame(s); return s+(v[0]-c[0])*F[2]+(v[1]-c[1])*F[3]; }
+      if(dist3(Y((sa+sb)/2,h.o0,KERB+2))<dn) for(var k=1;k<6;k++){ var f=k/6, ss=sa+(sb-sa)*f, z1=za+(zb-za)*f;
+        ln(Hs,Y(ss,h.o0,KERB),Y(ss,h.o0,z1),0,0,'stair',COL_K); }
+      var cp=contPieces(Hs); rec.miss=Math.max(rec.miss,cp.miss);
+      cp.pieces.forEach(function(Q){ tag(Q,'housing',COL_K,'bridge'); });
+      list.push(cp.pieces);
+      TAL.housings.push({side:sd, s0:sa, s1:sb, o0:h.o0, o1:h.o1, pieces:cp.pieces.length});
+    });
+    rec.placed=commitAll(list,['struct','platform','canopy','psign','pfurn','portal','bridge']);
+  }
+
+  return {
+    dress:dress,
+    signsFor:function(L,dn,df){
+      signsFor(L,dn,df);
+      var dl=dist3(P3((L.s0+L.s1)/2,L.side,OCOL,KERB+2));
+      BOARDS[L.side].forEach(function(b){ if(b.lot===L) boardParts(L,b,dl,dn,df); });
+    },
+    furnish:function(dn,df,step){
+      TAL.tracks=[]; TAL.trains=[]; TAL.wires=[]; TAL.drops=[]; TAL.beams=[]; TAL.housings=[]; TAL.sleepers={};
+      TAL.portals.forEach(function(r){ r.placed=false; });
+      S.furnish(dn,df,step); track(dn,df); edges(dn,df); trains(dn,df); portals(dn,df); footbridge(dn,df);
+    },
+    cars:[], dots:[], poles:[],
+    info:function(nsigns){
+      var nt=TAL.trains.reduce(function(a,t){ return a+t.cars.length; },0);
+      return ' · '+TAL.trains.length+(TAL.trains.length===1?' train':' trains')+' ('+nt+' cars) · '+
+        TAL.portals.filter(function(q){ return q.placed; }).length+' portals · '+TAL.columns.length+' columns · '+
+        TAL.signs.filter(function(q){ return q.placed; }).length+' platform signs · '+nsigns+' building signs'+
+        (TAL.bridge&&TAL.bridge.placed?' · a footbridge':'')+' · station '+NAME;
+    }
   };
 }
 function corridorScripts(sub,SALT_GLYPH,words){
@@ -23535,13 +24592,13 @@ function buildCorridor(p,THM){
        point of every face edge that crosses it. Every edge of a convex part
        is an edge of one of its faces, so walking the face loops is exact. */
     var sp=[];
-    for(m=0;m<CV.length;m++) if(CV[m][2]>=NEAR) sp.push(scr(CV[m]));
+    for(m=0;m<CV.length;m++) if(CV[m][2]>=NEAR){ var q0=scr(CV[m]); q0.zc=CV[m][2]; sp.push(q0); }
     P.faces.forEach(function(f){
       for(var e=0;e<f.pts.length;e++){
         var a=cam(f.pts[e]), b=cam(f.pts[(e+1)%f.pts.length]);
         if((a[2]-NEAR)*(b[2]-NEAR)<0){
           var t=(NEAR-a[2])/(b[2]-a[2]);
-          sp.push(scr([a[0]+(b[0]-a[0])*t, a[1]+(b[1]-a[1])*t, NEAR]));
+          var q1=scr([a[0]+(b[0]-a[0])*t, a[1]+(b[1]-a[1])*t, NEAR]); q1.zc=NEAR; sp.push(q1);
         }
       }
     });
@@ -23567,33 +24624,107 @@ function buildCorridor(p,THM){
      outward by the gap (each plane's d by +gap, so the corners are mitred),
      and a run of abutting solids -- a platform cut into 4 m pieces, a rail per
      slab -- then trims the start of every next piece's lines: a dashed edge.
-     A part marked `gapless` hands over its outline offset INWARD by the same
-     mitre, so the gap puts it back exactly where it is. A silhouette too small
-     to take the inset keeps its own outline. */
+     A part marked `gapless` hands over its outline with each edge moved IN by
+     the gap, so the gap puts it back exactly where it was.
+     A FAR PIECE CANNOT TAKE THAT ON EVERY EDGE. A 4 m kerb piece 60 m down
+     the platform is 0.3-0.6 mm long on the sheet, and the mitred offset of
+     anything is at least twice the gap wide, so its occluder spills past
+     something whatever is handed over. Only ONE spill matters: past the FAR
+     SEAM, where it trims the start of the next piece's coping (60 breaks of
+     0.23-0.69 mm over 8 seeds when every edge gave up alike). Past the near
+     seam it lies over the piece in front, committed earlier, so it trims
+     nothing of it; above the coping it is the ordinary halo; below the foot
+     it is under the deck in front. So:
+       - every edge moved in by the whole gap, if that is a valid outline;
+       - else the FAR END -- the edges whose two ends both lie in the farthest
+         quarter of the outline's depth range (each silhouette point carries
+         its camera depth `zc`; the far seam is one edge or two, the kerb's top
+         and back face fold it) -- keeps the whole gap, and every other edge
+         takes one common amount, the most (down to moving OUT by a whole gap)
+         for which the half-plane intersection still keeps every far edge.
+         An edge between may vanish from the intersection: there the gap's
+         mitre spills past it, which is exactly the spill that does not
+         matter;
+       - else every edge takes as much of the gap as it can (45% of the
+         outline's own depth behind it), halved until valid; failing that the
+         part keeps its own outline. */
   function gapIn(S){
     if(!(GAP>0) || !S || S.length<3) return S;
-    var n=S.length, cx=0, cy=0, L=[], m;
+    var n=S.length, cx=0, cy=0, L=[], m, k;
     for(m=0;m<n;m++){ cx+=S[m][0]/n; cy+=S[m][1]/n; }
     for(m=0;m<n;m++){
       var a=S[m], b=S[(m+1)%n], ex=b[0]-a[0], ey=b[1]-a[1], l=Math.hypot(ex,ey);
       if(l<1e-12) continue;
       var nx=ey/l, ny=-ex/l; if(nx*(cx-a[0])+ny*(cy-a[1])>0){ nx=-nx; ny=-ny; }
-      L.push([nx,ny,nx*a[0]+ny*a[1]-GAP]);
+      var d=nx*a[0]+ny*a[1], deep=0;
+      for(k=0;k<n;k++){ var w=d-(nx*S[k][0]+ny*S[k][1]); if(w>deep) deep=w; }
+      L.push([nx,ny,d,deep,isFinite(a.zc)?a.zc:NaN,isFinite(b.zc)?b.zc:NaN]);
     }
     if(L.length<3) return S;
-    var o=[];
-    for(m=0;m<L.length;m++){
-      var A=L[(m+L.length-1)%L.length], B=L[m], det=A[0]*B[1]-A[1]*B[0];
-      if(Math.abs(det)<1e-12) return S;
-      o.push([(A[2]*B[1]-A[1]*B[2])/det, (A[0]*B[2]-A[2]*B[0])/det]);
+    /* adjacent-line corners, valid only if every corner is inside every line */
+    function inset(g){
+      var o=[], m2, k2;
+      for(m2=0;m2<L.length;m2++){
+        var A=L[(m2+L.length-1)%L.length], B=L[m2], det=A[0]*B[1]-A[1]*B[0];
+        if(Math.abs(det)<1e-12) return null;
+        var da=A[2]-g[(m2+L.length-1)%L.length], db=B[2]-g[m2];
+        o.push([(da*B[1]-A[1]*db)/det, (A[0]*db-da*B[0])/det]);
+      }
+      for(m2=0;m2<o.length;m2++) for(k2=0;k2<L.length;k2++)
+        if(L[k2][0]*o[m2][0]+L[k2][1]*o[m2][1]-(L[k2][2]-g[k2])>1e-9) return null;
+      return o;
     }
-    /* every inset corner strictly inside every inset plane's neighbours: if
-       an edge collapsed, the inset is not the outline's and is not used */
-    for(m=0;m<o.length;m++) for(var k=0;k<L.length;k++)
-      if(L[k][0]*o[m][0]+L[k][1]*o[m][1]-L[k][2]>1e-9) return S;
-    return o;
+    var o=inset(L.map(function(){ return GAP; }));
+    if(o) return o;
+    /* the far end keeps the whole gap */
+    var zlo=Infinity, zhi=-Infinity, far=[];
+    L.forEach(function(e){ [e[4],e[5]].forEach(function(z){ if(z<zlo) zlo=z; if(z>zhi) zhi=z; }); });
+    if(isFinite(zlo) && isFinite(zhi) && zhi>zlo){
+      var zf=zhi-0.25*(zhi-zlo);
+      L.forEach(function(e,i){ if(e[4]>=zf && e[5]>=zf) far.push(i); });
+    }
+    if(far.length && far.length<L.length){
+      var x0=1e18, y0=1e18, x1=-1e18, y1=-1e18, B0=4*GAP;
+      S.forEach(function(q){ if(q[0]<x0)x0=q[0]; if(q[0]>x1)x1=q[0]; if(q[1]<y0)y0=q[1]; if(q[1]>y1)y1=q[1]; });
+      /* the half-plane intersection, clipped from a box round the outline;
+         null unless every far edge keeps a side of it */
+      var cut=function(t){
+        var P=[[x0-B0,y0-B0],[x1+B0,y0-B0],[x1+B0,y1+B0],[x0-B0,y1+B0]], i2, j2, on=[];
+        for(i2=0;i2<L.length && P.length;i2++){
+          var e=L[i2], dd=e[2]-(far.indexOf(i2)>=0?GAP:t), Q=[];
+          for(j2=0;j2<P.length;j2++){
+            var p0=P[j2], p1=P[(j2+1)%P.length], s0=e[0]*p0[0]+e[1]*p0[1]-dd, s1=e[0]*p1[0]+e[1]*p1[1]-dd;
+            if(s0<=0) Q.push(p0);
+            if((s0<=0)!==(s1<=0)){ var tt=s0/(s0-s1); Q.push([p0[0]+(p1[0]-p0[0])*tt, p0[1]+(p1[1]-p0[1])*tt]); }
+          }
+          P=Q;
+        }
+        if(P.length<3) return null;
+        /* with room to spare: a sliver of an outline turns its own normals */
+        var ar=0; for(j2=0;j2<P.length;j2++){ var r0=P[j2], r1=P[(j2+1)%P.length]; ar+=r0[0]*r1[1]-r1[0]*r0[1]; }
+        if(Math.abs(ar)/2<GAP*GAP/16) return null;
+        for(i2=0;i2<far.length;i2++){
+          var f=L[far[i2]], df=f[2]-GAP, keep=false;
+          for(j2=0;j2<P.length && !keep;j2++){
+            var q0=P[j2], q1=P[(j2+1)%P.length];
+            if(Math.abs(f[0]*q0[0]+f[1]*q0[1]-df)<1e-9 && Math.abs(f[0]*q1[0]+f[1]*q1[1]-df)<1e-9 && Math.hypot(q1[0]-q0[0],q1[1]-q0[1])>=GAP/4) keep=true;
+          }
+          if(!keep) return null;
+        }
+        return P;
+      };
+      if(cut(-GAP)){
+        var lo=-GAP, hi=GAP, it;
+        for(it=0;it<30;it++){ var md=(lo+hi)/2; if(cut(md)) lo=md; else hi=md; }
+        o=cut(lo); if(o) return o;
+      }
+    }
+    for(var sc=1;sc>1/64;sc/=2){
+      o=inset(L.map(function(e){ return Math.min(GAP,0.45*e[3])*sc; }));
+      if(o) return o;
+    }
+    return S;
   }
-
   /* ---- splitting a part at a plane (the cycle breaker) ------------------- */
   function clipPoly(pts,n,d,keepAbove){
     var o=[], m;
@@ -24248,7 +25379,7 @@ function buildCorridor(p,THM){
         STRTTALLY.parts.push({faces:P.faces.map(function(fc){ return {n:fc.n, d:fc.d}; }),
                               V:verts(P), cont:C.kind, split:P.split||0, hides:P.hides!==false,
                               kind:P.kind||'', seeThru:!!P.seeThru, cidx:cidx, layer:P.layer||'struct',
-                              sign:P.sign===undefined?-1:P.sign, cable:P.cable, car:P.car, cut:!!P.cut, cpart:P.cpart, wh:P.wh, ab:P.ab, sk:P.sk, nside:P.nside, truck:P.truck, gant:P.gant, pk:P.pk});
+                              sign:P.sign===undefined?-1:P.sign, cable:P.cable, car:P.car, trn:P.trn, tcar:P.tcar, cut:!!P.cut, cpart:P.cpart, wh:P.wh, ab:P.ab, sk:P.sk, nside:P.nside, truck:P.truck, gant:P.gant, pk:P.pk});
         STRTTALLY.sil.push(P.sil);
         if(P.sil && P.hides!==false) occl.push(P.gapless?gapIn(P.sil):P.sil);
       });
@@ -25255,6 +26386,7 @@ function draw(){
   if(mode==='harb' && STRTINFO) txt+=' \u00b7 '+STRTINFO;
   if(mode==='libr' && STRTINFO) txt+=' \u00b7 '+STRTINFO;
   if(mode==='canal' && STRTINFO) txt+=' \u00b7 '+STRTINFO;
+  if(mode==='stn' && STRTINFO) txt+=' \u00b7 '+STRTINFO;
   if(mode==='fan'){
     var fv=vals(), wnd=fv.loops+fv.prec/100;
     txt+=' \u00b7 winding '+(Math.abs(wnd-Math.round(wnd))<1e-9?wnd.toFixed(0):wnd.toFixed(2));
@@ -25496,7 +26628,7 @@ var FAMILIES=[
   ['Lattices',   ['truchet','maze','hilbert','voronoi','pack','rows','poin']],
   ['Curves',     ['harmo','sform','lsys','string','fan','chladni']],
   ['FROM PHOTO 3D', ['isoimg']],
-  ['3D',         ['hil3','harmo3','attract','ruled','knot','spack','flow3','surf','iso','stat','strt','mkt','harb','libr','canal']],
+  ['3D',         ['hil3','harmo3','attract','ruled','knot','spack','flow3','surf','iso','stat','strt','mkt','harb','libr','canal','stn']],
   ['From photo', ['tonehatch','tonespiral']]
 ];
 function mountTabs(){
@@ -26052,6 +27184,52 @@ var HELP={
 'libr.lod':'The smallest part still drawn, as its size on the sheet.',
 'libr.budg':'How many points the drawing may use, in thousands. Over it, the detail distances come in and the LOD cutoff rises until it fits.',
 'libr.occ':'How wide a white gap a nearer object leaves in whatever passes behind it, in millimetres on the sheet.',
+'stn.len':"How long the platforms are, in metres. The camera stands part-way along them (Camera along) and the rails, the platform edges and the wires run away to the far end. A longer station reaches further toward the vanishing point and costs more lines.",
+'stn.bend':"How much the station curves, in degrees per 100 m. 0 is dead straight, so the rails and both platform edges meet at one vanishing point; a bend carries the far end out of sight behind the buildings on the inside of the curve. A car on a bend is a straight body between its two bogies.",
+'stn.width':"The track bed between the two platform edges, in metres: two tracks, each centred 1.6 m out from its own platform edge. Wider moves the two tracks apart and opens bare ballast between them; at the narrowest the two trains nearly touch.",
+'stn.platw':"How deep each platform is, from its edge to the fence along its back, in metres. The canopy, its columns, the signs and the benches are laid out across it, and Camera side reaches 1 m short of its back.",
+'stn.lane':"Bare ground between each platform\u2019s back fence and the buildings behind it, in metres. 0 puts the buildings right behind the fence; wider sets the city back from the railway.",
+'stn.lotmin':"The narrowest lot along the station, in metres. Each lot is a length of platform deck, its fence and the building behind it, so the gap between Building min and Building max is how varied the frontages are.",
+'stn.lotmax':"The widest lot along the station, in metres. Wide lots make long, flat building fronts behind the platforms; keep it near Building min for a row of narrow buildings.",
+'stn.floors':"How many storeys a building behind the platforms has above its ground floor, roughly: each draws between about half this and all of it, and Canyon rise adds more toward the far end.",
+'stn.canyon':"How much taller the buildings get toward the far end of the station, so the far end reads as a wall of city. 0 keeps every building to the Storeys range.",
+'stn.stepb':"How often a storey of a building behind the platforms steps back, 0.6\u20132 m, for good: every storey above it stays back too.",
+'stn.canti':"How often a single storey of a building behind the platforms juts out toward the railway, 0.4\u20131.2 m, like a bay.",
+'stn.fire':"How many buildings carry a fire escape on the face toward the railway: landings at every floor and a zig-zag stair in one bay. Only buildings with room in front of the wall and three or more storeys can have one.",
+'stn.glow':"How many windows are lit on the buildings behind the platforms. A lit window gets a yellow hatch inside its frame, so Lit windows is also how much yellow ink the city uses.",
+'stn.uvar':"How much the buildings\u2019 upper floors vary. Storeys fall into zones of 2\u20135; each zone may re-roll its bays, become a ribbon of windows, tall pairs or a plant storey, get a belt course, and its windows carry AC units, laundry, planters, curtains or grilles. 0 is one scheme top to bottom.",
+'stn.signs':"How many of the places a sign could go on the buildings\u2019 faces toward the railway carry one: fascias, rooftop billboards, and blade signs, banners, lightboxes and emblems up the bay lines. The platform\u2019s own signs are Platform signs.",
+'stn.neon':"How many of the building signs are neon: the lettering becomes tubes in one neon ink with a double border. The platform signs are never neon.",
+'stn.lang':"The script on the building signs and the platform signs: 0 pseudo-kanji, 1 pseudo-hangul, 2 Latin, 3 a mix. Direction signs and the name boards always carry a Latin line as well. The station\u2019s name is an invented word, new with each seed.",
+'stn.trains':"Which tracks have a train standing at the platform: 0 none, 1 the far track (along the platform across from you), 2 the near track, 3 both. The cab faces the camera and the train runs away from it toward the far end, each train in its own line colour.",
+'stn.ncar':"How many cars each train has, each 20 m long, the first with the cab: doors, windows, a livery band, bogies, gangways between cars and a pantograph on every other one. A car that would run past the end of the platform is left off.",
+'stn.tfront':"How far ahead of the camera the cab\u2019s nose stands, in metres along the track. 0 puts the cab beside you; larger moves the whole train down the platform toward the far end.",
+'stn.wires':"1 hangs overhead wires over both tracks: a portal every 40\u201350 m (a mast on each platform and a truss beam across at about 7 m), a level contact wire 5 m over the rails that zig-zags slightly from portal to portal, a messenger wire above it and droppers between them. 0 leaves them all out.",
+'stn.sag':"How far the messenger wire dips between two portals: at 30 it hangs 0.7 m low at midspan, at 0 it runs straight. The contact wire under it stays level.",
+'stn.canopy':"How much of the platform length, around the middle, is under a canopy roof on columns. The hanging signs and the clocks hang only under it; 0 leaves both platforms open to the sky.",
+'stn.colsp':"How far apart the canopy\u2019s round columns stand along each platform, in metres, on a line 0.6 of the platform\u2019s width back from its edge. A column that would stand right against the camera is moved along, never dropped.",
+'stn.croof':"The canopy roof\u2019s shape: 0 flat, 1 one slope draining toward the back of the platform, 2 a butterfly, two plates meeting low over the line of columns.",
+'stn.psign':"The share of canopy bays with a sign hung from the roof, turned to face you: a yellow exit sign with an arrow, a direction sign banded in the line colour, a small car-stop number, or (one in ten) a departure board of orange text. The two name boards on each platform are there whatever this is.",
+'stn.fbridge':"1 puts an enclosed footbridge across the station 50\u2013110 m ahead of the camera, clear above the wires: a deck, walls with a window band and a roof, with a stair housing running down onto each platform along its back. 0 leaves it out.",
+'stn.pfurn':"The share of platform lots with a piece of furniture behind the line of columns: a three-seat bench with orange or blue seats, a vending machine, a row of three bins, or a red extinguisher box.",
+'stn.ballast':"How many stone dashes lie between the sleepers, up to 40 on each 4 m of track, nearer than Solid detail to and only where the sheet has room for them. The line along the foot of each platform face is drawn whatever this is.",
+'stn.hatch':"How dense the shading is on the building walls facing away from the light. 0 is no shading. The face of the platform under its edge is hatched dark grey whatever this is.",
+'stn.hatchmode':"0: the shading lines are evenly spaced ON THE WALL, so they crowd together into the distance. 1: evenly spaced ON THE PAPER, so a far wall is as light as a near one.",
+'stn.sun':"Where the light comes from, as a compass bearing: 0 north, 90 east, 180 south, 270 west. The building walls facing away from it get the tone hatch.",
+'stn.cams':"Where the camera stands, as a share of the platform length. Near 0 you see the whole station ahead; the train, the footbridge and the wire portals are all placed ahead of this point.",
+'stn.camx':"The camera across the station, as a share of half the track bed plus the platform width less 1 m: 0 is between the two tracks and \u00b1100 is 1 m in front of a platform\u2019s back fence. At the defaults \u221272 stands on the near platform, behind the yellow tactile strip.",
+'stn.camz':"The camera height in metres over the track bed. The platforms are 1.3 m high, so 2.9 is standing eye height on a platform, and below 1.3 an eye over a platform is inside it. Raise it for a view from the footbridge or a window over the station.",
+'stn.look':"How far ahead the camera aims, in metres along the tracks. On a curved station this is what turns the camera to follow the bend.",
+'stn.turn':"Turns the camera left (+) or right (\u2212) from looking down the tracks: 0 looks along them, \u00b190 faces across the station head-on, the far platform or your own fence. Raise Pitch for the canopy and the buildings behind. A wide track bed and deep platforms show more of the far side.",
+'stn.pitch':"Tilts the camera up (positive) or down, in degrees, after it aims along the tracks. Up shows more canopy, wires and buildings; down shows more track bed.",
+'stn.fov':"The camera\u2019s field of view across the sheet, in degrees. Narrow is a long lens and flattens the platforms; wide exaggerates the perspective and the canopy closes in overhead.",
+'stn.dnear':"Up to this distance, in metres, things are SOLID: rails and sleepers as blocks, ballast dashes, tactile domes, fence palings, smooth 16-sided wheels, hatched exit signs, and facade details that stand out from the wall. Further away they become outlines.",
+'stn.dfar':"Up to this distance, in metres, things are drawn as outlines: both edges of each rail, a line per sleeper, the fence\u2019s rails, the yellow tactile lines and the facades. Beyond it a rail is one line, the fence its top rail and a building its floor lines and outline, which keeps the far end from turning into a smudge.",
+'stn.dpen':"1 draws the black lines further away than Depth split in dark grey instead: a near pen and a far pen, the plot\u2019s depth as two inks. The stat line reports the pen-up travel with and without the split, because splitting a pen adds travel.",
+'stn.dsplit':"With Depth pens on: how far away, in metres, black turns to dark grey. A line that crosses this distance is split exactly where it crosses.",
+'stn.lod':"The smallest part still drawn, as its size on the sheet. Far sleepers, signs and windows shrink toward nothing near the vanishing point; below this they are left out rather than drawn as a blob the pen cannot resolve. 0 draws everything.",
+'stn.budg':"How many points the drawing may use, in thousands. If the station needs more, the two detail distances come in toward you and the LOD cutoff rises until it fits, and the status line says so.",
+'stn.occ':"How wide a white gap a nearer object leaves in whatever passes behind it, in millimetres on the sheet. The station works out exactly what is in front of what; this is only the finish on the break.",
 'canal.len':'How far the canal runs, in metres. The camera sits low near its start, as if in a boat, and the houses recede toward the far end.',
 'canal.bend':'How much the canal curves, in degrees per 100 m.',
 'canal.width':'The water between the two lines of houses, in metres. All of it is a mirror.',
