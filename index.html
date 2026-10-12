@@ -408,6 +408,18 @@
                      max-height:2.6em; overflow:hidden;}
   }
   #stat{font-size:12px; color:var(--dim); font-variant-numeric:tabular-nums;}
+  /* row 88: the next export's name, the tag box, and the Exports fold */
+  #dlName{font-size:11px; color:var(--dim); font-family:ui-monospace,Menlo,Consolas,monospace;
+          overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:100%;}
+  #dlTag{width:6.5em; font:inherit; font-size:12px; background:var(--panel); color:var(--ink);
+         border:1px solid var(--line); border-radius:7px; padding:5px 7px;}
+  #expList{max-height:18em; overflow-y:auto;}
+  .exprow{padding:4px 6px; border-bottom:1px solid var(--line); cursor:pointer; font-size:12px; color:var(--dim);}
+  .exprow:hover{background:var(--panel);}
+  .expname{font-family:ui-monospace,Menlo,Consolas,monospace; color:var(--ink); word-break:break-all;}
+  .expmeta{display:block; font-size:11px;}
+  .expx{float:right; padding:0 6px; font-size:12px; line-height:1.4;}
+  .expbar{margin-top:6px;}
   .note{margin-top:18px; font-size:12px; color:var(--dim); line-height:1.7;}
   code{background:var(--panel); padding:2px 6px; border-radius:4px; font-size:12px; color:#d8cfc2;}
 </style>
@@ -419,12 +431,14 @@
 <div class="foot">
   <button id="reroll">Reroll seed</button>
   <button id="dl">Download SVG</button>
+  <input type="text" id="dlTag" placeholder="tag" maxlength="40" title="Optional. Added to the end of the next file name, lower-case, at most 20 characters. Not kept across reloads.">
+  <span id="dlName" title="What the next Download SVG will be called. The recipe that made the drawing travels inside the file."></span>
   <span id="stat"></span>
 </div>
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v310</a> &mdash; EXPORT/LOAD SEAMS (refactor only) -- the file loader is one function the button calls, and the single-pen SVG header is written as its own piece; every export byte-identical (queue row 88)</span></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v311</a> &mdash; EXPORT NAMES + THE RECIPE IN EVERY SVG -- Download SVG and Save preset name themselves {engine}_{MMDDYY}-{nn}_{what changed} (tag box; the same drawing gets the same name), every SVG carries the recipe that made it, Load takes an SVG by button or drop, an Exports fold restores any export, pins remember their recipe (queue row 88)</span></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <section class="fold" id="fold_pick"><h2>Pick engine<span class="cnt"></span></h2>
@@ -436,8 +450,8 @@
 <div class="foot2">
   <button id="pSave">Save preset</button>
   <button id="pSaveAll" title="Every browser slot in one file. Load it back with Load preset on any copy of the app, on any machine.">Export all slots</button>
-  <button id="pLoad">Load preset</button>
-  <input type="file" id="pFile" accept="application/json,.json" style="display:none">
+  <button id="pLoad" title="A preset, a slots bundle, a Poincar&eacute; tile, or any SVG this page exported -- the recipe inside it restores the drawing. Or drop the file anywhere on the page.">Load preset / SVG</button>
+  <input type="file" id="pFile" accept="application/json,.json,image/svg+xml,.svg" style="display:none">
   <span id="lsbar">
     <input type="text" id="pName" placeholder="slot name">
     <button id="pStore">Save to browser</button>
@@ -448,6 +462,9 @@
   <button id="pReset">Reset all</button>
   <span id="pmsg"></span>
 </div>
+<section class="fold" id="fold_exp"><h2>Exports<span class="cnt"></span></h2>
+  <div class="fbody"><div id="expList"></div>
+  <div class="expbar"><button id="expClear" type="button" title="Empty this list. The SVG files keep their recipes.">Clear</button></div></div></section>
 
 <section class="notewrap closed" id="notewrap"><h2>Notes &mdash; what every control does</h2>
 <p class="note">
@@ -11949,6 +11966,10 @@ function pinCurrent(){
   var gs=buildGroups(), live=0;
   gs.forEach(function(G){ G.paths.forEach(function(p){ if(p&&p.length>1) live++; }); });
   if(!live){ msg('nothing to pin \u2014 ' + mode + ' produced no geometry'); return; }
+  /* A PIN REMEMBERS WHERE IT CAME FROM (row 88): the recipe at the moment of
+     the press, shared by every layer that press makes. The export writes it
+     into the SVG beside the frozen geometry, which does not change. */
+  var src=snapshot();
   gs.forEach(function(G,i){
     /* Deep copy, because a pin must never alias anything still being redrawn.
        This comment used to say the copy was "defensive rather than
@@ -11970,7 +11991,7 @@ function pinCurrent(){
       for(var j=0;j<p.length;j++) q[j]=[p[j][0],p[j][1]];
       paths.push(q);
     });
-    PINS.push({name:mode+(gs.length>1?('_'+(i+1)):''), hex:G.hex||'#191614', paths:paths});
+    PINS.push({name:mode+(gs.length>1?('_'+(i+1)):''), hex:G.hex||'#191614', paths:paths, src:src});
   });
   /* The first pin means you have stopped watching one drawing change and
      started composing. Refitting to the union box from here on moves everything
@@ -25383,6 +25404,7 @@ function draw(){
   document.getElementById('stat').textContent=txt;
   if(typeof foldSummaries==='function') foldSummaries();
   paintReroll();
+  if(typeof paintName==='function') paintName();
 }
 /* THE PREVIEW IS NOT THE PLOT, AND DOES NOT NEED THE PLOT'S RESOLUTION.
    Record builds its rings at a fixed 1600 points per unit of arc-radius, which
@@ -27310,8 +27332,8 @@ document.getElementById('pReset').addEventListener('click',function(){
 document.getElementById('pSave').addEventListener('click',function(){
   var a=document.createElement('a');
   a.href=URL.createObjectURL(new Blob([JSON.stringify(snapshot(),null,1)],{type:'application/json'}));
-  a.download='sketchpad-'+mode+'-'+Math.round(seed)+'.json'; a.click();
-  msg('preset saved');
+  a.download=commitName('preset').name+'.json'; a.click();
+  msg('preset saved as '+a.download);
 });
 document.getElementById('pSaveAll').addEventListener('click',exportAll);
 document.getElementById('pLoad').addEventListener('click',function(){
@@ -27320,7 +27342,11 @@ document.getElementById('pLoad').addEventListener('click',function(){
 /* ONE LOADER FOR EVERY WAY A FILE ARRIVES. The button's handler used to hold
    this inline; it is a function now so a file dropped on the page goes through
    exactly the same branches as one picked with the button. */
-function loadText(text){
+function loadText(text,fname){
+    if(/^\s*</.test(text)){
+      try{ loadSvgText(text); }catch(err){ msg('load failed: '+err.message); }
+      return;
+    }
     try{
       var o=JSON.parse(text);
       /* one button for both file kinds: a single preset restores into the
@@ -27339,6 +27365,7 @@ function loadText(text){
         msg(useTile(o));
       } else {
         var u=restore(o);
+        parentFromLoad(fname||'preset');
         msg(u.length?('loaded, ignored '+u.length+' unknown key(s)'):'preset loaded');
       }
     }
@@ -27346,9 +27373,7 @@ function loadText(text){
 }
 document.getElementById('pFile').addEventListener('change',function(e){
   var f=e.target.files&&e.target.files[0]; if(!f)return;
-  var fr=new FileReader();
-  fr.onload=function(){ loadText(fr.result); };
-  fr.readAsText(f); e.target.value='';
+  loadFile(f); e.target.value='';
 });
 
 var LS_OK=(function(){try{localStorage.setItem('__spad','1');localStorage.removeItem('__spad');return true;}
@@ -27414,13 +27439,13 @@ if(!LS_OK){
 } else {
   document.getElementById('pStore').addEventListener('click',function(){
     var n=(document.getElementById('pName').value||'').trim();
-    if(!n){ msg('name the slot first'); return; }
+    if(!n) n=peekName().name;
     try{ localStorage.setItem(LSK+n, JSON.stringify(snapshot())); refreshSlots(); msg('saved to slot "'+n+'"'); }
     catch(e){ msg('slot save failed: '+e.message); }
   });
   document.getElementById('pRecall').addEventListener('click',function(){
     var n=document.getElementById('pSlots').value; if(!n){ msg('no slot selected'); return; }
-    try{ var u=restore(JSON.parse(localStorage.getItem(LSK+n)));
+    try{ var u=restore(JSON.parse(localStorage.getItem(LSK+n))); parentFromLoad(n);
       msg(u.length?('loaded "'+n+'", ignored '+u.length+' unknown key(s)'):'loaded "'+n+'"'); }
     catch(e){ msg('slot load failed: '+e.message); }
   });
@@ -27430,6 +27455,268 @@ if(!LS_OK){
   });
   refreshSlots();
 }
+
+/* ---------- export names and the recipe inside every SVG (row 88) ----------
+   THE FILENAME IS NOT THE RECORD. Two exports of one engine and seed with
+   different knobs used to get the same name and nothing in either file said
+   which knobs made it. Now every SVG carries snapshot() -- the very object
+   Save preset writes -- in a <metadata> block, and the filename is a label
+   that says what changed since the parent: the last recipe of this engine
+   exported, saved or loaded here. Spec docs/specs/2026-10-11-sketchpad-
+   export-names.md.
+
+   THE STORAGE KEYS ARE spadlog, spadlast:{mode} AND spadseq:{mode}:{MMDDYY},
+   AND NONE STARTS WITH `spad:`. slotNames() lists every key with that prefix
+   as a browser slot, so one written there would appear in the slot list. With
+   no localStorage they live in memory for the session and the counter is the
+   time of day instead. */
+var SV=(function(){ var h=document.querySelector('h1');
+  var m=h?/\bv\d+\b/.exec(h.textContent):null; return m?m[0]:''; })();
+var NAMEMEM={}, LOGK='spadlog', LASTK='spadlast:', SEQK='spadseq:', LOGMAX=300, LOGC=null;
+function nsGet(k){
+  if(!LS_OK) return Object.prototype.hasOwnProperty.call(NAMEMEM,k)?NAMEMEM[k]:null;
+  try{ return localStorage.getItem(k); }catch(e){ return null; }
+}
+function nsSet(k,v){
+  if(!LS_OK){ NAMEMEM[k]=v; return true; }
+  try{ localStorage.setItem(k,v); return true; }catch(e){ return false; }
+}
+function nsJSON(k){ var r=nsGet(k); if(!r) return null; try{ return JSON.parse(r); }catch(e){ return null; } }
+/* the light index of a recipe: this engine's knobs only, never `saved`.
+   restore() has always accepted a partial `eng`. */
+function recipeLite(o){
+  var r={app:o.app, ver:o.ver, mode:o.mode, seed:o.seed, eng:{}, g:o.g, pens:o.pens||{}};
+  if(o.eng && o.mode && o.eng[o.mode]) r.eng[o.mode]=o.eng[o.mode];
+  if(o.tile) r.tile=o.tile;
+  return r;
+}
+function canonJSON(v){
+  if(v===null || typeof v!=='object') return JSON.stringify(v);
+  if(Array.isArray(v)) return '['+v.map(canonJSON).join(',')+']';
+  return '{'+Object.keys(v).sort().filter(function(k){ return v[k]!==undefined; })
+    .map(function(k){ return JSON.stringify(k)+':'+canonJSON(v[k]); }).join(',')+'}';
+}
+/* FNV-1a, 32 bits, over the UTF-8 bytes, written in base 36 */
+function fnv36(str){
+  var b=unescape(encodeURIComponent(str)), h=0x811c9dc5;
+  for(var i=0;i<b.length;i++){ h^=b.charCodeAt(i); h=Math.imul(h,0x01000193)>>>0; }
+  return h.toString(36);
+}
+function pinLites(){ return PINS.map(function(P){ return P.src?recipeLite(P.src):null; }); }
+/* THE SAME DRAWING HASHES THE SAME. Without the seed when the engine ignores
+   it at these settings: the seed cannot reach that drawing. */
+function recipeHash(lite,pins){
+  var r=JSON.parse(JSON.stringify(lite));
+  if(!usesSeed()) delete r.seed;
+  return fnv36(canonJSON({recipe:r, pins:pins||[]}));
+}
+function readLog(){
+  if(LOGC) return LOGC;
+  var a=nsJSON(LOGK); LOGC=Array.isArray(a)?a:[]; return LOGC;
+}
+function writeLog(a){
+  while(a.length>LOGMAX) a.pop();
+  /* a full store drops the oldest half rather than losing the newest entry */
+  while(!nsSet(LOGK,JSON.stringify(a)) && a.length>1) a.splice(Math.ceil(a.length/2));
+  LOGC=a; paintExports();
+}
+function fmtNum(v){
+  v=+v; if(!isFinite(v)) return String(v);
+  if(Math.round(v)===v) return String(v);
+  var t=String(+v.toFixed(2)); return t==='-0'?'0':t;
+}
+function segVal(v){ return fmtNum(v).replace(/^-/,'n'); }
+function sameJSON(a,b){ return canonJSON(a===undefined?null:a)===canonJSON(b===undefined?null:b); }
+/* WHAT DIFFERS FROM THE PARENT, in the spec's order: seed, this engine's knobs,
+   the global knobs, pens, tile, pins. With no parent, from the defaults -- and
+   then the seed is always named when the engine reads it. */
+function changeList(lite,pins,par){
+  var out=[], pr=par&&par.recipe, pe=pr&&pr.eng&&pr.eng[lite.mode]||null;
+  if(usesSeed() && (!pr || pr.seed!==lite.seed))
+    out.push({seg:'s'+Math.round(lite.seed), txt:'Seed '+Math.round(lite.seed)+
+      (pr?' (was '+Math.round(pr.seed)+')':'')});
+  function knob(sp,now,was){
+    if(now===undefined || +now===+was) return;
+    out.push({seg:sp[0].toLowerCase()+segVal(now),
+              txt:sp[1]+' '+fmtNum(now)+' (was '+fmtNum(was)+')'});
+  }
+  var E=lite.eng[lite.mode]||{};
+  (SPEC[lite.mode]?SPEC[lite.mode][1]:[]).forEach(function(sp){
+    knob(sp,E[sp[0]], pe&&(sp[0] in pe)?pe[sp[0]]:sp[5]); });
+  GSPEC.forEach(function(sp){
+    knob(sp,(lite.g||{})[sp[0]], pr&&pr.g&&(sp[0] in pr.g)?pr.g[sp[0]]:sp[5]); });
+  if(!sameJSON(lite.pens||{}, pr?(pr.pens||{}):{})) out.push({seg:'pens', txt:'pens changed'});
+  if(!sameJSON(lite.tile||null, pr?(pr.tile||null):null)) out.push({seg:'tile', txt:'tile changed'});
+  var was=par?(par.pins||[]).map(function(x){ return x&&x.recipe!==undefined?x.recipe:x; }):[];
+  if(!sameJSON(pins,was)) out.push({seg:'pins'+pins.length, txt:'pins '+pins.length+' (was '+was.length+')'});
+  return out;
+}
+function pad2(n){ return (n<10?'0':'')+n; }
+function dayStamp(d){ return pad2(d.getMonth()+1)+pad2(d.getDate())+String(d.getFullYear()).slice(-2); }
+function tagOf(){
+  var el=document.getElementById('dlTag'), t=el?String(el.value||''):'';
+  return t.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,20).replace(/-+$/,'');
+}
+var STEMRE=/^[a-z0-9][a-z0-9._-]*$/, STEMMAX=80;
+/* THE NAME, with no side effects. `hit` is the log entry (or the parent) that
+   already holds this exact drawing: its name is reused, and nothing advances. */
+function peekName(){
+  var now=new Date(), day=dayStamp(now), snap=snapshot(), lite=recipeLite(snap), pins=pinLites();
+  var hash=recipeHash(lite,pins), par=nsJSON(LASTK+mode), log=readLog(), hit=null;
+  for(var i=0;i<log.length;i++) if(log[i].hash===hash){ hit=log[i]; break; }
+  /* the parent counts as a hit only when its name is a stem this would write:
+     a slot called "My test (2)" names the parent in <desc>, never the file */
+  if(!hit && par && par.hash===hash && STEMRE.test(par.name||'')) hit=par;
+  var ch=changeList(lite,pins,par), nn;
+  /* nothing differs from a parent that cannot lend its name: say what differs
+     from the defaults instead, which is at least a description */
+  if(!ch.length && par && !hit) ch=changeList(lite,pins,null);
+  if(LS_OK){ var q=parseInt(nsGet(SEQK+mode+':'+day),10)||0; nn=pad2(q+1); }
+  else nn=pad2(now.getHours())+pad2(now.getMinutes())+pad2(now.getSeconds());
+  var name;
+  if(hit) name=hit.name;
+  else {
+    var tag=tagOf(), head=mode.toLowerCase()+'_'+day+'-'+nn+'_', tail=tag?'_'+tag:'';
+    var segs=ch.map(function(c){ return c.seg; }), keep=segs.length>3?2:segs.length;
+    var mk=function(k){
+      var body=segs.slice(0,k), more=segs.length-k;
+      if(more>0) body.push('plus'+more);
+      return head+(body.length?body.join('-'):'defaults')+tail;
+    };
+    name=mk(keep);
+    while(name.length>STEMMAX && keep>0){ keep--; name=mk(keep); }
+    if(name.length>STEMMAX) name=name.slice(0,STEMMAX).replace(/[-._]+$/,'');
+  }
+  return {name:name, hit:hit, hash:hash, snap:snap, lite:lite, pins:pins, par:par, day:day, nn:nn,
+          changes:ch.length?ch.map(function(c){ return c.txt; }).join(', '):'defaults'};
+}
+/* ...and the act: advance the counter, write the log entry, move the parent. */
+function commitName(kind){
+  var p=peekName(), log=readLog().slice();
+  /* A HIT NEVER ADVANCES THE COUNTER. A hit on a parent that came from a file
+     (so is not in this browser's list yet) is still logged, under its name. */
+  if(!p.hit && LS_OK) nsSet(SEQK+mode+':'+p.day, String(parseInt(p.nn,10)));
+  if(!log.some(function(E){ return E.hash===p.hash; })){
+    log.unshift({name:p.name, t:Date.now(), kind:kind, hash:p.hash, parent:p.par?p.par.name:'',
+                 sv:SV, ch:p.changes, recipe:p.lite,
+                 pins:PINS.map(function(P){ return {name:P.name, hex:P.hex, recipe:P.src?recipeLite(P.src):null}; })});
+    writeLog(log);
+  }
+  setParent(p.name, p.lite, p.pins, p.hash);
+  return p;
+}
+function setParent(name,lite,pins,hash){
+  nsSet(LASTK+lite.mode, JSON.stringify({name:name, hash:hash, recipe:lite, pins:pins}));
+}
+/* after any load: the drawing on screen now IS the parent, under this name */
+function parentFromLoad(name){
+  var lite=recipeLite(snapshot()), pins=pinLites();
+  setParent(name, lite, pins, recipeHash(lite,pins));
+}
+function xmlEsc(t){ return String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function cdata(t){ return '<![CDATA['+String(t).replace(/\]\]>/g,']]]]><![CDATA[>')+']]>'; }
+/* THE RECIPE BLOCK, written straight after the root <svg> tag, which does not
+   change: the namespace is declared on <metadata>. Non-rendering SVG only. */
+function recipeBlock(p){
+  var lab=SPEC[mode]?SPEC[mode][0]:mode, par=p.par?p.par.name:'';
+  var s='<title>'+xmlEsc(p.name)+'</title>'+
+    '<desc>'+xmlEsc('Plotter Sketchpad '+SV+' \u00b7 '+lab+' \u00b7 '+p.changes+' \u00b7 from '+(par||'defaults'))+'</desc>'+
+    '<metadata id="sketchpad-recipe" xmlns:spad="https://hakeemolajuwonton.github.io/sketchpad/ns/1">'+
+    '<spad:recipe name="'+xmlEsc(p.name)+'" sv="'+xmlEsc(SV)+'" hash="'+xmlEsc(p.hash)+'" parent="'+xmlEsc(par)+'">'+
+    cdata(JSON.stringify(p.snap))+'</spad:recipe>';
+  PINS.forEach(function(P){
+    s+='<spad:pin name="'+xmlEsc(P.name)+'" hex="'+xmlEsc(P.hex)+'">'+cdata(JSON.stringify(P.src||null))+'</spad:pin>';
+  });
+  return s+'</metadata>';
+}
+function paintName(){
+  var el=document.getElementById('dlName'); if(!el) return;
+  try{ var p=peekName(); el.textContent='\u2192 '+p.name+'.svg'+(p.hit?' (same drawing)':''); }
+  catch(e){ el.textContent=''; }
+}
+var SPADNS='https://hakeemolajuwonton.github.io/sketchpad/ns/1';
+/* LOAD AN SVG: find spad:recipe by namespace, restore it, and it becomes the
+   parent under its own name. A file without one changes nothing. */
+function loadSvgText(text){
+  var doc=new DOMParser().parseFromString(text,'image/svg+xml');
+  var rs=doc.getElementsByTagNameNS(SPADNS,'recipe');
+  if(!rs.length){ msg('this SVG has no sketchpad recipe \u2014 exported before '+SV+' or by another tool'); return; }
+  var R=rs[0], o=JSON.parse(R.textContent), name=R.getAttribute('name')||'', sv=R.getAttribute('sv')||'?';
+  var pinEls=doc.getElementsByTagNameNS(SPADNS,'pin');
+  var u=restore(o);
+  parentFromLoad(name);
+  msg('loaded '+name+' ('+sv+' recipe)'+(u.length?', ignored '+u.length+' unknown key(s)':'')+
+      (pinEls.length?' \u2014 '+pinEls.length+' pinned layer(s) in this file are not rebuilt yet':''));
+}
+function loadFile(f){
+  if(!f) return;
+  var fr=new FileReader(), stem=String(f.name||'').replace(/\.[^.]*$/,'');
+  fr.onload=function(){ loadText(fr.result, stem); };
+  fr.readAsText(f);
+}
+/* DROP A FILE ANYWHERE: the same handler as the button, first file only. A
+   drop on a text box is the browser's to handle. */
+document.addEventListener('dragover',function(e){
+  var t=e.target; if(t && t.tagName==='INPUT' && t.type==='text') return;
+  e.preventDefault();
+});
+document.addEventListener('drop',function(e){
+  var t=e.target; if(t && t.tagName==='INPUT' && t.type==='text') return;
+  var fs=e.dataTransfer&&e.dataTransfer.files; if(!fs||!fs.length) return;
+  e.preventDefault();
+  var f=fs[0];
+  if(!/\.(svg|json)$/i.test(f.name||'') && !/svg|json/.test(f.type||'')){ msg('drop a .svg or .json file'); return; }
+  loadFile(f);
+});
+
+/* THE EXPORTS FOLD: this browser's exports and presets, newest first; one
+   click restores a recipe. Per-origin by nature -- the SVG is the portable
+   record, this is the convenience. */
+function whenStr(t){
+  var d=new Date(t), n=new Date();
+  if(d.toDateString()===n.toDateString()) return 'today '+pad2(d.getHours())+':'+pad2(d.getMinutes());
+  return ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d.getMonth()]+' '+d.getDate();
+}
+function restoreEntry(E){
+  var u=restore(JSON.parse(JSON.stringify(E.recipe)));
+  setParent(E.name, recipeLite(snapshot()), pinLites(), E.hash);
+  return u;
+}
+function paintExports(){
+  var box=document.getElementById('expList'); if(!box) return;
+  var log=readLog(); box.innerHTML='';
+  var c=document.querySelector('#fold_exp .cnt'); if(c) c.textContent=log.length?String(log.length):'';
+  if(!log.length){ var e0=document.createElement('div'); e0.className='exprow'; e0.textContent='nothing exported from this browser yet'; box.appendChild(e0); return; }
+  log.forEach(function(E,i){
+    var r=document.createElement('div'); r.className='exprow'; r.title='restore '+E.name;
+    var n=document.createElement('span'); n.className='expname'; n.textContent=E.name;
+    var w=document.createElement('span'); w.className='expmeta';
+    w.textContent=whenStr(E.t)+' \u00b7 '+(E.kind||'svg')+' \u00b7 '+(E.ch||'');
+    var x=document.createElement('button'); x.type='button'; x.className='expx'; x.textContent='\u00d7'; x.title='remove this entry';
+    x.addEventListener('click',function(ev){ ev.stopPropagation();
+      var a=readLog().slice(); a.splice(i,1); writeLog(a); });
+    r.addEventListener('click',function(){
+      try{ var u=restoreEntry(E); msg('restored '+E.name+(u.length?', ignored '+u.length+' unknown key(s)':'')); }
+      catch(err){ msg('restore failed: '+err.message); }
+    });
+    r.appendChild(n); r.appendChild(x); r.appendChild(w); box.appendChild(r);
+  });
+}
+(function(){
+  var sec=document.getElementById('fold_exp'), h=sec&&sec.querySelector('h2');
+  if(h){
+    if(!foldState('exp',false)) sec.classList.add('closed');
+    h.addEventListener('click',function(){
+      sec.classList.toggle('closed'); setFold('exp', !sec.classList.contains('closed')); });
+  }
+  var armed=false, b=document.getElementById('expClear');
+  if(b) b.addEventListener('click',function(){
+    if(!armed){ armed=true; b.className='armed'; b.textContent='Confirm clear';
+      msg('this empties the Exports list in this browser \u2014 click again'); return; }
+    armed=false; b.className=''; b.textContent='Clear'; writeLog([]); msg('exports list cleared');
+  });
+  paintExports();
+})();
 
 document.getElementById('reroll').addEventListener('click',function(){
   if(!usesSeed()){ msg('this engine ignores the seed at these settings'); return; }
@@ -27521,6 +27808,10 @@ document.getElementById('dl').addEventListener('click',function(){
       (Math.round(g.pmap||0)>0)||!!engineLayers(cur,g)||
       (Math.round(g.lpen||0)>0 && groups.length>1)||
       (Math.round(g.iring||0)>0 && Math.round(g.ipen||0)===1), PAD=5, MM=PAGEMM, s;
+  /* THE NAME AND THE RECIPE (row 88). commitName() advances the day's counter,
+     logs the export and moves the parent; RB is the non-rendering block both
+     branches write straight after the root tag, which itself does not change. */
+  var NM=commitName('svg'), RB=recipeBlock(NM);
   /* Pins force the multi-pen path even at Copies 1. The single-pen path writes
      one unnamed <g> at raw unit scale with no page fit; emitting pins through
      it would collapse every layer into one pen and lose the registration the
@@ -27544,7 +27835,7 @@ document.getElementById('dl').addEventListener('click',function(){
        only the header carries the aspect. At a square page PGW=PGH=1 and this
        is character for character the header it always wrote. */
     var PW=mmStr(PGW*MM), PH=mmStr(PGH*MM);
-    s=['<svg xmlns="http://www.w3.org/2000/svg" width="'+PW+'mm" height="'+PH+'mm" viewBox="0 0 '+PW+' '+PH+'">',
+    s=['<svg xmlns="http://www.w3.org/2000/svg" width="'+PW+'mm" height="'+PH+'mm" viewBox="0 0 '+PW+' '+PH+'">', RB,
        '<g fill="none" stroke="black" stroke-width="0.3">'];
     /* groups[0].paths, not cur -- cur is pre-warp and pre-mask, and exporting
        it would silently ship an unmasked file that does not match the canvas */
@@ -27561,7 +27852,7 @@ document.getElementById('dl').addEventListener('click',function(){
     s.push('</g></svg>');
   } else {
     var bb=unionBox(groups), w=((bb[2]-bb[0])*MM+2*PAD), h=((bb[3]-bb[1])*MM+2*PAD);
-    s=['<svg xmlns="http://www.w3.org/2000/svg" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape" width="'+w.toFixed(2)+'mm" height="'+h.toFixed(2)+'mm" viewBox="0 0 '+w.toFixed(2)+' '+h.toFixed(2)+'">'];
+    s=['<svg xmlns="http://www.w3.org/2000/svg" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape" width="'+w.toFixed(2)+'mm" height="'+h.toFixed(2)+'mm" viewBox="0 0 '+w.toFixed(2)+' '+h.toFixed(2)+'">', RB];
     for(var G=0;G<groups.length;G++){
       /* inkscape:label as well as id. vpype reads the LABEL for a layer's name
          and ignores the id, so the funssor_multi profile's
@@ -27595,10 +27886,12 @@ document.getElementById('dl').addEventListener('click',function(){
   var body=s.join('');
   var a=document.createElement('a');
   a.href=URL.createObjectURL(new Blob([body],{type:'image/svg+xml'}));
-  a.download=mode+(multi?'-fan'+g.copies:'')+'-'+Math.round(seed)+'.svg'; a.click();
+  a.download=NM.name+'.svg'; a.click();
   var mb=body.length/1048576;
-  msg(a.download+' \u2014 '+(mb<1?(body.length/1024).toFixed(0)+' KB':mb.toFixed(1)+' MB')+
+  msg((NM.hit?'same drawing as '+NM.name+' \u2014 exported under that name':a.download)+' \u2014 '+
+      (mb<1?(body.length/1024).toFixed(0)+' KB':mb.toFixed(1)+' MB')+
       (mb>4?' \u2014 that is large enough to stall the tab; thin the engine or drop pens':''));
+  paintName();
 });
 window.addEventListener('resize',sched);
 mountG(); mountTabs(); mount();
