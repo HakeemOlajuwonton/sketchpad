@@ -438,7 +438,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v314</a> &mdash; TRAIN SHED -- the station under one arched roof: brick side walls with arched windows, lattice iron ribs, glazed roof plates, a smoke-vent lantern on the crown and a glazed end screen; the canopies, portals and buildings give way to it, and the wires hang from the ribs</span></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v315</a> &mdash; ISOKIT -- the iso station's renderer (projection, primitives, LOD, budget, within-cell order, fit and occlusion) lifted unchanged into a shared lattice kit, so the coming isofactory can draw on the same painter order; the station draws exactly what it drew (queue row 102, refactor only)</span></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <section class="fold" id="fold_pick"><h2>Pick engine<span class="cnt"></span></h2>
@@ -17448,28 +17448,44 @@ function statFootprint(s){
   return out;
 }
 
-function buildStation(p){
+/* ---- ISOKIT: the lattice renderer, shared by `stat` and `fact` ----------
+   Queue row 102, docs/specs/2026-10-12-isofactory.md §1, REFACTOR ONLY. This
+   is buildStation's own renderer, moved out unchanged so the isofactory can
+   stand on the same painter theorem: the projection, `vis`, the hull, the
+   Solid record and `keyed`, the primitives, the LOD reading of PAGEMM, the
+   point budget against GEOCAPFULL, the within-cell sort, the fit and the
+   occlusion pass. WHAT gets built -- keels, slots, rows, greebles, the growth
+   policy -- stays the engine's.
+
+   ISOKIT(p,T) MAKES A FRESH KIT FOR EACH BUILD. The primitives close over
+   state a build owns -- the solid list, the point counter, the current layer
+   -- so the kit is a factory and not a singleton, and two builds can never see
+   each other's solids. `p` is the engine's knob object (the LOD cutoff and
+   hlr's occlusion gap read it). `T` is the engine's tally, {cells, boxes,
+   order, tubes}: the kit fills boxes, order and tubes, the engine fills cells
+   and publishes T. So STATTALLY stays `stat`'s and `fact` gets FACTTALLY.
+
+   `K.lay` IS THE LAYER A NEW SOLID IS FILED UNDER. It was the build's own
+   `LAY`, and it is a property rather than a variable because the grammar sets
+   it around each primitive call (`was=K.lay; K.lay='detail'; ... K.lay=was`).
+
+   THE PER-CELL SUBSTREAM HELPER is `statRng`, module-level since v243 and the
+   hash statcheck.js pins against isostation.py; the kit hands it out as
+   `K.rng` rather than moving it, so that pin does not move either.
+
+   K0 in enginetest/factcheck.js holds the refactor to its word: `stat` is
+   byte-identical to the build before on 20 configurations, every one of which
+   a 1e-9 shift of a cell centre moves. */
+function ISOKIT(p,T){
   var COS30=0.8660254037844386;
   var CELL=1.0;
-  var keelLen=Math.max(6,Math.round(p.keel)), jogP=(p.jog||0)/100;
-  var branches=Math.max(0,Math.round(p.branch||0));
-  var modMin=Math.max(1,Math.round(p.modmin)), modMax=Math.max(modMin,Math.round(p.modmax));
-  var gapP=(p.gap||0)/100, stackMax=Math.max(1,Math.round(p.stack));
-  var stepbP=(p.stepb||0)/100;
-  var outrigP=(p.outrig||0)/100, greebD=(p.greeb||0)/100;
-  var wantTether=Math.round(p.tether||0), wantShips=Math.round(p.ships||0);
-  var wantLights=Math.round(p.lights||0);
-  var nRings=Math.max(0,Math.round(p.rings||0)), ringR=Math.max(2,Math.round(p.ringr||3));
   var lodMM=Math.max(0,(isFinite(p.lod)?+p.lod:5)/10);
-  var budgPts=Math.max(1,Math.round(p.budg||45))*1000;
-  var SEED=Math.round(rnd(0)*1e6);      /* the page's own seed, folded once */
-  /* Declared here rather than beside the fit because the LOD estimate below
-     needs it before a single solid exists. */
+  /* THE PAGE MARGIN, in page units. Read by the LOD estimate before a single
+     solid exists, and by the fit once they all do. */
   var pad=0.06;
-  var out=[], solids=[];
-  STATINFO=''; STATSTATS={cells:0,solids:0,slots:0,rows:null,paths:0};
-
-  /* ---- the primitives. THEY ARE THIS ENGINE'S OWN, and that is a decision.
+  var solids=[];
+  var K={CELL:CELL, pad:pad, solids:solids, lay:'structure', mmest:0, rng:statRng};
+  /* ---- the primitives. THEY ARE THE LATTICE ENGINES' OWN, and that is a decision.
      buildIso's eleven live inside buildIso's scope and cannot be reached from
      here; lifting them out would rewrite a 2,400-line function that eighty
      cells of hlr-identity are pinned to, to save a few hundred lines in a file
@@ -17491,19 +17507,18 @@ function buildStation(p){
     var ring=lo.slice(0,-1).concat(up.slice(0,-1));
     return ring.length>=3?ring:null;
   }
-  var LAY='structure';
-  /* F3's tube record, collected as the tubes are made and published on
-     STATTALLY at the end. Local to the build, like `solids` itself: STATTALLY
-     is REASSIGNED every build, so anything pushed straight at it would be
-     thrown away by the reassignment below. */
-  var STATTUBES=[];
+  /* F3's tube record goes on `T.tubes` as the tubes are made. T is the
+     engine's own tally, fresh every build, and the engine publishes it whole
+     once the build is done (`STATTALLY=T`), so nothing pushed here is thrown
+     away by a reassignment -- which is what pushing straight at STATTALLY
+     mid-build would do. */
   /* `cell` IS THE CONFINEMENT CLAIM, CARRIED. A solid records which lattice
      cell it belongs to, so the gate can check the geometry against THAT rather
      than deriving the cell back out of the bounding box -- which is wrong for
      the marks that lie exactly ON a shared face, where either adjacent cell is
      a legal answer and only the one the engine chose is the right one. null
      means DELIBERATELY UNCONFINED, which is the tether and nothing else. */
-  function Solid(key,top,tie){ return {key:key, top:top, tie:tie||0, lay:LAY, cell:null, e:[], h:[]}; }
+  function Solid(key,top,tie){ return {key:key, top:top, tie:tie||0, lay:K.lay, cell:null, e:[], h:[]}; }
   /* EVERY POINT GOES THROUGH HERE, which is what lets the budget be a counter
      rather than a sweep. The first version summed the whole solid list on every
      keel cell and again in the growth loop's condition -- O(solids x edges) a
@@ -17645,8 +17660,8 @@ function buildStation(p){
     /* F3's door. The ring VERTICES and the edge list, so the gate can derive
        the rule above for itself rather than being told the answer. */
     s.shape={k:'tube', p0:p0, p1:p1, r:r};
-    STATTUBES.push({p0:p0, p1:p1, r:r, n:n, cap0:!!cap0, cap1:!!cap1,
-                    lo:lo, hi:hi, e:s.e});
+    T.tubes.push({p0:p0, p1:p1, r:r, n:n, cap0:!!cap0, cap1:!!cap1,
+                  lo:lo, hi:hi, e:s.e});
     return push(s);
   }
 
@@ -17723,23 +17738,9 @@ function buildStation(p){
     return push(s);
   }
 
-  /* ---- the keel: one truss bay per cell -------------------------------- */
-  /* THE BAY STOPS ONE NODE RADIUS SHORT OF EACH FACE, and that is load-bearing
-     rather than tidy. Spanning the full cell edge puts the end ring ON the
-     shared face, so it reaches half into the neighbour: the CLI's gate caught
-     265 of 816 solids keyed to a cell their geometry did not sit in. Two solids
-     sharing a volume have no valid painter order at all.
-
-     ONE SOLID PER BAY, AND IT OCCLUDES NOTHING. Per-bar solids made the sixteen
-     bars occlude EACH OTHER, and the halo is a real millimetre while a bar is
-     0.024 cell -- every crossing punched a gap wider than the bar and the spine
-     came out as dashed scribble. A box truss is ~95% holes; the honest model is
-     the spec's own "occludes nothing, occluded by everything". The hull is the
-     two axis endpoints ON PURPOSE and not empty: `hull` returns null below
-     three points so the silhouette is skipped, but the page fit measures the
-     hull and a keel-only station with no hull points anywhere has no extent. */
-  var NODER=0.055, BARW=0.46;
-  function trussBay(c,ax){ return trussBayW(c,ax,BARW,NODER); }
+  /* One truss bay, `barw` wide, stopping `noder` short of each face: the
+     engine's keel calls it with its own BARW/NODER, and why it is shaped
+     the way it is sits beside those two constants in buildStation. */
   function trussBayW(c,ax,barw,noder){
     var ctr=centre(c), h=CELL/2-noder*CELL;
     var p0=[ctr[0]-ax[0]*h, ctr[1]-ax[1]*h, ctr[2]-ax[2]*h];
@@ -17771,6 +17772,227 @@ function buildStation(p){
     }
     return push(s);
   }
+
+  /* MILLIMETRES PER CELL, ESTIMATED BEFORE ANYTHING IS BUILT. LOD needs a
+     millimetre before the drawing exists, and the fit cannot help: it computes
+     the true scale from the finished geometry, which is downstream of the LOD
+     decision that needs it. The lattice bounding box is the one extent known up
+     front and the drawing is inside it by construction, so this OVER-estimates
+     the scale by at most the margin the station leaves inside its own bbox.
+
+     THE BROWSER KNOWS PAGEMM AND THE CLI HAS TO GUESS IT, which is the spec's
+     "the port is strictly better here": `_mm_per_unit` takes a margin in
+     millimetres off a page string, and this takes the page the sliders are
+     actually set to. One +x lattice step projects to length exactly 1, so
+     `fs * PAGEMM` is millimetres per cell with nothing left to convert. */
+  function mmPerCell(cells){
+    var lx0=1e9, ly0=1e9, lx1=-1e9, ly1=-1e9, i2, a2, b2, c2;
+    for(i2=0;i2<cells.length;i2++) for(a2=0;a2<2;a2++) for(b2=0;b2<2;b2++) for(c2=0;c2<2;c2++){
+      var pr2=proj((cells[i2][0]+a2)*CELL,(cells[i2][1]+b2)*CELL,(cells[i2][2]+c2)*CELL);
+      if(pr2[0]<lx0) lx0=pr2[0]; if(pr2[0]>lx1) lx1=pr2[0];
+      if(pr2[1]<ly0) ly0=pr2[1]; if(pr2[1]>ly1) ly1=pr2[1];
+    }
+    if(!(lx1>lx0)||!(ly1>ly0)) return PAGEMM;
+    return Math.min((PGW-2*pad)/(lx1-lx0),(PGH-2*pad)/(ly1-ly0))*PAGEMM;
+  }
+  /* POINTS, NOT PATHS. The CLI's budget counts paths; the ceiling here is
+     GEOCAP's, which is a POINT ceiling, and the two are not interchangeable. */
+  function pointCount(){ return NPTS; }
+  /* WHICH WAY TO GROW. The budget makes the station big; on its own it does not
+     make it the right SHAPE. A uniformly random branch direction kept widening
+     a spine that already runs along +x, and the CLI records seed 7 coming out a
+     ribbon across the middle of the sheet. The PROJECTED extent is what matters
+     and not the lattice extent -- a +z step moves a cell straight up the page
+     while +x and +y each move it sideways AND down -- so the test is on `proj`,
+     and the rule is to grow whichever way the drawing is currently too short.
+     One in four still goes the other way, so a station never becomes a column
+     or a slab just because the sheet is. */
+  function fitAxis(cells,rng){
+    var lx0=1e9, ly0=1e9, lx1=-1e9, ly1=-1e9, i2;
+    for(i2=0;i2<cells.length;i2++){
+      var pr2=proj(cells[i2][0]*CELL,cells[i2][1]*CELL,cells[i2][2]*CELL);
+      if(pr2[0]<lx0) lx0=pr2[0]; if(pr2[0]>lx1) lx1=pr2[0];
+      if(pr2[1]<ly0) ly0=pr2[1]; if(pr2[1]>ly1) ly1=pr2[1];
+    }
+    var w2=lx1-lx0, h2=ly1-ly0;
+    if(!(h2>1e-9)) return STATAXES[Math.min(5,Math.floor(rng()*6))];
+    var tooWide=(w2/h2)>(PGW/PGH);
+    var vert=[[0,0,1],[0,0,-1]], flat=[[1,0,0],[-1,0,0],[0,1,0],[0,-1,0]];
+    var pool=tooWide?vert:flat;
+    if(rng()<0.25) pool=tooWide?flat:vert;
+    return pool[Math.min(pool.length-1,Math.floor(rng()*pool.length))];
+  }
+
+  /* THE BUDGET IS POINTS AND GEOCAPFULL IS THE CEILING -- why, at length, is
+     beside the growth loop in buildStation, which is the reader. */
+  function budget(budgPts){ return Math.min(budgPts, Math.max(2000,GEOCAPFULL||GEOCAP||560000)); }
+  /* ctx.vis(): LOD keys on PROJECTED SIZE, against K.mmest read LIVE --
+     growth only ever makes the estimate smaller, and a decision taken
+     later deserves the better number. */
+  function lodVis(ext){ return ext*K.mmest>=lodMM; }
+
+  /* F3's confinement door: each solid's key, cell and world bbox, taken
+     before the sort because layer 1 asks about confinement, which the sort
+     cannot change. */
+  function tallyBoxes(){
+    var i;
+    for(i=0;i<solids.length;i++){
+      var SB=solids[i], bx=[1e9,1e9,1e9,-1e9,-1e9,-1e9], be, bp, bq;
+      for(be=0;be<SB.e.length;be++) for(bp=0;bp<SB.e[be].length;bp++)
+        for(bq=0;bq<3;bq++){
+          var vv=SB.e[be][bp][bq];
+          if(vv<bx[bq]) bx[bq]=vv;
+          if(vv>bx[bq+3]) bx[bq+3]=vv;
+        }
+      if(bx[0]<1e8) T.boxes.push([SB.key, SB.cell, bx[0],bx[1],bx[2],bx[3],bx[4],bx[5],
+                                  SB.h.length>0?1:0]);
+    }
+  }
+
+  /* ---- front to back, then the page ------------------------------------
+     i+j+k DESCENDING IS THE EXACT PAINTER ORDER for disjoint unit cells, and
+     everything above exists to keep the cells disjoint. BETWEEN cells that is
+     the whole answer and it is unchanged.
+
+     F2. INSIDE a cell, `top` used to decide first, and a maximum z is not a
+     depth. On a docking hub the ball's top is cz + 0.30 cell and a horizontal
+     port's is cz + 0.13, so the ball was committed as an occluder before the
+     +x and +y ports that sit IN FRONT of it, and their hulls clipped those
+     ports down to slivers. The CLI makes the same mistake through `_keyed`'s
+     (depth(c), key[1], key[2]) and is not the reference for this.
+     `dep` is the mean of x+y+z over the solid's own hull points, in world
+     units, before projection -- x+y+z IS the distance along the view direction,
+     so a larger mean is nearer the camera. Computed HERE rather than in the
+     primitives: every solid has `h` by the time it reaches this line, and one
+     loop cannot be forgotten by a primitive added later. `keyed` sets `key` and
+     must not touch this. */
+  function sortSolids(){
+    var dq, dh, dsum;
+    for(dq=0;dq<solids.length;dq++){
+      var DS=solids[dq];
+      dsum=0;
+      for(dh=0;dh<DS.h.length;dh++) dsum+=DS.h[dh][0]+DS.h[dh][1]+DS.h[dh][2];
+      DS.dep=DS.h.length?dsum/DS.h.length:DS.top;
+    }
+    solids.sort(function(a,b2){ return (b2.key-a.key) || (b2.dep-a.dep) ||
+                                       (b2.top-a.top) || (b2.tie-a.tie); });
+  }
+  /* F3's doors, taken AFTER the sort because the order is the thing layer 7
+     checks. `boxes` above stays where it is: layer 1 asks about confinement,
+     which the sort cannot change. */
+  function tallyOrder(){
+    T.order=solids.map(function(SO){
+      return {key:SO.key, cell:SO.cell, dep:SO.dep, top:SO.top, tie:SO.tie,
+              lay:SO.lay, shape:SO.shape||null};
+    });
+  }
+
+  /* THE FIT HAPPENS BEFORE THE OCCLUSION. The halo is asked for in
+     millimetres, so the geometry has to already be in page units when it is
+     applied -- the same rule buildIso and project3 carry, and the reason the
+     CLI has to ESTIMATE mm-per-unit from a planned bbox while the browser gets
+     it exactly. `PAGEMM` is mm per page unit on the short axis, so
+     `fs * PAGEMM` is millimetres per lattice unit and nothing has to guess. */
+  function render(out){
+    var wx0=1e9, wy0=1e9, wx1=-1e9, wy1=-1e9, si2, m3;
+    for(si2=0;si2<solids.length;si2++){
+      var S0=solids[si2];
+      for(m3=0;m3<S0.e.length;m3++){
+        var ee=S0.e[m3], q4;
+        for(q4=0;q4<ee.length;q4++){
+          var pr=proj(ee[q4][0],ee[q4][1],ee[q4][2]);
+          if(pr[0]<wx0) wx0=pr[0]; if(pr[0]>wx1) wx1=pr[0];
+          if(pr[1]<wy0) wy0=pr[1]; if(pr[1]>wy1) wy1=pr[1];
+        }
+      }
+    }
+    if(!(wx1>wx0)||!(wy1>wy0)) return 0;
+    var fs=Math.min((PGW-2*pad)/(wx1-wx0),(PGH-2*pad)/(wy1-wy0));
+    var ox=(PGW-(wx1-wx0)*fs)/2, oy=(PGH-(wy1-wy0)*fs)/2;
+    function toPage(q){ return [ox+(q[0]-wx0)*fs, oy+(q[1]-wy0)*fs]; }
+
+    /* Front to back: clip each solid against everything already committed, then
+       add its own silhouette. Clipped BEFORE it is added, so it never eats
+       itself. `hlr` is the shared one -- v238's grid index and cached precompute
+       come with it and nothing here touches hlrConvex. */
+    var occl=[], k3;
+    for(si2=0;si2<solids.length;si2++){
+      var S=solids[si2], pp=[];
+      for(k3=0;k3<S.e.length;k3++){
+        var src=S.e[k3], dst=new Array(src.length), m4;
+        for(m4=0;m4<src.length;m4++){
+          var q3=toPage(proj(src[m4][0],src[m4][1],src[m4][2]));
+          dst[m4]=[q3[0],q3[1],0];
+        }
+        pp.push(dst);
+      }
+      if(pp.length){
+        var frag=hlr(pp,p,occl), n5=out.length;
+        for(k3=0;k3<frag.length;k3++) if(frag[k3].length>1) out.push(frag[k3]);
+        for(;n5<out.length;n5++) out[n5].lay=S.lay;
+      }
+      if(S.h.length){
+        var hp2=[], m5;
+        for(m5=0;m5<S.h.length;m5++) hp2.push(toPage(proj(S.h[m5][0],S.h[m5][1],S.h[m5][2])));
+        var hl=hull(hp2);
+        if(hl) occl.push(hl);
+      }
+    }
+    return fs;
+  }
+
+  K.proj=proj; K.vis=vis; K.hull=hull; K.Solid=Solid; K.addE=addE; K.push=push;
+  K.depth3=depth3; K.centre=centre; K.keyed=keyed;
+  K.boxSolid=boxSolid; K.ballSolid=ballSolid; K.segTube=segTube; K.domeSolid=domeSolid;
+  K.cutRun=cutRun; K.plateSolid=plateSolid; K.trussBayW=trussBayW;
+  K.mmPerCell=mmPerCell; K.fitAxis=fitAxis; K.points=pointCount; K.budget=budget;
+  K.lodVis=lodVis; K.tallyBoxes=tallyBoxes; K.sort=sortSolids; K.tallyOrder=tallyOrder;
+  K.render=render;
+  return K;
+}
+
+function buildStation(p){
+  var keelLen=Math.max(6,Math.round(p.keel)), jogP=(p.jog||0)/100;
+  var branches=Math.max(0,Math.round(p.branch||0));
+  var modMin=Math.max(1,Math.round(p.modmin)), modMax=Math.max(modMin,Math.round(p.modmax));
+  var gapP=(p.gap||0)/100, stackMax=Math.max(1,Math.round(p.stack));
+  var stepbP=(p.stepb||0)/100;
+  var outrigP=(p.outrig||0)/100, greebD=(p.greeb||0)/100;
+  var wantTether=Math.round(p.tether||0), wantShips=Math.round(p.ships||0);
+  var wantLights=Math.round(p.lights||0);
+  var nRings=Math.max(0,Math.round(p.rings||0)), ringR=Math.max(2,Math.round(p.ringr||3));
+  var budgPts=Math.max(1,Math.round(p.budg||45))*1000;
+  var SEED=Math.round(rnd(0)*1e6);      /* the page's own seed, folded once */
+  var out=[];
+  /* THE KIT (row 102). The renderer lives in ISOKIT and this build is a
+     client of it; the local names below are the kit's, so the grammar reads
+     exactly as it did when they were declared in here. `T` is this build's
+     tally, published whole as STATTALLY once the build is done. */
+  var T={cells:[],boxes:[],order:[],tubes:[]};
+  var K=ISOKIT(p,T), CELL=K.CELL, solids=K.solids;
+  var vis=K.vis, Solid=K.Solid, addE=K.addE, push=K.push, depth3=K.depth3,
+      centre=K.centre, keyed=K.keyed, boxSolid=K.boxSolid, ballSolid=K.ballSolid,
+      segTube=K.segTube, domeSolid=K.domeSolid, cutRun=K.cutRun, plateSolid=K.plateSolid,
+      trussBayW=K.trussBayW, mmPerCell=K.mmPerCell, fitAxis=K.fitAxis, pointCount=K.points;
+  STATINFO=''; STATSTATS={cells:0,solids:0,slots:0,rows:null,paths:0};
+
+  /* ---- the keel: one truss bay per cell -------------------------------- */
+  /* THE BAY STOPS ONE NODE RADIUS SHORT OF EACH FACE, and that is load-bearing
+     rather than tidy. Spanning the full cell edge puts the end ring ON the
+     shared face, so it reaches half into the neighbour: the CLI's gate caught
+     265 of 816 solids keyed to a cell their geometry did not sit in. Two solids
+     sharing a volume have no valid painter order at all.
+
+     ONE SOLID PER BAY, AND IT OCCLUDES NOTHING. Per-bar solids made the sixteen
+     bars occlude EACH OTHER, and the halo is a real millimetre while a bar is
+     0.024 cell -- every crossing punched a gap wider than the bar and the spine
+     came out as dashed scribble. A box truss is ~95% holes; the honest model is
+     the spec's own "occludes nothing, occluded by everything". The hull is the
+     two axis endpoints ON PURPOSE and not empty: `hull` returns null below
+     three points so the silhouette is skipped, but the page fit measures the
+     hull and a keel-only station with no hull points anywhere has no extent. */
+  var NODER=0.055, BARW=0.46;
+  function trussBay(c,ax){ return trussBayW(c,ax,BARW,NODER); }
 
   /* ---- module vocabulary ------------------------------------------------
      A weighted table with predicates, the same shape as isocity's ARCH and for
@@ -17814,7 +18036,7 @@ function buildStation(p){
     u=[u[0]/ul,u[1]/ul,u[2]/ul];
     var v=[ax[1]*u[2]-ax[2]*u[1], ax[2]*u[0]-ax[0]*u[2], ax[0]*u[1]-ax[1]*u[0]];
     var steps=Math.max(1,Math.floor(L/(every*CELL))), i, k;
-    var was=LAY;
+    var was=K.lay;
     for(i=0;i<steps;i++){
       var tt=(i+0.5)/steps;
       var c=[p0[0]+(p1[0]-p0[0])*tt, p0[1]+(p1[1]-p0[1])*tt, p0[2]+(p1[2]-p0[2])*tt];
@@ -17828,7 +18050,7 @@ function buildStation(p){
                 [c[0]+nrm[0]*r+ax[0]*w, c[1]+nrm[1]*r+ax[1]*w, c[2]+nrm[2]*r+ax[2]*w]]);
       }
     }
-    LAY=was;
+    K.lay=was;
   }
 
   /* THE HULL GRAMMAR. Panel seams, axial ribs, a window band, a hatch, blank --
@@ -17875,16 +18097,16 @@ function buildStation(p){
      enough to read as one -- there is no pen-down primitive. The beacon
      occludes NOTHING (empty hull), like a tether. */
   function shipSolid(ctx,c,r){
-    var ctr=centre(c), rr=r*CELL*0.5, was=LAY;
-    LAY='detail';
+    var ctr=centre(c), rr=r*CELL*0.5, was=K.lay;
+    K.lay='detail';
     var sg=segTube([ctr[0]-0.26*CELL,ctr[1],ctr[2]-0.1*CELL],
                    [ctr[0]+0.20*CELL,ctr[1],ctr[2]-0.1*CELL], rr, 8, true, true, false);
-    LAY=was;
+    K.lay=was;
     return keyed(sg,c,0.05);
   }
   function beaconSolid(c){
-    var ctr=centre(c), was=LAY, q;
-    LAY='accent';
+    var ctr=centre(c), was=K.lay, q;
+    K.lay='accent';
     var sb=Solid(depth3(c), ctr[2]+CELL, ctr[0]+ctr[1]);
     sb.cell=c; sb.h=[];
     for(q=0;q<3;q++){
@@ -17892,7 +18114,7 @@ function buildStation(p){
       var pt=[ctr[0]+Math.cos(a)*0.34*CELL, ctr[1]+Math.sin(a)*0.34*CELL, ctr[2]+0.34*CELL];
       addE(sb,[pt,[pt[0]+0.02*CELL,pt[1],pt[2]]]);
     }
-    LAY=was;
+    K.lay=was;
     return push(sb);
   }
 
@@ -17980,7 +18202,7 @@ function buildStation(p){
     ['reactor',0.5, function(s){ return s.cells.length>=2; }, function(ctx){
       var s=ctx.slot, LC=layerCells(s,s.depth), i, sg, e;
       tubeRun(ctx,LC,s.ax,0.30*CELL,10,0);
-      var was=LAY;
+      var was=K.lay;
       for(i=1;i<LC.length-1;i++){
         var c=LC[i], ctr=centre(c);
         for(sg=-1;sg<=1;sg+=2){
@@ -17990,9 +18212,9 @@ function buildStation(p){
             cs.push([ctr[0]+s.ax[0]*ends[e][0]*0.34*CELL + v[0]*ends[e][1]*CELL,
                      ctr[1]+s.ax[1]*ends[e][0]*0.34*CELL + v[1]*ends[e][1]*CELL,
                      ctr[2]+s.ax[2]*ends[e][0]*0.34*CELL + v[2]*ends[e][1]*CELL]);
-          LAY='detail';
+          K.lay='detail';
           keyed(plateSolid(cs,0.03*CELL), c, 0);
-          LAY=was;
+          K.lay=was;
         }
       }
     }],
@@ -18018,7 +18240,7 @@ function buildStation(p){
         var LC=layerCells(s,d);
         for(i=0;i<LC.length;i++) trussBayW(LC[i],s.ax,0.24,0.035);
       }
-      var was=LAY;
+      var was=K.lay;
       for(d=2;d<=s.depth;d++){
         var LC2=layerCells(s,d);
         for(i=0;i<LC2.length;i++){
@@ -18030,13 +18252,13 @@ function buildStation(p){
               cs.push([ctr[0]+s.ax[0]*ends[e][0]*0.42*CELL + v[0]*ends[e][1]*CELL,
                        ctr[1]+s.ax[1]*ends[e][0]*0.42*CELL + v[1]*ends[e][1]*CELL,
                        ctr[2]+s.ax[2]*ends[e][0]*0.42*CELL + v[2]*ends[e][1]*CELL]);
-            LAY='accent'; keyed(plateSolid(cs,0.025*CELL), c, 0); LAY=was;
+            K.lay='accent'; keyed(plateSolid(cs,0.025*CELL), c, 0); K.lay=was;
           }
         }
       }
     }],
     ['radiator array',0.8, function(){ return true; }, function(ctx){
-      var s=ctx.slot, d, i, q, e, was=LAY;
+      var s=ctx.slot, d, i, q, e, was=K.lay;
       for(d=1;d<=s.depth;d++){
         var LC=layerCells(s,d);
         for(i=0;i<LC.length;i++){
@@ -18048,7 +18270,7 @@ function buildStation(p){
               cs.push([ctr[0]+s.ax[0]*t*0.9*CELL + s.third[0]*ends[e][0]*0.10*CELL + s.out[0]*ends[e][1]*CELL,
                        ctr[1]+s.ax[1]*t*0.9*CELL + s.third[1]*ends[e][0]*0.10*CELL + s.out[1]*ends[e][1]*CELL,
                        ctr[2]+s.ax[2]*t*0.9*CELL + s.third[2]*ends[e][0]*0.10*CELL + s.out[2]*ends[e][1]*CELL]);
-            LAY='detail'; keyed(plateSolid(cs,0.025*CELL), c, 0); LAY=was;
+            K.lay='detail'; keyed(plateSolid(cs,0.025*CELL), c, 0); K.lay=was;
           }
         }
       }
@@ -18089,11 +18311,11 @@ function buildStation(p){
       }
     }],
     ['shipyard cradle',0.4, function(s){ return s.cells.length>=4 && s.out[2]===0; }, function(ctx){
-      var s=ctx.slot, LC=layerCells(s,s.depth), i, was=LAY;
+      var s=ctx.slot, LC=layerCells(s,s.depth), i, was=K.lay;
       for(i=0;i<LC.length;i++) trussBayW(LC[i],s.ax,0.62,0.040);
-      LAY='detail';
+      K.lay='detail';
       tubeRun(ctx,LC.slice(1,LC.length-1),s.ax,0.17*CELL,8,0);
-      LAY=was;
+      K.lay=was;
     }],
     /* PLACED BY `rings`, NEVER PICKED. Weight 0 and a predicate that admits
        nothing -- it is in the table so the row census sees all thirteen, which
@@ -18135,7 +18357,7 @@ function buildStation(p){
      keyed to the wrong cell is exactly the latent bug the lattice exists to
      make impossible. */
   function statGreebles(ctx,c,faces){
-    var rng=statRng(SEED+51,c[0],c[1],c[2]), ctr=centre(c), fi, q, u, was=LAY;
+    var rng=statRng(SEED+51,c[0],c[1],c[2]), ctr=centre(c), fi, q, u, was=K.lay;
     var KINDS=['rcs','box','mast','rail','stripe'];
     for(fi=0;fi<faces.length;fi++){
       if(!ctx.want(ctx.greebleD)) continue;
@@ -18154,15 +18376,15 @@ function buildStation(p){
           hi.push(Math.max(base[u],base[u]+f[u]*h));
         }
         for(q=0;q<tan.length;q++) for(u=0;u<3;u++) if(tan[q][u]){ lo[u]-=0.16*CELL; hi[u]+=0.16*CELL; }
-        LAY='detail'; keyed(boxSolid(lo[0],lo[1],hi[0],hi[1],lo[2],hi[2]), nc, 0); LAY=was;
+        K.lay='detail'; keyed(boxSolid(lo[0],lo[1],hi[0],hi[1],lo[2],hi[2]), nc, 0); K.lay=was;
       } else if(kind==='mast' && ctx.vis(0.05*CELL)){
         var p1=[base[0]+f[0]*0.30*CELL, base[1]+f[1]*0.30*CELL, base[2]+f[2]*0.30*CELL];
-        LAY='detail'; keyed(segTube(base,p1,0.02*CELL,4,false,true,false), nc, 0); LAY=was;
+        K.lay='detail'; keyed(segTube(base,p1,0.02*CELL,4,false,true,false), nc, 0); K.lay=was;
       } else {
         /* rcs / rail / stripe are FLAT MARKS ON the face: no hull, so they add
            nothing to the occluder and cost no silhouette union. */
         if(!ctx.vis(0.10*CELL)) continue;
-        LAY=(kind==='stripe')?'accent':'detail';
+        K.lay=(kind==='stripe')?'accent':'detail';
         var sg=Solid(depth3(nc), ctr[2]+CELL, ctr[0]+ctr[1]);
         sg.cell=nc; sg.h=[];
         var n=(kind==='rail')?4:2;
@@ -18171,7 +18393,7 @@ function buildStation(p){
           var a=[base[0]+tan[0][0]*t*0.7*CELL, base[1]+tan[0][1]*t*0.7*CELL, base[2]+tan[0][2]*t*0.7*CELL];
           addE(sg,[a,[a[0]+tan[1][0]*0.14*CELL, a[1]+tan[1][1]*0.14*CELL, a[2]+tan[1][2]*0.14*CELL]]);
         }
-        push(sg); LAY=was;
+        push(sg); K.lay=was;
       }
     }
   }
@@ -18182,17 +18404,17 @@ function buildStation(p){
      so every solid on the way has already been accumulated into the occluder. */
   function statTether(p0,p1){
     var L=Math.sqrt((p1[0]-p0[0])*(p1[0]-p0[0])+(p1[1]-p0[1])*(p1[1]-p0[1])+(p1[2]-p0[2])*(p1[2]-p0[2]));
-    var steps=Math.max(2,Math.floor(L/(CELL*0.5))), q, far=null, was=LAY;
+    var steps=Math.max(2,Math.floor(L/(CELL*0.5))), q, far=null, was=K.lay;
     for(q=0;q<=steps;q++){
       var t=q/steps;
       var pt=[p0[0]+(p1[0]-p0[0])*t, p0[1]+(p1[1]-p0[1])*t, p0[2]+(p1[2]-p0[2])*t];
       var d=Math.floor(pt[0]/CELL)+Math.floor(pt[1]/CELL)+Math.floor(pt[2]/CELL);
       far=(far===null)?d:Math.min(far,d);
     }
-    LAY='detail';
+    K.lay='detail';
     var s2=Solid(far,-1e9,0);
     s2.h=[]; addE(s2,[p0,p1]);
-    push(s2); LAY=was;
+    push(s2); K.lay=was;
   }
 
   /* The hangar's open mouth: four bars, on the face the stack grows away from. */
@@ -18224,28 +18446,6 @@ function buildStation(p){
     return ok[ok.length-1];
   }
 
-  /* MILLIMETRES PER CELL, ESTIMATED BEFORE ANYTHING IS BUILT. LOD needs a
-     millimetre before the drawing exists, and the fit cannot help: it computes
-     the true scale from the finished geometry, which is downstream of the LOD
-     decision that needs it. The lattice bounding box is the one extent known up
-     front and the drawing is inside it by construction, so this OVER-estimates
-     the scale by at most the margin the station leaves inside its own bbox.
-
-     THE BROWSER KNOWS PAGEMM AND THE CLI HAS TO GUESS IT, which is the spec's
-     "the port is strictly better here": `_mm_per_unit` takes a margin in
-     millimetres off a page string, and this takes the page the sliders are
-     actually set to. One +x lattice step projects to length exactly 1, so
-     `fs * PAGEMM` is millimetres per cell with nothing left to convert. */
-  function mmPerCell(cells){
-    var lx0=1e9, ly0=1e9, lx1=-1e9, ly1=-1e9, i2, a2, b2, c2;
-    for(i2=0;i2<cells.length;i2++) for(a2=0;a2<2;a2++) for(b2=0;b2<2;b2++) for(c2=0;c2<2;c2++){
-      var pr2=proj((cells[i2][0]+a2)*CELL,(cells[i2][1]+b2)*CELL,(cells[i2][2]+c2)*CELL);
-      if(pr2[0]<lx0) lx0=pr2[0]; if(pr2[0]>lx1) lx1=pr2[0];
-      if(pr2[1]<ly0) ly0=pr2[1]; if(pr2[1]>ly1) ly1=pr2[1];
-    }
-    if(!(lx1>lx0)||!(ly1>ly0)) return PAGEMM;
-    return Math.min((PGW-2*pad)/(lx1-lx0),(PGH-2*pad)/(ly1-ly0))*PAGEMM;
-  }
   function cellList(){
     var o=[], kq;
     for(kq in occupied) if(occupied.hasOwnProperty(kq)){
@@ -18253,33 +18453,6 @@ function buildStation(p){
       o.push([+pp2[0],+pp2[1],+pp2[2]]);
     }
     return o;
-  }
-  /* POINTS, NOT PATHS. The CLI's budget counts paths; the ceiling here is
-     GEOCAP's, which is a POINT ceiling, and the two are not interchangeable. */
-  function pointCount(){ return NPTS; }
-  /* WHICH WAY TO GROW. The budget makes the station big; on its own it does not
-     make it the right SHAPE. A uniformly random branch direction kept widening
-     a spine that already runs along +x, and the CLI records seed 7 coming out a
-     ribbon across the middle of the sheet. The PROJECTED extent is what matters
-     and not the lattice extent -- a +z step moves a cell straight up the page
-     while +x and +y each move it sideways AND down -- so the test is on `proj`,
-     and the rule is to grow whichever way the drawing is currently too short.
-     One in four still goes the other way, so a station never becomes a column
-     or a slab just because the sheet is. */
-  function fitAxis(cells,rng){
-    var lx0=1e9, ly0=1e9, lx1=-1e9, ly1=-1e9, i2;
-    for(i2=0;i2<cells.length;i2++){
-      var pr2=proj(cells[i2][0]*CELL,cells[i2][1]*CELL,cells[i2][2]*CELL);
-      if(pr2[0]<lx0) lx0=pr2[0]; if(pr2[0]>lx1) lx1=pr2[0];
-      if(pr2[1]<ly0) ly0=pr2[1]; if(pr2[1]>ly1) ly1=pr2[1];
-    }
-    var w2=lx1-lx0, h2=ly1-ly0;
-    if(!(h2>1e-9)) return STATAXES[Math.min(5,Math.floor(rng()*6))];
-    var tooWide=(w2/h2)>(PGW/PGH);
-    var vert=[[0,0,1],[0,0,-1]], flat=[[1,0,0],[-1,0,0],[0,1,0],[0,-1,0]];
-    var pool=tooWide?vert:flat;
-    if(rng()<0.25) pool=tooWide?flat:vert;
-    return pool[Math.min(pool.length-1,Math.floor(rng()*pool.length))];
   }
 
   /* ---- grow the station ------------------------------------------------ */
@@ -18326,9 +18499,9 @@ function buildStation(p){
      is NOT the thing to change: the spec says so in three places, and the
      profile says the time is spread over five times the drawing rather than
      concentrated anywhere. */
-  var BUDGET=Math.min(budgPts, Math.max(2000,GEOCAPFULL||GEOCAP||560000));
+  var BUDGET=K.budget(budgPts);
   var hullBudget=Math.floor(BUDGET*0.85);
-  var MMEST=mmPerCell(cellList());
+  K.mmest=mmPerCell(cellList());
   var capped=false;
   while(qi<keels.length){
     var kl=keels[qi], axes=statKeelAxes(kl);
@@ -18342,7 +18515,7 @@ function buildStation(p){
     }
     for(i=0;i<kl.length;i++){
       var a_in=axes[i][0], a_out=axes[i][1];
-      LAY='structure';
+      K.lay='structure';
       trussBay(kl[i], a_out||a_in||[1,0,0]);
       /* A CORNER CELL: the incoming bay's axis differs, so a stub closes the
          elbow. Both stay inside the cell. */
@@ -18355,19 +18528,19 @@ function buildStation(p){
         if(!row) continue;
         sl.row=row[0]; nslots++;
         rowTally[row[0]]=(rowTally[row[0]]||0)+1;
-        LAY='structure';
+        K.lay='structure';
         var ctx={slot:sl, rng:rng, lights:wantLights, greebleD:greebD,
                  /* LOD. Iso has no perspective shrink, so this keys on
                     PROJECTED SIZE: anything whose extent falls under `lod` is
                     dropped rather than drawn as a smudge the pen turns into a
-                    blob. MMEST is read LIVE rather than captured, because
+                    blob. K.mmest is read LIVE rather than captured, because
                     growth only ever makes the estimate smaller and a decision
                     taken later deserves the better number. */
-                 vis:function(ext){ return ext*MMEST>=lodMM; },
+                 vis:K.lodVis,
                  want:function(pr){ return rng()<pr; }};
         row[3](ctx);
         built.push(ctx);
-        LAY='structure';
+        K.lay='structure';
         /* OUTRIGGERS ARE ROW 3's CANTILEVER and the one part of a stack that
            LEAVES its own footprint, so they take a cell the slot never claimed
            -- which means checking `occupied` and CLAIMING it, or two outriggers
@@ -18401,7 +18574,7 @@ function buildStation(p){
       if(gsub.length<2) continue;
       for(i=0;i<gsub.length;i++) occupied[statKey(gsub[i])]=1;
       keels.push(gsub);
-      MMEST=mmPerCell(cellList());
+      K.mmest=mmPerCell(cellList());
     }
   }
   /* ---- the passes that run against the FINISHED occupancy ---------------
@@ -18419,7 +18592,7 @@ function buildStation(p){
         var f2=cand[fi2];
         if(!occupied[statKey([gc[0]+f2[0],gc[1]+f2[1],gc[2]+f2[2]])]) faces.push(f2);
       }
-      LAY='structure';
+      K.lay='structure';
       statGreebles(bctx,gc,faces);
     }
   }
@@ -18481,7 +18654,7 @@ function buildStation(p){
         pts.push([anchor2[0], anchor2[1]+Math.round(Math.cos(ra)*ringR),
                   anchor2[2]+Math.round(Math.sin(ra)*ringR)]);
       }
-      LAY='structure';
+      K.lay='structure';
       for(rq=0;rq<8;rq++){
         cutRun(centre(pts[rq]), centre(pts[(rq+1)%8]), 0.16*CELL, 6, true, true);
         nring++;
@@ -18490,113 +18663,24 @@ function buildStation(p){
   }
 
   STATSTATS.cells=0;
-  STATTALLY={cells:[],boxes:[],order:[],tubes:[]};
+  STATTALLY=T;
   for(i in occupied) if(occupied.hasOwnProperty(i)){
     STATSTATS.cells++;
     var kp=i.split(',');
     STATTALLY.cells.push([+kp[0],+kp[1],+kp[2]]);
   }
-  for(i=0;i<solids.length;i++){
-    var SB=solids[i], bx=[1e9,1e9,1e9,-1e9,-1e9,-1e9], be, bp, bq;
-    for(be=0;be<SB.e.length;be++) for(bp=0;bp<SB.e[be].length;bp++)
-      for(bq=0;bq<3;bq++){
-        var vv=SB.e[be][bp][bq];
-        if(vv<bx[bq]) bx[bq]=vv;
-        if(vv>bx[bq+3]) bx[bq+3]=vv;
-      }
-    if(bx[0]<1e8) STATTALLY.boxes.push([SB.key, SB.cell, bx[0],bx[1],bx[2],bx[3],bx[4],bx[5],
-                                        SB.h.length>0?1:0]);
-  }
+  K.tallyBoxes();
   STATSTATS.solids=solids.length; STATSTATS.slots=nslots; STATSTATS.rows=rowTally;
   STATSTATS.tethers=nteth; STATSTATS.ships=nship; STATSTATS.rings=nring;
-  STATSTATS.grown=grown; STATSTATS.capped=capped; STATSTATS.mmest=MMEST;
+  STATSTATS.grown=grown; STATSTATS.capped=capped; STATSTATS.mmest=K.mmest;
   STATSTATS.budget=BUDGET; STATSTATS.points=pointCount();
 
-  /* ---- front to back, then the page ------------------------------------
-     i+j+k DESCENDING IS THE EXACT PAINTER ORDER for disjoint unit cells, and
-     everything above exists to keep the cells disjoint. BETWEEN cells that is
-     the whole answer and it is unchanged.
+  /* ---- front to back, then the page: the kit's, see ISOKIT. ------------- */
+  K.sort();
+  K.tallyOrder();
 
-     F2. INSIDE a cell, `top` used to decide first, and a maximum z is not a
-     depth. On a docking hub the ball's top is cz + 0.30 cell and a horizontal
-     port's is cz + 0.13, so the ball was committed as an occluder before the
-     +x and +y ports that sit IN FRONT of it, and their hulls clipped those
-     ports down to slivers. The CLI makes the same mistake through `_keyed`'s
-     (depth(c), key[1], key[2]) and is not the reference for this.
-     `dep` is the mean of x+y+z over the solid's own hull points, in world
-     units, before projection -- x+y+z IS the distance along the view direction,
-     so a larger mean is nearer the camera. Computed HERE rather than in the
-     primitives: every solid has `h` by the time it reaches this line, and one
-     loop cannot be forgotten by a primitive added later. `keyed` sets `key` and
-     must not touch this. */
-  var dq, dh, dsum;
-  for(dq=0;dq<solids.length;dq++){
-    var DS=solids[dq];
-    dsum=0;
-    for(dh=0;dh<DS.h.length;dh++) dsum+=DS.h[dh][0]+DS.h[dh][1]+DS.h[dh][2];
-    DS.dep=DS.h.length?dsum/DS.h.length:DS.top;
-  }
-  solids.sort(function(a,b2){ return (b2.key-a.key) || (b2.dep-a.dep) ||
-                                     (b2.top-a.top) || (b2.tie-a.tie); });
-  /* F3's doors, taken AFTER the sort because the order is the thing layer 7
-     checks. `boxes` above stays where it is: layer 1 asks about confinement,
-     which the sort cannot change. */
-  STATTALLY.order=solids.map(function(SO){
-    return {key:SO.key, cell:SO.cell, dep:SO.dep, top:SO.top, tie:SO.tie,
-            lay:SO.lay, shape:SO.shape||null};
-  });
-  STATTALLY.tubes=STATTUBES;
-
-  /* THE FIT HAPPENS BEFORE THE OCCLUSION. The halo is asked for in
-     millimetres, so the geometry has to already be in page units when it is
-     applied -- the same rule buildIso and project3 carry, and the reason the
-     CLI has to ESTIMATE mm-per-unit from a planned bbox while the browser gets
-     it exactly. `PAGEMM` is mm per page unit on the short axis, so
-     `fs * PAGEMM` is millimetres per lattice unit and nothing has to guess. */
-  var wx0=1e9, wy0=1e9, wx1=-1e9, wy1=-1e9, si2, m3;
-  for(si2=0;si2<solids.length;si2++){
-    var S0=solids[si2];
-    for(m3=0;m3<S0.e.length;m3++){
-      var ee=S0.e[m3], q4;
-      for(q4=0;q4<ee.length;q4++){
-        var pr=proj(ee[q4][0],ee[q4][1],ee[q4][2]);
-        if(pr[0]<wx0) wx0=pr[0]; if(pr[0]>wx1) wx1=pr[0];
-        if(pr[1]<wy0) wy0=pr[1]; if(pr[1]>wy1) wy1=pr[1];
-      }
-    }
-  }
-  if(!(wx1>wx0)||!(wy1>wy0)){ STATINFO='nothing to draw'; return out; }
-  var fs=Math.min((PGW-2*pad)/(wx1-wx0),(PGH-2*pad)/(wy1-wy0));
-  var ox=(PGW-(wx1-wx0)*fs)/2, oy=(PGH-(wy1-wy0)*fs)/2;
-  function toPage(q){ return [ox+(q[0]-wx0)*fs, oy+(q[1]-wy0)*fs]; }
-
-  /* Front to back: clip each solid against everything already committed, then
-     add its own silhouette. Clipped BEFORE it is added, so it never eats
-     itself. `hlr` is the shared one -- v238's grid index and cached precompute
-     come with it and nothing here touches hlrConvex. */
-  var occl=[], k3;
-  for(si2=0;si2<solids.length;si2++){
-    var S=solids[si2], pp=[];
-    for(k3=0;k3<S.e.length;k3++){
-      var src=S.e[k3], dst=new Array(src.length), m4;
-      for(m4=0;m4<src.length;m4++){
-        var q3=toPage(proj(src[m4][0],src[m4][1],src[m4][2]));
-        dst[m4]=[q3[0],q3[1],0];
-      }
-      pp.push(dst);
-    }
-    if(pp.length){
-      var frag=hlr(pp,p,occl), n5=out.length;
-      for(k3=0;k3<frag.length;k3++) if(frag[k3].length>1) out.push(frag[k3]);
-      for(;n5<out.length;n5++) out[n5].lay=S.lay;
-    }
-    if(S.h.length){
-      var hp2=[], m5;
-      for(m5=0;m5<S.h.length;m5++) hp2.push(toPage(proj(S.h[m5][0],S.h[m5][1],S.h[m5][2])));
-      var hl=hull(hp2);
-      if(hl) occl.push(hl);
-    }
-  }
+  var fs=K.render(out);
+  if(!fs){ STATINFO='nothing to draw'; return out; }
   STATSTATS.paths=out.length;
   /* THE MACHINE-READABLE HALF OF THE SCALE. The stat line rounds to a tenth
      because a human reading "7.3 mm/cell" wants a tenth; a gate comparing two
