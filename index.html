@@ -438,7 +438,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v312</a> &mdash; TRAIN STATION -- a new corridor engine on the 3D shelf: a commuter through-station seen from its platform, two narrow-gauge tracks between side platforms, a train at the far platform with its cab toward you, canopy on columns, overhead wires on portals, hanging signs and station name boards, a footbridge, platform furniture, and the city's buildings behind a back lane (queue row 85)</span></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v313</a> &mdash; LOADING AN SVG REBUILDS ITS PINS -- a file's pinned layers come back from their own recipes, under the file's names and colours, with the live layer restored on top; the same from an Exports entry</span></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <section class="fold" id="fold_pick"><h2>Pick engine<span class="cnt"></span></h2>
@@ -28813,18 +28813,93 @@ function paintName(){
   catch(e){ el.textContent=''; }
 }
 var SPADNS='https://hakeemolajuwonton.github.io/sketchpad/ns/1';
+/* REBUILD THE PINS A FILE CARRIES (row 89). A pin is frozen geometry, but its
+   recipe came with it, so the composition is rebuilt rather than parsed back
+   out of the paths: restore the pin's recipe, press Pin exactly as the button
+   does, and the layers are the ones that recipe draws.
+
+   THE FILE'S PINS REPLACE THE PAGE'S. The file is the whole composition --
+   adding to pins already on the page would export something the file never
+   held, and Reset all leaves pins alone. A file with no pins leaves them, as
+   row 88 did.
+
+   ONE PRESS IS A RUN OF CONSECUTIVE ELEMENTS WITH THE SAME src, and a press
+   can make several layers (a multi-pen engine). So a run is pressed until it
+   has made as many pins as the file has elements for it -- two identical
+   presses back to back are one run of twice the length -- and each pin then
+   takes its name and colour FROM THE ELEMENT, never from the rebuild or from
+   whatever pens happen to be live: the file's layer labels and strokes are
+   what the next export must write.
+
+   A src that cannot be drawn (no recipe, an engine this build does not have,
+   nothing drawn) is SKIPPED BY NAME, and the rest still load. The live recipe
+   is restored by the caller AFTER this, never before: every press restores a
+   pin's recipe over the live state. */
+function rebuildPins(list){
+  var runs=[], made=0, skipped=[], extra=0;
+  list.forEach(function(e){
+    var r=runs.length?runs[runs.length-1]:null;
+    if(r && r.key===e.key) r.els.push(e); else runs.push({key:e.key, src:e.src, els:[e]});
+  });
+  PINS=[];
+  runs.forEach(function(r){
+    var s=r.src, why=null;
+    if(!s || typeof s!=='object' || s.app!=='plotter-sketchpad') why='no recipe';
+    else if(!SPEC[s.mode]) why='engine '+s.mode+' is not in this build';
+    if(!why){
+      try{ restore(JSON.parse(JSON.stringify(s))); }catch(err){ why=err.message; }
+    }
+    var at=PINS.length;
+    if(!why){
+      while(PINS.length-at<r.els.length){
+        var n0=PINS.length; pinCurrent();
+        if(PINS.length===n0){ why=s.mode+' drew nothing'; break; }
+      }
+    }
+    if(why){
+      PINS.length=at;
+      r.els.forEach(function(e){ skipped.push((e.name||'?')+' ('+why+')'); });
+      return;
+    }
+    /* a press that made more layers than the file has elements for this run:
+       the build has drifted from the file; keep what the file names */
+    extra+=PINS.length-at-r.els.length;
+    PINS.length=at+r.els.length;
+    r.els.forEach(function(e,i){
+      var P=PINS[at+i];
+      if(e.name) P.name=String(e.name);
+      if(/^#[0-9a-fA-F]{6}$/.test(e.hex||'')) P.hex=e.hex;
+      made++;
+    });
+  });
+  /* the loaded composition is framed afresh, as Clear pins hands the view back */
+  viewUser=false;
+  return {k:made, skipped:skipped, extra:extra};
+}
+function pinNote(rb){
+  if(!rb) return '';
+  return (rb.skipped.length?', skipped pin '+rb.skipped.join(', '):'')+
+         (rb.extra?', '+rb.extra+' layer(s) this build adds were dropped':'');
+}
 /* LOAD AN SVG: find spad:recipe by namespace, restore it, and it becomes the
-   parent under its own name. A file without one changes nothing. */
+   parent under its own name. A file without one changes nothing. Pins first,
+   then the live recipe on top of them. */
 function loadSvgText(text){
   var doc=new DOMParser().parseFromString(text,'image/svg+xml');
   var rs=doc.getElementsByTagNameNS(SPADNS,'recipe');
   if(!rs.length){ msg('this SVG has no sketchpad recipe \u2014 exported before '+SV+' or by another tool'); return; }
   var R=rs[0], o=JSON.parse(R.textContent), name=R.getAttribute('name')||'', sv=R.getAttribute('sv')||'?';
-  var pinEls=doc.getElementsByTagNameNS(SPADNS,'pin');
+  var pinEls=doc.getElementsByTagNameNS(SPADNS,'pin'), pl=[];
+  for(var i=0;i<pinEls.length;i++){
+    var t=pinEls[i].textContent, s=null;
+    try{ s=JSON.parse(t); }catch(err){ s=null; }
+    pl.push({name:pinEls[i].getAttribute('name')||'', hex:pinEls[i].getAttribute('hex')||'', src:s, key:t});
+  }
+  var rb=pl.length?rebuildPins(pl):null;
   var u=restore(o);
   parentFromLoad(name);
-  msg('loaded '+name+' ('+sv+' recipe)'+(u.length?', ignored '+u.length+' unknown key(s)':'')+
-      (pinEls.length?' \u2014 '+pinEls.length+' pinned layer(s) in this file are not rebuilt yet':''));
+  msg('loaded '+name+(rb?' with '+rb.k+' pin(s)':'')+' ('+sv+' recipe)'+
+      (u.length?', ignored '+u.length+' unknown key(s)':'')+pinNote(rb));
 }
 function loadFile(f){
   if(!f) return;
@@ -28855,10 +28930,13 @@ function whenStr(t){
   if(d.toDateString()===n.toDateString()) return 'today '+pad2(d.getHours())+':'+pad2(d.getMinutes());
   return ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d.getMonth()]+' '+d.getDate();
 }
+/* an entry's pins are recipe-lites, rebuilt exactly as a file's are (row 89) */
 function restoreEntry(E){
+  var rb=(E.pins&&E.pins.length)?rebuildPins(E.pins.map(function(P){
+    return {name:P.name, hex:P.hex, src:P.recipe?JSON.parse(JSON.stringify(P.recipe)):null, key:canonJSON(P.recipe||null)}; })):null;
   var u=restore(JSON.parse(JSON.stringify(E.recipe)));
   setParent(E.name, recipeLite(snapshot()), pinLites(), E.hash);
-  return u;
+  return {u:u, rb:rb};
 }
 function paintExports(){
   var box=document.getElementById('expList'); if(!box) return;
@@ -28874,7 +28952,8 @@ function paintExports(){
     x.addEventListener('click',function(ev){ ev.stopPropagation();
       var a=readLog().slice(); a.splice(i,1); writeLog(a); });
     r.addEventListener('click',function(){
-      try{ var u=restoreEntry(E); msg('restored '+E.name+(u.length?', ignored '+u.length+' unknown key(s)':'')); }
+      try{ var r=restoreEntry(E), u=r.u;
+        msg('restored '+E.name+(r.rb?' with '+r.rb.k+' pin(s)':'')+(u.length?', ignored '+u.length+' unknown key(s)':'')+pinNote(r.rb)); }
       catch(err){ msg('restore failed: '+err.message); }
     });
     r.appendChild(n); r.appendChild(x); r.appendChild(w); box.appendChild(r);
