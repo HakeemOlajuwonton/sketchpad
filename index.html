@@ -438,7 +438,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v313</a> &mdash; LOADING AN SVG REBUILDS ITS PINS -- a file's pinned layers come back from their own recipes, under the file's names and colours, with the live layer restored on top; the same from an Exports entry</span></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v314</a> &mdash; TRAIN SHED -- the station under one arched roof: brick side walls with arched windows, lattice iron ribs, glazed roof plates, a smoke-vent lantern on the crown and a glazed end screen; the canopies, portals and buildings give way to it, and the wires hang from the ribs</span></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <section class="fold" id="fold_pick"><h2>Pick engine<span class="cnt"></span></h2>
@@ -3327,7 +3327,7 @@ var SPEC={
     ['trains','Trains',0,3,1,1],['ncar','Cars',1,15,1,10],['tfront','Train front',0,200,1,30,[1,' m']],
     ['wires','Overhead wires',0,1,1,1],['sag','Wire sag',0,30,1,6,[100,'%']],
     ['canopy','Canopy',0,100,1,85,[100,'%']],['colsp','Column spacing',4,15,0.5,8,[1,' m']],['croof','Canopy roof',0,2,1,1],
-    ['psign','Platform signs',0,100,1,60,[100,'%']],['fbridge','Footbridge',0,1,1,1],
+    ['psign','Platform signs',0,100,1,60,[100,'%']],['fbridge','Footbridge',0,1,1,1],['shed','Train shed',0,1,1,0],
     ['pfurn','Platform furniture',0,100,1,50,[100,'%']],['ballast','Ballast',0,100,1,40,[100,'%']],
     ['hatch','Tone hatch',0,100,1,55,[100,'%']],['hatchmode','Hatch spacing',0,1,1,0],
     ['sun','Light from',0,359,1,300,[1,'°']],
@@ -20883,7 +20883,7 @@ function trainTheme(K){
      project to; on a platform that is the deck's back, so it is moved there
      BEFORE streetTheme reads it, and the deck keeps its own. */
   lots.forEach(function(L){ L.deckFe=L.fe; L.fe=Math.max(L.fe,PLATB+0.05); L.isWall=sub(L.side<0?2:1,L.idx,SALT_PLAT)()<0.3; });
-  function resetLots(){ TAL.decks=[]; TAL.tactile=[]; TAL.walls=[]; TAL.roofs=[]; TAL.columns=[]; TAL.signs=[]; TAL.boards=[]; TAL.clocks=[]; TAL.furn=[]; }
+  function resetLots(){ if(TAL.shed) TAL.shed.walls=0; TAL.decks=[]; TAL.tactile=[]; TAL.walls=[]; TAL.roofs=[]; TAL.columns=[]; TAL.signs=[]; TAL.boards=[]; TAL.clocks=[]; TAL.furn=[]; }
   var S=streetTheme(K);
   var bySide={'1':[],'-1':[]};
   lots.forEach(function(L){ bySide[L.side].push(L); });
@@ -21033,6 +21033,31 @@ function trainTheme(K){
     return {lines:o, h:h};
   }
 
+  /* ---- §4 (row 86) THE TRAIN SHED: its arch, first, because the footbridge
+     must fit under it and the wires hang from its ribs. A SEGMENTAL arch
+     springing from wall top to wall top: span 2 x PLATB, rise 0.35 x span, so
+     radius SR and centre SZC below the springing. Node k of a 16-segment chord
+     chain at radius r is archN(k,r), o from +SHW (k 0) to -SHW (k 16). Every
+     piece is a CHORD piece, never the circle, so each is convex and the
+     intrados that clearances are measured against is the chord chain itself */
+  var SHED=Math.round(kn(p.shed,0,0,1)), SALT_SHED=397;
+  var SPZ=KERB+7.0, SHW=PLATB, SRISE=0.35*2*SHW, SR=(SHW*SHW+SRISE*SRISE)/(2*SRISE), SZC=SPZ+SRISE-SR,
+      STH=Math.atan2(SPZ-SZC,SHW), SN=16, RDEP=0.5, RTK=0.25, PTK=0.05, LANW=1.0, LANH=1.0;
+  function archN(k,r){ var a=STH+(Math.PI-2*STH)*k/SN; return [r*Math.cos(a), SZC+r*Math.sin(a)]; }
+  /* the intrados chord chain's height over lateral offset |o| */
+  function intrZ(o){
+    o=Math.abs(o);
+    for(var k=0;k<SN/2;k++){ var A=archN(k,SR), B=archN(k+1,SR);
+      if(o<=A[0]+1e-12 && o>=B[0]-1e-12) return A[1]+(B[1]-A[1])*(A[0]-o)/(A[0]-B[0]); }
+    return o>SHW?SPZ:SZC+SR;
+  }
+  /* the ribs at Column spacing, the first on a slab centre, each wholly
+     inside [0, LEN] with room for the end screen behind the last */
+  var RIBS=[];
+  if(SHED) for(var rs0=SLAB/2; rs0+RTK/2<=LEN-0.05; rs0+=COLSP) RIBS.push(rs0);
+  TAL.shed={on:!!SHED, spz:SPZ, span:2*SHW, rise:SRISE, R:SR, zc:SZC, ribs:RIBS.slice(), crown:SPZ+SRISE, bridgeFit:null,
+            walls:0, ribPieces:0, plates:0, lantern:0, screen:0, miss:0};
+
   /* ---- §3.7 the footbridge's place first: portals keep 8 m clear of it,
      the canopy, columns and furniture keep off its stair housings */
   var FB=null;
@@ -21042,11 +21067,23 @@ function trainTheme(K){
     while(sf>LEN-14) sf-=SLAB;
     if(sf-sEye>=46) FB={s:sf, zd:7.0, hl:1.7, stair:-1, lst:0, ud:ud};
   }
+  /* UNDER THE SHED THE FOOTBRIDGE MUST FIT UNDER THE ARCH (row 86): its roof
+     (zd + 3.1) 0.3 m under the intrados over its whole width, and clear of the
+     side walls. Its ends and stair housings move in toward the tracks to where
+     that holds; where the housings would then stand on the tactile strip the
+     platform is too narrow for both, and the bridge is left out, and said. */
+  if(FB && SHED){
+    var zNeed=FB.zd+3.1+0.3, oMax=-1;
+    if(intrZ(0)>=zNeed){ var lo0=0, hi0=SHW; for(var it0=0;it0<60;it0++){ var md0=(lo0+hi0)/2; if(intrZ(md0)>=zNeed) lo0=md0; else hi0=md0; } oMax=lo0; }
+    var ho1=Math.min(PLATB-0.65,oMax-0.4);
+    if(oMax<0 || ho1-1.3<HALFW+1.2){ TAL.shed.bridgeFit='does not fit under the arch'; FB=null; }
+    else { FB.ho1=ho1; FB.ho0=ho1-1.3; FB.ob=ho1+0.4; TAL.shed.bridgeFit={ob:FB.ob, ho0:FB.ho0, ho1:FB.ho1, zNeed:zNeed}; }
+  }
   /* §3.4 the portals: every 40-50 m, each on a slab centre, never within 8 m
      of the footbridge or 12 m (along) of the eye, both masts in a lot whose
      deck front is the kerb's back */
   var PORT=[];
-  if(WIRES){
+  if(WIRES && !SHED){
     var RW=sub(0,0,SALT_WIRE), sp=2+SLAB*Math.floor(RW()*3);
     while(sp<LEN-2){
       var s1=SLAB*Math.floor(sp/SLAB)+SLAB/2, tries=0, ok=false;
@@ -21063,20 +21100,25 @@ function trainTheme(K){
       if(ok){ PORT.push({s:s1, st:(PORT.length%2?-0.2:0.2)}); sp=s1+40+10*RW(); } else sp=s1;
     }
   }
-  TAL.portals=PORT.map(function(q){ return {s:q.s, stagger:q.st, placed:false}; });
+  /* under the shed the wires hang from drop tubes on the ribs (row 86): a
+     support every 40 m or more, on a rib clear of the eye and the footbridge */
+  if(WIRES && SHED){ var lastS=-1e9;
+    RIBS.forEach(function(sr){ var clr=Math.abs(sr-sEye)>=12 && !(FB && Math.abs(sr-FB.s)<8+FB.hl);
+      if(clr && sr-lastS>=40){ PORT.push({s:sr, st:(PORT.length%2?-0.2:0.2), rib:true}); lastS=sr; } }); }
+  TAL.portals=PORT.map(function(q){ var r={s:q.s, stagger:q.st, placed:false}; if(q.rib) r.rib=true; return r; });
   /* the messenger's height over arc s on a track, for the footbridge */
   var MZ=WIRES?6.2:0, CZ=5.2, MSAG=0.7*WSAG/0.30;
 
   /* ---- §3.5 the canopy: which lots are covered, the column line, the roof */
   var cov0=LEN*(1-CANOPY)/2, cov1=LEN*(1+CANOPY)/2, OCOL=HALFW+0.6*PLATW, OFR=HALFW+1.0;
   TAL.covered=[cov0,cov1]; TAL.colO=OCOL;
-  function covered(L){ var c=(L.s0+L.s1)/2; return CANOPY>0 && c>=cov0 && c<=cov1; }
+  function covered(L){ var c=(L.s0+L.s1)/2; return CANOPY>0 && !SHED && c>=cov0 && c<=cov1; }
   /* the stair housings' arcs on each platform */
   var HOUSE=[];
   if(FB){
     var zTop=FB.zd+3.1, lst=(zTop-(KERB+2.6))/Math.tan(30*Math.PI/180);
     FB.lst=lst;
-    [1,-1].forEach(function(sd){ HOUSE.push({side:sd, s0:FB.s-FB.hl-lst, s1:FB.s-FB.hl, o0:PLATB-1.75, o1:PLATB-0.45}); });
+    [1,-1].forEach(function(sd){ HOUSE.push({side:sd, s0:FB.s-FB.hl-lst, s1:FB.s-FB.hl, o0:FB.ho1!==undefined?FB.ho0:PLATB-1.75, o1:FB.ho1!==undefined?FB.ho1:PLATB-0.45}); });
   }
   function inHouse(sd,s0,s1,m){ m=m||0; return HOUSE.some(function(h){ return h.side===sd && s1>h.s0-m && s0<h.s1+m; }); }
   /* the roof's back edge on a lot: the deck's back, or in front of a housing */
@@ -21118,7 +21160,9 @@ function trainTheme(K){
      building blocks are the lot's first parts. */
   function dress(L,dn,df){
     if(L===lots[0]) resetLots();
-    S.dress(L,dn,df);
+    /* under the shed the Street's stacks are not built: the kit put them in
+       as the lot's first parts, and they go before anything else is added */
+    if(SHED) L.parts.splice(0,L.blocks.length); else S.dress(L,dn,df);
     var sd=L.side, sk=sd<0?2:1, mid=P3((L.s0+L.s1)/2,sd,(L.deckFe+PLATB)/2,KERB), dl=dist3(mid), k;
     /* the deck */
     var DQ=arcQuad(sd,L.s0,L.s1,L.deckFe,PLATB), D=prism(DQ,0,KERB);
@@ -21152,6 +21196,7 @@ function trainTheme(K){
     L.slots.forEach(function(Cs){ var Sd=prism(Cs.poly,0,KERB); tag(Sd,'deck',COL_K,'platform'); Sd.hides=false; Sd.cont=Cs; Cs.parts.push(Sd); });
     TAL.decks.push({side:sd, idx:L.idx, s0:L.s0, s1:L.s1, fe:L.deckFe, back:PLATB, top:KERB});
     /* fence or wall, on the deck's back 0.2 m (361: 30% of lots a wall) */
+    if(SHED) shedWall(L,dl,dn,df); else {
     var RP=sub(sk,L.idx,SALT_PLAT), uw=RP(), np=2+Math.floor(RP()*3), upos=[RP(),RP(),RP(),RP()];
     var wall=L.isWall, fo0=PLATB-0.2;
     if(wall){
@@ -21203,6 +21248,7 @@ function trainTheme(K){
       }
     }
     TAL.walls.push({side:sd, idx:L.idx, wall:wall});
+    }
     /* the roof and its columns */
     if(covered(L)) roofFor(L,dl,dn,df);
     if(dl<df) furnFor(L);
@@ -21315,7 +21361,7 @@ function trainTheme(K){
 
   /* ---- §3.6 hanging signs, name boards and clocks (after the roof) ------- */
   function signsFor(L,dn,df){
-    S.signsFor(L,dn,df);
+    if(!SHED) S.signsFor(L,dn,df);
     var sd=L.side, sk=sd<0?2:1, dl=dist3(P3((L.s0+L.s1)/2,sd,OCOL,KERB+2.5));
     if(!covered(L) || !(dl<df)) return;
     var zp=roofPlane(L), cs=COLS[sd], ci;
@@ -21701,6 +21747,7 @@ function trainTheme(K){
   function portals(dn,df){
     PORT.forEach(function(q,pi){
       var s=q.s, X=laneFrame(s), d=dist3(X(s,0,7.2)), list=[], rec=TAL.portals[pi], k;
+      if(q.rib){ ribDrops(q,pi,X,rec); return; }
       var mo0=HALFW+0.40, mo1=HALFW+0.70;
       [1,-1].forEach(function(sd){
         var L=lotAt(sd,s,0.25); if(!L){ list.push(null); return; }
@@ -21770,13 +21817,210 @@ function trainTheme(K){
     });
   }
 
+  /* ---- §4 (row 86) THE TRAIN SHED: walls, ribs, roof, lantern, screen ----
+     STRAIGHT FRAMES, AND PLANES WHERE THEY MEET. The kit's lateral lines are
+     not radial (the spline interpolates heading and position separately), so
+     a plate whose corners are P3 points is a few tenths of a millimetre out of
+     plane on a bend. Each rib is built in the straight frame at its own s, and
+     each bay's plates and lantern in the straight frame at the bay's middle,
+     ending ON the rib's face plane (or the shed's end plane): every face is
+     then exactly planar, every piece convex, and a plate meets its rib face to
+     face. contPieces cuts each at every container face it crosses. */
+  function planeAt(s,ds){ var F=frame(s); return {p:[F[0]+F[2]*ds, F[1]+F[3]*ds], t:[F[2],F[3]]}; }
+  /* the s, in the straight frame X at sm (heading Fm), where the line at
+     lateral o crosses the vertical plane pl */
+  function sOn(X,Fm,sm,o,pl){ var q=X(sm,o,0), den=Fm[2]*pl.t[0]+Fm[3]*pl.t[1];
+    return sm+((pl.p[0]-q[0])*pl.t[0]+(pl.p[1]-q[1])*pl.t[1])/den; }
+  function shedPut(P,kind,col,d,open){
+    var cp=contPieces(P);
+    TAL.shed.miss=Math.max(TAL.shed.miss,cp.miss);
+    cp.pieces.forEach(function(Q){ tag(Q,kind,col,'shed',{gapless:true}); if(open){ Q.hides=false; Q.seeThru=true; } Q.cont.parts.push(Q); });
+    return cp.pieces.length;
+  }
+  /* the side wall on a lot, in place of the fence: brick from the deck to
+     the springing, coursing every 0.3 m on the paper floor near, and an
+     arched window in every bay between ribs (its lines cut at the lot's ends) */
+  function shedWall(L,dl,dn,df){
+    var sd=L.side, sk=sd<0?2:1, fo0=PLATB-0.2, WQ=arcQuad(sd,L.s0,L.s1,fo0,PLATB+0.2), W=prism(WQ,KERB,SPZ);
+    var e0=L.s0<1e-9, e1=L.s1>LEN-1e-9;
+    ln(W,[WQ[0][0],WQ[0][1],SPZ],[WQ[1][0],WQ[1][1],SPZ],1,2,'shedwall');
+    ln(W,[WQ[3][0],WQ[3][1],SPZ],[WQ[2][0],WQ[2][1],SPZ],1,4,'shedwall');
+    ln(W,[WQ[0][0],WQ[0][1],KERB],[WQ[1][0],WQ[1][1],KERB],0,2,'shedwall');
+    if(e0){ ln(W,[WQ[0][0],WQ[0][1],KERB],[WQ[0][0],WQ[0][1],SPZ],2,5,'shedwall'); ln(W,[WQ[0][0],WQ[0][1],SPZ],[WQ[3][0],WQ[3][1],SPZ],1,5,'shedwall'); }
+    if(e1){ ln(W,[WQ[1][0],WQ[1][1],KERB],[WQ[1][0],WQ[1][1],SPZ],2,3,'shedwall'); ln(W,[WQ[1][0],WQ[1][1],SPZ],[WQ[2][0],WQ[2][1],SPZ],1,3,'shedwall'); }
+    /* the windows of the bays this lot's wall carries */
+    var WW=Math.min(2.4,0.45*COLSP), zs=KERB+1.6, za=KERB+4.6, hw=WW/2, WIN=[];
+    for(var bi=0;bi+1<RIBS.length;bi++){
+      var sw=(RIBS[bi]+RIBS[bi+1])/2; if(sw+hw<L.s0 || sw-hw>L.s1) continue;
+      WIN.push({s:sw, bay:bi});
+    }
+    function seg(a,b,kind,col){
+      /* (s,z) to (s,z) on the wall's face, cut to the lot's own length */
+      var sa=a[0], sb=b[0], t0=0, t1=1;
+      if(Math.abs(sb-sa)>1e-12){ var u0=(L.s0-sa)/(sb-sa), u1=(L.s1-sa)/(sb-sa); t0=Math.max(0,Math.min(u0,u1)); t1=Math.min(1,Math.max(u0,u1)); }
+      else if(sa<L.s0 || sa>L.s1) return;
+      if(t1-t0<1e-9) return;
+      var A=[sa+(sb-sa)*t0, a[1]+(b[1]-a[1])*t0], B=[sa+(sb-sa)*t1, a[1]+(b[1]-a[1])*t1];
+      ln(W,onChord(sd,L.s0,L.s1,fo0,A[0],A[1]),onChord(sd,L.s0,L.s1,fo0,B[0],B[1]),2,2,kind,col);
+    }
+    if(dl<df) WIN.forEach(function(w){
+      var pl=[[w.s-hw,za],[w.s-hw,zs],[w.s+hw,zs],[w.s+hw,za]], j;
+      for(j=1;j<=12;j++){ var a=Math.PI*j/12; pl.push([w.s+hw*Math.cos(a), za+hw*Math.sin(a)]); }
+      for(j=1;j<pl.length;j++) seg(pl[j-1],pl[j],'shedwin',COL_K);
+      if(dl<dn){
+        var R=sub(sk,w.bay,SALT_SHED), m=2+Math.floor(R()*3);
+        seg([w.s-hw,za],[w.s+hw,za],'glazing',COL_DG);
+        for(j=1;j<=m;j++){ var sx=w.s-hw+WW*j/(m+1); seg([sx,zs],[sx,za+Math.sqrt(Math.max(0,hw*hw-(sx-w.s)*(sx-w.s)))],'glazing',COL_DG); }
+      }
+    });
+    /* coursing: every 0.3 m, every 2^k-th where the paper floor needs, and
+       broken where a window is */
+    if(dl<dn){
+      var sm=(L.s0+L.s1)/2, g=paperGap(onChord(sd,L.s0,L.s1,fo0,sm,(KERB+SPZ)/2),vecT(sm),[0,0,1]), th=thin(g,0.3), j2;
+      for(j2=th;KERB+0.3*j2<SPZ-0.05;j2+=th){
+        var z=KERB+0.3*j2, cuts=[];
+        WIN.forEach(function(w){ var h=z<=za?(z>=zs?hw:-1):(z<za+hw?Math.sqrt(hw*hw-(z-za)*(z-za)):-1); if(h>0) cuts.push([w.s-h,w.s+h]); });
+        cuts.sort(function(a,b){ return a[0]-b[0]; });
+        var cur=L.s0;
+        cuts.forEach(function(c){ if(c[0]>cur) seg([cur,z],[Math.min(c[0],L.s1),z],'brick','#4b3621'); cur=Math.max(cur,c[1]); });
+        if(cur<L.s1) seg([cur,z],[L.s1,z],'brick','#4b3621');
+      }
+    }
+    tag(W,'shedwall','#4b3621','shed',{gapless:true}); W.cont=L; L.parts.push(W);
+    TAL.shed.walls++;
+  }
+  /* a support on a rib: the drop tube from the rib's intrados over each
+     track, and its registration arm out to the contact wire's stagger */
+  function ribDrops(q,pi,X,rec){
+    var s=q.s, list=[];
+    [1,-1].forEach(function(sd){
+      var oc=sd*OC, top=intrZ(Math.abs(oc)+0.03)-0.01, Dt=see(boxIn(X,s-0.02,s+0.02,oc-0.02,oc+0.02,CZ+0.15,top));
+      Dt.lines=[]; var fd=faceIx(Dt,sub3(X(s-1,oc,6),X(s,oc,6)));
+      ln(Dt,X(s-0.02,oc,top),X(s-0.02,oc,CZ+0.15),fd,fd,'drop',COL_GREY);
+      tag(Dt,'drop',COL_GREY,'portal'); Dt.hides=false; Dt.seeThru=true;
+      var Ar=see(boxIn(X,s-0.02,s+0.02,oc+Math.min(0,sd*q.st)-0.01,oc+Math.max(0,sd*q.st)+0.01,CZ+0.05,CZ+0.15));
+      Ar.lines=[]; ln(Ar,X(s,oc,CZ+0.15),X(s,oc+sd*q.st,CZ+0.06),0,0,'arm',COL_GREY);
+      tag(Ar,'arm',COL_GREY,'portal'); Ar.hides=false; Ar.seeThru=true;
+      list.push(onSlabs(Dt,'drop',COL_GREY,'portal')); list.push(onSlabs(Ar,'arm',COL_GREY,'portal'));
+    });
+    rec.placed=commitAll(list,['struct','platform','canopy','psign','portal','bridge']);
+  }
+  function shed(dn,df){
+    var T=TAL.shed; T.ribPieces=0; T.plates=0; T.lantern=0; T.screen=0; T.miss=0;
+    var IN=[], OUT=[], TOP=[], k;
+    for(k=0;k<=SN;k++){ IN.push(archN(k,SR)); OUT.push(archN(k,SR+RDEP)); TOP.push(archN(k,SR+RDEP+PTK)); }
+    var LZ0=SZC+SR+RDEP+PTK;
+    /* the ribs: 16 segments each, a lattice truss -- chords, a radial at
+       every node and a diagonal in every panel, on both faces, near.
+       A LATTICE IS OPEN, SO A RIB HIDES NOTHING: what is behind it shows
+       through, and both faces' lattice is drawn. As a solid it also could not
+       hide CLEANLY -- a far rib piece is a sliver narrower on the sheet than
+       two occlusion gaps, its gap spilled onto the next piece, and every far
+       arch was drawn dashed (gone at Gap 0, measured) */
+    RIBS.forEach(function(sr){
+      var X=laneFrame(sr), sa=sr-RTK/2, sb=sr+RTK/2;
+      for(var i=0;i<SN;i++){
+        var a0=X(sa,IN[i][0],IN[i][1]), a1=X(sa,IN[i+1][0],IN[i+1][1]), a2=X(sa,OUT[i+1][0],OUT[i+1][1]), a3=X(sa,OUT[i][0],OUT[i][1]);
+        var b0=X(sb,IN[i][0],IN[i][1]), b1=X(sb,IN[i+1][0],IN[i+1][1]), b2=X(sb,OUT[i+1][0],OUT[i+1][1]), b3=X(sb,OUT[i][0],OUT[i][1]);
+        /* faces: 0 front (s-), 1 back (s+), 2 inner, 3 outer, 4 node i, 5 node i+1 */
+        var P=polyFromLoops([[a0,a1,a2,a3],[b0,b1,b2,b3],[a0,a1,b1,b0],[a3,a2,b2,b3],[a0,a3,b3,b0],[a1,a2,b2,b1]]);
+        P.lines=[];
+        var mid=X(sr,(IN[i][0]+OUT[i+1][0])/2,(IN[i][1]+OUT[i+1][1])/2), d=dist3(mid);
+        ln(P,a0,a1,0,2,'rib'); ln(P,b0,b1,1,2,'rib');
+        /* the outer chords run 2 mm from the plates' ends: past Solid detail a
+           plate piece is too slight to keep its gap off them, and they read as
+           dashes. The inner chords carry the arch out there */
+        if(d<dn){ ln(P,a3,a2,0,3,'rib'); ln(P,b3,b2,1,3,'rib'); }
+        if(d<df){
+          /* the purlin at each node carried over the rib, so the plates'
+             node lines run on through it */
+          ln(P,a3,b3,3,4,'purlin'); if(i===SN-1) ln(P,a2,b2,3,5,'purlin');
+          if(i===0){ ln(P,a0,a3,0,4,'rib'); ln(P,b0,b3,1,4,'rib'); ln(P,a0,b0,2,4,'rib'); ln(P,a3,b3,3,4,'rib'); }
+          if(i===SN-1){ ln(P,a1,a2,0,5,'rib'); ln(P,b1,b2,1,5,'rib'); ln(P,a1,b1,2,5,'rib'); ln(P,a2,b2,3,5,'rib'); }
+        }
+        if(d<dn){
+          if(i>0){ ln(P,a0,a3,0,0,'lattice'); ln(P,b0,b3,1,1,'lattice'); }
+          if(i%2){ ln(P,a3,a1,0,0,'lattice'); ln(P,b3,b1,1,1,'lattice'); } else { ln(P,a0,a2,0,0,'lattice'); ln(P,b0,b2,1,1,'lattice'); }
+        }
+        T.ribPieces+=shedPut(P,'rib',COL_K,d,true);
+      }
+    });
+    /* the bays: from the shed's start to the first rib, rib to rib, the last
+       rib to the end. Plates (chords on the extrados, 5 cm thick) and the
+       lantern along the crown, in the bay's own straight frame */
+    var BND=[{s:0, end:true}].concat(RIBS.map(function(r){ return {s:r}; })).concat([{s:LEN, end:true}]);
+    for(var bi=0;bi+1<BND.length;bi++){
+      var A=BND[bi], B=BND[bi+1], sm=(A.s+B.s)/2, Fm=frame(sm), X=laneFrame(sm);
+      var pA=A.end?planeAt(A.s,0):planeAt(A.s,RTK/2+0.002), pB=B.end?planeAt(B.s,0):planeAt(B.s,-RTK/2-0.002);
+      var lA=A.end?planeAt(A.s,0):planeAt(A.s,0), lB=B.end?planeAt(B.s,0):planeAt(B.s,0);
+      var dB=dist3(X(sm,0,(SPZ+LZ0)/2));
+      for(var i=0;i<SN;i++){
+        var c=[[OUT[i],TOP[i]],[OUT[i+1],TOP[i+1]]], pt={};
+        ['lo','hi'].forEach(function(h,hj){ [0,1].forEach(function(nk){ var q=c[nk][hj];
+          pt[h+nk+'a']=X(sOn(X,Fm,sm,q[0],pA),q[0],q[1]); pt[h+nk+'b']=X(sOn(X,Fm,sm,q[0],pB),q[0],q[1]); }); });
+        /* faces: 0 underside, 1 top, 2 end a, 3 end b, 4 node i, 5 node i+1 */
+        var P=polyFromLoops([[pt.lo0a,pt.lo0b,pt.lo1b,pt.lo1a],[pt.hi0a,pt.hi0b,pt.hi1b,pt.hi1a],
+                             [pt.lo0a,pt.lo1a,pt.hi1a,pt.hi0a],[pt.lo0b,pt.lo1b,pt.hi1b,pt.hi0b],
+                             [pt.lo0a,pt.lo0b,pt.hi0b,pt.hi0a],[pt.lo1a,pt.lo1b,pt.hi1b,pt.hi1a]]);
+        P.lines=[];
+        var pm=X(sm,(OUT[i][0]+OUT[i+1][0])/2,(OUT[i][1]+OUT[i+1][1])/2), d=dist3(pm);
+        if(d<df){
+          ln(P,pt.lo0a,pt.lo0b,0,0,'purlin'); ln(P,pt.hi0a,pt.hi0b,1,1,'roof');
+          if(i===SN-1){ ln(P,pt.lo1a,pt.lo1b,0,0,'purlin'); ln(P,pt.hi1a,pt.hi1b,1,1,'roof'); }
+          if(A.end){ ln(P,pt.lo0a,pt.lo1a,0,2,'roof'); ln(P,pt.hi0a,pt.hi1a,1,2,'roof'); }
+          if(B.end){ ln(P,pt.lo0b,pt.lo1b,0,3,'roof'); ln(P,pt.hi0b,pt.hi1b,1,3,'roof'); }
+        }
+        /* glazing bars across the underside, every 1.2 m on the shed's grid,
+           every 2^k-th where the paper floor needs */
+        if(d<dn){
+          var dir=[pt.lo1a[0]-pt.lo0a[0],pt.lo1a[1]-pt.lo0a[1],pt.lo1a[2]-pt.lo0a[2]], dl0=Math.hypot(dir[0],dir[1],dir[2]);
+          var g=paperGap(pm,[dir[0]/dl0,dir[1]/dl0,dir[2]/dl0],[Fm[2],Fm[3],0]), th=thin(g,1.2);
+          var s0=Math.max(sOn(X,Fm,sm,OUT[i][0],pA),sOn(X,Fm,sm,OUT[i+1][0],pA))+0.05, s1=Math.min(sOn(X,Fm,sm,OUT[i][0],pB),sOn(X,Fm,sm,OUT[i+1][0],pB))-0.05;
+          for(var gj=Math.ceil(s0/(1.2*th))*th; 1.2*gj<s1; gj+=th)
+            ln(P,X(1.2*gj,OUT[i][0],OUT[i][1]),X(1.2*gj,OUT[i+1][0],OUT[i+1][1]),0,0,'glazing',COL_DG);
+        }
+        T.plates+=shedPut(P,'shedplate',COL_K,d);
+      }
+      /* the lantern: a raised strip on the crown, rib centre to rib centre,
+       louvred on its sides near */
+      var LQ=[[-LANW,LZ0],[LANW,LZ0],[LANW,LZ0+LANH],[-LANW,LZ0+LANH]], lp={};
+      LQ.forEach(function(q,qi){ lp['a'+qi]=X(sOn(X,Fm,sm,q[0],lA),q[0],q[1]); lp['b'+qi]=X(sOn(X,Fm,sm,q[0],lB),q[0],q[1]); });
+      /* faces: 0 bottom, 1 +W side, 2 top, 3 -W side, 4 end a, 5 end b */
+      var Ln=polyFromLoops([[lp.a0,lp.b0,lp.b1,lp.a1],[lp.a1,lp.b1,lp.b2,lp.a2],[lp.a2,lp.b2,lp.b3,lp.a3],[lp.a3,lp.b3,lp.b0,lp.a0],
+                            [lp.a0,lp.a1,lp.a2,lp.a3],[lp.b0,lp.b1,lp.b2,lp.b3]]);
+      Ln.lines=[];
+      if(dB<df){
+        ln(Ln,lp.a2,lp.b2,2,1,'lantern'); ln(Ln,lp.a3,lp.b3,2,3,'lantern'); ln(Ln,lp.a0,lp.b0,0,3,'lantern'); ln(Ln,lp.a1,lp.b1,0,1,'lantern');
+        if(A.end){ ln(Ln,lp.a0,lp.a1,0,4,'lantern'); ln(Ln,lp.a1,lp.a2,1,4,'lantern'); ln(Ln,lp.a2,lp.a3,2,4,'lantern'); ln(Ln,lp.a3,lp.a0,3,4,'lantern'); }
+        if(B.end){ ln(Ln,lp.b0,lp.b1,0,5,'lantern'); ln(Ln,lp.b1,lp.b2,1,5,'lantern'); ln(Ln,lp.b2,lp.b3,2,5,'lantern'); ln(Ln,lp.b3,lp.b0,3,5,'lantern'); }
+        if(dB<dn) [0.25,0.5,0.75].forEach(function(f){ var z=LZ0+LANH*f;
+          ln(Ln,X(sOn(X,Fm,sm,LANW,lA),LANW,z),X(sOn(X,Fm,sm,LANW,lB),LANW,z),1,1,'louvre');
+          ln(Ln,X(sOn(X,Fm,sm,-LANW,lA),-LANW,z),X(sOn(X,Fm,sm,-LANW,lB),-LANW,z),3,3,'louvre'); });
+      }
+      T.lantern+=shedPut(Ln,'lantern',COL_K,dB);
+    }
+    /* the end screen: the arch's outline at the far end, glazed with radial
+       bars from the middle of the springing line. Lines only; it hides nothing */
+    var Xe=laneFrame(LEN), se0=LEN-0.03, se1=LEN-0.02, hub=[0,SPZ+0.02], fr=[], bk=[];
+    for(k=0;k<=SN;k++){ var q=archN(k,SR-0.02); fr.push(Xe(se0,q[0],Math.max(q[1],SPZ+0.02))); bk.push(Xe(se1,q[0],Math.max(q[1],SPZ+0.02))); }
+    var loops=[fr.slice(),bk.slice()];
+    for(k=0;k<=SN;k++){ var k2=(k+1)%(SN+1); loops.push([fr[k],fr[k2],bk[k2],bk[k]]); }
+    var Sc=polyFromLoops(loops); Sc.lines=[];
+    for(k=0;k<=SN;k++) ln(Sc,fr[k],fr[(k+1)%(SN+1)],0,0,'screen',COL_K);
+    for(k=2;k<SN;k+=2) ln(Sc,Xe(se0,hub[0],hub[1]),fr[k],0,0,'screenbar',COL_DG);
+    see(Sc);
+    var cp=contPieces(Sc); T.miss=Math.max(T.miss,cp.miss);
+    cp.pieces.forEach(function(Q){ tag(Q,'screen',COL_K,'shed'); Q.hides=false; Q.seeThru=true; Q.cont.parts.push(Q); });
+    T.screen=cp.pieces.length;
+  }
+
   /* ---- §3.7 the footbridge ----------------------------------------------- */
   function footbridge(dn,df){
     if(!FB) return;
     var s=FB.s, X=laneFrame(s), hl=FB.hl, zd=FB.zd, list=[], rec={s:s, zd:zd, placed:false, pieces:0, miss:0, eye:s-sEye};
     TAL.bridge=rec;
     function piece(P,kind,col){ var cp=contPieces(P); rec.miss=Math.max(rec.miss,cp.miss); cp.pieces.forEach(function(Q){ tag(Q,kind,col,'bridge'); }); rec.pieces+=cp.pieces.length; list.push(cp.pieces); }
-    var o1=PLATB-0.05;
+    var o1=FB.ob!==undefined?FB.ob:PLATB-0.05;
     var Dk=boxIn(X,s-hl,s+hl,-o1,o1,zd,zd+0.3); piece(Dk,'fbdeck',COL_K);
     [[s-hl,s-hl+0.15],[s+hl-0.15,s+hl]].forEach(function(w,wi){
       var Wl=boxIn(X,w[0],w[1],-o1,o1,zd+0.3,zd+2.9);
@@ -21821,6 +22065,7 @@ function trainTheme(K){
       TAL.tracks=[]; TAL.trains=[]; TAL.wires=[]; TAL.drops=[]; TAL.beams=[]; TAL.housings=[]; TAL.sleepers={};
       TAL.portals.forEach(function(r){ r.placed=false; });
       S.furnish(dn,df,step); track(dn,df); edges(dn,df); trains(dn,df); portals(dn,df); footbridge(dn,df);
+      if(SHED) shed(dn,df);
     },
     cars:[], dots:[], poles:[],
     info:function(nsigns){
@@ -21828,7 +22073,7 @@ function trainTheme(K){
       return ' · '+TAL.trains.length+(TAL.trains.length===1?' train':' trains')+' ('+nt+' cars) · '+
         TAL.portals.filter(function(q){ return q.placed; }).length+' portals · '+TAL.columns.length+' columns · '+
         TAL.signs.filter(function(q){ return q.placed; }).length+' platform signs · '+nsigns+' building signs'+
-        (TAL.bridge&&TAL.bridge.placed?' · a footbridge':'')+' · station '+NAME;
+        (TAL.bridge&&TAL.bridge.placed?' · a footbridge':'')+(SHED?' · a train shed':'')+' · station '+NAME;
     }
   };
 }
@@ -27211,6 +27456,7 @@ var HELP={
 'stn.croof':"The canopy roof\u2019s shape: 0 flat, 1 one slope draining toward the back of the platform, 2 a butterfly, two plates meeting low over the line of columns.",
 'stn.psign':"The share of canopy bays with a sign hung from the roof, turned to face you: a yellow exit sign with an arrow, a direction sign banded in the line colour, a small car-stop number, or (one in ten) a departure board of orange text. The two name boards on each platform are there whatever this is.",
 'stn.fbridge':"1 puts an enclosed footbridge across the station 50\u2013110 m ahead of the camera, clear above the wires: a deck, walls with a window band and a roof, with a stair housing running down onto each platform along its back. 0 leaves it out.",
+'stn.shed':"1 roofs the whole station with one arched train shed: brick side walls with arched windows in place of the fences, lattice iron ribs every Column spacing, glazed roof plates between them, a smoke-vent lantern along the crown and a glazed screen at the far end. The canopies, portals and the buildings behind are not built under it, and the wires hang from the ribs. 0 leaves it out.",
 'stn.pfurn':"The share of platform lots with a piece of furniture behind the line of columns: a three-seat bench with orange or blue seats, a vending machine, a row of three bins, or a red extinguisher box.",
 'stn.ballast':"How many stone dashes lie between the sleepers, up to 40 on each 4 m of track, nearer than Solid detail to and only where the sheet has room for them. The line along the foot of each platform face is drawn whatever this is.",
 'stn.hatch':"How dense the shading is on the building walls facing away from the light. 0 is no shading. The face of the platform under its edge is hatched dark grey whatever this is.",
