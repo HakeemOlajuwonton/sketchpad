@@ -438,7 +438,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v319</a> &mdash; Greenhouse -- a Venlo glasshouse on the corridor kit: a wet path between benches of potted plants under a sawtooth glass roof whose gutters, ridges and trusses span the path, split at every container face</span></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v320</a> &mdash; Barrel cellar -- an aisle of stone flags under a brick barrel vault, barriques stacked on chocks or in red racks with their heads to the aisle, transverse arches on brick piers, bottle bins, bare bulbs on a cable along the crown</span></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <section class="fold" id="fold_pick"><h2>Pick engine<span class="cnt"></span></h2>
@@ -3316,6 +3316,26 @@ var SPEC={
     ['pitch','Pitch',-45,45,0.5,8,[1,'°']],['fov','Field of view',25,120,1,78,[1,'°']],
     ['dnear','Solid detail to',1,40,0.5,12,[1,' m']],['dfar','Outline detail to',2,200,1,50,[1,' m']],
     ['dpen','Depth pens',0,1,1,0],['dsplit','Depth split',2,200,1,30,[1,' m']],
+    ['lod','LOD cutoff',0,60,1,4,[10,' mm']],['budg','Size budget',10,300,5,120,[1,' k points']],
+    ['occ','Gap',0,30,1,4,[10,' mm']]]],
+  /* BARREL CELLAR, queue row 108 (docs/specs/2026-10-12-corridor-themes-grnh-celr-tori.md §2.7).
+     Camera height reaches 5.6 m: the highest crown (Springing 2.4, Vault rise 100% of the widest half-span 3.5) less 0.3 */
+  celr:['Barrel cellar',[
+    ['len','Cellar length',15,200,1,54,[1,' m']],['bend','Bend',0,20,1,0,[1,'°/100 m']],
+    ['width','Aisle width',1.6,4,0.1,2.2,[1,' m']],['bay','Bay length',3,7,0.1,4.5,[1,' m']],
+    ['spring','Springing',1.0,2.4,0.05,1.6,[1,' m']],['rise','Vault rise',30,100,1,100,[100,'%']],
+    ['tiers','Tiers',1,3,1,3],['fill','Occupancy',0,100,1,90,[100,'%']],['racks','Steel racks',0,100,1,25,[100,'%']],
+    ['chalk','Chalk marks',0,100,1,60,[100,'%']],['bins','Bottle bins',0,100,1,20,[100,'%']],
+    ['lamp','Lamp spacing',1.5,8,0.5,3,[1,' m']],
+    ['lang','Script',0,3,1,2],['hatch','Tone hatch',0,100,1,45,[100,'%']],
+    ['shine','Floor shine',0,40,1,0],['pudsz','Shine size',5,100,1,40,[100,'%']],['ripple','Ripple',0,30,1,0,[10,' mm']],
+    ['hero','Front shine',0,100,1,0,[100,'%']],
+    ['hstr','Front shine stretch',-100,100,1,0,[100,'%']],['hrag','Front shine edge',0,100,1,50,[100,'%']],['hturn','Front shine turn',-45,45,1,0,[1,'°']],['hshape','Front shine shape',0,99,1,0],
+    ['cams','Camera along',0,90,1,2,[100,'%']],['camx','Camera side',-100,100,1,0,[100,'%']],
+    ['camz','Camera height',0.2,5.6,0.05,1.6,[1,' m']],['look','Look ahead',2,100,1,15,[1,' m']],['turn','Turn',-90,90,1,0,[1,'°']],
+    ['pitch','Pitch',-45,45,0.5,4,[1,'°']],['fov','Field of view',25,120,1,78,[1,'°']],
+    ['dnear','Solid detail to',1,40,0.5,10,[1,' m']],['dfar','Outline detail to',2,120,1,45,[1,' m']],
+    ['dpen','Depth pens',0,1,1,0],['dsplit','Depth split',2,120,1,30,[1,' m']],
     ['lod','LOD cutoff',0,60,1,4,[10,' mm']],['budg','Size budget',10,300,5,120,[1,' k points']],
     ['occ','Gap',0,30,1,4,[10,' mm']]]],
   /* CANAL CITY, queue row 53 (docs/specs/2026-10-04-corridor-themes.md §6) */
@@ -17127,7 +17147,7 @@ function buildIsoImg(p){
 
 var ENG={record:buildRecord, flow:buildFlow, growth:buildGrowth, contour:buildContour, ridge:buildRidge,
          pack:buildPack, voronoi:buildVoronoi, truchet:buildTruchet, maze:buildMaze, hilbert:buildHilbert,
-         rows:buildRows, poin:buildPoincare, flag:buildFlag, stat:buildStation, fact:buildFactory, strt:buildStreet, mkt:buildMarket, harb:buildHarbour, libr:buildLibrary, grnh:buildGreenhouse, canal:buildCanal, stn:buildTrainStation,
+         rows:buildRows, poin:buildPoincare, flag:buildFlag, stat:buildStation, fact:buildFactory, strt:buildStreet, mkt:buildMarket, harb:buildHarbour, libr:buildLibrary, grnh:buildGreenhouse, celr:buildCellar, canal:buildCanal, stn:buildTrainStation,
          harmo:buildHarmo, chladni:buildChladni, moire:buildMoire, disc:buildChladniDisc, fan:buildFan,
   string:buildString, fermat:buildFermat, logsp:buildLogSpiral, chuck:buildChuck,
          apoll:buildApollonian, wave:buildWave, sform:buildSuper,
@@ -20112,6 +20132,17 @@ var STHEMES={
         fixed:{shopv:0, props:0, alley:0, cars:0, dots:0, graff:0, signs:0, cables:0, canyon:0, stepb:0, canti:0, pave:0, hero:0},
         flags:{poles:false, roadMarks:false, bollards:false, manholes:false},
         content:function(K){ return greenhouseTheme(K); }},
+  /* row 108 (docs/specs/2026-10-12-corridor-themes-grnh-celr-tori.md §2.2): an
+     underground wine cellar. The slabs are the aisle, a lot is one bay of the
+     stacks, 1.5 m deep to the side wall, the lots abutting. `minEnv` 0.2 is
+     the library's: the kit refuses a lot under 4 m deep without it. */
+  celr:{key:'celr', label:'Barrel cellar', lotDepth:[1.5,1.5], alleyW:[0,0], baseN2:0, baseH:[1.6,1.6],
+        midH:[1.6,1.6], edgeZ:0, slabLen:4, clear:3.2, ztop:200, mirror:'floor', minWidth:1.6, minLen:15,
+        strip:0, minEnv:0.2, pudIn:0.03, pudCol:null, pudWord:'damp patches', heroWord:'a front shine', alias:{puddles:'shine'},
+        mirrorSkip:['hatch'], pudMinMM:3, zfit:5,
+        lotGen:function(R,p,li,sd){ return cellarLotGen(R,p,li,sd); },
+        fixed:{shopv:0, props:0, alley:0, cars:0, dots:0, graff:0, signs:0, cables:0, canyon:0, stepb:0, canti:0, pave:0},
+        content:function(K){ return cellarTheme(K); }},
   /* §6: a water channel between plastered houses; the whole road is water and
      the mirror; the kerb is the quay's edge, 0.8 m over the water */
   canal:{key:'canal', label:'Canal', lotDepth:[8,16], alleyW:[1.0,2.2], baseN2:0, baseH:[3.0,3.6],
@@ -20157,6 +20188,7 @@ function buildMarket(p){ return buildCorridor(p,STHEMES.mkt); }
 function buildHarbour(p){ return buildCorridor(p,STHEMES.harb); }
 function buildLibrary(p){ return buildCorridor(p,STHEMES.libr); }
 function buildGreenhouse(p){ return buildCorridor(p,STHEMES.grnh); }
+function buildCellar(p){ return buildCorridor(p,STHEMES.celr); }
 function buildCanal(p){ return buildCorridor(p,STHEMES.canal); }
 function buildTrainStation(p){ return buildCorridor(p,STHEMES.stn); }
 /* THE NIGHT MARKET THEME (queue row 50, docs/specs/2026-10-04-corridor-themes.md
@@ -22872,6 +22904,843 @@ function greenhouseTheme(K){
     cars:[], dots:[],
     info:function(){ return ' · '+lots.length+' spans · '+TAL.pots.length.toLocaleString()+' pots · '+
       TAL.trolleys.filter(function(t){ return t.placed; }).length+' trolleys · '+TAL.baskets.filter(function(b){ return b.placed; }).length+' baskets'; }
+  };
+}
+/* THE BARREL CELLAR THEME (queue row 108, docs/specs/2026-10-12-corridor-themes-grnh-celr-tori.md
+   §2): an underground wine cellar -- an aisle of stone flags under one brick
+   barrel vault, barriques stacked on their sides with their heads to the
+   aisle, a brick transverse arch at every bay, bays of bottle bins, bare
+   bulbs on a cable along the crown. A lot is ONE BAY, 1.5 m deep to the side
+   wall, the lots abutting (cellarLotGen); the slabs are the aisle.
+   - THE VAULT (salt 1069): a segmental arch from wall top to wall top, its
+     rise a share of the half-span, as 24 thin plates along the arch that HIDE
+     NOTHING (nothing stands above them, as libr's ceiling), each CUT at every
+     container face it crosses. Brick courses on its inner face. A pier at
+     every lot face and a transverse arch springing from it: a chain of convex
+     segments along the arch, split at every container face; on a bend each
+     side carries its own half, stopping 12 mm short of the centreline.
+   - BARRELS (salts 1049 the bay kind, 1051 the barrels, 1061 chalk): ONE
+     CONVEX SOLID each, lofted through five 16-gon rings, its axis lateral and
+     its head to the aisle; in a pyramid on oak chocks, each barrel above
+     tangent to the two it sits between, or straight up in red steel racks.
+     Hoops, staves, the head's chime and boards, the bung and its wine stain
+     are lines ON the barrel's own faces. A stack that would come within 0.15 m
+     of the vault loses its top tier, and is counted.
+   - BOTTLE BINS: a grid of brick cells against the wall, the bottles' bases
+     to the aisle as rings in a packed hexagonal grid.
+   - THE FLOOR (salt 1093): flags in running bond and a drain on the
+     centreline; the kit's floor shine. LAMPS (salt 1087): a cable along the
+     crown through the kit's addCable, a bare bulb at every hook. THE FAR END
+     (salt 1091): a brick end wall closing the vault, an arched doorway with
+     an iron gate and darkness behind it, and a tasting table in front.
+   Colours: sepia brick, brown oak, black hoops, a dark red stain, grey stone,
+   red racks, yellow bulbs, dark green and black bottles. */
+var CELR_WORDS=('CABERNET MERLOT SYRAH GRENACHE TEMPRANILLO RIOJA BORDEAUX CHABLIS MEDOC MARGAUX PAUILLAC SAUTERNES '+
+  'BAROLO CHIANTI MALBEC PINOT GAMAY RIESLING MUSCAT TOKAJI PORT SHERRY CLARET CUVEE RESERVA CRIANZA GRAND CRU '+
+  'MILLESIME VINTAGE BARRIQUE CHAI CAVE BODEGA CANTINA KELLER FUDER ROUGE BLANC BRUT SEC DOUX').split(' ');
+function cellarLotGen(R,p,li,sd){
+  /* one bay along the aisle, 1.5 m deep, no gap: the lots abut, so the wall
+     runs on. The bay is ROUNDED so a whole number of bays fills the cellar
+     (exactly, on a straight one): a part bay at the far end would be a stretch
+     of vault with no wall under it. Draws nothing: the bay's kind is the
+     content's, from salt 1049. */
+  var L=Math.max(15,+p.len||220), B=Math.max(3,Math.min(7,isFinite(p.bay)?+p.bay:4.5)), n=Math.max(1,Math.round(L/B));
+  return {wl:L/n-1e-9, depth:1.5, gap:0, bay:L/n, first:li===0};
+}
+function cellarTheme(K){
+  var p=K.p, P3=K.P3, frame=K.frame, sub=K.sub, polyFromLoops=K.polyFromLoops, prismN=K.prismN, splitPart=K.splitPart,
+      inConv=K.inConv, slabsBySide=K.slabsBySide, slabPieces=K.slabPieces, conts=K.conts, lots=K.lots, dist3=K.dist3,
+      verts=K.verts, paperGap=K.paperGap, bbHit=K.bbHit, cam=K.cam, addCable=K.addCable, cables=K.cables,
+      CE=K.CE, HALFW=K.HALFW, KOFF=K.KOFF, PBACK=K.PBACK, LEN=K.LEN, MINSP=K.MINSP, FF=K.FF;
+  function kn(v,d,lo,hi){ return Math.max(lo,Math.min(hi,isFinite(v)?+v:d)); }
+  var SPRING=kn(p.spring,1.6,1,2.4), RISEF=kn(p.rise,100,30,100)/100, TIERS=Math.round(kn(p.tiers,3,1,3)),
+      FILL=kn(p.fill,90,0,100)/100, RACKS=kn(p.racks,25,0,100)/100, CHALK=kn(p.chalk,60,0,100)/100,
+      BINS=kn(p.bins,20,0,100)/100, LAMP=kn(p.lamp,3,1.5,8), LANG=Math.round(kn(p.lang,2,0,3)), HATCH=kn(p.hatch,45,0,100)/100;
+  var SALT_BAY=1049, SALT_BARREL=1051, SALT_CHALK=1061, SALT_VAULT=1069, SALT_LAMP=1087, SALT_END=1091, SALT_FLOOR=1093;
+  var COL_K='#1a1a1a', COL_DG='#4a4a4a', COL_GREY='#8a8a8a', COL_SEP='#4b3621', COL_BRN='#8b5a2b', COL_DRED='#8e1b25',
+      COL_RED='#d42a2a', COL_YEL='#f2c230', COL_DGRN='#1e5a32';
+  var SCR=corridorScripts(sub,SALT_CHALK,CELR_WORDS);
+  /* the cross-section (§2.1), lateral from the centreline: the aisle to
+     HALFW, the bay to the side wall's face, the wall to the lot's back */
+  /* RIBO: the transverse arches hang 1 cm under the vault. On a bend a 4 m plate and a 0.5 m
+     arch are swept apart and the plate's chord leaves the curve by up to 7 mm (Bend 20); touching,
+     they interpenetrated there (432 pairs, measured) */
+  /* WALLG: what stands in a bay keeps 2.5 cm off the wall's face. The wall is ONE chord a bay;
+     a pier or a bin stands on its own short chord, and on a bend the long chord's sagitta
+     (Bend 20, a 7 m bay: 2.1 cm) put the wall through them (89 pairs at Bend 20, measured) */
+  var WALLG=0.025, WALLT=0.10, PIERW=0.50, PIERP=0.25, RIBD=0.12, RIBO=0.01, VTH=0.05, NARCH=24, OIN=0.012, CLR=0.15;
+  var BACK=PBACK+1.5;
+  /* THE ARCH: a circle through both wall tops (+-BACK, SPRING) and the crown
+     (0, SPRING + rise). Its angle from the centre runs from TH0 (side +1's
+     wall top) to PI - TH0 (side -1's) */
+  var RISE=RISEF*BACK, RV=(BACK*BACK+RISE*RISE)/(2*RISE), ZC=SPRING+RISE-RV, TH0=Math.atan2(SPRING-ZC,BACK);
+  var CROWN=SPRING+RISE;
+  function thK(k){ return TH0+(Math.PI-2*TH0)*k/NARCH; }
+  function arcPt(th,r){ return [r*Math.cos(th), ZC+r*Math.sin(th)]; }
+  /* how far a point (lateral o, height z) stands inside the vault, in metres.
+     Below the springing the side wall is the limit, and the bay keeps clear of
+     it by construction, so the arch counts only above it. */
+  function vaultClear(o,z){ return z<=SPRING?1e9:RV-Math.hypot(o,z-ZC); }
+  var TAL={lots:[], bays:[], barrels:[], piers:[], walls:[], plates:[], members:[], cells:[], bottles:[], lamps:[],
+           refused:0, refusedTiers:[], miss:0, paired:false, end:null, table:null,
+           vault:{zc:ZC, R:RV, half:BACK, rise:RISE, spring:SPRING, crown:CROWN, th0:TH0, n:NARCH}};
+  STRTTALLY.celr=TAL;
+
+  /* ---- containers. THE SLOT (as the greenhouse's): on a bend the kit pushes
+     a lot back off the slabs, and the strip between the slab's back chord and
+     the lot's front chord belonged to no container -- a vault plate crossing
+     it would lose a piece. One convex container per slab there. */
+  function cutAt(s,sd,A,B){
+    var P0=P3(s,sd,0,0), P1=P3(s,sd,1,0), dx=P1[0]-P0[0], dy=P1[1]-P0[1], ex=B[0]-A[0], ey=B[1]-A[1];
+    var den=dx*ey-dy*ex; if(Math.abs(den)<1e-15) return null;
+    var t=((A[0]-P0[0])*ey-(A[1]-P0[1])*ex)/den; return [P0[0]+dx*t, P0[1]+dy*t];
+  }
+  lots.forEach(function(L){
+    if(!(L.fe>KOFF+1e-9)) return;
+    var A=P3(L.s0,L.side,L.fe,0), B=P3(L.s1,L.side,L.fe,0);
+    slabsBySide[L.side].forEach(function(C){
+      var sa=Math.max(C.s0,L.s0), sb=Math.min(C.s1,L.s1); if(sb-sa<1e-6) return;
+      var CA=P3(C.s0,L.side,KOFF,0), CB=P3(C.s1,L.side,KOFF,0);
+      var f0=cutAt(sa,L.side,CA,CB), f1=cutAt(sb,L.side,CA,CB), g0=cutAt(sa,L.side,A,B), g1=cutAt(sb,L.side,A,B);
+      if(!f0||!f1||!g0||!g1) return;
+      if(Math.hypot(g0[0]-f0[0],g0[1]-f0[1])<1e-6 && Math.hypot(g1[0]-f1[0],g1[1]-f1[1])<1e-6) return;
+      var Q=[f0,f1,g1,g0], b=[1e18,1e18,-1e18,-1e18];
+      Q.forEach(function(q){ if(q[0]<b[0])b[0]=q[0]; if(q[1]<b[1])b[1]=q[1]; if(q[0]>b[2])b[2]=q[0]; if(q[1]>b[3])b[3]=q[1]; });
+      conts.push({kind:'slot', side:L.side, s0:sa, s1:sb, poly:Q, bb:b, parts:[], lot:L});
+    });
+  });
+
+  /* ---- small geometry ---------------------------------------------------- */
+  function sub3(a,b){ return [a[0]-b[0],a[1]-b[1],a[2]-b[2]]; }
+  function add3(a,b,k){ return [a[0]+b[0]*k,a[1]+b[1]*k,a[2]+b[2]*k]; }
+  function lerp3(a,b,t){ return [a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t,a[2]+(b[2]-a[2])*t]; }
+  function nrm(v){ var l=Math.hypot(v[0],v[1],v[2])||1; return [v[0]/l,v[1]/l,v[2]/l]; }
+  /* a point at arc s, SIGNED lateral o (negative: side -1), height z */
+  function SP(s,o,z){ return P3(s,1,o,z); }
+  function PS(sd,s,o,z){ return P3(s,sd,o,z); }
+  function ringFace(pts,ins){
+    var a=pts[0], b=pts[1], c=pts[2];
+    var ux=b[0]-a[0],uy=b[1]-a[1],uz=b[2]-a[2], vx=c[0]-a[0],vy=c[1]-a[1],vz=c[2]-a[2];
+    var n=[uy*vz-uz*vy, uz*vx-ux*vz, ux*vy-uy*vx], L=Math.hypot(n[0],n[1],n[2])||1;
+    n=[n[0]/L,n[1]/L,n[2]/L];
+    var d=n[0]*a[0]+n[1]*a[1]+n[2]*a[2];
+    if(n[0]*ins[0]+n[1]*ins[1]+n[2]*ins[2]-d>0){ n=[-n[0],-n[1],-n[2]]; d=-d; }
+    return {n:n, d:d, pts:pts};
+  }
+  /* MATCHING n-gon RINGS LOFTED INTO ONE CONVEX SOLID (the greenhouse's
+     `rings`, for any number of rings). Faces: 0 the first ring, 1 the last,
+     2 + i*n + k the side from ring i to i+1 between vertices k and k+1. */
+  function loft(RG){
+    var m=RG.length, n=RG[0].length, ins=[0,0,0], i, k, F=[], L=[];
+    RG.forEach(function(r){ r.forEach(function(q){ ins[0]+=q[0]/(m*n); ins[1]+=q[1]/(m*n); ins[2]+=q[2]/(m*n); }); });
+    F.push(ringFace(RG[0],ins)); F.push(ringFace(RG[m-1],ins));
+    for(i=0;i<m-1;i++) for(k=0;k<n;k++){ var k2=(k+1)%n; F.push(ringFace([RG[i][k],RG[i][k2],RG[i+1][k2],RG[i+1][k]],ins)); }
+    function sf(i2,k3){ return 2+i2*n+((k3%n)+n)%n; }
+    for(k=0;k<n;k++){ var k1=(k+1)%n;
+      L.push({a:RG[0][k], b:RG[0][k1], f0:0, f1:sf(0,k)});
+      L.push({a:RG[m-1][k], b:RG[m-1][k1], f0:1, f1:sf(m-2,k)});
+      for(i=1;i<m-1;i++) L.push({a:RG[i][k], b:RG[i][k1], f0:sf(i-1,k), f1:sf(i,k)});
+      for(i=0;i<m-1;i++) L.push({a:RG[i][k], b:RG[i+1][k], f0:sf(i,k-1), f1:sf(i,k)});
+    }
+    return {faces:F, lines:L, ins:ins, sf:sf};
+  }
+  function rings(lo,hi){ return loft([lo,hi]); }
+  /* a prism over the (s,o) rectangle on side sd, z0..z1. Faces: 0 bottom,
+     1 top, 2 the oA face, 3 sB, 4 oB, 5 sA */
+  function bx(sd,sA,sB,oA,oB,zA,zB){
+    var Q=[PS(sd,sA,oA,0),PS(sd,sB,oA,0),PS(sd,sB,oB,0),PS(sd,sA,oB,0)].map(function(v){ return [v[0],v[1]]; });
+    return rings(Q.map(function(q){ return [q[0],q[1],zA]; }),Q.map(function(q){ return [q[0],q[1],zB]; }));
+  }
+  /* a PRISM OF A CROSS-SECTION (o,z) swept from s0 to s1 by ONE translation,
+     so every face is planar on a bend too: the section is laid out at s0 by
+     X(s0,o,z), and moved by the vector between X(s0,om,0) and X(s1,om,0) */
+  function sweep(X,s0,s1,sec,om,f0,f1){
+    var lo=sec.map(function(q){ return X(s0,q[0],q[1]); }), T=sub3(X(s1,om,0),X(s0,om,0));
+    /* f0..f1: a slice of the sweep's depth, on the SAME translation (the end
+       wall's darkness and gate), so it meets the whole on a bend too */
+    if(f0!==undefined) return rings(lo.map(function(v){ return add3(v,T,f0); }),lo.map(function(v){ return add3(v,T,f1); }));
+    return rings(lo,lo.map(function(v){ return add3(v,T,1); }));
+  }
+  function vis(f){ return f.n[0]*CE[0]+f.n[1]*CE[1]+f.n[2]*CE[2]-f.d>1e-9; }
+  function smooth(P,first){
+    P.lines=P.lines.filter(function(Ln){ if(Ln.f0<first || Ln.f1<first || Ln.f0===Ln.f1) return true; return vis(P.faces[Ln.f0])!==vis(P.faces[Ln.f1]); });
+    return P;
+  }
+  function tag(P,kind,col,layer,extra){
+    P.kind=kind; P.col=col; P.layer=layer;
+    P.lines.forEach(function(Ln){ if(Ln.col===undefined) Ln.col=col; if(!Ln.kind) Ln.kind=kind; });
+    if(extra) for(var k in extra) P[k]=extra[k];
+    return P;
+  }
+  function see(P){ P.hides=false; P.seeThru=true; return P; }
+  function ln(P,a,b,kind,col,f){ P.lines.push({a:a, b:b, f0:f||0, f1:f||0, kind:kind, col:col}); }
+  function poly(P,pts,kind,col,closed,f){ for(var i=1;i<pts.length;i++) ln(P,pts[i-1],pts[i],kind,col,f); if(closed && pts.length>2) ln(P,pts[pts.length-1],pts[0],kind,col,f); }
+  /* a convex polygon in (o,z) clipped to the half-plane a*o + b*z >= c */
+  function clipHalf(Q,a,b,c){
+    var out=[], i;
+    for(i=0;i<Q.length;i++){
+      var P0=Q[i], P1=Q[(i+1)%Q.length], s0=a*P0[0]+b*P0[1]-c, s1=a*P1[0]+b*P1[1]-c;
+      if(s0>=0) out.push(P0);
+      if((s0>=0)!==(s1>=0)){ var t=s0/(s0-s1); out.push([P0[0]+(P1[0]-P0[0])*t, P0[1]+(P1[1]-P0[1])*t]); }
+    }
+    return out;
+  }
+  /* EVERY CONTAINER: the pieces of P, one per container it is in, cut at the
+     container's faces (a cut is a seam and draws nothing). The greenhouse's. */
+  function shClip(R,Q){
+    var ar=0, m; for(m=0;m<Q.length;m++){ var qa=Q[m], qb=Q[(m+1)%Q.length]; ar+=qa[0]*qb[1]-qa[1]*qb[0]; }
+    var sg=ar>0?1:-1, out=R;
+    for(m=0;m<Q.length && out.length;m++){
+      var a=Q[m], b=Q[(m+1)%Q.length], inp=out, k; out=[];
+      for(k=0;k<inp.length;k++){
+        var P0=inp[k], P1=inp[(k+1)%inp.length];
+        var s0=sg*((b[0]-a[0])*(P0[1]-a[1])-(b[1]-a[1])*(P0[0]-a[0])), s1=sg*((b[0]-a[0])*(P1[1]-a[1])-(b[1]-a[1])*(P1[0]-a[0]));
+        if(s0>=0) out.push(P0);
+        if((s0>=0)!==(s1>=0)){ var t=s0/(s0-s1); out.push([P0[0]+(P1[0]-P0[0])*t, P0[1]+(P1[1]-P0[1])*t]); }
+      }
+    }
+    return out;
+  }
+  function area2(Q){ var a=0; for(var m=0;m<Q.length;m++){ var qa=Q[m], qb=Q[(m+1)%Q.length]; a+=qa[0]*qb[1]-qa[1]*qb[0]; } return Math.abs(a)/2; }
+  function hullXY(V){
+    var q=V.map(function(v){ return [v[0],v[1]]; }).sort(function(a,b){ return a[0]-b[0]||a[1]-b[1]; }), lo=[], up=[], m;
+    function cr(o,a,b){ return (a[0]-o[0])*(b[1]-o[1])-(a[1]-o[1])*(b[0]-o[0]); }
+    for(m=0;m<q.length;m++){ while(lo.length>=2 && cr(lo[lo.length-2],lo[lo.length-1],q[m])<=1e-15) lo.pop(); lo.push(q[m]); }
+    for(m=q.length-1;m>=0;m--){ while(up.length>=2 && cr(up[up.length-2],up[up.length-1],q[m])<=1e-15) up.pop(); up.push(q[m]); }
+    return lo.slice(0,-1).concat(up.slice(0,-1));
+  }
+  function contPieces(P){
+    var VP=verts(P), H=hullXY(VP), b=[1e18,1e18,-1e18,-1e18], out=[], cov=0, tot=area2(H), k;
+    VP.forEach(function(v){ if(v[0]<b[0])b[0]=v[0]; if(v[1]<b[1])b[1]=v[1]; if(v[0]>b[2])b[2]=v[0]; if(v[1]>b[3])b[3]=v[1]; });
+    for(k=0;k<conts.length;k++){
+      var C=conts[k]; if(!bbHit(b,C.bb)) continue;
+      var Q=C.poly, piece=P, cx=0, cy=0, e;
+      Q.forEach(function(q){ cx+=q[0]/Q.length; cy+=q[1]/Q.length; });
+      for(e=0;e<Q.length && piece;e++){
+        var a=Q[e], c=Q[(e+1)%Q.length], nx=-(c[1]-a[1]), ny=c[0]-a[0], L=Math.hypot(nx,ny); nx/=L; ny/=L;
+        if(nx*(cx-a[0])+ny*(cy-a[1])<0){ nx=-nx; ny=-ny; }
+        var d=nx*a[0]+ny*a[1], V=verts(piece), lo=1e18, hi=-1e18;
+        V.forEach(function(v){ var w=nx*v[0]+ny*v[1]-d; if(w<lo) lo=w; if(w>hi) hi=w; });
+        if(hi<=1e-9){ piece=null; break; }
+        if(lo<-1e-9){ var Hh=splitPart(piece,[nx,ny,0],d); piece=Hh[0];
+          if(!piece.faces.length || verts(piece).length<4) piece=null; }
+      }
+      if(piece){ piece.cont=C; out.push(piece); cov+=area2(shClip(H,Q)); }
+    }
+    return {pieces:out, miss:tot>1e-12?Math.max(0,1-cov/tot):0};
+  }
+  /* P into every container it is in, tagged as P; recorded in `list` */
+  function put(P,list,rec){
+    var cp=contPieces(P);
+    cp.pieces.forEach(function(Q){
+      Q.kind=P.kind; Q.col=P.col; Q.layer=P.layer;
+      if(P.hides===false){ Q.hides=false; Q.seeThru=true; }
+      if(P.gapless) Q.gapless=true;
+      Q.cont.parts.push(Q);
+    });
+    if(cp.miss>1e-6) TAL.miss=Math.max(TAL.miss,cp.miss);
+    if(list) list.push({kind:P.kind, info:rec||null, miss:cp.miss,
+      pieces:cp.pieces.map(function(Q){ return {cont:Q.cont.kind, side:Q.cont.side, s0:Q.cont.s0, poly:Q.cont.poly, V:verts(Q), hides:Q.hides!==false,
+                                            F:Q.faces.map(function(f){ return {n:f.n, d:f.d}; })}; })});
+    return cp.pieces;
+  }
+  function inLot(P,L){ P.cont=L; L.parts.push(P); return P; }
+  /* the number of spacings between two drawn lines so that they stand at
+     least the paper floor apart: a power of two, so far lines are a subset
+     of near ones */
+  function thin(gapMMperM,step){ var k=1; while(k<64 && gapMMperM*step*k<MINSP) k*=2; return k; }
+  function bandOf(P,dn,df){ var d=dist3(P); return d<dn?'near':d<df?'mid':'far'; }
+  /* millimetres on the sheet per metre at P, on the drawable area's short
+     side (the greenhouse's `mmAt`) */
+  function mmAt(P){ var c=cam(P); return c[2]>0.25?FF*(0.5-K.PAD)*PAGEMM/c[2]:1e9; }
+
+  /* ---- the lots, per side, and their faces ------------------------------- */
+  var bySide={'1':[],'-1':[]};
+  lots.forEach(function(L){ bySide[L.side].push(L); });
+  [1,-1].forEach(function(sd){ bySide[sd].sort(function(a,b){ return a.s0-b.s0; }); });
+  lots.forEach(function(L){
+    var A=bySide[L.side], i=A.indexOf(L);
+    L.cFirst=!(i>0 && Math.abs(A[i-1].s1-L.s0)<1e-9);
+    L.cLast=!(i<A.length-1 && Math.abs(A[i+1].s0-L.s1)<1e-9);
+  });
+  /* a face: where it is, and the lot that carries its pier and arch -- the
+     LOWER one (the first lot carries its own s0) */
+  function facesOf(sd){
+    var F=[];
+    bySide[sd].forEach(function(L){
+      if(L.cFirst) F.push({s:L.s0, lot:L, pos:'first'});
+      F.push({s:L.s1, lot:L, pos:L.cLast?'last':'mid'});
+    });
+    return F;
+  }
+  var FACES={'1':facesOf(1),'-1':facesOf(-1)};
+  /* THE TWO SIDES SHARE THEIR FACES ON A STRAIGHT CELLAR, and an arch then
+     runs wall to wall as one chain. On a bend each side carries its own half. */
+  var PAIRED=FACES['1'].length===FACES['-1'].length && FACES['1'].every(function(f,i){ var g=FACES['-1'][i]; return Math.abs(f.s-g.s)<1e-7 && f.pos===g.pos; });
+  TAL.paired=PAIRED;
+  function pierRange(f){ return f.pos==='first'?[f.s,f.s+PIERW]:[f.s-PIERW,f.s]; }
+  /* the bay between the piers of lot L */
+  function bayOf(L){ return [L.s0+(L.cFirst?PIERW:0), L.s1-PIERW]; }
+
+  /* ---- §2.4 BARRELS ------------------------------------------------------- */
+  var BT=[0,0.2375,0.475,0.7125,0.95], BR=[0.28,0.335,0.35,0.335,0.28], NB=16, DA=TAU/NB;
+  var AXIS0=0.43, BGAP=0.05, BPITCH=0.75, TAN=0.7005, RTIER=0.80;
+  /* the hoop bands from each head, and the stave spans between them */
+  var HOOPS=[0.03,0.12,0.30], HOOPW=0.04;
+  /* A BARRIQUE AT (s, side sd, its aisle head at lateral oH, axis height za):
+     five 16-gon rings along the lateral axis, the vertices at (k+0.5)
+     DA from the top, so a face is centred on the top. Returns the solid and
+     its frame. */
+  function barrelAt(sd,s,oH,za){
+    var c=PS(sd,s,oH,za), ax=nrm(sub3(PS(sd,s,oH+1,za),c)), e1=[-ax[1],ax[0],0], up=[0,0,1];
+    var RG=BT.map(function(t,i){ var r=[], k; for(k=0;k<NB;k++){ var a=(k+0.5)*DA;
+      r.push(add3(add3(add3(c,ax,t),up,BR[i]*Math.cos(a)),e1,BR[i]*Math.sin(a))); } return r; });
+    var P=loft(RG);
+    P.RG=RG; P.c=c; P.ax=ax; P.e1=e1;
+    return P;
+  }
+  /* A POINT ON THE BARREL'S FACETED SURFACE at axial t and angle a from the
+     top, on the face it falls in (bilinear on a planar trapezoid), lifted
+     `off` along that face's normal; and the face's index */
+  function surfPt(B,t,a,off){
+    var i=0; while(i<BT.length-2 && t>BT[i+1]) i++;
+    var f=Math.max(0,Math.min(1,(t-BT[i])/(BT[i+1]-BT[i])));
+    var u=a/DA-0.5; u=((u%NB)+NB)%NB; var k=Math.floor(u), g=u-k, k2=(k+1)%NB;
+    var A=lerp3(B.RG[i][k],B.RG[i][k2],g), D=lerp3(B.RG[i+1][k],B.RG[i+1][k2],g), X=lerp3(A,D,f);
+    var fi=B.sf(i,k), n=B.faces[fi].n;
+    return {P:add3(X,n,off||0), f:fi};
+  }
+  /* a line on the barrel through surface samples, cut into steps of 0.02 rad
+     and 1 cm, each on the face of its midpoint. A longer chord across the
+     girth sags inside the barrel: a 14-degree step of the stain sagged 2.6 mm,
+     past its 2 mm lift, and its own barrel hid it (Y2, Turn 90, measured) */
+  function surfLine(B,pts,kind,col,off){
+    for(var m=1;m<pts.length;m++){
+      var t0=pts[m-1][0], a0=pts[m-1][1], t1=pts[m][0], a1=pts[m][1];
+      var n=Math.max(1,Math.ceil(Math.max(Math.abs(a1-a0)/0.02,Math.abs(t1-t0)/0.01))), j, prev=surfPt(B,t0,a0,off);
+      for(j=1;j<=n;j++){
+        var f=j/n, cur=surfPt(B,t0+(t1-t0)*f,a0+(a1-a0)*f,off), mid=surfPt(B,t0+(t1-t0)*(j-0.5)/n,a0+(a1-a0)*(j-0.5)/n,off);
+        B.lines.push({a:prev.P, b:cur.P, f0:mid.f, f1:mid.f, kind:kind, col:col});
+        prev=cur;
+      }
+    }
+  }
+  /* a hoop at axial t: a ring of chords, each exactly on its own face */
+  function hoop(B,t){
+    var i=0; while(i<BT.length-2 && t>BT[i+1]) i++;
+    var f=(t-BT[i])/(BT[i+1]-BT[i]), k;
+    for(k=0;k<NB;k++){ var k2=(k+1)%NB;
+      B.lines.push({a:lerp3(B.RG[i][k],B.RG[i+1][k],f), b:lerp3(B.RG[i][k2],B.RG[i+1][k2],f), f0:B.sf(i,k), f1:B.sf(i,k), kind:'hoop', col:COL_K}); }
+  }
+  /* staves: the edges between faces, along the axis, over [ta,tb] */
+  function stave(B,k,ta,tb){
+    for(var i=0;i<BT.length-1;i++){
+      var a=Math.max(ta,BT[i]), b=Math.min(tb,BT[i+1]); if(b-a<1e-6) continue;
+      var fa=(a-BT[i])/(BT[i+1]-BT[i]), fb=(b-BT[i])/(BT[i+1]-BT[i]);
+      B.lines.push({a:lerp3(B.RG[i][k],B.RG[i+1][k],fa), b:lerp3(B.RG[i][k],B.RG[i+1][k],fb), f0:B.sf(i,k-1), f1:B.sf(i,k), kind:'stave', col:COL_BRN});
+    }
+  }
+  /* THE DRAWING ON A BARREL by detail band: near, all of it; otherwise the
+     outline, the two head hoops and the stain. R is the barrel's own stream. */
+  function dressBarrel(B,band,R,dn){
+    smooth(B,2);
+    var uj=R(), nJoint=uj<0.5?4:5, i, k;
+    if(band==='near'){
+      HOOPS.forEach(function(t){ [t,t+HOOPW,0.95-t,0.95-t-HOOPW].forEach(function(tt){ hoop(B,tt); }); });
+      var cuts=[0]; HOOPS.forEach(function(t){ cuts.push(t,t+HOOPW,0.95-t-HOOPW,0.95-t); }); cuts.push(0.95);
+      cuts.sort(function(a,b){ return a-b; });
+      for(i=0;i+1<cuts.length;i+=2) for(k=0;k<NB;k++) stave(B,k,cuts[i],cuts[i+1]);
+      /* the head to the aisle: the chime inset 0.03 m, and the joints between its boards */
+      var c=B.c, e1=B.e1, up=[0,0,1], rc=BR[0]-0.03, ch=[];
+      for(k=0;k<NB;k++){ var a=(k+0.5)*DA; ch.push(add3(add3(c,up,rc*Math.cos(a)),e1,rc*Math.sin(a))); }
+      poly(B,ch,'chime',COL_K,true,0);
+      for(i=1;i<=nJoint;i++){ var h=-rc+2*rc*i/(nJoint+1), w=Math.sqrt(Math.max(0,rc*rc-h*h));
+        ln(B,add3(add3(c,up,h),e1,-w),add3(add3(c,up,h),e1,w),'headjoint',COL_BRN,0); }
+      /* the bung: an 8-gon 5 cm across on the top at the bilge */
+      var bp=[]; for(k=0;k<=8;k++){ var b=TAU*k/8; bp.push([0.475+0.025*Math.cos(b),0.025*Math.sin(b)/BR[2]]); }
+      surfLine(B,bp,'bung',COL_K,0.002);
+    } else {
+      [0.03,0.92].forEach(function(t){ hoop(B,t); });
+    }
+    /* THE WINE STAIN: 6-10 short runs down either side of the bung */
+    var ns=6+Math.floor(4*R());
+    [-1,1].forEach(function(sg){
+      for(i=0;i<ns;i++){ var t=0.475+(R()-0.5)*0.12, a0=(0.03+0.02*R())/BR[2], a1=a0+(0.05+0.12*R())/BR[2];
+        surfLine(B,[[t,sg*a0],[t+(R()-0.5)*0.02,sg*(a0+a1)/2],[t+(R()-0.5)*0.03,sg*a1]],'stain',COL_DRED,0.002); }
+    });
+    return B;
+  }
+  /* chalk on the head to the aisle: a line of the script, a number, a line of the script */
+  function chalkOn(B,R,dn){
+    var c=B.c, right=[B.ax[1],-B.ax[0],0], up=[0,0,1];
+    var mmV=mmAt(c); if(dist3(c)>=dn || mmV*0.035<1.0) return false;
+    var script=LANG===0?'kanji':LANG===1?'hangul':LANG===2?'latin':(R()<0.5?'latin':'kanji');
+    function put2(T,v0){ T.lines.forEach(function(pl){ for(var j=1;j<pl.length;j++)
+      ln(B,add3(add3(c,right,pl[j-1][0]-0.13),up,v0+pl[j-1][1]),add3(add3(c,right,pl[j][0]-0.13),up,v0+pl[j][1]),'chalk',COL_GREY,0); }); }
+    put2(SCR.setText(script,0.26,0.06,false,R,0.02),0.06);
+    put2(SCR.setText(script,0.26,0.06,false,R,0.02),-0.12);
+    /* the number: futural digits 5 cm tall */
+    var num=10+Math.floor(R()*90), txt=String(num), u=0, hN=0.05, cap=0.6;
+    var gH=glyphStrokes('8','futural'); if(gH) gH.strokes.forEach(function(st){ st.forEach(function(q){ if(q[1]>cap) cap=q[1]; }); });
+    var sc=hN/cap, tw=0, i;
+    for(i=0;i<txt.length;i++){ var G0=glyphStrokes(txt[i],'futural'); if(G0) tw+=G0.adv*sc; }
+    for(i=0;i<txt.length;i++){ var G=glyphStrokes(txt[i],'futural'); if(!G) continue;
+      G.strokes.forEach(function(st){ for(var j=1;j<st.length;j++)
+        ln(B,add3(add3(c,right,-tw/2+u+st[j-1][0]*sc),up,-0.035+st[j-1][1]*sc),add3(add3(c,right,-tw/2+u+st[j][0]*sc),up,-0.035+st[j][1]*sc),'chalk',COL_GREY,0); });
+      u+=G.adv*sc; }
+    return true;
+  }
+  /* the vault's clearance of a barrel at head oH, axis za: its nearest vertex */
+  function barrelClear(oH,za){
+    var best=1e9, i, k;
+    for(i=0;i<BT.length;i++) for(k=0;k<NB;k++){ var a=(k+0.5)*DA; best=Math.min(best,vaultClear(oH+BT[i],za+BR[i]*Math.cos(a))); }
+    return best;
+  }
+  function recBarrel(B,L,tier,j,rack,band){
+    TAL.barrels.push({side:L.side, idx:L.idx, tier:tier, j:j, rack:rack, band:band, c:B.c, ax:B.ax,
+      mid:add3(B.c,B.ax,0.475), V:verts(B), faces:B.faces.map(function(f){ return {n:f.n, d:f.d}; })});
+  }
+  /* A PYRAMID ON CHOCKS: the bottom tier at axis 0.43 m, 0.75 m apart (0.05 m
+     between bilges); each barrel above TANGENT to the two it sits between, so
+     0.7005 m from each axis -- the spec's "0.70 apart, 0.606 higher" is that
+     with no gap between bilges, which its own 0.05 m rules out. A place above
+     is only a place where both supports are taken. */
+  function pyramid(L,oH,sA,sB,dn,df,rec){
+    var sd=L.side, a=sd<0?2:1, n=Math.floor((sB-sA+BGAP)/BPITCH);
+    if(n<1){ rec.why='bay too short'; return; }
+    var s00=(sA+sB)/2-(n-1)*BPITCH/2, rows=[], t, j;
+    /* the chocks: two oak timbers along the bay under the quarter rings */
+    [0.2375,0.7125].forEach(function(tq){ inLot(tag(bx(sd,s00-0.40,s00+(n-1)*BPITCH+0.40,oH+tq-0.04,oH+tq+0.04,0,0.08),'chock',COL_BRN,'stack'),L); });
+    rec.chocks=2;
+    var cur=[];
+    for(j=0;j<n;j++){ var s=s00+j*BPITCH; cur.push({s:s, z:AXIS0, c:PS(sd,s,oH+0.475,AXIS0)}); }
+    for(t=0;t<TIERS && cur.length;t++){
+      var zt=Math.max.apply(null,cur.filter(function(q){ return q; }).map(function(q){ return q.z; }));
+      if(barrelClear(oH,zt)<CLR){ TAL.refused++; rec.why='tier '+t+' clear '+barrelClear(oH,zt).toFixed(3); TAL.refusedTiers.push({side:sd, idx:L.idx, tier:t}); rec.refused=(rec.refused||0)+1; break; }
+      var row=[];
+      cur.forEach(function(q,jj){
+        if(q===null){ row.push(null); return; }
+        rec.places++;
+        var R=sub(a*8+t,L.idx*64+jj,SALT_BARREL);
+        if(!(R()<FILL)){ row.push(null); return; }
+        rec.taken++;
+        var B=barrelAt(sd,q.s,oH,q.z), band=bandOf(add3(B.c,B.ax,0.475),dn,df);
+        dressBarrel(B,band,R,dn);
+        if(R()<CHALK && band==='near') { if(chalkOn(B,R,dn)) rec.chalk++; }
+        tag(B,'barrel',COL_BRN,'stack');
+        inLot(B,L); recBarrel(B,L,t,jj,false,band);
+        row.push(q);
+      });
+      rows.push(row);
+      /* the places above: in the valleys between two taken barrels */
+      var nxt=[];
+      for(j=0;j+1<row.length;j++){
+        if(!row[j] || !row[j+1]){ nxt.push(null); continue; }
+        var sm=(row[j].s+row[j+1].s)/2, cm=PS(sd,sm,oH+0.475,0), qd=Math.hypot(cm[0]-row[j].c[0],cm[1]-row[j].c[1]);
+        var z=row[j].z+Math.sqrt(TAN*TAN-qd*qd);
+        nxt.push({s:sm, z:z, c:PS(sd,sm,oH+0.475,z)});
+      }
+      cur=nxt.some(function(q){ return q; })?nxt:[];
+    }
+  }
+  /* STEEL RACKS: two barrels a rack, 0.80 m apart, cradled on two rails
+     between two U-shaped end frames, red; stacked straight up, 0.80 m a tier */
+  function racks(L,oH,sA,sB,dn,df,rec){
+    var sd=L.side, a=sd<0?2:1, RL=1.60, n=Math.floor((sB-sA+0.05)/(RL+0.05)), t, j;
+    if(n<1){ rec.why='bay too short'; return; }
+    var s00=(sA+sB)/2-(n*RL+(n-1)*0.05)/2, o0=oH+0.05, o1=oH+0.90;
+    for(t=0;t<TIERS;t++){
+      var zb=t*RTIER;
+      if(barrelClear(oH,zb+AXIS0)<CLR || vaultClear(o1+0.025,zb+RTIER)<CLR){ TAL.refused++; TAL.refusedTiers.push({side:sd, idx:L.idx, tier:t}); rec.refused=(rec.refused||0)+1; break; }
+      for(j=0;j<n;j++){
+        var r0=s00+j*(RL+0.05), r1=r0+RL, parts=[];
+        [[r0,r0+0.05],[r1-0.05,r1]].forEach(function(ss){
+          parts.push(tag(bx(sd,ss[0],ss[1],o0-0.025,o1+0.025,zb,zb+0.05),'rackbar',COL_RED,'stack',{gapless:true}));
+          [o0,o1].forEach(function(oo){ parts.push(tag(bx(sd,ss[0],ss[1],oo-0.025,oo+0.025,zb+0.05,zb+RTIER),'rackpost',COL_RED,'stack',{gapless:true})); });
+        });
+        [0.2375,0.7125].forEach(function(tq){ parts.push(tag(bx(sd,r0+0.05,r1-0.05,oH+tq-0.025,oH+tq+0.025,zb+0.05,zb+AXIS0-BR[1]-0.001),'rackrail',COL_RED,'stack',{gapless:true})); });
+        parts.forEach(function(P){ inLot(P,L); });
+        rec.racks++;
+        [0.40,1.20].forEach(function(ds,k){
+          rec.places++;
+          var R=sub(a*8+4+t,L.idx*64+j*2+k,SALT_BARREL);
+          if(!(R()<FILL)) return;
+          rec.taken++;
+          var B=barrelAt(sd,r0+ds,oH,zb+AXIS0), band=bandOf(add3(B.c,B.ax,0.475),dn,df);
+          dressBarrel(B,band,R,dn);
+          if(R()<CHALK && band==='near') { if(chalkOn(B,R,dn)) rec.chalk++; }
+          tag(B,'barrel',COL_BRN,'stack');
+          inLot(B,L); recBarrel(B,L,t,j*2+k,true,band);
+        });
+      }
+    }
+  }
+  /* ---- §2.5 BOTTLE BINS: brick cells 0.6 m square from the floor to 1.8 m
+     against the wall -- a board at every row (the floor's included) and a
+     divider at every cell boundary between them, so no two parts cross --
+     and in each taken cell a plate of bottle bases recessed 3 cm */
+  var BINW=0.6;
+  function bins(L,oF,sA,sB,dn,df,rec){
+    var sd=L.side, a=sd<0?2:1, oB=L.back-WALLT-WALLG, nS=Math.floor((sB-sA)/BINW), r, c;
+    if(nS<1){ rec.why='bay too short'; return; }
+    var s00=(sA+sB)/2-nS*BINW/2, nR=3;
+    /* a bin is not a stack: CL3's 0.15 m is the barrels' rule; a bin need only stay under the vault */
+    while(nR>0 && vaultClear(oB,nR*BINW)<0.02){ nR--; TAL.refused++; TAL.refusedTiers.push({side:sd, idx:L.idx, tier:nR, bins:true}); rec.refused=(rec.refused||0)+1; }
+    if(nR<1) return;
+    var BT0=0.04, zTop=nR*BINW;
+    function boardZ(r2){ return r2<nR?[r2*BINW,r2*BINW+BT0]:[zTop-BT0,zTop]; }
+    for(r=0;r<=nR;r++){ var zz=boardZ(r); inLot(tag(bx(sd,s00-0.02,s00+nS*BINW+0.02,oF,oB,zz[0],zz[1]),'binboard',COL_SEP,'bin',{gapless:true}),L); }
+    for(r=0;r<nR;r++){
+      var z0=boardZ(r)[1], z1=boardZ(r+1)[0];
+      for(c=0;c<=nS;c++){ var sc=s00+c*BINW; inLot(tag(bx(sd,sc-0.02,sc+0.02,oF,oB,z0,z1),'bindiv',COL_SEP,'bin',{gapless:true}),L); }
+      for(c=0;c<nS;c++){
+        var cs0=s00+c*BINW+0.02, cs1=s00+(c+1)*BINW-0.02, R=sub(a*8,L.idx*64+r*16+c,SALT_BAY);
+        var cell={side:sd, idx:L.idx, r:r, c:c, s0:cs0, s1:cs1, z0:z0, z1:z1, o:oF+0.03, taken:false, bottles:0};
+        TAL.cells.push(cell); rec.places++;
+        if(!(R()<FILL)) continue;
+        cell.taken=true; rec.taken++;
+        var col=R()<0.7?COL_DGRN:COL_K, mid=PS(sd,(cs0+cs1)/2,oF+0.03,(z0+z1)/2), near=dist3(mid)<dn && 0.075*mmAt(mid)>=MINSP;
+        var Pl=tag(bx(sd,cs0+0.001,cs1-0.001,oF+0.03,oF+0.04,z0+0.001,z1-0.001),'bottles',col,'bin');
+        Pl.lines=[];
+        if(near){
+          /* the bases: 8-gon rings 7.5 cm across, packed hexagonally, each with a dot */
+          var rr=0.0375, dz=0.075*Math.sqrt(3)/2, row=0, zc;
+          for(zc=z0+0.001+rr; zc<=z1-0.001-rr+1e-9; zc+=dz, row++){
+            for(var scc=cs0+0.001+rr+(row%2?rr:0); scc<=cs1-0.001-rr+1e-9; scc+=0.075){
+              var ring=[], k;
+              for(k=0;k<8;k++){ var aa=TAU*(k+0.5)/8; ring.push(PS(sd,scc+rr*0.95*Math.cos(aa),oF+0.03,zc+rr*0.95*Math.sin(aa))); }
+              poly(Pl,ring,'bottle',col,true,2);
+              ln(Pl,PS(sd,scc-0.003,oF+0.03,zc),PS(sd,scc+0.003,oF+0.03,zc),'bottle',col,2);
+              cell.bottles++; TAL.bottles.push({side:sd, idx:L.idx, r:r, c:c, s:scc, z:zc, rr:rr*0.95, cell:[cs0,cs1,z0,z1]});
+            }
+          }
+        } else if(dist3(mid)<df){
+          /* one hatched square: diagonals held to the paper floor */
+          var g=paperGap(mid,sub3(PS(sd,cs0+1,oF+0.03,z0+1),PS(sd,cs0,oF+0.03,z0)),sub3(PS(sd,cs0+1,oF+0.03,z0-1),PS(sd,cs0,oF+0.03,z0)));
+          var sp=Math.max(0.05,g>0?MINSP/g*Math.SQRT2:1e9), W=cs1-cs0, H=z1-z0, u;
+          for(u=sp; u<W+H-1e-6; u+=sp){
+            var p0=[Math.max(0,u-H), Math.min(u,H)], p1=[Math.min(u,W), Math.max(0,u-W)];
+            ln(Pl,PS(sd,cs0+p0[0],oF+0.03,z0+p0[1]),PS(sd,cs0+p1[0],oF+0.03,z0+p1[1]),'binhatch',col,2);
+          }
+        }
+        inLot(Pl,L);
+      }
+    }
+  }
+
+  /* ---- per lot: the wall, its brick and tone hatch, the pier, the bay ----- */
+  function brickLines(P,fi,X,u0,u1,v0,v1,dn,Pm,du,dv){
+    /* courses along u every 0.075 m of v, held to the paper floor; header
+       joints across every 0.23 m in alternate courses, near and full only */
+    var g=paperGap(Pm,du,dv), k=thin(g,0.075), j, v, n=0;
+    for(j=1, v=v0+0.075*k; v<v1-1e-6; v+=0.075*k, j++){ ln(P,X(u0,v),X(u1,v),'brick',COL_SEP,fi); n++; }
+    if(k===1 && dist3(Pm)<dn){
+      var row=0;
+      for(v=v0; v<v1-1e-6; v+=0.075, row++){
+        var vt=Math.min(v1,v+0.075);
+        for(var u=u0+(row%2?0.115:0.23); u<u1-1e-6; u+=0.23) ln(P,X(u,v),X(u,vt),'brick',COL_SEP,fi);
+      }
+    }
+    return n;
+  }
+  function dress(L,dn,df){
+    if(L===lots[0]){ TAL.lots=[]; TAL.bays=[]; TAL.barrels=[]; TAL.piers=[]; TAL.walls=[]; TAL.cells=[]; TAL.bottles=[];
+                     TAL.refused=0; TAL.refusedTiers=[]; TAL.miss=0; }
+    var sd=L.side, fe=L.fe, BK=L.back, a=sd<0?2:1;
+    var RB=sub(a,L.idx,SALT_BAY), u1=RB(), kind=u1<BINS?'bins':(RB()<RACKS?'racks':'stack');
+    TAL.lots.push({side:sd, idx:L.idx, s0:L.s0, s1:L.s1, fe:fe, back:BK, kind:kind, first:L.cFirst, last:L.cLast});
+    /* the side wall: brick courses and the tone hatch on its face to the aisle */
+    var W=tag(bx(sd,L.s0,L.s1,BK-WALLT,BK,0,SPRING),'wall',COL_SEP,'struct',{gapless:true});
+    var Xw=function(s,z){ return PS(sd,s,BK-WALLT,z); }, Pm=Xw((L.s0+L.s1)/2,SPRING/2);
+    brickLines(W,2,Xw,L.s0,L.s1,0,SPRING,dn,Pm,sub3(Xw(L.s0+1,0),Xw(L.s0,0)),[0,0,1]);
+    if(HATCH>0 && dist3(Pm)<df){
+      var gp=paperGap(Pm,sub3(Xw(L.s0+1,1),Xw(L.s0,0)),sub3(Xw(L.s0+1,-1),Xw(L.s0,0)));
+      var sp=Math.max(0.02+0.08*(1-HATCH), gp>0?MINSP/gp*Math.SQRT2:1e9), Wl=L.s1-L.s0, Hl=SPRING, uu;
+      if(gp>0) for(uu=sp; uu<Wl+Hl-1e-6; uu+=sp){
+        var q0=[Math.max(0,uu-Hl), Math.min(uu,Hl)], q1=[Math.min(uu,Wl), Math.max(0,uu-Wl)];
+        ln(W,Xw(L.s0+q0[0],q0[1]),Xw(L.s0+q1[0],q1[1]),'hatch',COL_DG,2);
+      }
+    }
+    inLot(W,L);
+    TAL.walls.push({side:sd, idx:L.idx, s0:L.s0, s1:L.s1, o0:BK-WALLT, o1:BK, z1:SPRING});
+    /* the piers at this lot's faces: its s1, and its s0 when it is the first */
+    var fcs=[{s:L.s1, pos:L.cLast?'last':'mid'}];
+    if(L.cFirst) fcs.push({s:L.s0, pos:'first'});
+    fcs.forEach(function(f){
+      var r=pierRange(f);
+      inLot(tag(bx(sd,r[0],r[1],BK-WALLT-WALLG-PIERP,BK-WALLT-WALLG,0,SPRING),'pier',COL_SEP,'struct'),L);
+      TAL.piers.push({side:sd, idx:L.idx, s:f.s, pos:f.pos, s0:r[0], s1:r[1], o0:BK-WALLT-WALLG-PIERP, o1:BK-WALLT-WALLG, z1:SPRING});
+    });
+    /* THE BAY: the stack's aisle head 0.1 m behind the lot front, and never
+       nearer the pier than 0.1 m (a bend pushes the front back) */
+    var by=bayOf(L), oH=Math.min(fe+0.1,BK-WALLT-WALLG-PIERP-0.10-0.95);
+    var rec={side:sd, idx:L.idx, kind:kind, sA:by[0], sB:by[1], oH:oH, places:0, taken:0, racks:0, chalk:0, chocks:0, refused:0, why:''};
+    TAL.bays.push(rec);
+    if(oH<fe-1e-9){ rec.why='lot too shallow'; return; }
+    if(kind==='bins') bins(L,fe+0.15,by[0]+0.05,by[1]-0.05,dn,df,rec);
+    else if(kind==='racks') racks(L,oH,by[0]+0.05,by[1]-0.05,dn,df,rec);
+    else pyramid(L,oH,by[0]+0.05,by[1]-0.05,dn,df,rec);
+  }
+
+  /* ---- §2.3 THE VAULT: a plate per arch segment per slab length, HIDING
+     NOTHING, cut at every container face; brick courses along the aisle ---- */
+  function vault(dn,df){
+    TAL.plates=[];
+    var sa, k;
+    for(sa=0; sa<LEN-1e-9; sa+=4){
+      var sb=Math.min(LEN,sa+4);
+      for(k=0;k<NARCH;k++){
+        /* the plate's section: the intrados chord and the same chord VTH out,
+           kept 0.1 mm inside the walls' lines (the lots end there). Clipped ON
+           the line, vault brick was drawn in front of an arch at Turn -90 (Y2
+           2.369 % drawn-but-hidden, measured; 0 at 0.1 mm) */
+        var A=arcPt(thK(k),RV), B=arcPt(thK(k+1),RV), dx=B[0]-A[0], dz=B[1]-A[1], dl=Math.hypot(dx,dz), no=[dz/dl,-dx/dl];
+        if(no[0]*((A[0]+B[0])/2)+no[1]*((A[1]+B[1])/2-ZC)<0) no=[-no[0],-no[1]];
+        var sec=[A,B,[B[0]+no[0]*VTH,B[1]+no[1]*VTH],[A[0]+no[0]*VTH,A[1]+no[1]*VTH]];
+        sec=clipHalf(clipHalf(sec,-1,0,-(BACK-1e-4)),1,0,-(BACK-1e-4));
+        var om=sec.reduce(function(a2,q){ return a2+q[0]; },0)/sec.length, T=sub3(SP(sb,om,0),SP(sa,om,0));
+        var E0=SP(sa,A[0],A[1]), E1=SP(sa,B[0],B[1]), u=sub3(E1,E0), mid=add3(lerp3(E0,E1,0.5),T,0.5);
+        var G=see(tag(sweep(SP,sa,sb,sec,om),'vault',COL_SEP,'vault')); G.lines=[];
+        /* the courses: every 0.075 m of arc from side +1's wall top, the
+           chord's own share of each; joints near */
+        var d=dist3(mid);
+        if(d<df){
+          var gp=paperGap(mid,T,u), kk=thin(gp,0.075), u0=RV*(thK(k)-TH0), u1=RV*(thK(k+1)-TH0), L0=u1-u0;
+          var j0=Math.ceil((u0+1e-9)/(0.075*kk)), uu;
+          for(uu=j0*0.075*kk; uu<u1-1e-9; uu+=0.075*kk){ var P=lerp3(E0,E1,(uu-u0)/L0); ln(G,P,add3(P,T,1),'brick',COL_SEP,0); }
+          if(kk===1 && d<dn){
+            var c0=Math.ceil((u0+1e-9)/0.075), c1=Math.floor((u1-1e-9)/0.075);
+            for(var cj=c0; cj<c1; cj++){
+              var fa=(cj*0.075-u0)/L0, fb=((cj+1)*0.075-u0)/L0, Ls=sb-sa;
+              for(var ss=(cj%2?0.115:0.23); ss<Ls-1e-6; ss+=0.23){
+                var Pa=add3(lerp3(E0,E1,fa),T,ss/Ls), Pb=add3(lerp3(E0,E1,fb),T,ss/Ls); ln(G,Pa,Pb,'brick',COL_SEP,0); }
+            }
+          }
+        }
+        put(G,TAL.plates,{k:k, sa:sa, sb:sb});
+      }
+    }
+  }
+  /* ---- the transverse arches: a chain of convex segments along the arch,
+     0.12 m deep under the vault, over the pier's 0.5 m. PAIRED, one chain wall
+     to wall; else each side its own half, stopping OIN short of the
+     centreline. Voussoir joints every 0.25 m of arc on its two faces. */
+  function archSegs(lo,hi){
+    /* the (o,z) sections of segments lo..hi-1, clipped to z >= SPRING and,
+       for a half, to o >= OIN (o signed, side +1 positive) */
+    var out=[], k;
+    for(k=lo;k<hi;k++){
+      var Q=[arcPt(thK(k),RV-RIBO),arcPt(thK(k+1),RV-RIBO),arcPt(thK(k+1),RV-RIBO-RIBD),arcPt(thK(k),RV-RIBO-RIBD)];
+      Q=clipHalf(Q,0,1,SPRING);
+      out.push({k:k, sec:Q});
+    }
+    return out;
+  }
+  function arches(dn,df){
+    TAL.members=[];
+    var sides=PAIRED?[0]:[1,-1];
+    sides.forEach(function(sd){
+      var F=FACES[sd===0?'1':String(sd)];
+      F.forEach(function(f){
+        var r=pierRange(f), X=sd===0?function(s,o,z){ return SP(s,o,z); }:function(s,o,z){ return PS(sd,s,o,z); };
+        var segs=sd===0?archSegs(0,NARCH):archSegs(0,NARCH/2);
+        if(sd!==0) segs=segs.map(function(g){ return {k:g.k, sec:clipHalf(g.sec,1,0,OIN)}; });
+        segs.forEach(function(g){
+          if(g.sec.length<3 || area2(g.sec)<1e-8) return;
+          var omd=g.sec.reduce(function(a2,q){ return a2+q[0]; },0)/g.sec.length;
+          var P=tag(sweep(X,r[0],r[1],g.sec,omd),'arch',COL_SEP,'struct',{gapless:true}), n=g.sec.length;
+          /* drop the seams: the radial edges a neighbour shares, on both
+             faces, and the long edges at those corners unless they outline */
+          var lo=thK(g.k), hi=thK(g.k+1), m;
+          function onRadial(q,th){ return Math.abs(q[0]*Math.sin(th)-(q[1]-ZC)*Math.cos(th))<1e-9; }
+          /* which interior boundary a corner lies on: 1 the lower, 2 the upper, 0 none */
+          var onB=g.sec.map(function(q){ return (g.k>0 && onRadial(q,lo))?1:((sd===0?g.k<NARCH-1:g.k<NARCH/2-1) && onRadial(q,hi))?2:0; });
+          P.lines=P.lines.filter(function(Ln){
+            var ia=-1, ib=-1;
+            for(m=0;m<n;m++){ if(P.faces[0].pts[m]===Ln.a || P.faces[1].pts[m]===Ln.a) ia=m; if(P.faces[0].pts[m]===Ln.b || P.faces[1].pts[m]===Ln.b) ib=m; }
+            if(ia<0 || ib<0) return true;
+            /* a long edge at a shared corner is a crease of a smooth arch: not drawn */
+            if(ia===ib) return !onB[ia];
+            /* an edge ON a shared radial is the seam itself */
+            return !(onB[ia] && onB[ia]===onB[ib]);
+          });
+          /* voussoir joints every 0.25 m of the arch's soffit */
+          var rs=RV-RIBO-RIBD, gp=paperGap(X((r[0]+r[1])/2,arcPt((lo+hi)/2,rs)[0],arcPt((lo+hi)/2,rs)[1]),[0,0,1],[1,0,0]), kk=thin(gp,0.25);
+          var a0=rs*(lo-TH0), a1=rs*(hi-TH0), T=sub3(X(r[1],omd,0),X(r[0],omd,0));
+          if(dist3(X((r[0]+r[1])/2,omd,CROWN))<df)
+          for(var aj=Math.ceil((a0+1e-9)/(0.25*kk))*0.25*kk; aj<a1-1e-9; aj+=0.25*kk){
+            var th=TH0+aj/rs, pi=arcPt(th,rs), po=arcPt(th,RV-RIBO);
+            if(pi[1]<SPRING || (sd!==0 && pi[0]<OIN)) continue;
+            var A0=X(r[0],pi[0],pi[1]), B0=X(r[0],po[0],po[1]);
+            ln(P,A0,B0,'voussoir',COL_SEP,0); ln(P,add3(A0,T,1),add3(B0,T,1),'voussoir',COL_SEP,1);
+          }
+          put(P,TAL.members,{face:f.s, side:sd, k:g.k, pos:f.pos, r:r});
+        });
+      });
+    });
+  }
+
+  /* ---- §2.6 THE FLOOR: flags 0.6 x 0.4 m in running bond, a drain channel
+     0.1 m wide on the centreline; the slabs' and the lots' plates hide nothing */
+  function flags(P,sd,s0,s1,oa,ob,df,mid){
+    if(dist3(mid)>=df) return;
+    var g1=paperGap(mid,sub3(P3(s0+1,sd,oa,0),P3(s0,sd,oa,0)),sub3(P3(s0,sd,oa+1,0),P3(s0,sd,oa,0))), kO=thin(g1,0.4);
+    var g2=paperGap(mid,sub3(P3(s0,sd,oa+1,0),P3(s0,sd,oa,0)),sub3(P3(s0+1,sd,oa,0),P3(s0,sd,oa,0))), kS=thin(g2,0.6);
+    var o, j, s;
+    for(j=Math.ceil((oa-0.05+1e-9)/(0.4*kO)), o=0.05+j*0.4*kO; o<ob-1e-6; o+=0.4*kO, j++) P.lines.push({a:P3(s0,sd,o,0), b:P3(s1,sd,o,0), f0:1, f1:1, col:COL_GREY, kind:'flag'});
+    if(kO===1 && kS===1){
+      for(var row=Math.floor((oa-0.05)/0.4); 0.05+row*0.4<ob-1e-6; row++){
+        var ca=Math.max(oa,0.05+row*0.4), cb=Math.min(ob,0.05+(row+1)*0.4); if(cb-ca<1e-6) continue;
+        for(s=Math.ceil((s0-(row%2?0.3:0))/0.6)*0.6+(row%2?0.3:0); s<s1-1e-6; s+=0.6) if(s>s0+1e-6) P.lines.push({a:P3(s,sd,ca,0), b:P3(s,sd,cb,0), f0:1, f1:1, col:COL_GREY, kind:'flag'});
+      }
+    }
+  }
+  function floors(dn,df){
+    conts.forEach(function(C){
+      if(C.kind!=='slab' && C.kind!=='lot') return;
+      var sd=C.side, Pl=prismN(C.poly,-0.02,0);
+      Pl.lines=[]; Pl.hides=false; Pl.cont=C; Pl.col=COL_GREY; Pl.kind='plate'; Pl.layer='floor';
+      if(C.kind==='slab'){
+        Pl.lines.push({a:P3(C.s0,sd,0.05,0), b:P3(C.s1,sd,0.05,0), f0:1, f1:1, col:COL_DG, kind:'drain'});
+        flags(Pl,sd,C.s0,C.s1,0.05,HALFW,df,P3((C.s0+C.s1)/2,sd,HALFW/2,0));
+      } else flags(Pl,sd,C.s0,C.s1,C.fe,C.back-WALLT,df,P3((C.s0+C.s1)/2,sd,(C.fe+C.back)/2,0));
+      C.parts.push(Pl);
+    });
+  }
+  /* ---- §2.6 LAMPS: hooks along the crown, 8 cm to side +1 so the cable lies
+     in that side's slabs (the centreline is a slab face), under the
+     transverse arches; the cable is the kit's, hook to hook. A bare bulb hangs
+     0.3 m under each hook that holds a cable, in the slab under it, moved
+     along (never split) off a slab face. */
+  var OL=0.08;
+  function commitSlab(parts,layers){
+    var all=[], C=null, i;
+    for(i=0;i<parts.length;i++){ var pcs=slabPieces(parts[i]); if(!pcs || pcs.length!==1) return null;
+      if(C && pcs[0].cont!==C) return null; C=pcs[0].cont; }
+    parts.forEach(function(P){ P.cont=C; C.parts.push(P); });
+    return C;
+  }
+  function lamps(dn){
+    TAL.lamps=[];
+    var ZH=CROWN-RIBO-RIBD-0.06, hooks=[], s, k;
+    for(k=0;;k++){
+      s=LAMP*(k+0.5); if(s>LEN-0.3) break;
+      /* off a slab face by 6 cm: the bulb is 3 cm round */
+      var f=Math.round(s/4)*4; if(Math.abs(s-f)<0.06) s=f+(s<f?-0.06:0.06);
+      hooks.push({s:s, P:SP(s,OL,ZH), hung:false});
+    }
+    for(k=0;k+1<hooks.length;k++){
+      var n0=cables.length; addCable('lamp',hooks[k].P,hooks[k+1].P,[]);
+      if(cables.length>n0){ hooks[k].hung=true; hooks[k+1].hung=true; }
+    }
+    hooks.forEach(function(h,hi){
+      var rec={s:h.s, o:OL, z:ZH, P:h.P, hung:h.hung, placed:false, slab:null};
+      TAL.lamps.push(rec);
+      if(!h.hung) return;
+      var parts=[], c=null;
+      var Cd=see(tag(bx(1,h.s-0.004,h.s+0.004,OL-0.004,OL+0.004,ZH-0.25,ZH-0.001),'cord',COL_K,'lamp'));
+      Cd.lines=[{a:SP(h.s,OL,ZH), b:SP(h.s,OL,ZH-0.25), f0:0, f1:0, kind:'cord', col:COL_K}];
+      parts.push(Cd);
+      function ringAt(r,z,n){ var q=[]; for(var m=0;m<n;m++){ var a=TAU*(m+0.5)/n; q.push([c[0]+r*Math.cos(a),c[1]+r*Math.sin(a),z]); } return q; }
+      var Ccx=SP(h.s,OL,0); c=[Ccx[0],Ccx[1]];
+      parts.push(smooth(tag(rings(ringAt(0.022,ZH-0.30,8),ringAt(0.022,ZH-0.25,8)),'socket',COL_YEL,'lamp'),2));
+      parts.push(smooth(tag(loft([ringAt(0.012,ZH-0.30,6),ringAt(0.030,ZH-0.34,6),ringAt(0.018,ZH-0.38,6)]),'bulb',COL_YEL,'lamp'),2));
+      var C=commitSlab(parts);
+      if(C){ rec.placed=true; rec.slab={side:C.side, s0:C.s0, s1:C.s1, poly:C.poly}; }
+    });
+  }
+  /* ---- THE FAR END (salt 1091): a brick end wall in its own container past
+     the aisle's end, checked disjoint from every lot and slab, closing the
+     vault: convex pieces round an arched doorway 1.2 x 2.2 m, an iron gate in
+     it, the darkness behind at 80 % tone; and a table 0.6 m in front ----- */
+  var WS0=LEN+0.02, WS1=LEN+0.35, WALLC=null;
+  (function(){
+    var Q=[SP(WS0,-BACK,0),SP(WS1,-BACK,0),SP(WS1,BACK,0),SP(WS0,BACK,0)].map(function(v){ return [v[0],v[1]]; }), bb=[1e18,1e18,-1e18,-1e18];
+    Q.forEach(function(v){ bb[0]=Math.min(bb[0],v[0]); bb[1]=Math.min(bb[1],v[1]); bb[2]=Math.max(bb[2],v[0]); bb[3]=Math.max(bb[3],v[1]); });
+    function sep(A,B){ var Ps=[A,B]; for(var pi=0;pi<2;pi++){ var P=Ps[pi]; for(var e=0;e<P.length;e++){
+      var a=P[e], b=P[(e+1)%P.length], nx=b[1]-a[1], ny=a[0]-b[0], a0=1e18,a1=-1e18,b0=1e18,b1=-1e18, m;
+      for(m=0;m<A.length;m++){ var t=A[m][0]*nx+A[m][1]*ny; a0=Math.min(a0,t); a1=Math.max(a1,t); }
+      for(m=0;m<B.length;m++){ var t2=B[m][0]*nx+B[m][1]*ny; b0=Math.min(b0,t2); b1=Math.max(b1,t2); }
+      if(a1<=b0+1e-9 || b1<=a0+1e-9) return true; } } return false; }
+    var clash=conts.some(function(C){ return !sep(Q,C.poly); });
+    TAL.end={placed:!clash, s0:WS0, s1:WS1};
+    if(!clash){ WALLC={kind:'wall', side:1, s0:WS0, s1:WS1, poly:Q, bb:bb, parts:[]}; conts.push(WALLC); }
+  })();
+  var DW=0.6, DSPR=1.6, NDOOR=8;
+  function doorZ(o){ return DSPR+Math.sqrt(Math.max(0,DW*DW-o*o)); }
+  function endWall(dn,df){
+    if(!WALLC) return;
+    var X=function(s,o,z){ return SP(s,o,z); }, outline=[[BACK,0],[BACK,SPRING]], k;
+    for(k=1;k<NARCH;k++) outline.push(arcPt(thK(k),RV));
+    outline.push([-BACK,SPRING],[-BACK,0]);
+    /* the pieces: left and right of the doorway, and strips over its head */
+    var pieces=[clipHalf(outline,1,0,DW),clipHalf(outline,-1,0,DW)];
+    function topZ(o){ var c=RV*RV-o*o; return ZC+Math.sqrt(Math.max(0,c)); }
+    for(k=0;k<NDOOR;k++){ var oa=-DW+2*DW*k/NDOOR, ob=-DW+2*DW*(k+1)/NDOOR;
+      pieces.push([[oa,doorZ(oa)],[ob,doorZ(ob)],[ob,topZ(ob)],[oa,topZ(oa)]]); }
+    var Pm=X(WS0,0,SPRING/2), du=[0,0,1];
+    pieces.forEach(function(sec,pi){
+      if(sec.length<3 || area2(sec)<1e-6) return;
+      var P=tag(sweep(X,WS0,WS1,sec,0),'endwall',COL_SEP,'struct',{gapless:true});
+      /* brick courses on its face to the aisle, inside its own section */
+      var zs=sec.map(function(q){ return q[1]; }), zlo=Math.min.apply(null,zs), zhi=Math.max.apply(null,zs);
+      var g=paperGap(Pm,sub3(X(WS0,1,1),X(WS0,0,1)),du), kk=thin(g,0.075);
+      if(dist3(Pm)<df) for(var z=Math.ceil((zlo+1e-9)/(0.075*kk))*0.075*kk; z<zhi-1e-9; z+=0.075*kk){
+        /* the section's width at height z */
+        var lo=1e9, hi=-1e9;
+        for(var m=0;m<sec.length;m++){ var A=sec[m], B=sec[(m+1)%sec.length];
+          if((A[1]-z)*(B[1]-z)<=0 && A[1]!==B[1]){ var o=A[0]+(B[0]-A[0])*(z-A[1])/(B[1]-A[1]); lo=Math.min(lo,o); hi=Math.max(hi,o); } }
+        if(hi-lo>1e-6) ln(P,X(WS0,lo,z),X(WS0,hi,z),'brick',COL_SEP,0);
+      }
+      P.cont=WALLC; WALLC.parts.push(P);
+    });
+    /* the darkness behind the gate, at the doorway's back */
+    var dsec=[[DW,0]]; for(k=0;k<=NDOOR;k++){ var od=DW-2*DW*k/NDOOR; dsec.push([od,doorZ(od)]); } dsec.push([-DW,0]);
+    var DF=(WS1-0.03-WS0)/(WS1-WS0), Dk=tag(sweep(X,WS0,WS1,dsec,0,DF,1),'dark',COL_K,'struct'); Dk.lines=[];
+    var TW=sub3(X(WS1,0,0),X(WS0,0,0)), XD=function(o,z){ return add3(X(WS0,o,z),TW,DF); };
+    var Pd=XD(0,1.1), gd=paperGap(Pd,sub3(XD(1,1),XD(0,0)),sub3(XD(1,-1),XD(0,0)));
+    var spd=Math.max(0.02+0.08*0.2, gd>0?MINSP/gd*Math.SQRT2:1e9), u;
+    if(gd>0) for(u=-DW-2.2+spd; u<DW+1e-9; u+=spd){
+      /* the line o - z = u, inside the doorway */
+      var pts=[], zz;
+      for(zz=0; zz<=doorZ(Math.max(-DW,Math.min(DW,u+zz)))+1e-9 && zz<2.3; zz+=0.02){ var oo=u+zz; if(oo>=-DW && oo<=DW && zz<=doorZ(oo)) pts.push([oo,zz]); }
+      if(pts.length>1) ln(Dk,XD(pts[0][0],pts[0][1]),XD(pts[pts.length-1][0],pts[pts.length-1][1]),'hatch',COL_DG,0);
+    }
+    Dk.cont=WALLC; WALLC.parts.push(Dk);
+    /* the gate: bars every 0.12 m, two rails, a scroll in the head */
+    var GF=0.15/(WS1-WS0), Gt=see(tag(sweep(X,WS0,WS1,dsec.map(function(q){ return [q[0]*0.995,Math.min(q[1],doorZ(q[0])-0.005)]; }),0,GF-0.03,GF+0.03),'gate',COL_K,'gate'));
+    var XG=function(o,z){ return add3(X(WS0,o,z),TW,GF); };
+    Gt.lines=[];
+    for(var ob2=-DW+0.06; ob2<DW-0.03; ob2+=0.12) ln(Gt,XG(ob2,0.02),XG(ob2,doorZ(ob2)-0.02),'gate',COL_K,0);
+    [0.15,1.5].forEach(function(zr){ ln(Gt,XG(-DW+0.02,zr),XG(DW-0.02,zr),'gate',COL_K,0); });
+    var sp=[]; for(k=0;k<=16;k++){ var t=k/16, a=TAU*1.5*t, r=0.16-0.13*t; sp.push(XG(r*Math.cos(a),1.82+r*Math.sin(a))); }
+    poly(Gt,sp,'gate',COL_K,false,0);
+    Gt.cont=WALLC; WALLC.parts.push(Gt);
+    /* the table in front, cut per slab: a top, four legs, two candlesticks and a glass */
+    var t1=LEN-0.6, t0=t1-0.7, parts=[];
+    parts.push(tag(bx(1,t0,t1,-0.6,0.6,0.74,0.78),'table',COL_BRN,'furn'));
+    [[t0+0.03,-0.57],[t0+0.03,0.52],[t1-0.08,-0.57],[t1-0.08,0.52]].forEach(function(q){ parts.push(tag(bx(1,q[0],q[0]+0.05,q[1],q[1]+0.05,0,0.74),'table',COL_BRN,'furn')); });
+    [-0.35,0.3].forEach(function(o){ var cc=SP((t0+t1)/2,o,0), r=[], r2=[];
+      for(var m=0;m<8;m++){ var a=TAU*(m+0.5)/8; r.push([cc[0]+0.03*Math.cos(a),cc[1]+0.03*Math.sin(a),0.78]); r2.push([cc[0]+0.03*Math.cos(a),cc[1]+0.03*Math.sin(a),1.0]); }
+      parts.push(smooth(tag(rings(r,r2),'candle',COL_K,'furn'),2)); });
+    var gc=SP((t0+t1)/2,-0.05,0), Gl=see(tag(bx(1,(t0+t1)/2-0.04,(t0+t1)/2+0.04,-0.09,-0.01,0.781,0.95),'glass',COL_GREY,'furn')); Gl.lines=[];
+    var gx=function(o,z){ return SP((t0+t1)/2,-0.05+o,z); };
+    poly(Gl,[gx(-0.03,0.781),gx(0.03,0.781)],'glass',COL_GREY,false); ln(Gl,gx(0,0.781),gx(0,0.86),'glass',COL_GREY);
+    poly(Gl,[gx(-0.035,0.94),gx(-0.03,0.89),gx(0,0.86),gx(0.03,0.89),gx(0.035,0.94)],'glass',COL_GREY,false);
+    parts.push(Gl);
+    var all=[], ok=true;
+    parts.forEach(function(P){ if(!ok) return; var pcs=slabPieces(P); if(!pcs){ ok=false; return; }
+      pcs.forEach(function(Q){ Q.kind=P.kind; Q.col=P.col; Q.layer=P.layer; if(P.hides===false){ Q.hides=false; Q.seeThru=true; } all.push(Q); }); });
+    TAL.table={placed:ok, s0:t0, s1:t1, pieces:ok?all.length:0};
+    if(ok) all.forEach(function(Q){ Q.cont.parts.push(Q); });
+  }
+  return {
+    dress:dress, signsFor:function(){},
+    furnish:function(dn,df){ floors(dn,df); vault(dn,df); arches(dn,df); lamps(dn); endWall(dn,df); },
+    cars:[], dots:[],
+    info:function(){ return ' · '+TAL.bays.length+' bays · '+TAL.barrels.length.toLocaleString()+' barrels · '+
+      TAL.bottles.length.toLocaleString()+' bottles · '+TAL.lamps.filter(function(l){ return l.placed; }).length+' lamps'+
+      (TAL.refused?' · '+TAL.refused+' top tiers refused under the vault':''); }
   };
 }
 /* THE CANAL CITY THEME (queue row 53, docs/specs/2026-10-04-corridor-themes.md
@@ -29114,6 +29983,7 @@ function draw(){
   if(mode==='harb' && STRTINFO) txt+=' \u00b7 '+STRTINFO;
   if(mode==='libr' && STRTINFO) txt+=' \u00b7 '+STRTINFO;
   if(mode==='grnh' && STRTINFO) txt+=' \u00b7 '+STRTINFO;
+  if(mode==='celr' && STRTINFO) txt+=' \u00b7 '+STRTINFO;
   if(mode==='canal' && STRTINFO) txt+=' \u00b7 '+STRTINFO;
   if(mode==='stn' && STRTINFO) txt+=' \u00b7 '+STRTINFO;
   if(mode==='fan'){
@@ -29357,7 +30227,7 @@ var FAMILIES=[
   ['Lattices',   ['truchet','maze','hilbert','voronoi','pack','rows','poin']],
   ['Curves',     ['harmo','sform','lsys','string','fan','chladni']],
   ['FROM PHOTO 3D', ['isoimg']],
-  ['3D',         ['hil3','harmo3','attract','ruled','knot','spack','flow3','surf','iso','stat','fact','strt','mkt','harb','libr','grnh','canal','stn']],
+  ['3D',         ['hil3','harmo3','attract','ruled','knot','spack','flow3','surf','iso','stat','fact','strt','mkt','harb','libr','grnh','celr','canal','stn']],
   ['From photo', ['tonehatch','tonespiral']]
 ];
 function mountTabs(){
@@ -29954,6 +30824,42 @@ var HELP={
 'grnh.lod':'The smallest part still drawn, as its size on the sheet.',
 'grnh.budg':'How many points the drawing may use, in thousands. Over it, the detail distances come in and the LOD cutoff rises until it fits.',
 'grnh.occ':'How wide a white gap a nearer object leaves in whatever passes behind it, in millimetres on the sheet.',
+'celr.len':'How long the cellar is, in metres, from the camera end to the brick wall with the iron gate at the far end. The bays are rounded so a whole number of them fills it.',
+'celr.bend':'How much the aisle curves, in degrees per 100 m. Cellars are straight, so 0; on a curve each side keeps its own bays, and each transverse arch is two halves meeting over the aisle.',
+'celr.width':'How wide the aisle is between the two rows of barrel heads, in metres. The vault springs from the side walls 1.5 m behind the bays, so a wider aisle is a wider and taller vault.',
+'celr.bay':'How far apart the brick piers are along the aisle, in metres: one bay of barrels or bottle bins between two piers, with a transverse arch over each pier. Rounded so a whole number of bays fills the cellar.',
+'celr.spring':'How high the side walls stand before the vault springs from them, in metres. Low, and a stack whose top barrel would come within 15 cm of the vault loses its top tier.',
+'celr.rise':'How high the vault rises above the springing, as a share of half its span: 100 is a round barrel vault, lower is a flatter arch that comes down closer over the stacks.',
+'celr.tiers':'How many barrels high the stacks go. A pyramid stack has one fewer barrel in each tier up; steel racks stack straight.',
+'celr.fill':'How many of the places hold a barrel (or, in a bottle bin, how many cells are full). A barrel only sits in the valley between two barrels that are there.',
+'celr.racks':'How many of the barrel bays use red steel racks, two barrels to a rack, instead of a pyramid on oak chocks.',
+'celr.chalk':'How many of the barrel heads near the camera carry chalk marks: two short lines of the script and a two-digit number.',
+'celr.bins':'How many of the bays are brick bottle bins instead of barrels: square cells to 1.8 m, the bottle bases showing as rings.',
+'celr.lamp':'How far apart the bare bulbs hang along the crown, in metres. Each hangs from the cable that runs along the vault under the arches.',
+'celr.lang':'The script of the chalk marks. 0 pseudo-kanji, 1 pseudo-hangul, 2 Latin words, 3 a mix.',
+'celr.hatch':'How dense the shading is on the side walls behind the stacks. 0 is no shading.',
+'celr.shine':'How many damp patches the stone floor has. Each shows the barrels and the vault reflected in it, upside down, with no edge drawn. A cellar floor is matte, so 0.',
+'celr.pudsz':'How big the damp patches are.',
+'celr.ripple':'How far the reflection wobbles sideways, in millimetres on the sheet. A damp floor is still, so 0.',
+'celr.hero':'One large damp patch on the floor right in front of you, where the floor first comes into view at the bottom of the sheet, showing the stacks upside down. 0 is none.',
+'celr.hstr':'Stretches the front shine along the aisle (up) or across it (down) and keeps its area: 100 is twice as long and half as wide. Does nothing while Front shine is 0.',
+'celr.hrag':'How ragged the front shine\u2019s edge is: 0 a smooth oval, 100 a wobbly lake. It never crosses itself. Does nothing while Front shine is 0.',
+'celr.hturn':'Turns the front shine on the ground, up to 45\u00b0 either way, so it lies diagonally across the aisle. Does nothing while Front shine is 0.',
+'celr.hshape':'Another shape for the front shine without changing anything else in the drawing: each number is a different outline, tilt and side. Does nothing while Front shine is 0.',
+'celr.cams':'Where the camera stands, as a share of the cellar length. Near 0 you see the whole aisle ahead, down to the gate.',
+'celr.camx':'The camera across the aisle, as a share of half its width: 0 is the middle.',
+'celr.camz':'The camera height in metres. 1.6 is eye height; higher looks down the stacks from under the crown. Above the crown the eye is outside the vault, which hides nothing, and still looks in.',
+'celr.look':'How far ahead the camera aims, in metres along the aisle. On a straight aisle with the camera in the middle it changes nothing; on a curve it turns the camera to follow it.',
+'celr.turn':'Turns the camera left (+) or right (\u2212) from looking down the aisle: 0 looks along it, \u00b190 faces a stack head-on.',
+'celr.pitch':'Tilts the camera up (positive) or down, in degrees. Up shows more of the vault, its arches and the bulbs.',
+'celr.fov':'The field of view across the sheet, in degrees.',
+'celr.dnear':'Up to this distance, in metres, every barrel is drawn with its hoops, staves, head boards and bung, and the bottle bins with every bottle.',
+'celr.dfar':'Up to this distance, in metres, the barrels keep their outline, head hoops and wine stain, and the vault its brick courses; beyond it only the outlines.',
+'celr.dpen':'1 draws the black lines further away than Depth split in dark grey instead: a near pen and a far pen.',
+'celr.dsplit':'With Depth pens on: how far away, in metres, black turns to dark grey.',
+'celr.lod':'The smallest part still drawn, as its size on the sheet.',
+'celr.budg':'How many points the drawing may use, in thousands. Over it, the detail distances come in and the LOD cutoff rises until it fits.',
+'celr.occ':'How wide a white gap a nearer object leaves in whatever passes behind it, in millimetres on the sheet.',
 'stn.len':"How long the platforms are, in metres. The camera stands part-way along them (Camera along) and the rails, the platform edges and the wires run away to the far end. A longer station reaches further toward the vanishing point and costs more lines.",
 'stn.bend':"How much the station curves, in degrees per 100 m. 0 is dead straight, so the rails and both platform edges meet at one vanishing point; a bend carries the far end out of sight behind the buildings on the inside of the curve. A car on a bend is a straight body between its two bogies.",
 'stn.width':"The track bed between the two platform edges, in metres: two tracks, each centred 1.6 m out from its own platform edge. Wider moves the two tracks apart and opens bare ballast between them; at the narrowest the two trains nearly touch.",
