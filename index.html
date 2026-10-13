@@ -438,7 +438,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v318</a> &mdash; ISOFACTORY: the hall, its production lines, machines and belts (fact)</span></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v319</a> &mdash; Greenhouse -- a Venlo glasshouse on the corridor kit: a wet path between benches of potted plants under a sawtooth glass roof whose gutters, ridges and trusses span the path, split at every container face</span></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <section class="fold" id="fold_pick"><h2>Pick engine<span class="cnt"></span></h2>
@@ -3299,6 +3299,24 @@ var SPEC={
     ['dnear','Solid detail to',1,40,0.5,6,[1,' m']],['dfar','Outline detail to',2,120,1,20,[1,' m']],
     ['dpen','Depth pens',0,1,1,0],['dsplit','Depth split',2,120,1,15,[1,' m']],
     ['lod','LOD cutoff',0,60,1,4,[10,' mm']],['budg','Size budget',10,300,5,90,[1,' k points']],
+    ['occ','Gap',0,30,1,4,[10,' mm']]]],
+  /* GREENHOUSE, queue row 107 (docs/specs/2026-10-12-corridor-themes-grnh-celr-tori.md §1.8) */
+  grnh:['Greenhouse',[
+    ['len','House length',20,200,1,60,[1,' m']],['bend','Bend',0,20,1,0,[1,'°/100 m']],
+    ['width','Path width',1.2,4,0.1,2.0,[1,' m']],['span','Span',3.2,6.4,0.1,4.0,[1,' m']],
+    ['gutz','Gutter height',3.5,7,0.1,5.0,[1,' m']],['rpitch','Roof pitch',15,30,1,22,[1,'°']],
+    ['pane','Pane width',0.5,1.2,0.05,0.75,[1,' m']],['shade','Shade screen',0,100,1,30,[100,'%']],['mist','Misting lines',0,1,1,1],
+    ['fill','Occupancy',0,100,1,85,[100,'%']],['pot','Pot size',0.09,0.30,0.01,0.14,[100,' cm']],
+    ['bask','Hanging baskets',0,100,1,30,[100,'%']],['troll','Trolleys',0,10,1,3,[1,'/100 m']],
+    ['lang','Script',0,3,1,2],['hatch','Tone hatch',0,100,1,30,[100,'%']],
+    ['puddles','Puddles',0,40,1,25],['pudsz','Puddle size',5,100,1,40,[100,'%']],['ripple','Ripple',0,30,1,0,[10,' mm']],
+    ['rvar','Ripple variety',0,100,1,60,[100,'%']],
+    ['cams','Camera along',0,90,1,2,[100,'%']],['camx','Camera side',-100,100,1,0,[100,'%']],
+    ['camz','Camera height',0.2,6.7,0.05,1.6,[1,' m']],['look','Look ahead',2,100,1,15,[1,' m']],['turn','Turn',-90,90,1,0,[1,'°']],
+    ['pitch','Pitch',-45,45,0.5,8,[1,'°']],['fov','Field of view',25,120,1,78,[1,'°']],
+    ['dnear','Solid detail to',1,40,0.5,12,[1,' m']],['dfar','Outline detail to',2,200,1,50,[1,' m']],
+    ['dpen','Depth pens',0,1,1,0],['dsplit','Depth split',2,200,1,30,[1,' m']],
+    ['lod','LOD cutoff',0,60,1,4,[10,' mm']],['budg','Size budget',10,300,5,120,[1,' k points']],
     ['occ','Gap',0,30,1,4,[10,' mm']]]],
   /* CANAL CITY, queue row 53 (docs/specs/2026-10-04-corridor-themes.md §6) */
   canal:['Canal',[
@@ -17109,7 +17127,7 @@ function buildIsoImg(p){
 
 var ENG={record:buildRecord, flow:buildFlow, growth:buildGrowth, contour:buildContour, ridge:buildRidge,
          pack:buildPack, voronoi:buildVoronoi, truchet:buildTruchet, maze:buildMaze, hilbert:buildHilbert,
-         rows:buildRows, poin:buildPoincare, flag:buildFlag, stat:buildStation, fact:buildFactory, strt:buildStreet, mkt:buildMarket, harb:buildHarbour, libr:buildLibrary, canal:buildCanal, stn:buildTrainStation,
+         rows:buildRows, poin:buildPoincare, flag:buildFlag, stat:buildStation, fact:buildFactory, strt:buildStreet, mkt:buildMarket, harb:buildHarbour, libr:buildLibrary, grnh:buildGreenhouse, canal:buildCanal, stn:buildTrainStation,
          harmo:buildHarmo, chladni:buildChladni, moire:buildMoire, disc:buildChladniDisc, fan:buildFan,
   string:buildString, fermat:buildFermat, logsp:buildLogSpiral, chuck:buildChuck,
          apoll:buildApollonian, wave:buildWave, sform:buildSuper,
@@ -20083,6 +20101,17 @@ var STHEMES={
         lotGen:function(R,p,li,sd){ return libraryLotGen(R,p,li,sd); },
         fixed:{shopv:0, props:0, alley:0, cars:0, dots:0, graff:0, signs:0, cables:0, canyon:0, stepb:0, canti:0},
         content:function(K){ return libraryTheme(K); }},
+  /* row 107 (docs/specs/2026-10-12-corridor-themes-grnh-celr-tori.md §1.2): a
+     Venlo glasshouse. The slabs are the path (puddles on), a lot is one span
+     of the roof, 4.6 m deep, the lots abutting. `zfit` is row 94's
+     isometric fit, read when that row lands. */
+  grnh:{key:'grnh', label:'Greenhouse', lotDepth:[4.6,4.6], alleyW:[0,0], baseN2:0, baseH:[5.0,5.0],
+        midH:[5.0,5.0], edgeZ:0, slabLen:4, clear:4.2, ztop:200, mirror:'puddles', minWidth:1.2, minLen:20,
+        strip:0, pudIn:0.03, zfit:7,
+        lotGen:function(R,p,li,sd){ return greenhouseLotGen(R,p,li,sd); },
+        fixed:{shopv:0, props:0, alley:0, cars:0, dots:0, graff:0, signs:0, cables:0, canyon:0, stepb:0, canti:0, pave:0, hero:0},
+        flags:{poles:false, roadMarks:false, bollards:false, manholes:false},
+        content:function(K){ return greenhouseTheme(K); }},
   /* §6: a water channel between plastered houses; the whole road is water and
      the mirror; the kerb is the quay's edge, 0.8 m over the water */
   canal:{key:'canal', label:'Canal', lotDepth:[8,16], alleyW:[1.0,2.2], baseN2:0, baseH:[3.0,3.6],
@@ -20127,6 +20156,7 @@ function buildStreet(p){ return buildCorridor(p,STHEMES.street); }
 function buildMarket(p){ return buildCorridor(p,STHEMES.mkt); }
 function buildHarbour(p){ return buildCorridor(p,STHEMES.harb); }
 function buildLibrary(p){ return buildCorridor(p,STHEMES.libr); }
+function buildGreenhouse(p){ return buildCorridor(p,STHEMES.grnh); }
 function buildCanal(p){ return buildCorridor(p,STHEMES.canal); }
 function buildTrainStation(p){ return buildCorridor(p,STHEMES.stn); }
 /* THE NIGHT MARKET THEME (queue row 50, docs/specs/2026-10-04-corridor-themes.md
@@ -21890,6 +21920,960 @@ function marketTheme(K){
 /* §5.3 THE SCRIPTS, as a factory (lifted out of streetTheme at row 52,
    unchanged): the pseudo-kanji and pseudo-hangul banks drawn once per seed
    from SALT_GLYPH, the Latin word list, and setText. */
+/* THE GREENHOUSE THEME (queue row 107, docs/specs/2026-10-12-corridor-themes-grnh-celr-tori.md
+   §1): a Venlo glasshouse -- a wet path between benches of potted plants,
+   under a sawtooth glass roof whose ridges run ACROSS the path, so looking
+   down the path the roof is a row of peaks. A lot is ONE SPAN of the roof,
+   4.6 m deep, the lots abutting (greenhouseLotGen); the slabs are the path.
+   - THE ROOF (salt 1021): a gutter and a lattice truss at every lot face, a
+     ridge at every lot's middle, glass between them. Each is ONE convex
+     member across the width, CUT at every container face it crosses (both
+     lot fronts, every slab face, the centreline, the strips a bend leaves
+     between them), so no member is a guess in the order. On a straight
+     house the two sides' faces coincide and a member runs lot back to lot
+     back; on a bend they do not (the lots are walked along each side's own
+     edge), and each side carries its own half, stopping 12 mm short of the
+     centreline. Glass, its glazing bars, the shade screen, the misting
+     lines and the truss web are lines on parts that HIDE NOTHING.
+   - BENCHES (salt 1009, a kind per span): rolling benches with a mesh top,
+     ebb-and-flood tables, or floor beds behind a kerb; heating pipes under
+     every bench. POTS (salt 1019) on a grid at Pot size x 1.25, Occupancy
+     of the places taken, each a 12-gon frustum near, a box out to Outline
+     detail to, one box per row beyond; one CROP per bench (salt 1013) --
+     rosettes, ferns, flowering, tall stems or seedling trays -- whose leaves
+     are lines, clipped to the bench, on a part above the pots.
+   - THE PATH: drain and joints on the floor, the kit's puddles, Danish
+     trolleys cut at every slab face, hose reels, watering cans (salt 1033);
+     hanging baskets from the truss over the path (salt 1031); plant labels
+     and a bench sign at every span (salt 1039).
+   Colours: steel grey, terracotta (brown) and black pots, the greens. */
+var GRNH_WORDS=('ORCHID FERN BASIL MINT SAGE THYME TOMATO PEPPER LETTUCE BEGONIA FUCHSIA GERANIUM PETUNIA '+
+  'VIOLA ALOE CACTUS IVY PALM FICUS LILY ROSE TULIP DAHLIA ASTER IRIS PANSY MARIGOLD FREESIA GERBERA '+
+  'CYCLAMEN AZALEA HOSTA COLEUS CALLA ANTHURIUM BROMELIAD CHILLI CRESS CHIVES PARSLEY').split(' ');
+function greenhouseLotGen(R,p,li,sd){
+  /* one span along the path, 4.6 m deep, no gap: the lots abut, so the
+     benches and the side wall run on. The span is ROUNDED so a whole number
+     of spans tiles the house (exactly, on a straight one): a part span at
+     the far end would be a bay with no roof over it. Draws nothing. */
+  var L=Math.max(20,+p.len||220), S=Math.max(3.2,Math.min(6.4,isFinite(p.span)?+p.span:4)), n=Math.max(1,Math.round(L/S));
+  return {wl:L/n-1e-9, depth:4.6, gap:0, span:L/n, first:li===0};
+}
+function greenhouseTheme(K){
+  var p=K.p, P3=K.P3, frame=K.frame, sub=K.sub, polyFromLoops=K.polyFromLoops, prismN=K.prismN, splitPart=K.splitPart,
+      inConv=K.inConv, slabsBySide=K.slabsBySide, slabPieces=K.slabPieces, conts=K.conts, lots=K.lots, dist3=K.dist3,
+      verts=K.verts, faceIx=K.faceIx, paperGap=K.paperGap, mmPerM=K.mmPerM, bbHit=K.bbHit, cam=K.cam,
+      CE=K.CE, HALFW=K.HALFW, KOFF=K.KOFF, PBACK=K.PBACK, LEN=K.LEN, MINSP=K.MINSP, FF=K.FF;
+  function kn(v,d,lo,hi){ return Math.max(lo,Math.min(hi,isFinite(v)?+v:d)); }
+  var GUTZ=kn(p.gutz,5,3.5,7), RP=kn(p.rpitch,22,15,30)*Math.PI/180, PANE=kn(p.pane,0.75,0.5,1.2),
+      SHADE=kn(p.shade,30,0,100)/100, MIST=Math.round(kn(p.mist,1,0,1)), FILL=kn(p.fill,85,0,100)/100,
+      POT=kn(p.pot,0.14,0.09,0.30), BASK=kn(p.bask,30,0,100)/100, TROLL=kn(p.troll,3,0,10),
+      LANG=Math.round(kn(p.lang,2,0,3)), HATCH=kn(p.hatch,30,0,100)/100;
+  var SALT_BENCH=1009, SALT_PLANT=1013, SALT_POT=1019, SALT_ROOF=1021, SALT_BASK=1031, SALT_TROLL=1033, SALT_LABEL=1039;
+  var COL_K='#1a1a1a', COL_DG='#4a4a4a', COL_GREY='#8a8a8a', COL_BRN='#8b5a2b', COL_GRN='#2f9a44', COL_DGRN='#1e5a32',
+      COL_LGRN='#8cc44a', COL_OLIVE='#6b7a2a';
+  var FLOWC=['#d42a2a','#e8729a','#f2c230','#ec7a1c','#c2297e'];
+  /* the cross-section (§1.1), lateral from the lot's own front: the path
+     column, the front bench, the work aisle, the back bench; the side wall
+     at the lot's back */
+  var OCOL0=0.05, OCOL1=0.13, OF0=0.15, OF1=1.95, OB0=2.45, OB1=4.05, TOPF=0.80, TOPB=0.95;
+  var GUTW=0.18, GUTH=0.20, CHW=0.06, CHT=0.06, TOPC=0.30, BOTC=0.80, RIDW=0.06, RIDH=0.08, COLW=0.08;
+  var SCR=corridorScripts(sub,SALT_LABEL,GRNH_WORDS);
+  var TAL={lots:[], benches:[], pots:[], potN:0, plants:0, faces:[], members:[], columns:[], glass:[], trolleys:[], baskets:[],
+           reels:0, cans:0, signs:[], labels:0, miss:0, paired:false, gable:null, kinds:{}};
+  STRTTALLY.grnh=TAL;
+
+  /* ---- containers. THE SLOT (as the station's, row 85): on a bend the kit
+     pushes a lot back off the slabs, and the strip between the slab's back
+     chord and the lot's front chord belonged to no container -- a gutter
+     crossing it would lose a piece. One convex container per slab there. */
+  function cutAt(s,sd,A,B){
+    var P0=P3(s,sd,0,0), P1=P3(s,sd,1,0), dx=P1[0]-P0[0], dy=P1[1]-P0[1], ex=B[0]-A[0], ey=B[1]-A[1];
+    var den=dx*ey-dy*ex; if(Math.abs(den)<1e-15) return null;
+    var t=((A[0]-P0[0])*ey-(A[1]-P0[1])*ex)/den; return [P0[0]+dx*t, P0[1]+dy*t];
+  }
+  lots.forEach(function(L){
+    if(!(L.fe>KOFF+1e-9)) return;
+    var A=P3(L.s0,L.side,L.fe,0), B=P3(L.s1,L.side,L.fe,0);
+    slabsBySide[L.side].forEach(function(C){
+      var sa=Math.max(C.s0,L.s0), sb=Math.min(C.s1,L.s1); if(sb-sa<1e-6) return;
+      var CA=P3(C.s0,L.side,KOFF,0), CB=P3(C.s1,L.side,KOFF,0);
+      var f0=cutAt(sa,L.side,CA,CB), f1=cutAt(sb,L.side,CA,CB), g0=cutAt(sa,L.side,A,B), g1=cutAt(sb,L.side,A,B);
+      if(!f0||!f1||!g0||!g1) return;
+      if(Math.hypot(g0[0]-f0[0],g0[1]-f0[1])<1e-6 && Math.hypot(g1[0]-f1[0],g1[1]-f1[1])<1e-6) return;
+      var Q=[f0,f1,g1,g0], b=[1e18,1e18,-1e18,-1e18];
+      Q.forEach(function(q){ if(q[0]<b[0])b[0]=q[0]; if(q[1]<b[1])b[1]=q[1]; if(q[0]>b[2])b[2]=q[0]; if(q[1]>b[3])b[3]=q[1]; });
+      conts.push({kind:'slot', side:L.side, s0:sa, s1:sb, poly:Q, bb:b, parts:[], lot:L});
+    });
+  });
+
+  /* ---- small geometry ---------------------------------------------------- */
+  function sub3(a,b){ return [a[0]-b[0],a[1]-b[1],a[2]-b[2]]; }
+  function add3(a,b,k){ return [a[0]+b[0]*k,a[1]+b[1]*k,a[2]+b[2]*k]; }
+  /* a point at arc s, SIGNED lateral o (negative: side -1), height z. The
+     kit's P3 is linear in sd*o, so one call covers both sides */
+  function SP(s,o,z){ return P3(s,1,o,z); }
+  function PS(sd,s,o,z){ return P3(s,sd,o,z); }
+  /* a prism over the (s,o) rectangle on side sd (corners on the arcs, so a
+     rectangle reaching a lot's s0 or s1 has its corners ON the lot's side
+     edges), z0..z1. Faces: 0 bottom, 1 top, 2 the oA edge, 3 sB, 4 oB, 5 sA */
+  function bx(sd,sA,sB,oA,oB,zA,zB){
+    var Q=[PS(sd,sA,oA,0),PS(sd,sB,oA,0),PS(sd,sB,oB,0),PS(sd,sA,oB,0)].map(function(v){ return [v[0],v[1]]; });
+    return rings(Q.map(function(q){ return [q[0],q[1],zA]; }),Q.map(function(q){ return [q[0],q[1],zB]; }));
+  }
+  /* TWO MATCHING n-gon RINGS AS A CONVEX SOLID: faces 0 and 1 the rings, 2+k
+     the side from vertex k to k+1. Built directly -- polyFromLoops keys every
+     edge on a formatted string to find its two faces, and on a bench of
+     12-gon pots that was a tenth of the build -- with the same face planes:
+     the normal from the first three corners, turned away from the centroid */
+  function ringFace(pts,ins){
+    var a=pts[0], b=pts[1], c=pts[2];
+    var ux=b[0]-a[0],uy=b[1]-a[1],uz=b[2]-a[2], vx=c[0]-a[0],vy=c[1]-a[1],vz=c[2]-a[2];
+    var n=[uy*vz-uz*vy, uz*vx-ux*vz, ux*vy-uy*vx], L=Math.hypot(n[0],n[1],n[2])||1;
+    n=[n[0]/L,n[1]/L,n[2]/L];
+    var d=n[0]*a[0]+n[1]*a[1]+n[2]*a[2];
+    if(n[0]*ins[0]+n[1]*ins[1]+n[2]*ins[2]-d>0){ n=[-n[0],-n[1],-n[2]]; d=-d; }
+    return {n:n, d:d, pts:pts};
+  }
+  function rings(lo,hi){
+    var n=lo.length, ins=[0,0,0], k;
+    lo.concat(hi).forEach(function(q){ ins[0]+=q[0]/(2*n); ins[1]+=q[1]/(2*n); ins[2]+=q[2]/(2*n); });
+    var F=[ringFace(lo,ins), ringFace(hi,ins)], L=[];
+    for(k=0;k<n;k++){ var k2=(k+1)%n; F.push(ringFace([lo[k],lo[k2],hi[k2],hi[k]],ins)); }
+    for(k=0;k<n;k++){ var k1=(k+1)%n;
+      L.push({a:lo[k], b:lo[k1], f0:0, f1:2+k}); L.push({a:hi[k], b:hi[k1], f0:1, f1:2+k});
+      L.push({a:lo[k], b:hi[k], f0:2+(k+n-1)%n, f1:2+k}); }
+    return {faces:F, lines:L, ins:ins};
+  }
+  /* an n-gon prism along s (a tube) on side sd: centre (o,z), radius r */
+  function tubeS(sd,sA,sB,o,z,r,n){
+    var la=[], lb=[], k;
+    for(k=0;k<n;k++){ var a=TAU*(k+0.5)/n; la.push(PS(sd,sA,o+r*Math.cos(a),z+r*Math.sin(a))); lb.push(PS(sd,sB,o+r*Math.cos(a),z+r*Math.sin(a))); }
+    return rings(la,lb);
+  }
+  /* a FRUSTUM standing at world point c: n-gon rings r0 at z0 and r1 at z1 */
+  function frustum(c,r0,r1,z0,z1,n){
+    var lo=[], hi=[], k;
+    for(k=0;k<n;k++){ var a=TAU*k/n; lo.push([c[0]+r0*Math.cos(a),c[1]+r0*Math.sin(a),z0]); hi.push([c[0]+r1*Math.cos(a),c[1]+r1*Math.sin(a),z1]); }
+    return rings(lo,hi);
+  }
+  /* A ROUND SOLID DRAWS ITS SILHOUETTE, not its facets: of the lines between
+     two side faces keep those where one face turns to the eye and the other
+     away. Measured against the eye, so it is decided once per build. */
+  function vis(f){ return f.n[0]*CE[0]+f.n[1]*CE[1]+f.n[2]*CE[2]-f.d>1e-9; }
+  function smooth(P,first){
+    P.lines=P.lines.filter(function(Ln){ if(Ln.f0<first || Ln.f1<first || Ln.f0===Ln.f1) return true; return vis(P.faces[Ln.f0])!==vis(P.faces[Ln.f1]); });
+    return P;
+  }
+  function tag(P,kind,col,layer,extra){
+    P.kind=kind; P.col=col; P.layer=layer;
+    P.lines.forEach(function(Ln){ if(Ln.col===undefined) Ln.col=col; if(!Ln.kind) Ln.kind=kind; });
+    if(extra) for(var k in extra) P[k]=extra[k];
+    return P;
+  }
+  function see(P){ P.hides=false; P.seeThru=true; return P; }
+  function ln(P,a,b,kind,col,f){ P.lines.push({a:a, b:b, f0:f||0, f1:f||0, kind:kind, col:col}); }
+  function poly(P,pts,kind,col,closed,f){ for(var i=1;i<pts.length;i++) ln(P,pts[i-1],pts[i],kind,col,f); if(closed && pts.length>2) ln(P,pts[pts.length-1],pts[0],kind,col,f); }
+  /* EVERY CONTAINER: the pieces of P, one per container it is in, cut at the
+     container's faces (a cut is a seam and draws nothing), each tagged as P
+     was. The share of P's plan in no container is counted in TAL.miss. */
+  function shClip(R,Q){
+    var ar=0, m; for(m=0;m<Q.length;m++){ var qa=Q[m], qb=Q[(m+1)%Q.length]; ar+=qa[0]*qb[1]-qa[1]*qb[0]; }
+    var sg=ar>0?1:-1, out=R;
+    for(m=0;m<Q.length && out.length;m++){
+      var a=Q[m], b=Q[(m+1)%Q.length], inp=out, k; out=[];
+      for(k=0;k<inp.length;k++){
+        var P0=inp[k], P1=inp[(k+1)%inp.length];
+        var s0=sg*((b[0]-a[0])*(P0[1]-a[1])-(b[1]-a[1])*(P0[0]-a[0])), s1=sg*((b[0]-a[0])*(P1[1]-a[1])-(b[1]-a[1])*(P1[0]-a[0]));
+        if(s0>=0) out.push(P0);
+        if((s0>=0)!==(s1>=0)){ var t=s0/(s0-s1); out.push([P0[0]+(P1[0]-P0[0])*t, P0[1]+(P1[1]-P0[1])*t]); }
+      }
+    }
+    return out;
+  }
+  function area2(Q){ var a=0; for(var m=0;m<Q.length;m++){ var qa=Q[m], qb=Q[(m+1)%Q.length]; a+=qa[0]*qb[1]-qa[1]*qb[0]; } return Math.abs(a)/2; }
+  function hullXY(V){
+    var q=V.map(function(v){ return [v[0],v[1]]; }).sort(function(a,b){ return a[0]-b[0]||a[1]-b[1]; }), lo=[], up=[], m;
+    function cr(o,a,b){ return (a[0]-o[0])*(b[1]-o[1])-(a[1]-o[1])*(b[0]-o[0]); }
+    for(m=0;m<q.length;m++){ while(lo.length>=2 && cr(lo[lo.length-2],lo[lo.length-1],q[m])<=1e-15) lo.pop(); lo.push(q[m]); }
+    for(m=q.length-1;m>=0;m--){ while(up.length>=2 && cr(up[up.length-2],up[up.length-1],q[m])<=1e-15) up.pop(); up.push(q[m]); }
+    return lo.slice(0,-1).concat(up.slice(0,-1));
+  }
+  function contPieces(P){
+    var VP=verts(P), H=hullXY(VP), b=[1e18,1e18,-1e18,-1e18], out=[], cov=0, tot=area2(H), k;
+    VP.forEach(function(v){ if(v[0]<b[0])b[0]=v[0]; if(v[1]<b[1])b[1]=v[1]; if(v[0]>b[2])b[2]=v[0]; if(v[1]>b[3])b[3]=v[1]; });
+    for(k=0;k<conts.length;k++){
+      var C=conts[k]; if(!bbHit(b,C.bb)) continue;
+      var Q=C.poly, piece=P, cx=0, cy=0, e;
+      Q.forEach(function(q){ cx+=q[0]/Q.length; cy+=q[1]/Q.length; });
+      for(e=0;e<Q.length && piece;e++){
+        var a=Q[e], c=Q[(e+1)%Q.length], nx=-(c[1]-a[1]), ny=c[0]-a[0], L=Math.hypot(nx,ny); nx/=L; ny/=L;
+        if(nx*(cx-a[0])+ny*(cy-a[1])<0){ nx=-nx; ny=-ny; }
+        var d=nx*a[0]+ny*a[1], V=verts(piece), lo=1e18, hi=-1e18;
+        V.forEach(function(v){ var w=nx*v[0]+ny*v[1]-d; if(w<lo) lo=w; if(w>hi) hi=w; });
+        if(hi<=1e-9){ piece=null; break; }
+        if(lo<-1e-9){ var Hh=splitPart(piece,[nx,ny,0],d); piece=Hh[0];
+          if(!piece.faces.length || verts(piece).length<4) piece=null; }
+      }
+      if(piece){ piece.cont=C; out.push(piece); cov+=area2(shClip(H,Q)); }
+    }
+    return {pieces:out, miss:tot>1e-12?Math.max(0,1-cov/tot):0};
+  }
+  /* P into every container it is in, tagged as P; returns the pieces */
+  function put(P,rec){
+    var cp=contPieces(P);
+    cp.pieces.forEach(function(Q){
+      Q.kind=P.kind; Q.col=P.col; Q.layer=P.layer;
+      if(P.hides===false){ Q.hides=false; Q.seeThru=true; }
+      ['cartId','eyeId','gh'].forEach(function(k){ if(P[k]!==undefined) Q[k]=P[k]; });
+      Q.cont.parts.push(Q);
+    });
+    if(cp.miss>1e-6) TAL.miss=Math.max(TAL.miss,cp.miss);
+    if(rec) TAL.members.push({kind:P.kind, info:rec===true?null:rec, miss:cp.miss,
+      pieces:cp.pieces.map(function(Q){ return {cont:Q.cont.kind, side:Q.cont.side, s0:Q.cont.s0, poly:Q.cont.poly, V:verts(Q)}; })});
+    return cp.pieces;
+  }
+  /* a part wholly inside lot L, straight in */
+  function inLot(P,L){ P.cont=L; L.parts.push(P); return P; }
+  /* the number of spacings between two drawn lines so that they stand at
+     least the paper floor apart: a power of two, so far lines are a subset
+     of near ones */
+  function thin(gapMMperM,step){ var k=1; while(k<64 && gapMMperM*step*k<MINSP) k*=2; return k; }
+
+  /* ---- the lots, per side, and their faces -------------------------------- */
+  var bySide={'1':[],'-1':[]};
+  lots.forEach(function(L){ bySide[L.side].push(L); });
+  [1,-1].forEach(function(sd){ bySide[sd].sort(function(a,b){ return a.s0-b.s0; }); });
+  lots.forEach(function(L){
+    var A=bySide[L.side], i=A.indexOf(L);
+    L.ghFirst=!(i>0 && Math.abs(A[i-1].s1-L.s0)<1e-9);
+    L.ghLast=!(i<A.length-1 && Math.abs(A[i+1].s0-L.s1)<1e-9);
+  });
+  /* a face: where it is, which lot carries its column (the lower; the first
+     lot carries its own s0), and how the members sit on it -- centred on an
+     interior face, inside the lot at the house's two ends */
+  function facesOf(sd){
+    var F=[];
+    bySide[sd].forEach(function(L){
+      if(L.ghFirst) F.push({s:L.s0, lot:L, pos:'first'});
+      F.push({s:L.s1, lot:L, pos:L.ghLast?'last':'mid'});
+    });
+    return F;
+  }
+  var FACES={'1':facesOf(1),'-1':facesOf(-1)};
+  /* THE TWO SIDES SHARE THEIR FACES ON A STRAIGHT HOUSE, and then every member
+     runs lot back to lot back as one solid. On a bend each side's lots are
+     walked along its own edge and the faces part: each side then carries its
+     own half of every member. */
+  var PAIRED=FACES['1'].length===FACES['-1'].length && FACES['1'].every(function(f,i){ var g=FACES['-1'][i]; return Math.abs(f.s-g.s)<1e-7 && f.pos===g.pos; });
+  TAL.paired=PAIRED;
+  function sRange(f,h){ return f.pos==='first'?[f.s,f.s+2*h]:f.pos==='last'?[f.s-2*h,f.s]:[f.s-h,f.s+h]; }
+  function colRange(f){ return f.pos==='first'?[f.s,f.s+COLW]:[f.s-COLW,f.s]; }
+  /* the lateral reach of a member on one side: from the centreline (or 12 mm
+     short of it, when it is a half) to 30 mm inside the lot's back */
+  var OIN=0.012;
+  function lotBack(L){ return L.back; }
+
+  /* ---- §1.4 columns, side wall; §1.5 benches; §1.6 plants -------------- */
+  function bandOf(P,dn,df){ var d=dist3(P); return d<dn?'near':d<df?'mid':'far'; }
+  /* millimetres on the sheet per metre at P, square to the view: the pinhole's
+     scale at P's depth ON THE SHORT SIDE of the drawable area, which is 1 - 2
+     PAD on every sheet. A wide sheet magnifies the view (pagecheck's FRAMED
+     map); measured on its long side, pots there would change their detail
+     and the map would not hold */
+  function mmAt(P){ var c=cam(P); return c[2]>0.25?FF*(0.5-K.PAD)*PAGEMM/c[2]:1e9; }
+  /* A POT'S DETAIL IS DECIDED BY ITS SIZE ON THE SHEET AS WELL AS ITS DISTANCE.
+     Solid (a round pot, its plant leaf by leaf) nearer than Solid detail to AND
+     4 mm across on the paper; outline (a box and its crown's arch) nearer than
+     Outline detail to AND 2 mm across; otherwise one box per run of pots along
+     a row. By distance alone the defaults drew 5,349 mid boxes and arches, most
+     under a millimetre, and the occluder spent seven seconds on them. */
+  function potBand(P,dn,df){ var d=dist3(P), w=POT*mmAt(P); return d<dn && w>=4.0?'near':d<df && w>=2.0?'mid':'far'; }
+  /* the heights of the roof over lot L */
+  function ridgeZ(L){ return GUTZ+(L.s1-L.s0)/2*Math.tan(RP); }
+  function gutterEdge(L){ return [L.s0+(L.ghFirst?2*GUTW/2:GUTW/2), L.s1-(L.ghLast?2*GUTW/2:GUTW/2)]; }
+  /* a plant's lines in the lot's own (s,o,z), clipped to the bench's plan
+     rectangle, and mapped out through P3 */
+  function clipRect(a,b,R){
+    var t0=0, t1=1, d=[b[0]-a[0],b[1]-a[1]], lim=[[R[0],R[2]],[R[1],R[3]]], k;
+    for(k=0;k<2;k++){
+      if(Math.abs(d[k])<1e-15){ if(a[k]<lim[k][0]||a[k]>lim[k][1]) return null; continue; }
+      var u0=(lim[k][0]-a[k])/d[k], u1=(lim[k][1]-a[k])/d[k]; if(u0>u1){ var t=u0; u0=u1; u1=t; }
+      if(u0>t0) t0=u0; if(u1<t1) t1=u1; if(t0>=t1) return null;
+    }
+    return [t0,t1];
+  }
+  /* local (s,o) direction for a world horizontal direction at s on side sd */
+  function toLocal(sd,s,dx,dy){ var F=frame(s); return [dx*F[2]+dy*F[3], sd*(-dx*F[3]+dy*F[2])]; }
+  function plantLines(kind,R,c,zt,band,col,fcol){
+    /* c = [s,o] of the pot centre; returns segments [[s,o,z],[s,o,z],kind,col] */
+    var S=[], i, j;
+    function seg(a,b,k,cl){ S.push([a,b,k||'leaf',cl||col]); }
+    function blade(a,e,L,w){
+      var ca=Math.cos(a), sa=Math.sin(a), ce=Math.cos(e), se=Math.sin(e);
+      var b1=[c[0]-sa*w/2, c[1]+ca*w/2, zt+0.005], b2=[c[0]+sa*w/2, c[1]-ca*w/2, zt+0.005], tp=[c[0]+ca*ce*L, c[1]+sa*ce*L, zt+0.005+se*L];
+      seg(b1,tp); seg(tp,b2); seg(b2,b1);
+    }
+    if(kind==='rosette' || kind==='flower'){
+      var n=7+Math.floor(R()*5), a0=TAU*R();
+      for(i=0;i<n;i++){ var L=POT*(1.2+0.6*R()), e=(20+20*R())*Math.PI/180; blade(a0+TAU*i/n+0.3*(R()-0.5),e,L,0.16*L); }
+      if(kind==='flower'){
+        var nf=3+Math.floor(R()*5), fc=fcol||FLOWC[0];
+        for(i=0;i<nf;i++){
+          var fa=TAU*R(), fr=POT*0.7*Math.sqrt(R()), fz=zt+POT*(0.45+0.5*R()), fcx=c[0]+Math.cos(fa)*fr, fcy=c[1]+Math.sin(fa)*fr, hx=[];
+          for(j=0;j<6;j++){ var aa=TAU*j/6; hx.push([fcx+0.015*Math.cos(aa), fcy+0.015*Math.sin(aa), fz]); }
+          for(j=0;j<6;j++) seg(hx[j],hx[(j+1)%6],'flower',fc);
+        }
+      }
+    } else if(kind==='fern'){
+      var nfr=6+Math.floor(R()*4), b0=TAU*R();
+      for(i=0;i<nfr;i++){
+        var fa2=b0+TAU*i/nfr+0.3*(R()-0.5), Rr=POT*(1.4+0.8*R()), Hh=POT*(0.8+0.4*R()), pts=[];
+        for(j=0;j<=6;j++){ var t=j/6; pts.push([c[0]+Math.cos(fa2)*Rr*t, c[1]+Math.sin(fa2)*Rr*t, zt+0.005+Hh*Math.sin(Math.PI*t*0.85)]); }
+        for(j=1;j<pts.length;j++) seg(pts[j-1],pts[j]);
+        if(band==='near'){
+          /* leaflet ticks either side every 3 cm along the frond */
+          var Lf=0; for(j=1;j<pts.length;j++) Lf+=Math.hypot(pts[j][0]-pts[j-1][0],pts[j][1]-pts[j-1][1],pts[j][2]-pts[j-1][2]);
+          var nt=Math.floor(Lf/0.03), px=-Math.sin(fa2), py=Math.cos(fa2);
+          for(j=1;j<nt;j++){
+            var tt=j/nt, kk=Math.min(5,Math.floor(tt*6)), f=tt*6-kk, q=[pts[kk][0]+(pts[kk+1][0]-pts[kk][0])*f, pts[kk][1]+(pts[kk+1][1]-pts[kk][1])*f, pts[kk][2]+(pts[kk+1][2]-pts[kk][2])*f];
+            var ln2=0.022*(1-0.6*tt);
+            seg(q,[q[0]+px*ln2,q[1]+py*ln2,q[2]+0.006]); seg(q,[q[0]-px*ln2,q[1]-py*ln2,q[2]+0.006]);
+          }
+        }
+      }
+    } else if(kind==='tall'){
+      var ns=1+Math.floor(R()*3);
+      for(i=0;i<ns;i++){
+        var ha=TAU*R(), hr=POT*0.25*R(), hs=[c[0]+Math.cos(ha)*hr, c[1]+Math.sin(ha)*hr], H=0.5+0.7*R(), lean=0.05*(R()-0.5), top=[hs[0]+lean, hs[1]+lean*0.5, zt+H];
+        seg([hs[0],hs[1],zt],top,'stem');
+        /* a stake beside it */
+        seg([hs[0]+0.02,hs[1],zt],[hs[0]+0.02,hs[1],zt+H*0.85],'stake',COL_BRN);
+        for(var z=0.12;z<H-0.05;z+=0.12){
+          var f2=z/H, q2=[hs[0]+lean*f2, hs[1]+lean*0.5*f2, zt+z], la=TAU*R(), l2=0.06+0.04*R();
+          seg(q2,[q2[0]+Math.cos(la)*l2, q2[1]+Math.sin(la)*l2, q2[2]+0.04]);
+          seg(q2,[q2[0]-Math.cos(la)*l2, q2[1]-Math.sin(la)*l2, q2[2]+0.04]);
+        }
+      }
+    }
+    return S;
+  }
+  /* the mid band: a pot is a box, its plant a 6-segment arch over it in the
+     vertical plane square to the eye */
+  function crownArch(sd,c,zt,W,H){
+    var Pc=PS(sd,c[0],c[1],zt), dx=Pc[0]-CE[0], dy=Pc[1]-CE[1], L=Math.hypot(dx,dy)||1;
+    var lc=toLocal(sd,c[0],-dy/L,dx/L), pts=[], k;
+    for(k=0;k<=6;k++){ var th=Math.PI*k/6; pts.push([c[0]+lc[0]*W/2*Math.cos(th), c[1]+lc[1]*W/2*Math.cos(th), zt+0.005+H*Math.sin(th)]); }
+    return pts;
+  }
+  var CROPS=[['rosette',25],['fern',20],['flower',25],['tall',15],['seed',15]];
+  function cropOf(u){ var a=0, i; for(i=0;i<CROPS.length;i++){ a+=CROPS[i][1]; if(u*100<a) return CROPS[i][0]; } return 'seed'; }
+  /* ONE BENCH: its frame (by kind), its pipes, its pots and plants. k 0 the
+     front bench, 1 the back; kind 'roll', 'ebb' or 'bed' for the span */
+  function bench(L,k,kind,dn,df){
+    var sd=L.side, fe=L.fe, BK=L.back, a=sd<0?2:1, kb=L.idx*4+k;
+    var oA=fe+(k?OB0:OF0), oB=k?Math.min(fe+OB1,BK-0.3):fe+OF1, top=k?TOPB:TOPF;
+    var sA=L.s0+(L.ghFirst?COLW+0.10:0.10), sB=L.s1-COLW-0.10;
+    if(sB-sA<0.5) return;
+    var mid=PS(sd,(sA+sB)/2,(oA+oB)/2,top), band=bandOf(mid,dn,df);
+    var rec={side:sd, idx:L.idx, k:k, kind:kind, top:top, sA:sA, sB:sB, oA:oA, oB:oB, crop:null, potCol:null, places:0, taken:0, parts:0};
+    TAL.benches.push(rec);
+    var parts=[];
+    function add(P){ parts.push(P); return P; }
+    var zTop=kind==='bed'?0:top;
+    if(kind==='bed'){
+      add(tag(bx(sd,sA,sB,oA,oA+0.08,0,0.15),'kerb',COL_GREY,'bench'));
+    } else {
+      var zf=kind==='roll'?top-0.04:top-0.08;
+      var T=tag(bx(sd,sA,sB,oA,oB,zf,top),kind==='roll'?'bench':'tray',COL_GREY,'bench');
+      add(T);
+      if(kind==='roll' && band==='near'){
+        /* the mesh top: a grid at 0.1 m, held to the paper floor */
+        var P0=PS(sd,(sA+sB)/2,(oA+oB)/2,top), tS=sub3(PS(sd,(sA+sB)/2+1,(oA+oB)/2,top),P0), tO=sub3(PS(sd,(sA+sB)/2,(oA+oB)/2+1,top),P0);
+        var kS=thin(paperGap(P0,tO,tS),0.1), kO=thin(paperGap(P0,tS,tO),0.1), x;
+        for(x=sA+0.1*kS;x<sB-1e-6;x+=0.1*kS) ln(T,PS(sd,x,oA,top),PS(sd,x,oB,top),'mesh',COL_GREY,1);
+        for(x=oA+0.1*kO;x<oB-1e-6;x+=0.1*kO) ln(T,PS(sd,sA,x,top),PS(sd,sB,x,top),'mesh',COL_GREY,1);
+      }
+      if(kind==='ebb'){
+        /* the tray's rim: a second outline inset 4 cm on the top */
+        poly(T,[PS(sd,sA+0.04,oA+0.04,top),PS(sd,sB-0.04,oA+0.04,top),PS(sd,sB-0.04,oB-0.04,top),PS(sd,sA+0.04,oB-0.04,top)],'rim',COL_GREY,true,1);
+      }
+      var zLeg=zf;
+      if(kind==='roll'){
+        /* two longitudinal tubes under the frame; the legs stop under them */
+        [0.25,0.75].forEach(function(f){ var o=oA+(oB-oA)*f;
+          add(band==='near'?smooth(tag(tubeS(sd,sA+0.02,sB-0.02,o,zf-0.03,0.03,8),'tube',COL_GREY,'bench'),2):
+              tag(bx(sd,sA+0.02,sB-0.02,o-0.03,o+0.03,zf-0.06,zf),'tube',COL_GREY,'bench')); });
+      }
+      /* UNDER THE BENCH: the cross-feet, the heating pipes and their brackets
+         only where the bench stands 8 mm tall on the sheet (about 11 m off at
+         the defaults); beyond, the legs alone. Under a bench further off these
+         were a quarter of seed 7's lines, packed into a strip a millimetre
+         high. The bench's own height, not its pots': L4 holds Pot size to the
+         plants alone */
+      var under=band!=='far' && 0.8*mmAt(mid)>=8;
+      if(band!=='far'){
+        /* legs every 1.2 m on cross-feet */
+        var nl=Math.max(2,Math.round((sB-sA)/1.2)+1), i;
+        for(i=0;i<nl;i++){
+          var sl=sA+0.02+(sB-sA-0.06)*i/(nl-1);
+          if(under) add(tag(bx(sd,sl,sl+0.04,oA+0.02,oB-0.02,0,0.04),'foot',COL_GREY,'bench'));
+          add(tag(bx(sd,sl,sl+0.04,oA+0.02,oA+0.06,under?0.04:0,zLeg),'leg',COL_GREY,'bench'));
+          add(tag(bx(sd,sl,sl+0.04,oB-0.06,oB-0.02,under?0.04:0,zLeg),'leg',COL_GREY,'bench'));
+        }
+      }
+      if(under){
+        /* two heating pipes at 0.25 m, the span's length, on a bracket every 2 m */
+        [1/3,2/3].forEach(function(f){ var o=oA+(oB-oA)*f;
+          add(band==='near'?smooth(tag(tubeS(sd,sA+0.07,sB-0.07,o,0.25,0.025,8),'pipe',COL_GREY,'bench'),2):
+              tag(bx(sd,sA+0.07,sB-0.07,o-0.025,o+0.025,0.225,0.275),'pipe',COL_GREY,'bench'));
+          var zb=kind==='roll'?zf:zf, nb=Math.max(1,Math.floor((sB-sA)/2));
+          for(var j=0;j<nb;j++){
+            var sbk=sA+(sB-sA)*(j+0.5)/nb;
+            /* clear of the legs, which stand at the bench's two edges */
+            var B=see(tag(bx(sd,sbk-0.01,sbk+0.01,o-0.01,o+0.01,0.276,zb-0.001),'bracket',COL_GREY,'bench'));
+            B.lines=[{a:PS(sd,sbk,o,0.275), b:PS(sd,sbk,o,zb), f0:0, f1:0, kind:'bracket', col:COL_GREY}];
+            add(B);
+          }
+        });
+      }
+      if(kind==='roll' && band==='near'){
+        /* the turning wheel on the bench's path face, mid-span */
+        var sw=(sA+sB)/2, zw=top-0.25, rw=0.12, la=[], lb=[];
+        for(i=0;i<10;i++){ var aw=TAU*i/10; la.push(PS(sd,sw+rw*Math.cos(aw),oA-0.05,zw+rw*Math.sin(aw))); lb.push(PS(sd,sw+rw*Math.cos(aw),oA-0.03,zw+rw*Math.sin(aw))); }
+        add(smooth(tag(rings(la,lb),'wheel',COL_K,'bench'),2));
+      }
+    }
+    /* ---- pots and plants ---- */
+    var RK=sub(a*8+k,L.idx,SALT_PLANT), crop=kind==='bed'?'tall':cropOf(RK()), RC=sub(a*8+k,L.idx,SALT_POT);
+    var potCol=RC()<0.6?COL_BRN:COL_K, fcol=FLOWC[Math.floor(RK()*FLOWC.length)];
+    rec.crop=crop; rec.potCol=potCol;
+    var oP0=kind==='bed'?oA+0.11:oA, RECT=[sA+0.005,oP0+0.005,sB-0.005,oB-0.005];
+    var pitch=POT*1.25;
+    if(crop==='seed'){
+      /* SEEDLING TRAYS, 0.54 x 0.28 m, one where a 2 x 2 block of places would be */
+      var nS=Math.floor((sB-sA)/0.56), nO=Math.floor((oB-oP0)/0.30), ti, tj;
+      for(ti=0;ti<nS;ti++) for(tj=0;tj<nO;tj++){
+        rec.places++;
+        var u=RC(); if(!(u<FILL)) continue;
+        rec.taken++;
+        var ts0=sA+0.01+ti*0.56, to0=oP0+0.01+tj*0.30, cT=PS(sd,ts0+0.27,to0+0.14,zTop), bnd=bandOf(cT,dn,df);
+        var Tr=tag(bx(sd,ts0,ts0+0.54,to0,to0+0.28,zTop,zTop+0.06),'seedtray',COL_K,'plant');
+        TAL.pots.push({side:sd, idx:L.idx, k:k, s:ts0+0.27, o:to0+0.14, zb:zTop, zt:zTop+0.06, band:bnd, tray:true});
+        if(bnd!=='far'){
+          var gS=paperGap(cT,sub3(PS(sd,ts0,to0+1,zTop),PS(sd,ts0,to0,zTop)),sub3(PS(sd,ts0+1,to0,zTop),PS(sd,ts0,to0,zTop)));
+          if(gS*0.045>=MINSP){
+            for(var cs=1;cs<12;cs++) ln(Tr,PS(sd,ts0+0.045*cs,to0,zTop+0.06),PS(sd,ts0+0.045*cs,to0+0.28,zTop+0.06),'cell',COL_K,1);
+            for(var co=1;co<6;co++) ln(Tr,PS(sd,ts0,to0+0.0467*co,zTop+0.06),PS(sd,ts0+0.54,to0+0.0467*co,zTop+0.06),'cell',COL_K,1);
+            if(bnd==='near' && gS*0.045>=1.0){
+              var Ck=see(tag(bx(sd,ts0+0.005,ts0+0.535,to0+0.005,to0+0.275,zTop+0.06,zTop+0.105),'seedlings',COL_LGRN,'plant'));
+              Ck.lines=[];
+              for(cs=0;cs<12;cs++) for(co=0;co<6;co++){ var px=ts0+0.0225+0.045*cs, py=to0+0.0233+0.0467*co;
+                Ck.lines.push({a:PS(sd,px,py,zTop+0.065), b:PS(sd,px+0.008,py+0.004,zTop+0.1), f0:0, f1:0, kind:'seedling', col:COL_LGRN}); }
+              add(Ck); TAL.plants++;
+            }
+          }
+        }
+        add(Tr);
+      }
+    } else {
+      var nS2=Math.floor((RECT[2]-RECT[0])/pitch), nO2=Math.floor((RECT[3]-RECT[1])/pitch), pi, pj, rows=[];
+      var s00=RECT[0]+((RECT[2]-RECT[0])-nS2*pitch)/2+pitch/2, o00=RECT[1]+((RECT[3]-RECT[1])-nO2*pitch)/2+pitch/2;
+      var ph=0.9*POT, rt=POT/2, rb=0.75*POT/2, nearMid=0;
+      for(pj=0;pj<nO2;pj++){
+        var run=null;
+        for(pi=0;pi<nS2;pi++){
+          rec.places++;
+          var u2=RC(), cs2=s00+pi*pitch, co2=o00+pj*pitch, pos=pj*nS2+pi;
+          if(!(u2<FILL)){ if(run){ rows.push(run); run=null; } continue; }
+          rec.taken++;
+          var cW=PS(sd,cs2,co2,zTop), b2=potBand(cW,dn,df), zt=zTop+ph;
+          TAL.pots.push({side:sd, idx:L.idx, k:k, s:cs2, o:co2, zb:zTop, zt:zt, band:b2});
+          if(b2==='far'){ if(!run) run={o:co2, s0:cs2, s1:cs2}; else run.s1=cs2; continue; }
+          if(run){ rows.push(run); run=null; }
+          nearMid++;
+          if(b2==='near') add(smooth(tag(frustum(cW,rb,rt,zTop,zt,12),'pot',potCol,'plant'),2));
+          else add(tag(bx(sd,cs2-0.45*POT,cs2+0.45*POT,co2-0.45*POT,co2+0.45*POT,zTop,zt),'pot',potCol,'plant'));
+          /* the plant: its own stream, keyed on its place, so Occupancy moves
+             which pots there are and never what grows in one */
+          var RPl=sub(a*8+k,L.idx*1024+pos,SALT_PLANT), lcol=crop==='rosette'&&RPl()<0.1?COL_OLIVE:(RPl()<0.7?COL_GRN:COL_DGRN);
+          var segs;
+          if(b2==='near'){
+            segs=plantLines(crop,RPl,[cs2,co2],zt,b2,lcol,fcol);
+            /* a label stake in 30% of the near pots, from the label stream */
+            var RL=sub(a*8+k,L.idx*1024+pos,SALT_LABEL);
+            if(RL()<0.3){
+              var lo=co2-rt*0.6, ls=cs2+rt*0.3*(RL()-0.5);
+              segs.push([[ls,lo,zt-0.03],[ls,lo,zt+0.1],'label',COL_K]);
+              segs.push([[ls-0.02,lo,zt+0.06],[ls+0.02,lo,zt+0.06],'label',COL_K]);
+              segs.push([[ls+0.02,lo,zt+0.06],[ls+0.02,lo,zt+0.12],'label',COL_K]);
+              segs.push([[ls+0.02,lo,zt+0.12],[ls-0.02,lo,zt+0.12],'label',COL_K]);
+              segs.push([[ls-0.02,lo,zt+0.12],[ls-0.02,lo,zt+0.06],'label',COL_K]);
+              TAL.labels++;
+            }
+          } else {
+            var W=crop==='tall'?POT*1.2:POT*1.8, H=crop==='tall'?0.7:POT*0.9, ar=crownArch(sd,[cs2,co2],zt,W,H);
+            segs=[]; for(var m=1;m<ar.length;m++) segs.push([ar[m-1],ar[m],'crown',lcol]);
+          }
+          /* clipped to the bench; the carrier is the bounding box of what is
+             left, above the pot tops, so it meets no pot */
+          var kept=[], bb=[1e18,1e18,1e18,-1e18,-1e18,-1e18];
+          segs.forEach(function(sg){
+            var A0=sg[0], B0=sg[1];
+            if(sg[2]==='label' && A0[2]<zt){ A0=[A0[0],A0[1],zt+0.0005]; }
+            var r=clipRect(A0,B0,RECT); if(!r) return;
+            var A1=[A0[0]+(B0[0]-A0[0])*r[0],A0[1]+(B0[1]-A0[1])*r[0],Math.max(zt+0.0005,A0[2]+(B0[2]-A0[2])*r[0])];
+            var B1=[A0[0]+(B0[0]-A0[0])*r[1],A0[1]+(B0[1]-A0[1])*r[1],Math.max(zt+0.0005,A0[2]+(B0[2]-A0[2])*r[1])];
+            kept.push([A1,B1,sg[2],sg[3]]);
+            [A1,B1].forEach(function(q){ for(var d=0;d<3;d++){ if(q[d]<bb[d]) bb[d]=q[d]; if(q[d]>bb[d+3]) bb[d+3]=q[d]; } });
+          });
+          if(kept.length){
+            var Cr=see(tag(bx(sd,bb[0]-0.001,bb[3]+0.001,bb[1]-0.001,bb[4]+0.001,zt,bb[5]+0.002),'plant',lcol,'plant'));
+            Cr.lines=kept.map(function(sg){ return {a:PS(sd,sg[0][0],sg[0][1],sg[0][2]), b:PS(sd,sg[1][0],sg[1][1],sg[1][2]), f0:0, f1:0, kind:sg[2], col:sg[3]}; });
+            add(Cr); TAL.plants++;
+          }
+        }
+        if(run) rows.push(run);
+      }
+      /* beyond Outline detail to: one box per run of pots along a row -- and
+         where a whole bench is that far and its rows stand closer than the
+         paper floor ACROSS it, one block of pot height over all its runs, with
+         one crown along its path side. Measured on seed 7: the rows and their
+         crowns were 19,000 of 48,000 lines, most of them closer together than
+         a pen can draw them. */
+      if(rows.length && !nearMid){
+        var r0=1e18, r1=-1e18, q0=1e18, q1=-1e18;
+        rows.forEach(function(r){ r0=Math.min(r0,r.s0); r1=Math.max(r1,r.s1); q0=Math.min(q0,r.o); q1=Math.max(q1,r.o); });
+        var Pb=PS(sd,(r0+r1)/2,(q0+q1)/2,zTop+ph);
+        if(q1>q0 && pitch*mmAt(Pb)<MINSP){
+          add(tag(bx(sd,r0-0.45*POT,r1+0.45*POT,q0-0.45*POT,q1+0.45*POT,zTop,zTop+ph),'potblock',potCol,'plant'));
+          rows=[{o:q0, s0:r0, s1:r1, crownOnly:true}];
+        }
+      }
+      rows.forEach(function(r){
+        if(!r.crownOnly)
+        add(tag(bx(sd,r.s0-0.45*POT,r.s1+0.45*POT,r.o-0.45*POT,r.o+0.45*POT,zTop,zTop+ph),'potrow',potCol,'plant'));
+        /* and its plants as one zig-zag crown along it, where the pots stand
+           the paper floor apart */
+        var Pm=PS(sd,(r.s0+r.s1)/2,r.o,zTop+ph), n=Math.round((r.s1-r.s0)/pitch)+1;
+        if(n<2 || pitch*mmAt(Pm)<MINSP) return;
+        var zc=zTop+ph, h=crop==='tall'?0.5:POT*0.7, Cz=see(tag(bx(sd,r.s0-0.45*POT,r.s1+0.45*POT,r.o-0.01,r.o+0.01,zc,zc+h+0.002),'rowcrown',COL_GRN,'plant'));
+        Cz.lines=[]; var prev=null;
+        for(var m=0;m<=2*(n-1);m++){ var q=PS(sd,r.s0+m*pitch/2,r.o,zc+(m%2?0.4*h:h)); if(prev) Cz.lines.push({a:prev, b:q, f0:0, f1:0, kind:'crown', col:COL_GRN}); prev=q; }
+        add(Cz);
+      });
+    }
+    rec.parts=parts.length;
+    parts.forEach(function(P){ inLot(P,L); });
+  }
+  /* ---- the bench sign: a board under the front bench's top at its path end,
+     a two-digit bench number and a line of the script */
+  function benchSign(L,dn){
+    var sd=L.side, fe=L.fe, sA=L.s0+(L.ghFirst?COLW+0.10:0.10), s0=sA+0.2, s1=s0+0.3, o0=fe+OF0-0.05, o1=o0+0.015, z0=0.55, z1=0.75;
+    var B=tag(bx(sd,s0,s1,o0,o1,z0,z1),'sign',COL_K,'sign'), rec={side:sd, idx:L.idx, num:0, text:false};
+    TAL.signs.push(rec);
+    var R=sub(sd<0?2:1,L.idx,SALT_LABEL), num=1+(L.idx*2+(sd<0?1:0))%99;
+    rec.num=num;
+    var fi=2, Pm=PS(sd,(s0+s1)/2,o0,(z0+z1)/2), mmV=paperGap(Pm,sub3(PS(sd,s0+1,o0,0),PS(sd,s0,o0,0)),[0,0,1]);
+    if(dist3(Pm)<dn && mmV*0.07>=1.0){
+      /* the number: futural digits 7 cm tall, read from the path */
+      var txt=(num<10?'0':'')+num, u=0.03, hN=0.07, cap=0.6;
+      var gH=glyphStrokes('8','futural'); if(gH) gH.strokes.forEach(function(st){ st.forEach(function(q){ if(q[1]>cap) cap=q[1]; }); });
+      var sc=hN/cap;
+      for(var i=0;i<txt.length;i++){ var G=glyphStrokes(txt[i],'futural'); if(!G) continue;
+        G.strokes.forEach(function(st){ for(var j=1;j<st.length;j++)
+          ln(B,PS(sd,s1-(u+st[j-1][0]*sc),o0,z1-0.025-hN+st[j-1][1]*sc),PS(sd,s1-(u+st[j][0]*sc),o0,z1-0.025-hN+st[j][1]*sc),'signtext',COL_K,fi); });
+        u+=G.adv*sc; }
+      var script=LANG===0?'kanji':LANG===1?'hangul':LANG===2?'latin':(R()<0.5?'latin':'kanji');
+      var T=SCR.setText(script,0.26,0.07,false,R,0.02);
+      T.lines.forEach(function(pl){ for(var j=1;j<pl.length;j++)
+        ln(B,PS(sd,s1-0.02-pl[j-1][0],o0,z0+0.015+pl[j-1][1]),PS(sd,s1-0.02-pl[j][0],o0,z0+0.015+pl[j][1]),'signtext',COL_K,fi); });
+      rec.text=T.lines.length>0;
+    }
+    inLot(B,L);
+  }
+  function dress(L,dn,df){
+    if(L===lots[0]){ TAL.lots=[]; TAL.benches=[]; TAL.pots=[]; TAL.plants=0; TAL.columns=[]; TAL.signs=[]; TAL.labels=0; TAL.miss=0; }
+    var sd=L.side, fe=L.fe, BK=L.back, a=sd<0?2:1;
+    var RB=sub(a,L.idx,SALT_BENCH), u=RB(), kind=u<0.5?'roll':u<0.8?'ebb':'bed';
+    TAL.lots.push({side:sd, idx:L.idx, s0:L.s0, s1:L.s1, fe:fe, back:BK, kind:kind, first:L.ghFirst, last:L.ghLast});
+    /* the columns at this lot's faces: its s1 face, and its s0 face when it
+       is the first lot of its side. Path side and wall side. */
+    var fcs=[{s:L.s1, pos:L.ghLast?'last':'mid'}];
+    if(L.ghFirst) fcs.push({s:L.s0, pos:'first'});
+    fcs.forEach(function(f){
+      var r=colRange(f);
+      inLot(tag(bx(sd,r[0],r[1],fe+OCOL0,fe+OCOL1,0,GUTZ-GUTH),'column',COL_GREY,'struct'),L);
+      inLot(tag(bx(sd,r[0],r[1],BK-0.17,BK-0.09,0,GUTZ-GUTH),'column',COL_GREY,'struct'),L);
+      TAL.columns.push({side:sd, idx:L.idx, s:f.s, pos:f.pos, path:[fe+OCOL0,fe+OCOL1], wall:[BK-0.17,BK-0.09], z1:GUTZ-GUTH});
+    });
+    /* the sill between the wall columns, the tone hatch on its path face */
+    var w0=L.s0+(L.ghFirst?COLW:0), w1=L.s1-COLW;
+    var Sl=tag(bx(sd,w0,w1,BK-0.23,BK-0.03,0,0.6),'sill',COL_GREY,'struct');
+    if(HATCH>0){
+      var Pm=PS(sd,(w0+w1)/2,BK-0.23,0.3), gp=paperGap(Pm,sub3(PS(sd,(w0+w1)/2+1,BK-0.23,0.3),PS(sd,(w0+w1)/2,BK-0.23,0.3)),[0,0,1]);
+      var sp=Math.max(0.02+0.08*(1-HATCH), gp>0?MINSP/gp:1e9);
+      if(gp>0) for(var zh=sp/2; zh<0.6-0.01; zh+=sp) ln(Sl,PS(sd,w0,BK-0.23,zh),PS(sd,w1,BK-0.23,zh),'hatch','#4a4a4a',2);
+    }
+    inLot(Sl,L);
+    /* the side wall's glass, sill to gutter and the gable above it up to the
+       ridge's foot: one see-through part between the gutters, its lines the
+       outline, a transom at 2.4 m and a mullion every Pane width */
+    var ge=gutterEdge(L), sm=(L.s0+L.s1)/2, RZ=ridgeZ(L), zr=RZ-RIDH-0.01;
+    var hex=[[ge[0],0.6],[ge[1],0.6],[ge[1],GUTZ],[sm+RIDW/2,zr],[sm-RIDW/2,zr],[ge[0],GUTZ]];
+    var gA=hex.map(function(q){ return PS(sd,q[0],BK-0.14,q[1]); }), gB=hex.map(function(q){ return PS(sd,q[0],BK-0.12,q[1]); });
+    var gl=[gA,gB], i; for(i=0;i<6;i++){ var i2=(i+1)%6; gl.push([gA[i],gA[i2],gB[i2],gB[i]]); }
+    var Gw=see(tag(polyFromLoops(gl),'sideglass',COL_GREY,'struct')); Gw.lines=[];
+    poly(Gw,hex.map(function(q){ return PS(sd,q[0],BK-0.14,q[1]); }),'glass',COL_GREY,true);
+    if(2.4<GUTZ-0.05) ln(Gw,PS(sd,ge[0],BK-0.14,2.4),PS(sd,ge[1],BK-0.14,2.4),'glazing',COL_GREY);
+    var mP=PS(sd,sm,BK-0.14,2), gW=paperGap(mP,[0,0,1],sub3(PS(sd,sm+1,BK-0.14,2),mP)), d=dist3(mP), stp=PANE*(d<df?1:2)*thin(gW,PANE*(d<df?1:2));
+    for(var sx=ge[0]+stp; sx<ge[1]-0.02; sx+=stp){
+      var zt=sx<=sm-RIDW/2?GUTZ+(zr-GUTZ)*(sx-ge[0])/(sm-RIDW/2-ge[0]):sx>=sm+RIDW/2?GUTZ+(zr-GUTZ)*(ge[1]-sx)/(ge[1]-sm-RIDW/2):zr;
+      ln(Gw,PS(sd,sx,BK-0.14,0.6),PS(sd,sx,BK-0.14,zt),'glazing',COL_GREY);
+    }
+    inLot(Gw,L);
+    /* the benches, the bench sign, the misting lines */
+    bench(L,0,kind,dn,df); bench(L,1,kind,dn,df);
+    if(kind!=='bed') benchSign(L,dn);
+    if(MIST){
+      [0,1].forEach(function(k){
+        var oc=fe+(k?(OB0+OB1)/2:(OF0+OF1)/2), sa=L.s0+COLW+0.01, sb=L.s1-COLW-0.01, zm=GUTZ-BOTC+0.005;
+        if(dist3(PS(sd,(sa+sb)/2,oc,zm))>=dn) return;
+        var Mi=see(tag(bx(sd,sa,sb,oc-0.01,oc+0.01,zm-0.085,zm+0.01),'mist',COL_GREY,'mist'));
+        Mi.lines=[{a:PS(sd,sa,oc,zm), b:PS(sd,sb,oc,zm), f0:0, f1:0, kind:'mist', col:COL_GREY}];
+        for(var sn=sa+0.3; sn<sb-0.05; sn+=0.6) Mi.lines.push({a:PS(sd,sn,oc,zm), b:PS(sd,sn,oc,zm-0.08), f0:0, f1:0, kind:'nozzle', col:COL_GREY});
+        inLot(Mi,L);
+      });
+    }
+  }
+
+  /* ---- §1.3 the roof, across everything -------------------------------- */
+  /* a member over the (s,o) rectangle: PAIRED, o is signed and runs lot back
+     to lot back; otherwise on side sd from OIN */
+  function memberBox(sd,sA,sB,oA,oB,zA,zB){ return sd===0?bx(1,sA,sB,oA,oB,zA,zB):bx(sd,sA,sB,oA,oB,zA,zB); }
+  function roof(dn,df){
+    TAL.faces=[]; TAL.members=[]; TAL.glass=[];
+    var sides=PAIRED?[0]:[1,-1];
+    sides.forEach(function(sd){
+      var F=FACES[sd===0?'1':String(sd)], Fm=sd===0?FACES['-1']:null;
+      F.forEach(function(f,fi){
+        var L=f.lot, BK=L.back-0.03, oA=sd===0?-(Fm[fi].lot.back-0.03):OIN, oB=BK, ss=sRange(f,GUTW/2), cs=sRange(f,CHW/2);
+        var feP=L.fe, feM=sd===0?Fm[fi].lot.fe:null;
+        TAL.faces.push({side:sd, s:f.s, pos:f.pos, gutter:ss, chord:cs});
+        /* the gutter */
+        put(tag(memberBox(sd,ss[0],ss[1],oA,oB,GUTZ-GUTH,GUTZ),'gutter',COL_GREY,'roof'),true);
+        /* the truss: chords over the path between the columns, and over the
+           benches from column to column; the web over the path only */
+        var segs=[];
+        if(sd===0){ segs.push([-(feM+OCOL0-0.002),feP+OCOL0-0.002,true]); segs.push([feP+OCOL1+0.002,L.back-0.172,false]); segs.push([-(Fm[fi].lot.back-0.172),-(feM+OCOL1+0.002),false]); }
+        else { segs.push([OIN,feP+OCOL0-0.002,true]); segs.push([feP+OCOL1+0.002,L.back-0.172,false]); }
+        segs.forEach(function(sg){
+          if(!(sg[1]-sg[0]>0.05)) return;
+          put(tag(memberBox(sd,cs[0],cs[1],sg[0],sg[1],GUTZ-TOPC-CHT,GUTZ-TOPC),'chord',COL_GREY,'roof'),true);
+          put(tag(memberBox(sd,cs[0],cs[1],sg[0],sg[1],GUTZ-BOTC-CHT,GUTZ-BOTC),'chord',COL_GREY,'roof'),true);
+          if(!sg[2]) return;
+          var Wb=see(tag(memberBox(sd,cs[0],cs[1],sg[0],sg[1],GUTZ-BOTC,GUTZ-TOPC-CHT),'web',COL_GREY,'roof'));
+          Wb.lines=[];
+          var sc=(cs[0]+cs[1])/2, n=Math.max(1,Math.round((sg[1]-sg[0])/0.6)), j, P=function(o,z){ return sd===0?SP(sc,o,z):PS(sd,sc,o,z); };
+          for(j=0;j<n;j++){
+            var o0=sg[0]+(sg[1]-sg[0])*j/n, o1=sg[0]+(sg[1]-sg[0])*(j+1)/n;
+            Wb.lines.push({a:P(o0,j%2?GUTZ-TOPC-CHT:GUTZ-BOTC), b:P(o1,j%2?GUTZ-BOTC:GUTZ-TOPC-CHT), f0:0, f1:0, kind:'web', col:COL_GREY});
+          }
+          put(Wb);
+          f.webSeg=sg; f.webSd=sd;
+        });
+      });
+      /* per lot: the ridge, the two glass planes, the shade screen */
+      var LL=sd===0?bySide['1']:bySide[String(sd)], LM=sd===0?bySide['-1']:null;
+      LL.forEach(function(L,li){
+        var Lm=LM?LM[li]:null, sm=(L.s0+L.s1)/2, RZ=ridgeZ(L), BK=L.back-0.03, oA=sd===0?-(Lm.back-0.03):OIN, oB=BK;
+        put(tag(memberBox(sd,sm-RIDW/2,sm+RIDW/2,oA,oB,RZ-RIDH,RZ),'ridge',COL_GREY,'roof'),{span:L.s1-L.s0, side:sd, idx:L.idx});
+        var ge=gutterEdge(L), zr=RZ-RIDH-0.01;
+        [[ge[0],GUTZ,sm-RIDW/2,zr],[sm+RIDW/2,zr,ge[1],GUTZ]].forEach(function(pl,k){
+          glassPlane(sd,L,pl[0],pl[1],pl[2],pl[3],oA,oB,df);
+        });
+      });
+    });
+    /* the shade screen: per side, per span, Shade screen of the span's depth
+       drawn closed from its path side (the lot's front) outward; the path
+       itself stays open */
+    if(SHADE>0) [1,-1].forEach(function(sd){ bySide[sd].forEach(function(L){
+      var sa=L.s0+COLW+0.01, sb=L.s1-COLW-0.01, o0=L.fe, w=SHADE*(L.back-0.03-L.fe), zs=GUTZ-TOPC;
+      if(!(w>0.05)) return;
+      var Sh=see(tag(bx(sd,sa,sb,o0,o0+w,zs,zs+0.004),'shade',COL_DG,'roof')); Sh.lines=[];
+      var Pm=PS(sd,(sa+sb)/2,o0+w/2,zs), g=paperGap(Pm,sub3(PS(sd,(sa+sb)/2+1,o0+w/2,zs),Pm),sub3(PS(sd,(sa+sb)/2,o0+w/2+1,zs),Pm)), kk=thin(g,0.15);
+      Sh.lines.push({a:PS(sd,sa,o0,zs), b:PS(sd,sb,o0,zs), f0:0, f1:0, kind:'shade', col:COL_DG});
+      for(var o=0.15*kk; o<w-1e-6; o+=0.15*kk) Sh.lines.push({a:PS(sd,sa,o0+o,zs), b:PS(sd,sb,o0+o,zs), f0:0, f1:0, kind:'shade', col:COL_DG});
+      Sh.lines.push({a:PS(sd,sa,o0+w,zs), b:PS(sd,sb,o0+w,zs), f0:0, f1:0, kind:'shade', col:COL_DG});
+      put(Sh);
+    }); });
+  }
+  /* ONE GLASS PLANE: a parallelogram from its lower edge (radial at sLo, at
+     zLo) to its upper (the same edge moved to sHi, zHi), so it is planar on
+     a bend too; a 4 mm see-through slab on it. Its lines: the outline, and a
+     glazing bar every Pane width across (every other beyond Outline detail
+     to, and held to the paper floor). */
+  function glassPlane(sd,L,sLo,zLo,sHi,zHi,oA,oB,df){
+    var P=function(s,o,z){ return sd===0?SP(s,o,z):PS(sd,s,o,z); };
+    var oM=(oA+oB)/2, T=sub3(P(sHi,oM,zHi),P(sLo,oM,zLo));
+    var E0=P(sLo,oA,zLo), E1=P(sLo,oB,zLo), q=[E0,E1,add3(E1,T,1),add3(E0,T,1)];
+    var u=sub3(E1,E0), n=[u[1]*T[2]-u[2]*T[1], u[2]*T[0]-u[0]*T[2], u[0]*T[1]-u[1]*T[0]], nl=Math.hypot(n[0],n[1],n[2])||1;
+    n=[n[0]/nl,n[1]/nl,n[2]/nl]; if(n[2]<0) n=[-n[0],-n[1],-n[2]];
+    var q2=q.map(function(v){ return add3(v,n,0.004); });
+    var loops=[q,q2], k; for(k=0;k<4;k++){ var k2=(k+1)%4; loops.push([q[k],q[k2],q2[k2],q2[k]]); }
+    var G=see(tag(polyFromLoops(loops),'glass',COL_GREY,'roof')); G.lines=[];
+    poly(G,q,'glass',COL_GREY,true);
+    var mid=P((sLo+sHi)/2,oM,(zLo+zHi)/2), d=dist3(mid), st=PANE*(d<df?1:2);
+    var gW=paperGap(mid,T,sub3(P(sLo,oM+1,zLo),P(sLo,oM,zLo))), kk=thin(gW,st), nb=0;
+    for(var o=Math.ceil((oA+1e-6)/(st*kk))*st*kk; o<oB-1e-6; o+=st*kk){
+      var a=P(sLo,o,zLo); ln(G,a,add3(a,T,1),'glazing',COL_GREY); nb++;
+    }
+    TAL.glass.push({side:sd, idx:L.idx, sLo:sLo, zLo:zLo, sHi:sHi, zHi:zHi, oA:oA, oB:oB, n:n, d:n[0]*E0[0]+n[1]*E0[1]+n[2]*E0[2], bars:nb});
+    put(G);
+  }
+
+  /* ---- §1.7 the path ------------------------------------------------------ */
+  function floors(dn){
+    conts.forEach(function(C){
+      if(C.kind!=='slab') return;
+      var sd=C.side, Pl=prismN(C.poly,-0.02,0);
+      Pl.lines=[]; Pl.hides=false; Pl.cont=C; Pl.col=COL_DG; Pl.kind='plate'; Pl.layer='floor';
+      /* the drain along the centreline (side +1's slabs draw it), and a
+         stepping-stone joint across every metre, held to the paper floor */
+      if(sd===1) Pl.lines.push({a:P3(C.s0,1,0,0), b:P3(C.s1,1,0,0), f0:1, f1:1, col:COL_DG, kind:'drain'});
+      for(var s=Math.ceil(C.s0)+0; s<C.s1-1e-6; s+=1){
+        if(s<=C.s0+1e-6) continue;
+        var Pm=P3(s,sd,HALFW/2,0), g=paperGap(Pm,sub3(P3(s,sd,HALFW/2+1,0),Pm),sub3(P3(s+1,sd,HALFW/2,0),Pm));
+        if(Math.round(s)%thin(g,1)) continue;
+        Pl.lines.push({a:P3(s,sd,0,0), b:P3(s,sd,HALFW,0), f0:1, f1:1, col:COL_DG, kind:'joint'});
+      }
+      C.parts.push(Pl);
+    });
+  }
+  /* commit a list of parts (each cut into slab pieces) only when no piece
+     meets anything already in the path in the given layers -- by BOX, the
+     see-through ones included, which hitsAny skips */
+  function bb3(V){ var b=[1e18,1e18,1e18,-1e18,-1e18,-1e18]; V.forEach(function(v){ for(var k=0;k<3;k++){ if(v[k]<b[k]) b[k]=v[k]; if(v[k]>b[k+3]) b[k+3]=v[k]; } }); return b; }
+  function boxMeet(a,b){ return !(a[3]<=b[0]||b[3]<=a[0]||a[4]<=b[1]||b[4]<=a[1]||a[5]<=b[2]||b[5]<=a[2]); }
+  function laneCommit(parts,layers){
+    var all=[], i;
+    for(i=0;i<parts.length;i++){ var pcs=slabPieces(parts[i]); if(!pcs) return false;
+      pcs.forEach(function(Q){ Q.kind=parts[i].kind; Q.col=parts[i].col; Q.layer=parts[i].layer; if(parts[i].hides===false){ Q.hides=false; Q.seeThru=true; }
+        ['cartId','eyeId'].forEach(function(k){ if(parts[i][k]!==undefined) Q[k]=parts[i][k]; }); all.push(Q); }); }
+    for(i=0;i<all.length;i++){ var b=bb3(verts(all[i])), C=all[i].cont;
+      for(var j=0;j<C.parts.length;j++){ var X=C.parts[j]; if(layers.indexOf(X.layer)<0) continue; if(boxMeet(b,X.gbb||(X.gbb=bb3(verts(X))))) return false; } }
+    all.forEach(function(Q){ Q.cont.parts.push(Q); });
+    return all;
+  }
+  function eyeFar(s,o,r){ var Pp=P3(s,1,o,0); return Math.hypot(Pp[0]-CE[0],Pp[1]-CE[1])-r>=3.0; }
+  /* DANISH TROLLEYS: 1.35 x 0.55 m, four castors, four posts to 1.9 m, 3-5
+     shelves of pots of one crop. Every piece cut at every slab face */
+  function trolleys(dn,df){
+    TAL.trolleys=[];
+    var nSlot=Math.floor(LEN/5), j;
+    for(j=0;j<nSlot;j++){
+      var R=sub(0,j,SALT_TROLL), u=R(), us=R(), uo=R(), ush=R(), uk=R(), uc=R();
+      if(!(u<TROLL*5/100)) continue;
+      var sc=j*5+0.8+3.4*us, oc=(uo*2-1)*(HALFW-0.3), rec={s:sc, o:oc, placed:false, why:''};
+      TAL.trolleys.push(rec);
+      if(Math.abs(oc)+0.275>HALFW-0.02){ rec.why='path too narrow'; continue; }
+      if(!eyeFar(sc,oc,0.8)){ rec.why='near the eye'; continue; }
+      var sA=sc-0.675, sB=sc+0.675, oA=oc-0.275, oB=oc+0.275, parts=[], i, X=function(s,o,z){ return P3(s,1,o,z); };
+      var b1=function(s0,s1,o0,o1,z0,z1){ return bx(1,s0,s1,o0,o1,z0,z1); };
+      var d=dist3(X(sc,oc,1)), band=d<dn?'near':d<df?'mid':'far';
+      [[sA+0.06,oA+0.06],[sB-0.06,oA+0.06],[sA+0.06,oB-0.06],[sB-0.06,oB-0.06]].forEach(function(c){
+        var C3=X(c[0],c[1],0);
+        parts.push(band==='near'?smooth(tag(frustum(C3,0.05,0.05,0,0.10,10),'castor',COL_K,'cart'),2):tag(b1(c[0]-0.05,c[0]+0.05,c[1]-0.05,c[1]+0.05,0,0.10),'castor',COL_K,'cart'));
+      });
+      parts.push(tag(b1(sA,sB,oA,oB,0.10,0.14),'tbase',COL_GREY,'cart'));
+      [[sA,oA],[sB-0.03,oA],[sA,oB-0.03],[sB-0.03,oB-0.03]].forEach(function(c){ parts.push(tag(b1(c[0],c[0]+0.03,c[1],c[1]+0.03,0.14,1.9),'tpost',COL_GREY,'cart')); });
+      var nsh=3+Math.floor(ush*3), crop=cropOf(uk), pc=uc<0.6?COL_BRN:COL_K;
+      if(crop==='seed') crop='rosette';
+      rec.shelves=nsh; rec.crop=crop;
+      for(i=0;i<nsh;i++){
+        var zs=0.14+(1.9-0.14-0.25)*(i+1)/nsh, zn=i<nsh-1?0.14+(1.9-0.14-0.25)*(i+2)/nsh-0.02:1.9;
+        parts.push(tag(b1(sA+0.03,sB-0.03,oA,oB,zs-0.02,zs),'tshelf',COL_GREY,'cart'));
+        if(band==='far') continue;
+        var np=Math.floor((sB-sA-0.08)/(POT*1.25)), nq=Math.floor((oB-oA-0.04)/(POT*1.25)), pi, pj;
+        for(pi=0;pi<np;pi++) for(pj=0;pj<nq;pj++){
+          var ps=sA+0.04+POT*1.25*(pi+0.5), po=oA+0.02+POT*1.25*(pj+0.5), zt=zs+0.9*POT;
+          if(zt>zn-0.02) continue;
+          var C4=X(ps,po,zs);
+          parts.push(band==='near'?smooth(tag(frustum(C4,0.75*POT/2,POT/2,zs,zt,12),'pot',pc,'cart'),2):tag(b1(ps-0.45*POT,ps+0.45*POT,po-0.45*POT,po+0.45*POT,zs,zt),'pot',pc,'cart'));
+          if(band==='near'){
+            var RP=sub(1000+j,i*64+pi*8+pj,SALT_TROLL), segs=plantLines(crop,RP,[ps,po],zt,'mid',COL_GRN,FLOWC[j%FLOWC.length]), kept=[], bb=[1e18,1e18,1e18,-1e18,-1e18,-1e18];
+            var RECT=[ps-POT*0.6,po-POT*0.6,ps+POT*0.6,po+POT*0.6];
+            segs.forEach(function(sg){ var r=clipRect(sg[0],sg[1],RECT); if(!r) return;
+              var A1=[sg[0][0]+(sg[1][0]-sg[0][0])*r[0],sg[0][1]+(sg[1][1]-sg[0][1])*r[0],Math.min(zn-0.025,Math.max(zt+0.0005,sg[0][2]+(sg[1][2]-sg[0][2])*r[0]))];
+              var B1=[sg[0][0]+(sg[1][0]-sg[0][0])*r[1],sg[0][1]+(sg[1][1]-sg[0][1])*r[1],Math.min(zn-0.025,Math.max(zt+0.0005,sg[0][2]+(sg[1][2]-sg[0][2])*r[1]))];
+              kept.push([A1,B1,sg[2],sg[3]]);
+              [A1,B1].forEach(function(q){ for(var dd=0;dd<3;dd++){ if(q[dd]<bb[dd]) bb[dd]=q[dd]; if(q[dd]>bb[dd+3]) bb[dd+3]=q[dd]; } }); });
+            if(kept.length){
+              var Cr=see(tag(b1(bb[0]-0.001,bb[3]+0.001,bb[1]-0.001,bb[4]+0.001,zt,bb[5]+0.002),'plant',COL_GRN,'cart'));
+              Cr.lines=kept.map(function(sg){ return {a:X(sg[0][0],sg[0][1],sg[0][2]), b:X(sg[1][0],sg[1][1],sg[1][2]), f0:0, f1:0, kind:sg[2], col:sg[3]}; });
+              parts.push(Cr);
+            }
+          }
+        }
+      }
+      parts.forEach(function(P){ P.cartId=5000+j; });
+      var got=laneCommit(parts,['cart','furn','basket']);
+      if(got){ rec.placed=true; rec.pieces=got.length; rec.parts=parts.length;
+        rec.cut=got.filter(function(Q){ return Q.split; }).length; }
+      else rec.why='blocked';
+    }
+  }
+  /* hose reels at one path column in eight, watering cans at a fifth of spans */
+  function reelsCans(dn){
+    TAL.reels=0; TAL.cans=0;
+    [1,-1].forEach(function(sd){ FACES[String(sd)].forEach(function(f,fi){
+      var R=sub(sd<0?2:1,1000+fi,SALT_TROLL), u=R(), ss=R();
+      if(!(u<1/8)) return;
+      var cr=colRange(f), s0=cr[1]+0.05, sc=s0+0.18, oc=HALFW-0.30, zc=0.32, r=0.22;
+      if(sc+0.2>LEN || !eyeFar(sc,sd*oc,0.4)) return;
+      var la=[], lb=[], k, X=function(s,o,z){ return P3(s,sd,o,z); };
+      for(k=0;k<16;k++){ var a=TAU*k/16; la.push(X(sc-0.12,oc+r*Math.cos(a),zc+r*Math.sin(a))); lb.push(X(sc+0.12,oc+r*Math.cos(a),zc+r*Math.sin(a))); }
+      var parts=[smooth(tag(rings(la,lb),'reel','#1e5a32','furn'),2)];
+      /* the frame: two feet, and the legs to the axle as lines on a see-through part */
+      [-0.17,0.15].forEach(function(ds){ parts.push(tag(bx(sd,sc+ds,sc+ds+0.02,oc-0.2,oc+0.2,0,0.03),'reelfoot',COL_GREY,'furn')); });
+      var Fr=see(tag(bx(sd,sc+0.13,sc+0.15,oc-0.2,oc+0.2,0.031,zc),'reelframe',COL_GREY,'furn')); Fr.lines=[];
+      [[-0.18,0],[0.18,0]].forEach(function(q){ Fr.lines.push({a:X(sc+0.14,oc+q[0],0.03), b:X(sc+0.14,oc,zc), f0:0, f1:0, kind:'reelframe', col:COL_GREY}); });
+      parts.push(Fr);
+      /* the hose coiled on the floor in front of it */
+      var Ho=see(tag(bx(sd,sc-0.62,sc-0.18,oc-0.24,oc+0.24,0,0.012),'hose','#2f9a44','furn')), pts=[]; Ho.lines=[];
+      for(k=0;k<=72;k++){ var t=k/72, a2=TAU*2.5*t, rr=0.21-0.12*t; pts.push(X(sc-0.40+rr*Math.cos(a2),oc+rr*Math.sin(a2),0.006)); }
+      for(k=1;k<pts.length;k++) Ho.lines.push({a:pts[k-1], b:pts[k], f0:0, f1:0, kind:'hose', col:'#2f9a44'});
+      parts.push(Ho);
+      if(laneCommit(parts,['cart','furn'])) TAL.reels++;
+    }); });
+    [1,-1].forEach(function(sd){ bySide[sd].forEach(function(L){
+      var R=sub(sd<0?2:1,L.idx,SALT_TROLL), u=R(), us=R();
+      if(!(u<0.2)) return;
+      var sc=L.s0+0.6+(L.s1-L.s0-1.2)*us, oc=HALFW-0.18, X=function(s,o,z){ return P3(s,sd,o,z); };
+      if(!eyeFar(sc,sd*oc,0.3)) return;
+      var Bd=tag(bx(sd,sc-0.15,sc+0.15,oc-0.07,oc+0.07,0,0.25),'can','#2f9a44','furn');
+      /* the handle: an arc over the body; the spout: a line forward of it */
+      var Hn=see(tag(bx(sd,sc-0.1,sc+0.1,oc-0.01,oc+0.01,0.25,0.36),'canhandle','#2f9a44','furn')); Hn.lines=[];
+      for(var k=1;k<=8;k++){ var a0=Math.PI*(k-1)/8, a1=Math.PI*k/8;
+        Hn.lines.push({a:X(sc+0.09*Math.cos(a0),oc,0.25+0.1*Math.sin(a0)), b:X(sc+0.09*Math.cos(a1),oc,0.25+0.1*Math.sin(a1)), f0:0, f1:0, kind:'can', col:'#2f9a44'}); }
+      var Sp=see(tag(bx(sd,sc+0.151,sc+0.35,oc-0.01,oc+0.01,0.05,0.28),'canspout','#2f9a44','furn')); Sp.lines=[{a:X(sc+0.152,oc,0.06), b:X(sc+0.34,oc,0.27), f0:0, f1:0, kind:'can', col:'#2f9a44'}];
+      if(laneCommit([Bd,Hn,Sp],['cart','furn'])) TAL.cans++;
+    }); });
+  }
+  /* HANGING BASKETS from the truss's bottom chord over the path: three
+     hangers to a ring 0.35 m across, a bowl of two 8-gon frusta, 5-9
+     trailing strands. In the slab under its centre, moved along s off a
+     slab face; never over a trolley */
+  function baskets(dn){
+    TAL.baskets=[];
+    var sides=PAIRED?[0]:[1,-1];
+    sides.forEach(function(sd){
+      var F=FACES[sd===0?'1':String(sd)];
+      F.forEach(function(f,fi){
+        if(!f.webSeg) return;
+        var sg=f.webSeg, n=Math.max(1,Math.round((sg[1]-sg[0])/0.6)), j;
+        for(j=0;j<n;j++){
+          var R=sub(sd===0?3:sd<0?2:1,fi*16+j,SALT_BASK), u=R(), uz=R(), un=R(), uf=R(), dir=R()<0.5?1:-1;
+          if(!(u<BASK)) continue;
+          var oc=sg[0]+(sg[1]-sg[0])*(j+0.5)/n, zr=2.5+0.5*uz, zc=GUTZ-BOTC-CHT, cs=f.webSeg?sRange(f,CHW/2):[f.s,f.s];
+          /* INTO ONE HALF OF THE PATH: a panel over the centreline or at the
+             path's edge would put the basket across a slab's side, so it moves
+             sideways to the nearest place wholly inside one (0.28 m: the ring
+             and the strands) */
+          var RB=0.28, aoc=Math.max(RB+0.01,Math.min(HALFW-RB-0.01,Math.abs(oc)));
+          oc=(oc<0?-1:1)*aoc;
+          var rec={face:fi, side:sd, o:oc, zr:zr, chordZ:zc, placed:false, why:'', hang:zc-zr};
+          TAL.baskets.push(rec);
+          if(f.pos!=='mid') dir=f.pos==='first'?1:-1;
+          var sc=f.s+dir*(RB+0.02), sTop=f.s+dir*0.012;
+          if(dir>0 && sTop<cs[0]) sTop=cs[0]+0.002; if(dir<0 && sTop>cs[1]) sTop=cs[1]-0.002;
+          var X=function(s,o,z){ return sd===0?SP(s,o,z):PS(sd,s,o,z); };
+          var oW=sd===0?oc:oc;
+          if(!eyeFar(sc,sd===0?oc:sd*oc,0.6)){ rec.why='near the eye'; continue; }
+          var parts=[], k, rimP=[];
+          /* the bowl: rings 0.175 / 0.15 / 0.07 at zr, zr-0.10, zr-0.18 */
+          var rings=[[0.175,0],[0.15,-0.10],[0.07,-0.18]].map(function(r){ var L=[]; for(k=0;k<8;k++){ var a=TAU*(k+0.5)/8; L.push(X(sc+r[0]*Math.cos(a),oW+r[0]*Math.sin(a),zr+r[1])); } return L; });
+          var bl=[rings[0],rings[2]]; for(var rr=0;rr<2;rr++) for(k=0;k<8;k++){ var k2=(k+1)%8; bl.push([rings[rr][k],rings[rr][k2],rings[rr+1][k2],rings[rr+1][k]]); }
+          parts.push(smooth(tag(polyFromLoops(bl),'basket',COL_BRN,'basket'),2));
+          /* three hangers, each its own see-through part (a box round all
+             three would hold the bowl) */
+          for(k=0;k<3;k++){
+            var ah=TAU*k/3+0.3, pa=X(sc+0.175*Math.cos(ah),oW+0.175*Math.sin(ah),zr+0.001), pb=X(sTop,oW+0.04*Math.cos(ah),zc-0.001);
+            var lo=[Math.min(pa[0],pb[0]),Math.min(pa[1],pb[1])], hi=[Math.max(pa[0],pb[0]),Math.max(pa[1],pb[1])];
+            var Hg=see(tag(prismN([[lo[0]-0.003,lo[1]-0.003],[hi[0]+0.003,lo[1]-0.003],[hi[0]+0.003,hi[1]+0.003],[lo[0]-0.003,hi[1]+0.003]],zr+0.0005,zc-0.0005),'hanger',COL_K,'basket'));
+            Hg.lines=[{a:pa, b:pb, f0:0, f1:0, kind:'hanger', col:COL_K}];
+            parts.push(Hg);
+          }
+          /* trailing strands, outside the bowl, each its own part */
+          var ns=5+Math.floor(un*5), RS=sub(sd===0?3:sd<0?2:1,fi*16+j,SALT_BASK+1000);
+          for(k=0;k<ns;k++){
+            var as=TAU*(k+RS())/ns, Ls=0.3+0.6*RS(), r0=0.195, r1=0.21+0.04*RS(), pts=[];
+            for(var m=0;m<=5;m++){ var t=m/5, rr2=r0+(r1-r0)*t+0.01*Math.sin(t*7+k); pts.push(X(sc+rr2*Math.cos(as),oW+rr2*Math.sin(as),zr-Ls*t)); }
+            /* its box is ORIENTED along the strand's own radius, from 0.182 m
+               out: an axis-aligned one reached inside the bowl's rim */
+            var Pc0=X(sc,oW,0), ex=X(sc+Math.cos(as),oW+Math.sin(as),0), ey=X(sc-Math.sin(as),oW+Math.cos(as),0);
+            var e1=[ex[0]-Pc0[0],ex[1]-Pc0[1]], e2=[ey[0]-Pc0[0],ey[1]-Pc0[1]], ro=r1+0.02;
+            var pq=[[0.182,-0.025],[ro,-0.025],[ro,0.025],[0.182,0.025]].map(function(q){ return [Pc0[0]+e1[0]*q[0]+e2[0]*q[1], Pc0[1]+e1[1]*q[0]+e2[1]*q[1]]; });
+            var St=see(tag(prismN(pq,zr-Ls-0.03,zr-0.0005),'strand',COL_GRN,'basket'));
+            St.lines=[]; for(m=1;m<pts.length;m++) St.lines.push({a:pts[m-1], b:pts[m], f0:0, f1:0, kind:'strand', col:COL_GRN});
+            if(uf<0.3 && RS()<0.5){ var e=pts[pts.length-1], fc=FLOWC[k%FLOWC.length];
+              for(m=0;m<6;m++){ var a0=TAU*m/6, a1=TAU*(m+1)/6; St.lines.push({a:[e[0]+0.015*Math.cos(a0),e[1]+0.015*Math.sin(a0),e[2]-0.01], b:[e[0]+0.015*Math.cos(a1),e[1]+0.015*Math.sin(a1),e[2]-0.01], f0:0, f1:0, kind:'flower', col:fc}); } }
+            parts.push(St);
+          }
+          /* one slab for all of it, or none */
+          var cont=null, ok=true;
+          parts.forEach(function(P){ verts(P).forEach(function(v){ if(!ok) return;
+            var C=null; for(var q=0;q<conts.length;q++) if(conts[q].kind==='slab' && inConv(conts[q].poly,v)){ C=conts[q]; break; }
+            if(!C || (cont && C!==cont)) ok=false; else cont=C; }); });
+          if(!ok){ rec.why='straddles a slab face'; continue; }
+          var all=parts.map(function(P){ P.cont=cont; return P; }), clash=false;
+          all.forEach(function(Q){ var b=bb3(verts(Q)); cont.parts.forEach(function(X2){ if(X2.layer==='cart'||X2.layer==='furn'||X2.layer==='basket') if(boxMeet(b,X2.gbb||(X2.gbb=bb3(verts(X2))))) clash=true; }); });
+          if(clash){ rec.why='over a trolley'; continue; }
+          all.forEach(function(Q){ Q.eyeId='bk'+sd+'.'+fi+'.'+j; cont.parts.push(Q); });
+          rec.placed=true; rec.s=sc; rec.slab={side:cont.side, s0:cont.s0};
+          rec.ringZ=zr; rec.hangers=3; rec.strands=ns;
+        }
+      });
+    });
+  }
+  /* THE FAR END: a glass wall across the whole width in a container of its
+     own past the path's end, checked disjoint from every lot and slab: the
+     outline, a mullion every Pane width, a transom at 2.4 m, a double door
+     1.6 x 2.2 m on the path. Lines only. */
+  var WB=Math.max.apply(null,lots.map(function(L){ return L.back; }).concat([PBACK+4.6])), WS0=LEN+0.02, WS1=LEN+0.10, WALL=null;
+  (function(){
+    var Q=[SP(WS0,-WB,0),SP(WS1,-WB,0),SP(WS1,WB,0),SP(WS0,WB,0)].map(function(v){ return [v[0],v[1]]; }), bb=[1e18,1e18,-1e18,-1e18];
+    Q.forEach(function(v){ bb[0]=Math.min(bb[0],v[0]); bb[1]=Math.min(bb[1],v[1]); bb[2]=Math.max(bb[2],v[0]); bb[3]=Math.max(bb[3],v[1]); });
+    function sep(A,B){ var Ps=[A,B]; for(var pi=0;pi<2;pi++){ var P=Ps[pi]; for(var e=0;e<P.length;e++){
+      var a=P[e], b=P[(e+1)%P.length], nx=b[1]-a[1], ny=a[0]-b[0], a0=1e18,a1=-1e18,b0=1e18,b1=-1e18, m;
+      for(m=0;m<A.length;m++){ var t=A[m][0]*nx+A[m][1]*ny; a0=Math.min(a0,t); a1=Math.max(a1,t); }
+      for(m=0;m<B.length;m++){ var t2=B[m][0]*nx+B[m][1]*ny; b0=Math.min(b0,t2); b1=Math.max(b1,t2); }
+      if(a1<=b0+1e-9 || b1<=a0+1e-9) return true; } } return false; }
+    var clash=conts.some(function(C){ return !sep(Q,C.poly); });
+    TAL.gable={placed:!clash, s:WS0};
+    if(!clash){ WALL={kind:'wall', side:1, s0:WS0, s1:WS1, poly:Q, bb:bb, parts:[]}; conts.push(WALL); }
+  })();
+  function endWall(df){
+    if(!WALL) return;
+    var G=see(tag(bx(1,WS0+0.01,WS0+0.03,-WB+0.01,WB-0.01,0,GUTZ),'gable',COL_GREY,'struct')), X=function(o,z){ return SP(WS0+0.01,o,z); };
+    G.lines=[]; poly(G,[X(-WB+0.01,0),X(WB-0.01,0),X(WB-0.01,GUTZ),X(-WB+0.01,GUTZ)],'glass',COL_GREY,true);
+    var mid=X(0,GUTZ/2), gW=paperGap(mid,[0,0,1],sub3(X(1,GUTZ/2),mid)), d=dist3(mid), st=PANE*(d<df?1:2), kk=thin(gW,st), DW=0.8, DH=2.2;
+    for(var o=Math.ceil((-WB+0.02)/(st*kk))*st*kk; o<WB-0.02; o+=st*kk){
+      if(Math.abs(o)<DW+1e-6) ln(G,X(o,DH),X(o,GUTZ),'glazing',COL_GREY); else ln(G,X(o,0),X(o,GUTZ),'glazing',COL_GREY);
+    }
+    if(2.4<GUTZ-0.05){ ln(G,X(-WB+0.01,2.4),X(-DW,2.4),'glazing',COL_GREY); ln(G,X(DW,2.4),X(WB-0.01,2.4),'glazing',COL_GREY); ln(G,X(-DW,2.4),X(DW,2.4),'glazing',COL_GREY); }
+    poly(G,[X(-DW,0),X(-DW,DH),X(DW,DH),X(DW,0)],'door',COL_K,false);
+    ln(G,X(0,0),X(0,DH),'door',COL_K);
+    [-0.1,0.1].forEach(function(o){ ln(G,X(o,0.95),X(o,1.15),'door',COL_K); });
+    G.cont=WALL; WALL.parts.push(G);
+  }
+  return {
+    dress:dress, signsFor:function(){},
+    furnish:function(dn,df){ floors(dn); reelsCans(dn); trolleys(dn,df); roof(dn,df); baskets(dn); endWall(df); },
+    cars:[], dots:[],
+    info:function(){ return ' · '+lots.length+' spans · '+TAL.pots.length.toLocaleString()+' pots · '+
+      TAL.trolleys.filter(function(t){ return t.placed; }).length+' trolleys · '+TAL.baskets.filter(function(b){ return b.placed; }).length+' baskets'; }
+  };
+}
 /* THE CANAL CITY THEME (queue row 53, docs/specs/2026-10-04-corridor-themes.md
    §6): a water channel between plastered houses that stand straight in the
    water or behind a narrow quay, seen low, as if from a boat. The houses are
@@ -28129,6 +29113,7 @@ function draw(){
   if(mode==='mkt' && STRTINFO) txt+=' \u00b7 '+STRTINFO;
   if(mode==='harb' && STRTINFO) txt+=' \u00b7 '+STRTINFO;
   if(mode==='libr' && STRTINFO) txt+=' \u00b7 '+STRTINFO;
+  if(mode==='grnh' && STRTINFO) txt+=' \u00b7 '+STRTINFO;
   if(mode==='canal' && STRTINFO) txt+=' \u00b7 '+STRTINFO;
   if(mode==='stn' && STRTINFO) txt+=' \u00b7 '+STRTINFO;
   if(mode==='fan'){
@@ -28372,7 +29357,7 @@ var FAMILIES=[
   ['Lattices',   ['truchet','maze','hilbert','voronoi','pack','rows','poin']],
   ['Curves',     ['harmo','sform','lsys','string','fan','chladni']],
   ['FROM PHOTO 3D', ['isoimg']],
-  ['3D',         ['hil3','harmo3','attract','ruled','knot','spack','flow3','surf','iso','stat','fact','strt','mkt','harb','libr','canal','stn']],
+  ['3D',         ['hil3','harmo3','attract','ruled','knot','spack','flow3','surf','iso','stat','fact','strt','mkt','harb','libr','grnh','canal','stn']],
   ['From photo', ['tonehatch','tonespiral']]
 ];
 function mountTabs(){
@@ -28936,6 +29921,39 @@ var HELP={
 'libr.lod':'The smallest part still drawn, as its size on the sheet.',
 'libr.budg':'How many points the drawing may use, in thousands. Over it, the detail distances come in and the LOD cutoff rises until it fits.',
 'libr.occ':'How wide a white gap a nearer object leaves in whatever passes behind it, in millimetres on the sheet.',
+'grnh.len':'How long the glasshouse is, in metres, from the camera end to the glass wall at the far end. The roof spans are rounded so a whole number of them fits.',
+'grnh.bend':'How much the path curves, in degrees per 100 m. Glasshouses are straight, so 0; on a curve each side keeps its own roof spans, and the two halves of a gutter no longer meet over the path.',
+'grnh.width':'The path down the middle, in metres, between the two front benches. It is wet: the puddles lie on it, and the trolleys and hose reels stand on it.',
+'grnh.span':'How far apart the gutters are along the path, in metres: one roof span, one pair of benches, one bench sign. Rounded so a whole number of spans fills the house.',
+'grnh.gutz':'How high the gutters are, in metres: the columns stand up to them, the truss hangs under them and the glass rises from them to the ridges.',
+'grnh.rpitch':'How steeply the glass rises from each gutter to its ridge, in degrees. Steeper makes taller peaks down the path.',
+'grnh.pane':'How far apart the glazing bars are across the roof and the walls, in metres. Far off only every other bar is drawn.',
+'grnh.shade':'How much of each span the shade screen covers, drawn closed from the path outward under the roof: 0 is no screen, 100 covers the bench side too.',
+'grnh.mist':'1 hangs a misting line along each bench under the truss, with a nozzle every 0.6 m, near the camera.',
+'grnh.fill':'How many of the places on each bench hold a pot (or a seedling tray). Below 100 gaps open in the rows.',
+'grnh.pot':'How big the pots are across the rim. The grid of places on a bench is one and a quarter pots apart, so bigger pots are fewer.',
+'grnh.bask':'How many of the truss panels over the path carry a hanging basket: a brown bowl on three hangers with green strands trailing down.',
+'grnh.troll':'Danish trolleys on the path per 100 m: a base on four castors, four posts and shelves of potted plants, never within 3 m of the camera.',
+'grnh.lang':'The script on the bench signs. 0 pseudo-kanji, 1 pseudo-hangul, 2 Latin words, 3 a mix. Signs are only lettered where the letters would be big enough on the sheet.',
+'grnh.hatch':'How dense the shading is on the low wall under the side glass. 0 is no shading.',
+'grnh.puddles':'How many puddles lie on the wet path. Each shows the benches and the roof reflected in it, upside down.',
+'grnh.pudsz':'How big the puddles are.',
+'grnh.ripple':'How far the reflection wobbles sideways, in millimetres on the sheet. 0 is still water.',
+'grnh.rvar':'How varied the ripple is: crossing waves, calm and choppy patches, more wobble near the camera. Does nothing while Ripple is 0.',
+'grnh.cams':'Where the camera stands, as a share of the house length. Near 0 you see the whole path ahead.',
+'grnh.camx':'The camera across the path, as a share of half its width: 0 is the middle.',
+'grnh.camz':'The camera height in metres. 1.6 is eye height; higher looks down over the benches, up to just under the gutters.',
+'grnh.look':'How far ahead the camera aims, in metres along the path.',
+'grnh.turn':'Turns the camera left (+) or right (\u2212) from looking down the path: 0 looks along it, \u00b190 faces a bench head-on.',
+'grnh.pitch':'Tilts the camera up (positive) or down, in degrees. Up shows more of the roof, its trusses and the baskets.',
+'grnh.fov':'The field of view across the sheet, in degrees.',
+'grnh.dnear':'Up to this distance, in metres, every pot is drawn round with its plant leaf by leaf, the bench tops show their mesh and the misting lines hang.',
+'grnh.dfar':'Up to this distance, in metres, each pot is a box with the outline of its plant; beyond it the pots are boxes along the rows and the glazing bars thin out.',
+'grnh.dpen':'1 draws the black lines further away than Depth split in dark grey instead: a near pen and a far pen.',
+'grnh.dsplit':'With Depth pens on: how far away, in metres, black turns to dark grey.',
+'grnh.lod':'The smallest part still drawn, as its size on the sheet.',
+'grnh.budg':'How many points the drawing may use, in thousands. Over it, the detail distances come in and the LOD cutoff rises until it fits.',
+'grnh.occ':'How wide a white gap a nearer object leaves in whatever passes behind it, in millimetres on the sheet.',
 'stn.len':"How long the platforms are, in metres. The camera stands part-way along them (Camera along) and the rails, the platform edges and the wires run away to the far end. A longer station reaches further toward the vanishing point and costs more lines.",
 'stn.bend':"How much the station curves, in degrees per 100 m. 0 is dead straight, so the rails and both platform edges meet at one vanishing point; a bend carries the far end out of sight behind the buildings on the inside of the curve. A car on a bend is a straight body between its two bogies.",
 'stn.width':"The track bed between the two platform edges, in metres: two tracks, each centred 1.6 m out from its own platform edge. Wider moves the two tracks apart and opens bare ballast between them; at the narrowest the two trains nearly touch.",
