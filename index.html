@@ -438,7 +438,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v317</a> &mdash; WET PLATFORM -- puddles on the station&rsquo;s platforms after rain, between the yellow tactile strip and the fence and never under a column, a bench or a post, each showing the train, the canopy and the hanging signs mirrored in the platform&rsquo;s own plane; Front puddle lies on your own platform&rsquo;s walkway (queue row 87)</span></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v318</a> &mdash; ISOFACTORY: the hall, its production lines, machines and belts (fact)</span></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <section class="fold" id="fold_pick"><h2>Pick engine<span class="cnt"></span></h2>
@@ -3186,6 +3186,18 @@ var SPEC={
        pen. */
     ['lod','LOD cutoff',0,60,1,5,[10,' mm']],
     ['budg','Size budget',10,200,5,45,[1,' k points']],
+    ['occ','Occlusion gap',0,80,1,5,[10,' mm']]]],
+  /* ISOFACTORY, queue rows 103-106 (docs/specs/2026-10-12-isofactory.md §6).
+     ONLY THE KNOBS A BUILT ROW READS ARE DECLARED, the street's rule: rows
+     104-106 add arms, pose, spirals, lifts, tubes, crane, vehicles, services,
+     roof, walls and the budget with the parts that read them.
+     `fwid`/`fdep`, NOT the spec's `fw`/`fd`: `record.fw` is already a HELP key
+     in this file, and §6 says to rename on any collision. */
+  fact:['Isofactory',[
+    ['fwid','Floor width',24,96,6,36,[1,' m']],['fdep','Floor depth',18,72,6,30,[1,' m']],
+    ['flev','Levels',1,3,1,2],['flines','Lines',1,4,1,2],['fstat','Stations',4,9,1,6],
+    ['fitem','Items',0,100,1,60,[100,'%']],
+    ['lod','LOD cutoff',0,60,1,5,[10,' mm']],
     ['occ','Occlusion gap',0,80,1,5,[10,' mm']]]],
   /* STREET, queue rows 30-33. ONLY THE KNOBS A BUILT ROW READS ARE DECLARED --
      the spec's §7 lists forty, and row 33 added the last three (puddles, pudsz,
@@ -17097,7 +17109,7 @@ function buildIsoImg(p){
 
 var ENG={record:buildRecord, flow:buildFlow, growth:buildGrowth, contour:buildContour, ridge:buildRidge,
          pack:buildPack, voronoi:buildVoronoi, truchet:buildTruchet, maze:buildMaze, hilbert:buildHilbert,
-         rows:buildRows, poin:buildPoincare, flag:buildFlag, stat:buildStation, strt:buildStreet, mkt:buildMarket, harb:buildHarbour, libr:buildLibrary, canal:buildCanal, stn:buildTrainStation,
+         rows:buildRows, poin:buildPoincare, flag:buildFlag, stat:buildStation, fact:buildFactory, strt:buildStreet, mkt:buildMarket, harb:buildHarbour, libr:buildLibrary, canal:buildCanal, stn:buildTrainStation,
          harmo:buildHarmo, chladni:buildChladni, moire:buildMoire, disc:buildChladniDisc, fan:buildFan,
   string:buildString, fermat:buildFermat, logsp:buildLogSpiral, chuck:buildChuck,
          apoll:buildApollonian, wave:buildWave, sform:buildSuper,
@@ -17932,16 +17944,279 @@ function ISOKIT(p,T){
       if(pp.length){
         var frag=hlr(pp,p,occl), n5=out.length;
         for(k3=0;k3<frag.length;k3++) if(frag[k3].length>1) out.push(frag[k3]);
-        for(;n5<out.length;n5++) out[n5].lay=S.lay;
+        for(;n5<out.length;n5++){
+          out[n5].lay=S.lay;
+          /* `col` is the TRUE COLOUR of the part (Pen map 3). `stat` sets none,
+             so its paths carry none, exactly as before. */
+          if(S.col!==undefined) out[n5].col=S.col;
+          if(S.kind) out[n5].kind=S.kind;
+        }
       }
       if(S.h.length){
         var hp2=[], m5;
-        for(m5=0;m5<S.h.length;m5++) hp2.push(toPage(proj(S.h[m5][0],S.h[m5][1],S.h[m5][2])));
+        for(m5=0;m5<S.h.length;m5++){
+          hp2.push(toPage(proj(S.h[m5][0],S.h[m5][1],S.h[m5][2])));
+          if(S.seamPl) hp2[m5].ix=m5;
+        }
         var hl=hull(hp2);
+        if(hl && S.seamPl && S.seamPl.length) hl=unGap(hl,S,S.h);
         if(hl) occl.push(hl);
       }
     }
     return fs;
+  }
+
+  /* ---- ANY CONVEX POLYHEDRON, CUT AT THE LATTICE (row 103, spec §§1-2) -----
+     `stat` never needed these: its every solid is built to fit one cell. The
+     factory is made of things that do not -- a 30 m belt, a 9 m wall, an arm
+     link at an angle -- and the painter theorem only holds for solids confined
+     to one cell. So a long solid is built WHOLE and then cut by every 1 m plane
+     it spans into convex pieces, one per cell, each keyed to its cell.
+
+     polySolid(V,F,opt) is the whole solid: vertices, faces as index loops, and
+     what to draw. A face may be declared a SEAM (`opt.seam[f]`) -- a mitre
+     between two pieces of one bend, a joint between a belt run and its curve --
+     and is then treated exactly like a lattice cut.
+
+     WHAT IS DRAWN IS DECIDED ON THE WHOLE SOLID, NEVER ON A PIECE. An edge of
+     the original is drawn when it borders a camera-facing face and neither of
+     its faces is a seam; a `smooth` face pair (the facets of a tube) draws only
+     where it is the silhouette. A piece then draws exactly the part of those
+     edges that lies in its cell, so a cut plane can never put ink on paper:
+     the only segments a piece owns are pieces of the original's own edges.
+     Clipping the original's edges to the cell IS the seam rule, rather than a
+     test applied afterwards that a later primitive could forget.
+
+     A piece's hull is the exact vertex set of (original ∩ cell): the vertices
+     of the intersection of two convex bodies lie on an edge of one of them, so
+     clipping the original's edges to the cell and the cell's twelve edges to
+     the original finds every one of them. */
+  function v3cross(a,b){ return [a[1]*b[2]-a[2]*b[1], a[2]*b[0]-a[0]*b[2], a[0]*b[1]-a[1]*b[0]]; }
+  function polySolid(V,F,opt){
+    opt=opt||{};
+    var i, k, cx=0, cy=0, cz=0;
+    for(i=0;i<V.length;i++){ cx+=V[i][0]; cy+=V[i][1]; cz+=V[i][2]; }
+    cx/=V.length; cy/=V.length; cz/=V.length;
+    var P=[];
+    for(i=0;i<F.length;i++){
+      var f=F[i], nx=0, ny=0, nz=0;
+      for(k=0;k<f.length;k++){                     /* Newell: robust on any loop */
+        var a=V[f[k]], b=V[f[(k+1)%f.length]];
+        nx+=(a[1]-b[1])*(a[2]+b[2]); ny+=(a[2]-b[2])*(a[0]+b[0]); nz+=(a[0]-b[0])*(a[1]+b[1]);
+      }
+      var L=Math.sqrt(nx*nx+ny*ny+nz*nz)||1; nx/=L; ny/=L; nz/=L;
+      var d=nx*V[f[0]][0]+ny*V[f[0]][1]+nz*V[f[0]][2];
+      if(nx*cx+ny*cy+nz*cz>d){ nx=-nx; ny=-ny; nz=-nz; d=-d; }   /* outward */
+      P.push({n:[nx,ny,nz], d:d, seam:!!(opt.seam&&opt.seam[i]),
+              smooth:!!(opt.smooth&&opt.smooth[i]), vis:vis(nx,ny,nz)});
+    }
+    var EF={}, AE=[], E=[];
+    for(i=0;i<F.length;i++) for(k=0;k<F[i].length;k++){
+      var u=F[i][k], w=F[i][(k+1)%F[i].length], key=u<w?u+'|'+w:w+'|'+u;
+      if(!EF[key]){ EF[key]=[u<w?u:w, u<w?w:u]; AE.push(EF[key]); }
+      EF[key].push(i);
+    }
+    for(i=0;i<AE.length;i++){
+      var ed=AE[i], f1=P[ed[2]], f2=ed.length>3?P[ed[3]]:null;
+      if(!f2) continue;
+      if(f1.seam||f2.seam) continue;
+      if(!f1.vis && !f2.vis) continue;
+      if(f1.smooth && f2.smooth && f1.vis && f2.vis) continue;
+      E.push([V[ed[0]], V[ed[1]]]);
+    }
+    if(opt.wire) E=[opt.wire];
+    var M=[];
+    if(opt.marks) for(i=0;i<opt.marks.length;i++){
+      var mk=opt.marks[i];
+      if(mk[2]===undefined || mk[2]<0 || P[mk[2]].vis) M.push([mk[0],mk[1]]);
+    }
+    return {V:V, P:P, AE:AE, E:E.concat(M), col:opt.col, lay:opt.lay||K.lay,
+            kind:opt.kind||'', hides:opt.hides!==false, top:opt.top, id:opt.id};
+  }
+  /* Liang-Barsky against a cell, with ONE OWNER for a segment lying in a cell
+     plane: an edge with a coordinate constant at an integer belongs to the
+     higher cell, or to the last cell the solid occupies when there is no
+     higher one -- so a legitimate edge on a plane is drawn once, not twice
+     and not zero times. */
+  function clipSegCell(a,b,c,lo,hi){
+    var t0=0, t1=1, ax;
+    for(ax=0;ax<3;ax++){
+      var d=b[ax]-a[ax];
+      if(Math.abs(d)<1e-12){
+        if(a[ax]<c[ax]-1e-9 || a[ax]>c[ax]+1+1e-9) return null;
+        var own=Math.floor(a[ax]+1e-9);
+        if(own>hi[ax]) own=hi[ax]; if(own<lo[ax]) own=lo[ax];
+        if(own!==c[ax]) return null;
+        continue;
+      }
+      var ta=(c[ax]-a[ax])/d, tb=(c[ax]+1-a[ax])/d;
+      if(ta>tb){ var tt=ta; ta=tb; tb=tt; }
+      if(ta>t0) t0=ta; if(tb<t1) t1=tb;
+      if(t0>=t1) return null;
+    }
+    return [t0,t1];
+  }
+  function lerp3(a,b,t){ return [a[0]+(b[0]-a[0])*t, a[1]+(b[1]-a[1])*t, a[2]+(b[2]-a[2])*t]; }
+  var CELLEDGES=[[[0,0,0],[1,0,0]],[[0,1,0],[1,1,0]],[[0,0,1],[1,0,1]],[[0,1,1],[1,1,1]],
+                 [[0,0,0],[0,1,0]],[[1,0,0],[1,1,0]],[[0,0,1],[0,1,1]],[[1,0,1],[1,1,1]],
+                 [[0,0,0],[0,0,1]],[[1,0,0],[1,0,1]],[[0,1,0],[0,1,1]],[[1,1,0],[1,1,1]]];
+  function cutAtLattice(S){
+    var V=S.V, P=S.P, lo=[0,0,0], hi=[0,0,0], mn=[1e18,1e18,1e18], mx=[-1e18,-1e18,-1e18], i, ax;
+    for(i=0;i<V.length;i++) for(ax=0;ax<3;ax++){
+      if(V[i][ax]<mn[ax]) mn[ax]=V[i][ax]; if(V[i][ax]>mx[ax]) mx[ax]=V[i][ax];
+    }
+    for(ax=0;ax<3;ax++){
+      lo[ax]=Math.floor(mn[ax]/CELL+1e-9); hi[ax]=Math.ceil(mx[ax]/CELL-1e-9)-1;
+      if(hi[ax]<lo[ax]) hi[ax]=lo[ax];
+    }
+    var pieces=[], ci, cj, ck;
+    for(ci=lo[0];ci<=hi[0];ci++) for(cj=lo[1];cj<=hi[1];cj++) for(ck=lo[2];ck<=hi[2];ck++){
+      var c=[ci,cj,ck], H=[], m, r;
+      for(m=0;m<S.AE.length;m++){
+        var a=V[S.AE[m][0]], b=V[S.AE[m][1]];
+        r=clipHull(a,b,c);
+        if(r){ H.push(lerp3(a,b,r[0])); if(r[1]-r[0]>1e-12) H.push(lerp3(a,b,r[1])); }
+      }
+      for(m=0;m<12;m++){
+        var e0=CELLEDGES[m][0], e1=CELLEDGES[m][1];
+        var p0=[ci+e0[0],cj+e0[1],ck+e0[2]], p1=[ci+e1[0],cj+e1[1],ck+e1[2]];
+        r=clipConvex(p0,p1,P);
+        if(r){ H.push(lerp3(p0,p1,r[0])); if(r[1]-r[0]>1e-12) H.push(lerp3(p0,p1,r[1])); }
+      }
+      if(H.length<4) continue;
+      var bx=[1e18,1e18,1e18,-1e18,-1e18,-1e18];
+      for(m=0;m<H.length;m++) for(ax=0;ax<3;ax++){
+        if(H[m][ax]<bx[ax]) bx[ax]=H[m][ax]; if(H[m][ax]>bx[ax+3]) bx[ax+3]=H[m][ax];
+      }
+      if(bx[3]-bx[0]<1e-7 || bx[4]-bx[1]<1e-7 || bx[5]-bx[2]<1e-7) continue;
+      var s=Solid(depth3(c), S.top!==undefined?S.top:bx[5], (bx[0]+bx[1]+bx[3]+bx[4])/2);
+      s.cell=c; s.lay=S.lay;
+      if(S.col!==undefined) s.col=S.col;
+      for(m=0;m<S.E.length;m++){
+        r=clipSegCell(S.E[m][0],S.E[m][1],c,lo,hi);
+        if(r && r[1]-r[0]>1e-12) addE(s,[lerp3(S.E[m][0],S.E[m][1],r[0]), lerp3(S.E[m][0],S.E[m][1],r[1])]);
+      }
+      /* THE CUT PLANES OF THIS PIECE: the cell faces the original crosses, plus
+         the original's own seam faces. The occluder treats its hull edges on
+         these as seams too (render, below), and the gate reads them for L4. */
+      var cuts=[];
+      for(ax=0;ax<3;ax++){
+        var nn=[0,0,0];
+        if(mn[ax]<c[ax]-1e-9){ nn[ax]=-1; cuts.push({n:nn.slice(), d:-c[ax]}); nn[ax]=0; }
+        if(mx[ax]>c[ax]+1+1e-9){ nn[ax]=1; cuts.push({n:nn.slice(), d:c[ax]+1}); }
+      }
+      for(m=0;m<P.length;m++) if(P[m].seam) cuts.push({n:P[m].n, d:P[m].d});
+      s.seamPl=cuts;
+      s.h=S.hides?H:[];
+      s.shape={k:'poly', P:P, c:c};
+      s.kind=S.kind; s.oid=S.id;
+      push(s);
+      /* `oe` is the ORIGINAL's drawn edges, shared by every piece, so the gate
+         can ask whether a piece's ink is part of them (L4); `pi` lets the
+         engine write each piece's place in the draw order back after the sort
+         (L2 checks that order against ray truth). */
+      if(T.polys){ s.pi=T.polys.length;
+        T.polys.push({cell:c, P:P, cuts:cuts, e:s.e, oe:S.E, h:H, hides:S.hides,
+                      col:S.col, kind:S.kind, id:S.id}); }
+      pieces.push(s);
+    }
+    return pieces;
+  }
+  /* A hull point is any point of the segment inside the cell, both ends
+     closed -- the half-open owner rule above is for INK, not for geometry. */
+  function clipHull(a,b,c){
+    var t0=0, t1=1, ax;
+    for(ax=0;ax<3;ax++){
+      var d=b[ax]-a[ax];
+      if(Math.abs(d)<1e-12){ if(a[ax]<c[ax]-1e-9 || a[ax]>c[ax]+1+1e-9) return null; continue; }
+      var ta=(c[ax]-a[ax])/d, tb=(c[ax]+1-a[ax])/d;
+      if(ta>tb){ var tt=ta; ta=tb; tb=tt; }
+      if(ta>t0) t0=ta; if(tb<t1) t1=tb;
+      if(t0>t1+1e-12) return null;
+    }
+    return t1<t0?[t0,t0]:[t0,t1];
+  }
+  /* Cyrus-Beck in 3-D: the part of a segment inside a convex polyhedron. */
+  function clipConvex(a,b,P){
+    var t0=0, t1=1, i, d=[b[0]-a[0],b[1]-a[1],b[2]-a[2]];
+    for(i=0;i<P.length;i++){
+      var n=P[i].n, den=n[0]*d[0]+n[1]*d[1]+n[2]*d[2];
+      var num=P[i].d+1e-9-(n[0]*a[0]+n[1]*a[1]+n[2]*a[2]);
+      if(Math.abs(den)<1e-14){ if(num<0) return null; continue; }
+      var t=num/den;
+      if(den>0){ if(t<t1) t1=t; } else { if(t>t0) t0=t; }
+      if(t0>t1+1e-12) return null;
+    }
+    return t1<t0?[t0,t0]:[t0,t1];
+  }
+  /* AN OCCLUDER'S GAP BELONGS ON INK, NOT ON A SEAM. hlrConvex inflates every
+     hull edge by the occlusion gap, which is right at a silhouette that is
+     drawn and wrong at a cut, where nothing is drawn: there it eats `occ` mm off
+     every edge that continues into the next piece, and a belt reads as a dashed
+     line, one dash a metre. So a hull edge whose two ends lie on one of the
+     piece's cut planes is pulled IN by the gap before it is handed over, and
+     hlrConvex's inflation puts it back exactly on the cut. Any polygon this
+     would turn inside out is handed over unchanged -- a gap at a seam is a
+     blemish, a wrong occluder is a defect. */
+  function unGap(hl,S,H3){
+    var gap=((p.occ||0)/10)/PAGEMM, i, j, any=false, sm=[];
+    if(!(gap>0)) return hl;
+    /* Clipping finds the same vertex more than once and points part-way along
+       a projected edge; the hull keeps any whose cross product is noise. Drop
+       them first, or a seam edge arrives as slivers no line test can trust. */
+    var hc=hl.slice(), changed=true;
+    while(changed && hc.length>3){
+      changed=false;
+      for(i=0;i<hc.length && hc.length>3;i++){
+        var A0=hc[(i+hc.length-1)%hc.length], A1=hc[i], A2=hc[(i+1)%hc.length];
+        var ux=A1[0]-A0[0], uy=A1[1]-A0[1], vx=A2[0]-A1[0], vy=A2[1]-A1[1];
+        var lu=Math.hypot(ux,uy), lv=Math.hypot(vx,vy);
+        if(lu<1e-9 || Math.abs(ux*vy-uy*vx)<1e-9*lu*lv+1e-15){ hc.splice(i,1); changed=true; i--; }
+      }
+    }
+    hl=hc;
+    var n=hl.length;
+    for(i=0;i<n;i++){
+      var A3=H3[hl[i].ix], B3=H3[hl[(i+1)%n].ix], on=false;
+      for(j=0;j<S.seamPl.length && !on;j++){
+        var q=S.seamPl[j];
+        if(Math.abs(q.n[0]*A3[0]+q.n[1]*A3[1]+q.n[2]*A3[2]-q.d)<1e-7 &&
+           Math.abs(q.n[0]*B3[0]+q.n[1]*B3[1]+q.n[2]*B3[2]-q.d)<1e-7) on=true;
+      }
+      sm.push(on); if(on) any=true;
+    }
+    if(!any) return hl;
+    var cx=0, cy=0;
+    for(i=0;i<n;i++){ cx+=hl[i][0]; cy+=hl[i][1]; }
+    cx/=n; cy/=n;
+    /* THE SHRUNK OCCLUDER IS A CLIP, not a re-intersection of offset lines:
+       the hull cut by each seam edge's half-plane pulled in by the gap. A thin
+       piece (a belt wedge, a stair tread) has corners so acute in projection
+       that moving a line by the gap moves its corner by many gaps, and a
+       half-plane clip is exact whatever the angle. */
+    var poly=hl.map(function(q){ return [q[0],q[1]]; });
+    for(i=0;i<n && poly.length>=3;i++){
+      if(!sm[i]) continue;
+      var a=hl[i], b=hl[(i+1)%n], ex=b[0]-a[0], ey=b[1]-a[1], L=Math.hypot(ex,ey);
+      if(L<1e-12) continue;
+      var nx=ey/L, ny=-ex/L;
+      if(nx*(cx-a[0])+ny*(cy-a[1])>0){ nx=-nx; ny=-ny; }
+      var lim=nx*a[0]+ny*a[1]-gap, np=[], k;
+      for(k=0;k<poly.length;k++){
+        var P0=poly[k], P1=poly[(k+1)%poly.length];
+        var d0=nx*P0[0]+ny*P0[1]-lim, d1=nx*P1[0]+ny*P1[1]-lim;
+        if(d0<=0) np.push(P0);
+        if((d0<0&&d1>0)||(d0>0&&d1<0)){
+          var tt=d0/(d0-d1); np.push([P0[0]+(P1[0]-P0[0])*tt, P0[1]+(P1[1]-P0[1])*tt]);
+        }
+      }
+      poly=np;
+    }
+    /* A sliver thinner than two gaps vanishes under the clip. Its full hull
+       would open a gap in its own neighbours' ink, which is the defect this
+       exists to stop; no occluder at all lets at most a two-gap strip of what
+       is behind it through. The second is the smaller error. */
+    return poly.length>=3?poly:null;
   }
 
   K.proj=proj; K.vis=vis; K.hull=hull; K.Solid=Solid; K.addE=addE; K.push=push;
@@ -17951,6 +18226,7 @@ function ISOKIT(p,T){
   K.mmPerCell=mmPerCell; K.fitAxis=fitAxis; K.points=pointCount; K.budget=budget;
   K.lodVis=lodVis; K.tallyBoxes=tallyBoxes; K.sort=sortSolids; K.tallyOrder=tallyOrder;
   K.render=render;
+  K.polySolid=polySolid; K.cutAtLattice=cutAtLattice; K.clipConvex=clipConvex;
   return K;
 }
 
@@ -18700,6 +18976,1024 @@ function buildStation(p){
            nslots.toLocaleString()+' modules · '+
            out.length.toLocaleString()+' paths · '+
            (fs*PAGEMM).toFixed(1)+' mm/cell';
+  return out;
+}
+
+/* ---------- FACT : the isofactory -------------------------------------------
+   docs/specs/2026-10-12-isofactory.md, queue rows 103-106. Row 103 is the hall,
+   its levels and aisles, the production lines -- placed, belt-routed by A* and
+   joined into a flow graph -- the machines of §4.1 and the belts and items of
+   §4.2. Arms, lifts, spirals, tubes and the rest are rows 104-106.
+
+   IT STANDS ON `stat`'s RENDERER, ISOKIT, and on its one theorem: solids
+   confined to disjoint unit cells and ordered by i+j+k descending are an exact
+   painter order. The factory is metres on a 1 m lattice, and nothing in it is
+   built to fit a cell, so EVERY solid is made whole by `polySolid` and cut by
+   `cutAtLattice` into one convex piece per cell. A cut draws no ink -- a piece
+   owns only the part of its original's edges that lies in its cell -- so a
+   30 m belt is thirty solids and still one unbroken line on paper.
+
+   WORLD: metres, x along the hall's width (`fwid`), y along its depth (`fdep`),
+   z up; the camera looks along -(1,1,1). The two BACK walls are the planes
+   x = 0 and y = 0, the two near walls are never built, and the floor slab's
+   top is z = 0.
+
+   THE LAYOUT IS DECIDED IN PLAN BEFORE ANYTHING IS BUILT, on the floor's 1 m
+   grid: columns, the mezzanine's strip, aisles on bay lines between the lines'
+   bands, station footprints with their clearance, then the belts by A*. The
+   flow graph and every footprint go on FACTTALLY so the gate can check the
+   plan without re-deriving it. */
+var FACTINFO='';
+var FACTSTATS={lines:0,stations:0,belts:0,solids:0,paths:0,points:0};
+var FACTTALLY={cells:[],boxes:[],order:[],tubes:[],polys:[],stations:[],belts:[],flow:null,
+               aisles:[],cols:[],decks:[],walls:[],marks:[],hall:null};
+function buildFactory(p){
+  /* THE SALTS. One per feature, so a feature's knob at 0 cannot move any other
+     feature's stream (§6). statRng(SEED,salt,a,b): `a`/`b` index the line or the
+     station, so a line's numbers depend on the line and nothing else. */
+  var FACT_SALT_LAYOUT=701, FACT_SALT_ITEMS=709, FACT_SALT_MACH=719;
+  /* §5's ink roles, by INKS name. No grey anywhere: Albert has no grey pen. */
+  var FACTCOL={black:'#1a1a1a', yellow:'#f2c230', orange:'#ec7a1c', blue:'#2156c7',
+               lblue:'#5aa9e6', brown:'#8b5a2b', red:'#d42a2a', green:'#2f9a44'};
+  /* The role each KIND of part plays, and so its ink. The gate reads this and
+     checks every path against it (F10), so a part drawn on the wrong pen is a
+     red cell rather than a judgement made by looking. */
+  var FACTROLE={hall:'black', wall:'black', column:'black', slab:'black', deck:'black',
+                stair:'black', belt:'black', stub:'black', xfer:'black', leg:'black',
+                frame:'black', detail:'black', trailer:'black', table:'black',
+                rail:'yellow', guard:'yellow', fence:'yellow', lane:'yellow',
+                machine:'blue', vat:'blue',
+                carton:'brown', pallet:'brown',
+                estop:'red', walk:'green'};
+  /* Station footprints: length along the line in whole metres. Depth is 3 m for
+     every type, which is what lets a row be one 3-cell strip. */
+  var FACTLEN={receive:3, cnc:3, press:4, moulder:6, furnace:3, vat:3, assembly:3, qa:1, pack:2, ship:3};
+  var W=Math.max(24,Math.min(96,Math.round((p.fwid||36)/6)*6));
+  var D=Math.max(18,Math.min(72,Math.round((p.fdep||30)/6)*6));
+  var NLEV=Math.max(1,Math.min(3,Math.round(p.flev||1)));
+  var WANTL=Math.max(1,Math.min(4,Math.round(p.flines||1)));
+  var NST=Math.max(4,Math.min(9,Math.round(p.fstat||6)));
+  var FITEM=Math.max(0,Math.min(1,(p.fitem===undefined?60:p.fitem)/100));
+  var SEED=Math.round(rnd(0)*1e6);
+  var H=NLEV===3?13.5:9.0;                         /* eaves */
+  var out=[];
+  var T={cells:[],boxes:[],order:[],tubes:[],polys:[],stations:[],belts:[],flow:null,
+         aisles:[],cols:[],decks:[],walls:[],marks:[],hall:{W:W,D:D,H:H,lev:NLEV}};
+  var K=ISOKIT(p,T), solids=K.solids;
+  FACTINFO=''; FACTSTATS={lines:0,stations:0,belts:0,solids:0,paths:0,points:0};
+  var C=FACTCOL;
+  function col(kind){ return C[FACTROLE[kind]||'black']; }
+
+  /* LOD needs millimetres before anything exists: the hall's lattice box is
+     the extent, and everything is inside it by construction. */
+  var bb=[[-1,-1,-1],[W,D,Math.ceil(H)]], corners=[], ci;
+  for(ci=0;ci<8;ci++) corners.push([bb[ci&1][0],bb[(ci>>1)&1][1],bb[(ci>>2)&1][2]]);
+  K.mmest=K.mmPerCell(corners);
+  /* NEAR: a detail is drawn when its own size reaches `lod` on the sheet. A
+     THIN bar under it is drawn as its centreline and occludes nothing -- the
+     occlusion gap is a real millimetre and a 0.04 m post is a fraction of one,
+     so a post that occluded would punch a gap wider than itself in everything
+     behind it (stat's keel learned this first). */
+  function near(sz){ return K.lodVis(sz); }
+
+  /* ---- the solid makers. Everything goes through polySolid + cutAtLattice. */
+  var BOXF=[[0,3,2,1],[4,5,6,7],[0,1,5,4],[1,2,6,5],[2,3,7,6],[3,0,4,7]];
+  /* face order: 0 bottom, 1 top, 2 y0, 3 x1, 4 y1, 5 x0 */
+  function solid(V,F,o){
+    o=o||{};
+    if(o.col===undefined) o.col=col(o.kind||'hall');
+    return K.cutAtLattice(K.polySolid(V,F,o));
+  }
+  function box(x0,y0,z0,x1,y1,z1,o){
+    if(!(x1-x0>1e-9 && y1-y0>1e-9 && z1-z0>1e-9)) return [];
+    var V=[[x0,y0,z0],[x1,y0,z0],[x1,y1,z0],[x0,y1,z0],[x0,y0,z1],[x1,y0,z1],[x1,y1,z1],[x0,y1,z1]];
+    return solid(V,BOXF,o);
+  }
+  /* A bar too thin to read: its centreline, and it hides nothing. */
+  function bar(x0,y0,z0,x1,y1,z1,o){
+    o=o||{};
+    var th=Math.min(x1-x0,y1-y0,z1-z0);
+    if(!near(th)){
+      var dx=x1-x0, dy=y1-y0, dz=z1-z0, cx=(x0+x1)/2, cy=(y0+y1)/2, cz=(z0+z1)/2;
+      o.wire=dz>=dx&&dz>=dy?[[cx,cy,z0],[cx,cy,z1]]:(dx>=dy?[[x0,cy,cz],[x1,cy,cz]]:[[cx,y0,cz],[cx,y1,cz]]);
+      o.hides=false;
+    }
+    return box(x0,y0,z0,x1,y1,z1,o);
+  }
+  /* A prism of n facets from p0 to p1, radius r0 at p0 and r1 at p1 (a frustum
+     when they differ). Its facets are SMOOTH: a facet edge draws only where it
+     is the silhouette, so a tube reads as two lines and its caps. */
+  function prism(p0,p1,r0,r1,n,o){
+    o=o||{};
+    var ax=[p1[0]-p0[0],p1[1]-p0[1],p1[2]-p0[2]];
+    var L=Math.sqrt(ax[0]*ax[0]+ax[1]*ax[1]+ax[2]*ax[2]);
+    if(L<1e-9) return [];
+    ax=[ax[0]/L,ax[1]/L,ax[2]/L];
+    var tmp=Math.abs(ax[2])<0.9?[0,0,1]:[1,0,0];
+    var u=v3n(cross3(ax,tmp)), v=cross3(ax,u), V=[], i, F=[], sm=[], sea=[];
+    for(i=0;i<n;i++){
+      var a=TAU*(i+0.5)/n, ca=Math.cos(a), sa=Math.sin(a);
+      V.push([p0[0]+r0*(ca*u[0]+sa*v[0]), p0[1]+r0*(ca*u[1]+sa*v[1]), p0[2]+r0*(ca*u[2]+sa*v[2])]);
+    }
+    for(i=0;i<n;i++){
+      var a2=TAU*(i+0.5)/n, cb=Math.cos(a2), sb=Math.sin(a2);
+      V.push([p1[0]+r1*(cb*u[0]+sb*v[0]), p1[1]+r1*(cb*u[1]+sb*v[1]), p1[2]+r1*(cb*u[2]+sb*v[2])]);
+    }
+    var c0=[], c1=[];
+    for(i=0;i<n;i++){ c0.push(n-1-i); c1.push(n+i); }
+    F.push(c0); sm.push(false); sea.push(!!o.seam0);
+    F.push(c1); sm.push(false); sea.push(!!o.seam1);
+    for(i=0;i<n;i++){ F.push([i,(i+1)%n,n+(i+1)%n,n+i]); sm.push(true); sea.push(false); }
+    o.smooth=sm; o.seam=sea;
+    var rec=solid(V,F,o);
+    if(!o.noTally) T.tubes.push({p0:p0, p1:p1, r0:r0, r1:r1, n:n, cap0:!o.seam0, cap1:!o.seam1,
+                                 V:V, kind:o.kind||'', pieces:rec.map(function(s){ return s.e; })});
+    return rec;
+  }
+  /* A vertical prism over a convex plan polygon (wedges, chutes, curve pieces). */
+  function plan(pts,z0,z1,o){
+    var n=pts.length, V=[], F=[[],[]], i;
+    for(i=0;i<n;i++) V.push([pts[i][0],pts[i][1],z0]);
+    for(i=0;i<n;i++) V.push([pts[i][0],pts[i][1],z1]);
+    for(i=0;i<n;i++){ F[0].push(n-1-i); F[1].push(n+i); }
+    for(i=0;i<n;i++) F.push([i,(i+1)%n,n+(i+1)%n,n+i]);
+    return solid(V,F,o);
+  }
+  /* A box along any axis: centre, three half-axis vectors (stair stringers,
+     inclined chutes). */
+  function obox(c,u,v,w,o){
+    var V=[], sg=[[-1,-1,-1],[1,-1,-1],[1,1,-1],[-1,1,-1],[-1,-1,1],[1,-1,1],[1,1,1],[-1,1,1]], i;
+    for(i=0;i<8;i++) V.push([c[0]+sg[i][0]*u[0]+sg[i][1]*v[0]+sg[i][2]*w[0],
+                             c[1]+sg[i][0]*u[1]+sg[i][1]*v[1]+sg[i][2]*w[1],
+                             c[2]+sg[i][0]*u[2]+sg[i][1]*v[2]+sg[i][2]*w[2]]);
+    return solid(V,BOXF,o);
+  }
+  function cross3(a,b){ return [a[1]*b[2]-a[2]*b[1], a[2]*b[0]-a[0]*b[2], a[0]*b[1]-a[1]*b[0]]; }
+  function v3n(a){ var L=Math.sqrt(a[0]*a[0]+a[1]*a[1]+a[2]*a[2])||1; return [a[0]/L,a[1]/L,a[2]/L]; }
+  /* A FLOOR MARK: paint, not a solid. It lies on the slab's top face, so it
+     belongs to the slab's cell (k = -1) and is cut per cell like everything
+     else; it hides nothing, and its depth key puts it FIRST in its cell so the
+     slab piece under it cannot paint it out. Everything standing on the floor
+     is in a cell with a larger key and is drawn before it, which is "hidden by
+     anything above them" (§2) by the painter theorem rather than by a rule. */
+  function floorLine(a,b,kind){
+    var ts=[0,1], ax2, g, m;
+    for(ax2=0;ax2<2;ax2++){
+      var A=a[ax2], B=b[ax2];
+      if(Math.abs(B-A)<1e-12) continue;
+      for(g=Math.floor(Math.min(A,B))+1; g<Math.max(A,B); g++){
+        var tt=(g-A)/(B-A); if(tt>1e-9 && tt<1-1e-9) ts.push(tt);
+      }
+    }
+    ts.sort(function(u,v){ return u-v; });
+    for(m=0;m+1<ts.length;m++){
+      var q0=[a[0]+(b[0]-a[0])*ts[m], a[1]+(b[1]-a[1])*ts[m], 0];
+      var q1=[a[0]+(b[0]-a[0])*ts[m+1], a[1]+(b[1]-a[1])*ts[m+1], 0];
+      var c=[Math.floor((q0[0]+q1[0])/2), Math.floor((q0[1]+q1[1])/2), -1];
+      var s=K.Solid(K.depth3(c), 1e6, 0);
+      s.cell=c; s.lay='ground'; s.col=col(kind); s.kind=kind;
+      K.addE(s,[q0,q1]); K.push(s);
+      T.marks.push({a:q0, b:q1, kind:kind, cell:c});
+    }
+  }
+
+  /* ================= THE PLAN ================================================ */
+  var G=[], gx, gy;                         /* floor grid: one code per 1 m cell */
+  var FREE=0, COLM=1, FOOT=2, RESV=4, BELT=5, AISLE=6;
+  for(gx=0;gx<W;gx++){ G.push([]); for(gy=0;gy<D;gy++) G[gx].push(FREE); }
+  function gget(x,y){ return (x<0||y<0||x>=W||y>=D)?-1:G[x][y]; }
+  function markRect(x0,y0,x1,y1,code){
+    var a, b;
+    for(a=Math.max(0,Math.floor(x0+1e-9));a<Math.min(W,Math.ceil(x1-1e-9));a++)
+      for(b=Math.max(0,Math.floor(y0+1e-9));b<Math.min(D,Math.ceil(y1-1e-9));b++)
+        if(G[a][b]===FREE || code===FOOT) G[a][b]=code;
+  }
+
+  /* Columns on the 6 m bay grid, the edge ones stepped inside the hall. */
+  var COLS=[], a6, b6;
+  for(a6=0;a6<=W/6;a6++) for(b6=0;b6<=D/6;b6++){
+    var cx0=6*a6-0.15, cy0=6*b6-0.15;
+    if(cx0<0) cx0=0; if(cx0+0.3>W) cx0=W-0.3;
+    if(cy0<0) cy0=0; if(cy0+0.3>D) cy0=D-0.3;
+    COLS.push([cx0,cy0,cx0+0.3,cy0+0.3]);
+    markRect(cx0,cy0,cx0+0.3,cy0+0.3,COLM);
+  }
+  T.cols=COLS;
+  function colRow(y){ /* a floor row a column stands in, at some x */
+    var i; for(i=0;i<COLS.length;i++) if(y+1>COLS[i][1]+1e-9 && y<COLS[i][3]-1e-9) return true;
+    return false;
+  }
+
+  /* The mezzanine's strip along the y = 0 wall, reserved below and around. */
+  var Y0=NLEV>=2?6:0, MZ=null;
+  if(NLEV>=2){
+    var mx1=6+6*Math.max(1,Math.min(3,Math.floor((W-18)/6)));
+    MZ={x0:6.2, x1:mx1-0.2, y0:0.3, y1:5.6, z:4.5};
+    markRect(0,0,W,6,RESV);
+  }
+
+  /* AISLES ON THE BAY LINES BETWEEN THE LINES' BANDS, decided FIRST. A belt
+     never enters an aisle (§3), and a 3 m strip chosen after the belts were
+     routed would be wherever they happened not to go; chosen first, the
+     strips are on bay lines by construction and the router is told to keep
+     out. The near cross aisle on the last-but-one bay line is the one forklifts
+     (row 106) come in by. */
+  var avail=D-Y0, NL=WANTL, bounds=null;
+  for(;NL>=1;NL--){
+    var bl=[], k2, okb=true, prev=Y0;
+    for(k2=1;k2<NL;k2++){
+      var tgt=Y0+avail*k2/NL, best=null, b2;
+      for(b2=1;b2<D/6;b2++){ var yy=6*b2; if(yy>prev+10 && (best===null || Math.abs(yy-tgt)<Math.abs(best-tgt))) best=yy; }
+      if(best===null){ okb=false; break; }
+      bl.push(best); prev=best;
+    }
+    if(!okb) continue;
+    var edges=[Y0].concat(bl.map(function(v){ return v-1.5; })), ends=bl.map(function(v){ return v-1.5; }).concat([D]);
+    var starts=[Y0].concat(bl.map(function(v){ return v+1.5; }));
+    var bands=[], k3, fits=true;
+    for(k3=0;k3<NL;k3++) bands.push([starts[k3], ends[k3]]);
+    for(k3=0;k3<NL && fits;k3++) if(bands[k3][1]-bands[k3][0]<9) fits=false;
+    if(fits){ bounds={lines:bl, bands:bands}; break; }
+  }
+  if(!bounds){ NL=1; bounds={lines:[], bands:[[Y0,D]]}; }
+  var AISLES=[];
+  bounds.lines.forEach(function(yy){ AISLES.push({ax:'x', c:yy, a:0, b:W, x0:0, y0:yy-1.5, x1:W, y1:yy+1.5}); });
+  if(W>=36) AISLES.push({ax:'y', c:W-6, a:Y0, b:D, x0:W-7.5, y0:Y0, x1:W-4.5, y1:D});
+  AISLES.forEach(function(A){ markRect(A.x0,A.y0,A.x1,A.y1,AISLE); });
+  var ROWCAP=W>=36?W-10:W-2;
+
+  /* ---- the lines: stations, rows, ports -------------------------------- */
+  var STN=[], LINES=[];
+  function rowIn(ya,yb,fromTop){
+    /* the first 3-cell strip from one side of a band that no column stands in */
+    var y;
+    if(!fromTop){ for(y=Math.ceil(ya);y+3<=yb;y++) if(!colRow(y)&&!colRow(y+1)&&!colRow(y+2)) return y; }
+    else { for(y=Math.floor(yb)-3;y>=ya;y--) if(!colRow(y)&&!colRow(y+1)&&!colRow(y+2)) return y; }
+    return null;
+  }
+  function seqFor(rng,nst){
+    var a=nst>=6?2:1, pcount=Math.max(1,nst-2-a), seq=['receive'], i;
+    var kinds=[['cnc',30],['press',20],['moulder',20],['furnace',15],['vat',15]];
+    for(i=0;i<pcount;i++){
+      var r=rng()*100, j=0;
+      while(j<kinds.length-1 && r>=kinds[j][1]){ r-=kinds[j][1]; j++; }
+      seq.push(kinds[j][0]);
+    }
+    for(i=0;i<a;i++) seq.push('assembly');
+    seq.push('qa'); seq.push('pack'); seq.push('ship');
+    return seq;
+  }
+  /* Pack a row along x: footprints in order, each `gap` cells after the last,
+     shifted past any cell the row cannot take. Returns the x of each, or null. */
+  function packRow(types,y0,gapMin,rng,startX){
+    var xs=[], cur=startX, i;
+    for(i=0;i<types.length;i++){
+      var L=FACTLEN[types[i]], x=cur, tries=0;
+      while(tries++<200){
+        var ok=x+L<=ROWCAP, a2, b3;
+        for(a2=x;a2<x+L && ok;a2++) for(b3=y0;b3<y0+3 && ok;b3++){ var gc=gget(a2,b3); if(gc!==FREE) ok=false; }
+        if(ok) break;
+        x++;
+        if(x+L>ROWCAP){ return null; }
+      }
+      xs.push(x);
+      cur=x+L+gapMin+(rng()<0.5?1:0);
+    }
+    return xs;
+  }
+  var li;
+  for(li=0;li<NL;li++){
+    var rngL=statRng(SEED,FACT_SALT_LAYOUT,li,0);
+    var band=bounds.bands[li], flip=(li%2===1);
+    var yA=rowIn(band[0],band[1],flip), yB=rowIn(band[0],band[1],!flip);
+    if(yA===null||yB===null||Math.abs(yA-yB)<4) continue;
+    var placed=null, nst=NST, gapMin=2;
+    for(;!placed;){
+      var seq=seqFor(statRng(SEED,FACT_SALT_LAYOUT,li,1),nst), rowA=[], rowB=[], cur=0, s2;
+      /* row A takes stations while their packed length fits, row B the rest */
+      for(s2=0;s2<seq.length-1;s2++){
+        if(cur+FACTLEN[seq[s2]]>ROWCAP-3 && s2>0) break;
+        rowA.push(seq[s2]); cur+=FACTLEN[seq[s2]]+gapMin+1;
+      }
+      for(;s2<seq.length;s2++) rowB.push(seq[s2]);
+      /* SPREAD a row over the length it has: in a wide hall a tight pack
+         leaves the near half empty. Each gap is the row's slack shared out,
+         at most 6 m; the tight pack is the fallback when the spread fails. */
+      var sumA=0, sumB=0, revB=rowB.slice().reverse();
+      rowA.forEach(function(tp){ sumA+=FACTLEN[tp]; });
+      revB.forEach(function(tp){ sumB+=FACTLEN[tp]; });
+      var gA=Math.max(gapMin,Math.min(6,Math.floor((ROWCAP-3-sumA)/Math.max(1,rowA.length))-1));
+      var gB=Math.max(gapMin,Math.min(6,Math.floor((ROWCAP-3-sumB)/Math.max(1,revB.length))-1));
+      var xA=packRow(rowA,yA,gA,rngL,0)||packRow(rowA,yA,gapMin,rngL,0);
+      var xB=packRow(revB,yB,gB,rngL,0)||packRow(revB,yB,gapMin,rngL,0);
+      if(xA&&xB&&rowB.length>=1){ placed={seq:seq,rowA:rowA,rowB:revB,xA:xA,xB:xB}; break; }
+      if(gapMin>1){ gapMin=1; continue; }
+      if(nst>4){ nst--; gapMin=2; continue; }
+      break;
+    }
+    if(!placed) continue;
+    var line={id:LINES.length, stations:[], yA:yA, yB:yB};
+    LINES.push(line);
+    var mk=function(type,x,y0,sx){
+      var L=FACTLEN[type];
+      var st={id:STN.length, line:line.id, type:type, x0:x, x1:x+L, y0:y0, y1:y0+3, yc:y0+1.5,
+              sx:sx, L:L, z:0, ins:[], outs:[]};
+      markRect(st.x0,st.y0,st.x1,st.y1,FOOT);
+      STN.push(st); line.stations.push(st);
+      return st;
+    };
+    placed.rowA.forEach(function(tp,i){ mk(tp,placed.xA[i],yA,1); });
+    var bst=placed.rowB.map(function(tp,i){ return mk(tp,placed.xB[i],yB,-1); });
+    /* row B was packed from the wall outward, so its stations were made in
+       reverse flow order; put the line back in flow order */
+    line.stations=line.stations.slice(0,placed.rowA.length).concat(bst.reverse());
+  }
+  STN.forEach(function(st){
+    var zin=st.z+0.8, xin=st.sx>0?st.x0:st.x1, xout=st.sx>0?st.x1:st.x0;
+    if(st.type!=='receive') st.ins.push([xin,st.yc,zin,-st.sx]);
+    if(st.type!=='ship') st.outs.push([xout,st.yc,zin,st.sx]);
+  });
+
+  /* ---- belts: A* on the floor grid ------------------------------------- */
+  /* cost 1 a cell, +3 a turn, +2 a cell beside a footprint (§3.2); never a
+     footprint, a column, an aisle, the mezzanine strip or another belt. */
+  var DIRS=[[1,0],[0,1],[-1,0],[0,-1]];
+  function nearFoot(x,y){
+    var d; for(d=0;d<4;d++) if(gget(x+DIRS[d][0],y+DIRS[d][1])===FOOT) return true;
+    return false;
+  }
+  function astar(sx,sy,sd,tx,ty){
+    var key=function(x,y,d){ return (x*D+y)*4+d; };
+    var open=[], best={}, from={}, i;
+    function h(x,y){ return Math.abs(x-tx)+Math.abs(y-ty); }
+    if(gget(sx,sy)!==FREE || gget(tx,ty)!==FREE) return null;
+    var k0=key(sx,sy,sd); best[k0]=0; open.push([h(sx,sy),0,sx,sy,sd]);
+    var guard=0;
+    while(open.length && guard++<200000){
+      var bi=0; for(i=1;i<open.length;i++) if(open[i][0]<open[bi][0]) bi=i;
+      var cur=open[bi]; open[bi]=open[open.length-1]; open.pop();
+      var cx=cur[2], cy=cur[3], cd=cur[4], cg=cur[1], ck=key(cx,cy,cd);
+      if(cg>best[ck]) continue;
+      if(cx===tx && cy===ty){
+        var path=[[cx,cy]], kk=ck;
+        while(from[kk]!==undefined){ kk=from[kk]; var q=Math.floor(kk/4); path.push([Math.floor(q/D), q%D]); }
+        return path.reverse();
+      }
+      for(i=0;i<4;i++){
+        if((i+2)%4===cd) continue;
+        var nx=cx+DIRS[i][0], ny=cy+DIRS[i][1];
+        if(gget(nx,ny)!==FREE) continue;
+        var ng=cg+1+(i!==cd?3:0)+(nearFoot(nx,ny)?2:0), nk=key(nx,ny,i);
+        if(best[nk]===undefined || ng<best[nk]){ best[nk]=ng; from[nk]=ck; open.push([ng+h(nx,ny),ng,nx,ny,i]); }
+      }
+    }
+    return null;
+  }
+  function dirOf(dx,dy){ return dx>0?0:(dy>0?1:(dx<0?2:3)); }
+  var BELTS=[], nCurve=0, nXfer=0;
+  function route(from,fst,to,tst){
+    /* the cell just outside each port, entered heading out of the station */
+    var sxc=from[3]>0?Math.round(from[0]):Math.round(from[0])-1, syc=Math.floor(from[1]);
+    var txc=to[3]>0?Math.round(to[0]):Math.round(to[0])-1, tyc=Math.floor(to[1]);
+    var path=astar(sxc,syc,dirOf(from[3],0),txc,tyc);
+    if(!path) return null;
+    var pts=[[from[0],from[1]]], i;
+    for(i=0;i<path.length;i++) pts.push([path[i][0]+0.5,path[i][1]+0.5]);
+    pts.push([to[0],to[1]]);
+    /* collinear points out */
+    var P2=[pts[0]];
+    for(i=1;i<pts.length-1;i++){
+      var a=P2[P2.length-1], b=pts[i], c=pts[i+1];
+      if(Math.abs((b[0]-a[0])*(c[1]-b[1])-(b[1]-a[1])*(c[0]-b[0]))>1e-9) P2.push(b);
+    }
+    P2.push(pts[pts.length-1]);
+    path.forEach(function(q){ G[q[0]][q[1]]=BELT; });
+    var bt={id:BELTS.length, from:[fst.id,0], to:[tst.id,0], z:from[2], pts:P2, pieces:[], cells:path};
+    BELTS.push(bt);
+    return bt;
+  }
+  LINES.forEach(function(Ln){
+    var i;
+    for(i=0;i+1<Ln.stations.length;i++){
+      var A=Ln.stations[i], B=Ln.stations[i+1];
+      var bt=route(A.outs[0],A,B.ins[0],B);
+      if(bt){ bt.line=Ln.id; }
+    }
+  });
+  /* Any OTHER bay line no station and no belt touches is an aisle too. */
+  (function(){
+    var b2, a2, x, y;
+    for(b2=1;b2<D/6;b2++){
+      var yy=6*b2, clear=yy-1.5>=Y0, already=AISLES.some(function(A){ return A.ax==='x'&&A.c===yy; });
+      if(already) continue;
+      for(x=0;x<W && clear;x++) for(y=Math.floor(yy-1.5);y<Math.ceil(yy+1.5) && clear;y++){
+        var g2=gget(x,y); if(g2===FOOT||g2===BELT||g2===RESV) clear=false;
+      }
+      if(clear){ AISLES.push({ax:'x', c:yy, a:0, b:W, x0:0, y0:yy-1.5, x1:W, y1:yy+1.5}); markRect(0,yy-1.5,W,yy+1.5,AISLE); }
+    }
+    for(a2=1;a2<W/6;a2++){
+      var xx=6*a2, clr=true, alr=AISLES.some(function(A){ return A.ax==='y'&&A.c===xx; });
+      if(alr) continue;
+      for(y=Y0;y<D && clr;y++) for(x=Math.floor(xx-1.5);x<Math.ceil(xx+1.5) && clr;x++){
+        var g3=gget(x,y); if(g3===FOOT||g3===BELT||g3===RESV) clr=false;
+      }
+      if(clr){ AISLES.push({ax:'y', c:xx, a:Y0, b:D, x0:xx-1.5, y0:Y0, x1:xx+1.5, y1:D}); markRect(xx-1.5,Y0,xx+1.5,D,AISLE); }
+    }
+  })();
+  T.aisles=AISLES;
+
+  /* ================= THE BUILD =============================================== */
+  K.lay='structure';
+  /* ---- floor slab: the whole hall and the ground under the back walls ---- */
+  /* THE SLAB HIDES NOTHING: everything in the hall stands on it, so no ray to
+     the camera from anything drawn passes through it. As an occluder it would
+     be one hull per square metre for no line hidden. */
+  box(-0.3,-0.3,-0.3,W,D,0,{kind:'slab', hides:false});
+
+  /* ---- the back walls, with dock openings and a ribbon window ----------- */
+  var DOORS=[];
+  /* A DOCK DOOR IS 2.5 m AND ITS BUMPERS STAND INSIDE THE STATION'S 3 m STRIP:
+     the strip is chosen clear of every column row (rowIn), and a 3.2 m door with
+     bumpers outside it reached 0.55 m past the strip -- into the corner column
+     at the far end of the x = 0 wall, which the gate's ray truth found as a
+     door jamb and a column occupying the same metre. */
+  STN.forEach(function(st){ if((st.type==='receive'||st.type==='ship') && st.x0===0) DOORS.push([st.yc-1.25,st.yc+1.25]); });
+  function wallRuns(a0,a1,holes){ /* [a0,a1] minus the holes, as intervals */
+    var r=[[a0,a1]];
+    holes.forEach(function(hh){
+      var nx=[];
+      r.forEach(function(q){
+        if(hh[1]<=q[0]||hh[0]>=q[1]){ nx.push(q); return; }
+        if(hh[0]>q[0]) nx.push([q[0],hh[0]]);
+        if(hh[1]<q[1]) nx.push([hh[1],q[1]]);
+      });
+      r=nx;
+    });
+    return r;
+  }
+  function wall(axis,lo,hi,holes){
+    /* axis 'x': the plane x=0 wall, running along y from lo to hi */
+    function wb(a0,z0,a1,z1){
+      var o={kind:'wall'};
+      T.walls.push({axis:axis, a0:a0, a1:a1, z0:z0, z1:z1});
+      if(axis==='x') return box(-0.3,a0,z0,0,a1,z1,o);
+      return box(a0,-0.3,z0,a1,0,z1,o);
+    }
+    wallRuns(lo,hi,holes).forEach(function(q){ wb(q[0],0,q[1],3.0); });
+    holes.forEach(function(hh){ wb(hh[0],4.2,hh[1],5.0); });
+    var m;
+    for(m=4;m<hi;m+=4){
+      var m0=m-0.075, m1=m+0.075, clash=false;
+      holes.forEach(function(hh){ if(m1>hh[0]-0.3 && m0<hh[1]+0.3) clash=true; });
+      if(!clash && m0>lo) wb(m0,3.0,m1,5.0);
+    }
+    holes.forEach(function(hh){ /* the door's own jambs through the window band */
+      wb(hh[0]-0.15,3.0,hh[0],4.2); wb(hh[1],3.0,hh[1]+0.15,4.2);
+    });
+    wb(lo,5.0,hi,H);
+  }
+  wall('x',-0.3,D,DOORS);
+  wall('y',0,W,[]);
+
+  /* ---- columns ----------------------------------------------------------- */
+  COLS.forEach(function(c){ box(c[0],c[1],0,c[2],c[3],7.6,{kind:'column'}); });
+
+  /* ---- mezzanine decks, columns, handrails, stairs ----------------------- */
+  function handrail(x0,y0,x1,y1,z){
+    /* posts every 1.5 m, rails at 0.55 and 1.1 m (§2) */
+    var L=Math.hypot(x1-x0,y1-y0), n=Math.max(1,Math.round(L/1.5)), i;
+    var ux=(x1-x0)/L, uy=(y1-y0)/L;
+    for(i=0;i<=n;i++){
+      var px=x0+ux*L*i/n, py=y0+uy*L*i/n;
+      bar(px-0.02,py-0.02,z,px+0.02,py+0.02,z+1.1,{kind:'rail'});
+    }
+    [0.55,1.08].forEach(function(h2){
+      if(Math.abs(ux)>0.5) bar(Math.min(x0,x1)+0.02,y0-0.02,z+h2,Math.max(x0,x1)-0.02,y0+0.02,z+h2+0.04,{kind:'rail'});
+      else bar(x0-0.02,Math.min(y0,y1)+0.02,z+h2,x0+0.02,Math.max(y0,y1)-0.02,z+h2+0.04,{kind:'rail'});
+    });
+  }
+  function stair(x0,y0,y1,ztop,zbot){
+    /* treads descending toward +x, 0.3 m going, 0.3 m rise, on two stringers */
+    var nR=Math.round((ztop-zbot)/0.3), i;
+    for(i=0;i<nR-1;i++){
+      var tz=ztop-0.3*(i+1);
+      box(x0+0.3*i+0.005,y0+0.06,tz-0.05,x0+0.3*(i+1)-0.005,y1-0.06,tz,{kind:'stair'});
+    }
+    /* a stringer is a parallelogram in x-z: its top edge is the nosing line,
+       45° at 0.3 going / 0.3 rise, and it stands on the level below */
+    var run=0.3*nR;
+    [[y0,y0+0.06],[y1-0.06,y1]].forEach(function(yy){
+      var q=[[x0,ztop],[x0+run,zbot],[x0+run-0.35,zbot],[x0,ztop-0.35]], V=[], k;
+      for(k=0;k<4;k++) V.push([q[k][0],yy[0],q[k][1]]);
+      for(k=0;k<4;k++) V.push([q[k][0],yy[1],q[k][1]]);
+      solid(V,[[0,1,2,3],[4,7,6,5],[0,4,5,1],[1,5,6,2],[2,6,7,3],[3,7,4,0]],{kind:'stair'});
+    });
+    T.decks.push({stair:true, x0:x0, x1:x0+run, y0:y0, y1:y1, ztop:ztop, zbot:zbot});
+  }
+  if(MZ){
+    var levs=[4.5]; if(NLEV>=3) levs.push(9.0);
+    levs.forEach(function(zd,lv){
+      var dx1=lv===0?MZ.x1:MZ.x0+(MZ.x1-MZ.x0)*0.6;
+      var zb=lv===0?0:4.5;
+      box(MZ.x0,MZ.y0,zd-0.25,dx1,MZ.y1,zd,{kind:'deck'});
+      T.decks.push({x0:MZ.x0, x1:dx1, y0:MZ.y0, y1:MZ.y1, z:zd});
+      var ncol=Math.max(2,Math.ceil((dx1-MZ.x0)/6)+1), i;
+      for(i=0;i<ncol;i++){
+        var cxx=MZ.x0+0.2+(dx1-MZ.x0-0.4)*i/(ncol-1);
+        box(cxx-0.12,MZ.y1-0.36,zb,cxx+0.12,MZ.y1-0.12,zd-0.25,{kind:'column'});
+      }
+      handrail(MZ.x0+0.05,MZ.y1-0.05,dx1-0.05,MZ.y1-0.05,zd);
+      handrail(MZ.x0+0.05,MZ.y0+0.05,MZ.x0+0.05,MZ.y1-0.05,zd);
+      var sy0=lv===0?0.6:2.2, sy1=sy0+1.2;
+      handrail(dx1-0.05,sy1+0.1,dx1-0.05,MZ.y1-0.05,zd);
+      handrail(dx1-0.05,MZ.y0+0.05,dx1-0.05,sy0-0.1,zd);
+      stair(dx1,sy0,sy1,zd,zb);
+    });
+  }
+
+  /* ---- belts ------------------------------------------------------------- */
+  /* WIDTH 0.6, TOP AT 0.80 ABOVE ITS DECK, FRAME 0.12 DEEP; legs every 1.5 m.
+     A run is one box from end to end, cut at the lattice by the kit; the faces
+     where a run meets its own curve are SEAMS, so a belt with a bend in it is
+     one outline, while the face it shows a port or a transfer is a real end. */
+  var BW=0.3, BZ0=0.68, BZ1=0.80, RIN=0.8, ROUT=1.4, RC=1.1;
+  var ITEMS=[];
+  function runBox(a,b,z,seamA,seamB,kind,bt){
+    var dx=b[0]-a[0], dy=b[1]-a[1], L=Math.hypot(dx,dy);
+    if(L<1e-6) return;
+    var alongX=Math.abs(dx)>Math.abs(dy), o={kind:kind}, sm=[false,false,false,false,false,false];
+    var lo=alongX?Math.min(a[0],b[0]):Math.min(a[1],b[1]), hi=alongX?Math.max(a[0],b[0]):Math.max(a[1],b[1]);
+    var sLo=(alongX?a[0]<b[0]:a[1]<b[1])?seamA:seamB, sHi=(alongX?a[0]<b[0]:a[1]<b[1])?seamB:seamA;
+    if(alongX){ sm[5]=sLo; sm[3]=sHi; } else { sm[2]=sLo; sm[4]=sHi; }
+    o.seam=sm;
+    /* near: the belt surface's two edges, inset from the frame */
+    if(near(0.05)){
+      o.marks=[];
+      [-0.25,0.25].forEach(function(t){
+        if(alongX) o.marks.push([[lo,a[1]+t,z+BZ1],[hi,a[1]+t,z+BZ1],1]);
+        else o.marks.push([[a[0]+t,lo,z+BZ1],[a[0]+t,hi,z+BZ1],1]);
+      });
+    }
+    if(alongX) box(lo,a[1]-BW,z+BZ0,hi,a[1]+BW,z+BZ1,o);
+    else box(a[0]-BW,lo,z+BZ0,a[0]+BW,hi,z+BZ1,o);
+    var nl=Math.floor((L-0.3)/1.5), i;
+    for(i=0;i<=nl;i++){
+      var s=Math.min(L-0.15,0.15+1.5*i), px=a[0]+dx*s/L, py=a[1]+dy*s/L;
+      [-0.25,0.25].forEach(function(t){
+        var qx=alongX?px:px+t, qy=alongX?py+t:py;
+        bar(qx-0.02,qy-0.02,z,qx+0.02,qy+0.02,z+BZ0,{kind:'leg'});
+      });
+    }
+    var rec={k:'run', a:[a[0],a[1],z+BZ1], b:[b[0],b[1],z+BZ1], top:z+BZ1,
+             poly:alongX?[[lo,a[1]-BW],[hi,a[1]-BW],[hi,a[1]+BW],[lo,a[1]+BW]]
+                        :[[a[0]-BW,lo],[a[0]+BW,lo],[a[0]+BW,hi],[a[0]-BW,hi]]};
+    if(bt) bt.pieces.push(rec);
+    return rec;
+  }
+  function curve(c,u,w,z,bt){
+    /* a 90° turn: six 15° convex wedges about O, each joint a seam */
+    var O=[c[0]-RC*u[0]+RC*w[0], c[1]-RC*u[1]+RC*w[1]], k, pts=[];
+    function at(phi,r){ return [O[0]+r*(-w[0]*Math.cos(phi)+u[0]*Math.sin(phi)),
+                                O[1]+r*(-w[1]*Math.cos(phi)+u[1]*Math.sin(phi))]; }
+    for(k=0;k<6;k++){
+      var p0=k*Math.PI/12, p1=(k+1)*Math.PI/12;
+      var q=[at(p0,RIN),at(p0,ROUT),at(p1,ROUT),at(p1,RIN)];
+      var o={kind:'belt'};
+      /* faces: 0 bottom, 1 top, then sides i -> i+1: 2 radial at p0,
+         3 outer, 4 radial at p1, 5 inner */
+      o.seam=[false,false,true,false,true,false];
+      plan(q,z+BZ0,z+BZ1,o);
+      pts.push(q);
+    }
+    var mid=Math.PI/4;
+    [RIN+0.05,ROUT-0.05].forEach(function(r){
+      var q=at(mid,r); bar(q[0]-0.02,q[1]-0.02,z,q[0]+0.02,q[1]+0.02,z+BZ0,{kind:'leg'});
+    });
+    var poly=pts.map(function(q){ return q[1]; }).concat([pts[5][2]])
+               .concat(pts.slice().reverse().map(function(q){ return q[3]; })).concat([pts[0][0]]);
+    var rec={k:'curve', a:[c[0]-RC*u[0],c[1]-RC*u[1],z+BZ1], b:[c[0]+RC*w[0],c[1]+RC*w[1],z+BZ1],
+             top:z+BZ1, poly:poly, O:O};
+    if(bt) bt.pieces.push(rec);
+    nCurve++;
+  }
+  function xferBox(c,z,bt){
+    box(c[0]-0.5,c[1]-0.5,z,c[0]+0.5,c[1]+0.5,z+BZ1,{kind:'xfer'});
+    var rec={k:'xfer', a:[c[0],c[1],z+BZ1], b:[c[0],c[1],z+BZ1], top:z+BZ1,
+             poly:[[c[0]-0.5,c[1]-0.5],[c[0]+0.5,c[1]-0.5],[c[0]+0.5,c[1]+0.5],[c[0]-0.5,c[1]+0.5]]};
+    if(bt) bt.pieces.push(rec);
+    nXfer++;
+  }
+  function buildBelt(bt){
+    var P=bt.pts, n=P.length, i, z=bt.z-0.8, cons=[], kind=[];
+    for(i=0;i<n;i++){ cons.push([0,0]); kind.push(null); }
+    /* decide each corner: a curve where both legs leave room and the inside
+       cell is clear, else a 1 x 1 transfer */
+    for(i=1;i<n-1;i++){
+      var a=P[i-1], c=P[i], b=P[i+1];
+      var Lin=Math.hypot(c[0]-a[0],c[1]-a[1]), Lout=Math.hypot(b[0]-c[0],b[1]-c[1]);
+      var u=[(c[0]-a[0])/Lin,(c[1]-a[1])/Lin], w=[(b[0]-c[0])/Lout,(b[1]-c[1])/Lout];
+      var diag=[Math.floor(c[0]-u[0]+w[0]), Math.floor(c[1]-u[1]+w[1])];
+      var dg=gget(diag[0],diag[1]);
+      var room=(Lin-cons[i-1][1]>=RC-1e-9) && (Lout>=RC+(i+1<n-1?0.5:0)-1e-9) && dg===FREE;
+      if(room){ kind[i]='curve'; cons[i-1][1]=RC; cons[i][0]=RC; G[diag[0]][diag[1]]=BELT; bt.cells.push(diag); }
+      else { kind[i]='xfer'; cons[i-1][1]=0.5; cons[i][0]=0.5; }
+    }
+    for(i=0;i<n-1;i++){
+      var p0=P[i], p1=P[i+1], L=Math.hypot(p1[0]-p0[0],p1[1]-p0[1]);
+      var ux=(p1[0]-p0[0])/L, uy=(p1[1]-p0[1])/L;
+      var s0=cons[i][0], s1=L-cons[i][1];
+      if(s1-s0>1e-6){
+        var ra=[p0[0]+ux*s0,p0[1]+uy*s0], rb=[p0[0]+ux*s1,p0[1]+uy*s1];
+        var rec=runBox(ra,rb,z,kind[i]==='curve',kind[i+1]==='curve','belt',bt);
+        if(rec) rec.items=true;
+      }
+    }
+    for(i=1;i<n-1;i++){
+      var a3=P[i-1], c3=P[i], b4=P[i+1];
+      var L1=Math.hypot(c3[0]-a3[0],c3[1]-a3[1]), L2=Math.hypot(b4[0]-c3[0],b4[1]-c3[1]);
+      var u3=[(c3[0]-a3[0])/L1,(c3[1]-a3[1])/L1], w3=[(b4[0]-c3[0])/L2,(b4[1]-c3[1])/L2];
+      if(kind[i]==='curve') curve(c3,u3,w3,z,bt); else xferBox(c3,z,bt);
+    }
+  }
+  BELTS.forEach(buildBelt);
+
+  /* ---- items on every straight run: cartons, never across an end -------- */
+  function placeItems(rec,rngI){
+    var a=rec.a, b=rec.b, L=Math.hypot(b[0]-a[0],b[1]-a[1]);
+    if(L<0.9) return;
+    var ux=(b[0]-a[0])/L, uy=(b[1]-a[1])/L, s=0.25+rngI()*0.3;
+    while(s+0.4<=L-0.25){
+      if(rngI()<FITEM){
+        var cx=a[0]+ux*(s+0.2), cy=a[1]+uy*(s+0.2), hx=Math.abs(ux)>0.5?0.2:0.18, hy=Math.abs(ux)>0.5?0.18:0.2;
+        box(cx-hx,cy-hy,a[2],cx+hx,cy+hy,a[2]+0.3,{kind:'carton'});
+        ITEMS.push({c:[cx,cy,a[2]], hx:hx, hy:hy, h:0.3});
+        s+=0.4+0.2+rngI()*0.5;
+      } else s+=0.5+rngI()*0.4;
+    }
+  }
+
+  /* ---- the stations ------------------------------------------------------ */
+  /* LOCAL FRAME: s along the flow from the in-face (0..L), t across (+y), so
+     a machine is written once and stands either way along its row. */
+  STN.forEach(function(st){
+    var rngM=statRng(SEED,FACT_SALT_MACH,st.id,0);
+    function wx(s){ return st.sx>0?st.x0+s:st.x1-s; }
+    function lb(s0,t0,z0,s1,t1,z1,o){
+      var xa=wx(s0), xb=wx(s1);
+      return box(Math.min(xa,xb),st.yc+t0,st.z+z0,Math.max(xa,xb),st.yc+t1,st.z+z1,o);
+    }
+    function lbar(s0,t0,z0,s1,t1,z1,o){
+      var xa=wx(s0), xb=wx(s1);
+      return bar(Math.min(xa,xb),st.yc+t0,st.z+z0,Math.max(xa,xb),st.yc+t1,st.z+z1,o);
+    }
+    function lcyl(s,t,z0,z1,r0,r1,n,o){ return prism([wx(s),st.yc+t,st.z+z0],[wx(s),st.yc+t,st.z+z1],r0,r1,n,o); }
+    /* the +t face of a local box is world face 4 (y1) whichever way the row runs */
+    function frontMarks(s0,s1,t,z0,z1){
+      var xa=wx(s0), xb=wx(s1);
+      return [[[xa,st.yc+t,st.z+z0],[xb,st.yc+t,st.z+z0],4],[[xb,st.yc+t,st.z+z0],[xb,st.yc+t,st.z+z1],4],
+              [[xb,st.yc+t,st.z+z1],[xa,st.yc+t,st.z+z1],4],[[xa,st.yc+t,st.z+z1],[xa,st.yc+t,st.z+z0],4]];
+    }
+    function stub(s0,s1){
+      var a=[wx(s0),st.yc], b=[wx(s1),st.yc];
+      var rec=runBox(a,b,st.z,false,false,'stub',null);
+      if(rec){ rec.st=st.id; (st.stubs=st.stubs||[]).push(rec); }
+      return rec;
+    }
+    function estop(s,t,z){ if(near(0.08)) lb(s-0.04,t,z-0.04,s+0.04,t+0.05,z+0.04,{kind:'estop',lay:'accent'}); }
+    function pallet(s0,t0,layers){
+      lb(s0,t0,0,s0+1.0,t0+1.2,0.15,{kind:'pallet'});
+      var l, i, j;
+      for(l=0;l<layers;l++) for(i=0;i<2;i++) for(j=0;j<3;j++)
+        lb(s0+0.08+i*0.44,t0+0.04+j*0.38,0.15+l*0.31,s0+0.08+i*0.44+0.4,t0+0.04+j*0.38+0.36,0.15+l*0.31+0.3,{kind:'carton'});
+    }
+    function door(){ /* the roller door frame and its leveller, at the wall */
+      var oy0=st.yc-1.25, oy1=st.yc+1.25;
+      box(0,oy0,0,0.2,oy0+0.2,4.2,{kind:'frame'});
+      box(0,oy1-0.2,0,0.2,oy1,4.2,{kind:'frame'});
+      var o={kind:'frame'};
+      if(near(0.06)){ o.marks=[]; [4.3,4.4,4.5,4.6].forEach(function(z){ o.marks.push([[0.45,oy0+0.2,z],[0.45,oy1-0.2,z],3]); }); }
+      box(0,oy0+0.2,4.2,0.45,oy1-0.2,4.75,o);
+      box(0,oy0-0.25,0.8,0.15,oy0,1.2,{kind:'frame'});
+      box(0,oy1,0.8,0.15,oy1+0.25,1.2,{kind:'frame'});
+    }
+    var t=st.type;
+    if(t==='receive'){
+      door();
+      lb(0.25,-1.0,0,1.15,1.0,0.05,{kind:'frame'});
+      var to={kind:'trailer'};
+      if(near(0.1)) to.marks=[[[-0.35,st.yc,1.2],[-0.35,st.yc,3.9],3],[[-0.35,st.yc-1.15,1.2],[-0.35,st.yc+1.15,1.2],3]];
+      box(-6,st.yc-1.25,1.1,-0.35,st.yc+1.25,4.0,to);
+      var sr=stub(1.2,3.0);
+      if(sr) sr.items=true;
+    } else if(t==='ship'){
+      door();
+      stub(0,0.9);
+      lb(1.1,-1.15,0,1.7,-0.55,0.6,{kind:'frame'});          /* palletiser pedestal (arm: row 104) */
+      pallet(1.0,0.15,1+Math.floor(rngM()*4));
+      if(near(0.04)) lbar(2.13,1.33,0,2.17,1.37,2.2,{kind:'detail'});
+      /* 1.75, not 2.0: the station runs toward the wall, and at 2.0 this
+         pallet stood in the door's jamb and bumper */
+      pallet(1.75,-1.35,1+Math.floor(rngM()*4));
+    } else if(t==='cnc'){
+      stub(0,0.3); stub(2.7,3.0);
+      lb(0.3,-0.9,0,2.7,0.9,2.2,{kind:'machine'});
+      var dfo={kind:'machine'};
+      if(near(0.1)) dfo.marks=frontMarks(1.0,1.8,0.95,1.1,1.8);
+      lb(0.8,0.9,0.3,2.0,0.95,2.0,dfo);
+      lb(0.4,-1.4,0,1.4,-0.9,0.6,{kind:'machine'});           /* coolant tank */
+      lb(2.0,-1.3,0.2,2.6,-0.9,0.5,{kind:'frame'});            /* chip conveyor stub */
+      if(near(0.04)){
+        lbar(2.55,0.9,1.6,2.59,1.3,1.64,{kind:'detail'});      /* pendant arm */
+        lb(2.45,1.3,1.2,2.7,1.42,1.6,{kind:'detail'});
+        estop(2.58,1.42,1.5);
+      }
+    } else if(t==='press'){
+      stub(0,1.0); stub(3.0,4.0);
+      lb(1.0,-1.25,0,3.0,-0.75,4.2,{kind:'machine'});
+      lb(1.0,0.75,0,3.0,1.25,4.2,{kind:'machine'});
+      lb(0.9,-1.45,4.2,3.1,1.45,5.0,{kind:'machine'});
+      lb(1.0,-0.75,0,3.0,0.75,0.8,{kind:'machine'});
+      lb(1.1,-0.7,2.6,2.9,0.7,3.4,{kind:'machine'});
+      lcyl(2.0,0,3.4,4.2,0.25,0.25,10,{kind:'machine'});
+      lbar(0.35,1.31,0,0.43,1.39,1.1,{kind:'guard'});
+      lbar(3.57,1.31,0,3.65,1.39,1.1,{kind:'guard'});
+      lbar(0.43,1.31,1.0,3.57,1.39,1.06,{kind:'guard'});
+    } else if(t==='moulder'){
+      stub(0,0.5); stub(5.5,6.0);
+      lb(0.5,-0.7,0,5.5,0.7,1.6,{kind:'machine'});
+      lb(3.8,-0.8,1.6,5.5,0.8,2.4,{kind:'machine'});
+      prism([wx(0.8),st.yc,1.78],[wx(3.8),st.yc,1.78],0.18,0.18,10,{kind:'machine'});
+      lcyl(1.4,0,1.96,2.6,0.15,0.45,10,{kind:'machine'});
+      lb(0.6,-1.4,0,1.6,-0.8,1.8,{kind:'machine'});
+    } else if(t==='furnace'){
+      stub(0,0.3); stub(2.7,3.0);
+      lb(0.3,-1.1,0,2.7,1.1,2.6,{kind:'machine'});
+      lb(0.8,1.1,0.4,2.2,1.2,2.0,{kind:'machine'});
+      lcyl(1.5,-0.5,2.6,H-0.6,0.25,0.25,10,{kind:'machine'});
+      lcyl(1.5,-0.5,H-0.6,H-0.4,0.4,0.4,10,{kind:'machine'});
+      if(near(0.04)){ lb(1.3,1.2,1.15,1.7,1.26,1.21,{kind:'detail'}); lb(2.3,0.3,2.6,2.55,0.6,2.8,{kind:'detail'}); }
+    } else if(t==='vat'){
+      stub(0,0.35); stub(2.65,3.0);
+      lcyl(1.5,0,0,2.4,1.1,1.1,16,{kind:'vat'});
+      lcyl(1.5,0,2.4,3.0,0.25,0.25,10,{kind:'vat'});
+      lbar(1.28,1.12,0,1.32,1.16,2.6,{kind:'detail'});
+      lbar(1.68,1.12,0,1.72,1.16,2.6,{kind:'detail'});
+      if(near(0.03)){ var rz; for(rz=0.3;rz<2.5;rz+=0.3) lbar(1.32,1.12,rz,1.68,1.16,rz+0.03,{kind:'detail'}); }
+    } else if(t==='assembly'){
+      stub(0,0.6); stub(2.4,3.0);
+      lb(0.6,-0.8,0,2.4,0.8,0.85,{kind:'table'});
+      lb(1.2,-0.3,0.85,1.8,0.3,1.1,{kind:'detail'});
+      /* the fence: posts every 2 m, a top rail at 2.0, gaps where the belts come in */
+      var F=[[0.05,-1.45,2.95,-1.45],[0.05,1.45,2.95,1.45]];
+      F.forEach(function(f){
+        var n=Math.max(1,Math.round((f[2]-f[0])/2)), i;
+        for(i=0;i<=n;i++){ var ps=f[0]+(f[2]-f[0])*i/n; lbar(ps-0.03,f[1]-0.03,0,ps+0.03,f[1]+0.03,2.0,{kind:'fence'}); }
+        lbar(f[0]+0.03,f[1]-0.02,1.96,f[2]-0.03,f[1]+0.02,2.0,{kind:'fence'});
+        if(near(0.2)){
+          var mo={kind:'fence', hides:false, marks:[]}, ms;
+          for(ms=f[0]+0.2;ms<f[2]-0.1;ms+=0.2) mo.marks.push([[wx(ms),st.yc+f[1],0.1],[wx(ms),st.yc+f[1],1.9],-1]);
+          lb(f[0]+0.03,f[1]-0.005,0.1,f[2]-0.03,f[1]+0.005,1.9,mo);
+        }
+      });
+      [[0.05,-1.45,-0.5],[0.05,0.5,1.45],[2.95,-1.45,-0.5],[2.95,0.5,1.45]].forEach(function(f){
+        lbar(f[0]-0.03,f[1]+0.03,0,f[0]+0.03,f[1]+0.09,2.0,{kind:'fence'});
+        lbar(f[0]-0.03,f[2]-0.09,0,f[0]+0.03,f[2]-0.03,2.0,{kind:'fence'});
+        lbar(f[0]-0.02,f[1]+0.09,1.96,f[0]+0.02,f[2]-0.09,2.0,{kind:'fence'});
+      });
+      [[0.05,-0.42],[0.05,0.42],[2.95,-0.42],[2.95,0.42]].forEach(function(f){
+        lbar(f[0]-0.03,f[1]-0.03,0,f[0]+0.03,f[1]+0.03,1.5,{kind:'guard'});
+      });
+    } else if(t==='qa'){
+      var qs=stub(0,1.0);
+      lbar(0.35,-0.75,0,0.65,-0.6,2.0,{kind:'frame'});
+      lbar(0.35,0.6,0,0.65,0.75,2.0,{kind:'frame'});
+      lb(0.3,-0.75,2.0,0.7,0.75,2.25,{kind:'frame'});
+      lb(0.35,-0.3,2.25,0.65,0.3,2.5,{kind:'machine'});
+      if(near(0.06)){ lb(0.42,-0.7,2.25,0.58,-0.55,2.4,{kind:'detail'}); lb(0.42,0.55,2.25,0.58,0.7,2.4,{kind:'detail'}); }
+      /* the reject chute: a wedge falling away from the belt's +t edge */
+      /* after the arch (s 0.72-0.98), not under it: under it the chute ran
+         through the +t portal post */
+      var c0=wx(0.72), c1=wx(0.98);
+      solid([[Math.min(c0,c1),st.yc+0.35,0.72],[Math.max(c0,c1),st.yc+0.35,0.72],
+             [Math.max(c0,c1),st.yc+1.2,0.35],[Math.min(c0,c1),st.yc+1.2,0.35],
+             [Math.min(c0,c1),st.yc+0.35,0.0],[Math.max(c0,c1),st.yc+0.35,0.0],
+             [Math.max(c0,c1),st.yc+1.2,0.0],[Math.min(c0,c1),st.yc+1.2,0.0]],
+            [[0,1,2,3],[4,7,6,5],[0,4,5,1],[1,5,6,2],[2,6,7,3],[3,7,4,0]],{kind:'frame'});
+    } else if(t==='pack'){
+      stub(0,2.0);
+      /* the carton erector stops at t -0.5: to -0.4 the -t flap folder
+         (|t| 0.31-0.46) stood 6 cm inside it */
+      lb(0.2,-1.3,0,1.0,-0.5,1.6,{kind:'machine'});
+      lbar(1.2,-0.47,0,1.26,-0.41,1.25,{kind:'frame'});
+      lbar(1.2,0.41,0,1.26,0.47,1.25,{kind:'frame'});
+      lb(1.15,-0.47,1.25,1.6,0.47,1.55,{kind:'machine'});
+      [-1,1].forEach(function(sg){
+        var c0=wx(0.6), c1=wx(1.0), x0=Math.min(c0,c1), x1=Math.max(c0,c1);
+        var ti=st.yc+sg*0.31, to=st.yc+sg*0.46;
+        solid([[x0,ti,0.82],[x1,ti,0.82],[x1,ti,1.1],[x0,ti,1.1],
+               [x0,to,0.82],[x1,to,0.82],[x1,to,0.95],[x0,to,0.95]],
+              [[0,1,2,3],[4,7,6,5],[0,4,5,1],[1,5,6,2],[2,6,7,3],[3,7,4,0]],{kind:'frame'});
+      });
+    }
+  });
+
+  /* items: on every routed run and every station stub that carries them */
+  BELTS.forEach(function(bt){
+    var rngI=statRng(SEED,FACT_SALT_ITEMS,bt.id,0);
+    bt.pieces.forEach(function(rec){ if(rec.k==='run') placeItems(rec,rngI); });
+  });
+  STN.forEach(function(st){
+    var rngI=statRng(SEED,FACT_SALT_ITEMS,1000+st.id,0);
+    (st.stubs||[]).forEach(function(rec){ if(rec.items) placeItems(rec,rngI); });
+  });
+
+  /* ---- floor marks: aisle lines and walkway dashes ---------------------- */
+  K.lay='ground';
+  AISLES.forEach(function(A){
+    if(A.ax==='x'){
+      [A.y0+0.08,A.y1-0.08].forEach(function(yy){ floorLine([A.a+0.02,yy],[A.b-0.02,yy],'lane'); });
+      var s;
+      for(s=A.a+0.5;s+1<A.b;s+=2) floorLine([s,A.c+0.03],[s+1,A.c+0.03],'walk');
+    } else {
+      [A.x0+0.08,A.x1-0.08].forEach(function(xx){ floorLine([xx,A.a+0.02],[xx,A.b-0.02],'lane'); });
+      var s2;
+      for(s2=A.a+0.5;s2+1<A.b;s2+=2) floorLine([A.c+0.03,s2],[A.c+0.03,s2+1],'walk');
+    }
+  });
+  K.lay='structure';
+
+  /* ---- the flow graph --------------------------------------------------- */
+  var nodes=[], edgesF=[];
+  STN.forEach(function(st){
+    nodes.push('S'+st.id);
+    st.ins.forEach(function(q,i){ nodes.push('I'+st.id+'.'+i); edgesF.push(['I'+st.id+'.'+i,'S'+st.id]); });
+    st.outs.forEach(function(q,i){ nodes.push('O'+st.id+'.'+i); edgesF.push(['S'+st.id,'O'+st.id+'.'+i]); });
+  });
+  BELTS.forEach(function(bt){
+    nodes.push('B'+bt.id);
+    edgesF.push(['O'+bt.from[0]+'.'+bt.from[1],'B'+bt.id]);
+    edgesF.push(['B'+bt.id,'I'+bt.to[0]+'.'+bt.to[1]]);
+  });
+  T.flow={nodes:nodes, edges:edgesF};
+  T.stations=STN.map(function(st){
+    return {id:st.id, line:st.line, type:st.type, rect:[st.x0,st.y0,st.x1,st.y1], z:st.z,
+            ins:st.ins, outs:st.outs, stubs:(st.stubs||[]).map(function(r){ return {a:r.a,b:r.b,top:r.top,poly:r.poly}; })};
+  });
+  T.belts=BELTS.map(function(bt){
+    return {id:bt.id, line:bt.line, from:bt.from, to:bt.to, z:bt.z, pts:bt.pts, pieces:bt.pieces, cells:bt.cells};
+  });
+  T.items=ITEMS; T.role=FACTROLE; T.colours=FACTCOL;
+  T.lines=LINES.map(function(L){ return {id:L.id, stations:L.stations.map(function(s){ return s.id; })}; });
+
+  /* ---- the order INSIDE a cell, exactly -------------------------------- */
+  /* BETWEEN cells i+j+k is exact and the kit's sort keeps it. INSIDE a cell the
+     kit orders by `dep`, the mean of x+y+z over the hull, which Job F found
+     right for `stat`'s blocky modules and which is NOT a depth: a carton
+     standing at the low end of a belt piece has the smaller mean and was drawn
+     after the belt it stands on, so the belt's silhouette ate its bottom edges
+     (200 of 547 pairs against ray truth in the gate's first run). `stat` keeps
+     `dep` -- it must stay byte-identical -- and the factory re-orders each
+     cell itself:
+       two pieces whose silhouettes overlap, one of which hides, are ordered by
+       a SEPARATING PLANE: a face plane of either original with the other
+       piece wholly on its outside. A piece is a subset of its original, so the
+       plane separates the pieces, and the one on the side the normal points
+       toward the camera is nearer -- along every ray that meets both. No
+       sampling, no tolerance beyond touching.
+     When no face plane separates (an edge-edge case, or two parts that really
+     interpenetrate) the pair is decided by rays through the overlap, the
+     majority taken, and counted. The relation is then sorted topologically,
+     ties and anything unrelated keeping the kit's order, and a cycle is broken
+     at the kit's order and counted. */
+  function orderWithinCells(){
+    var C30=Math.cos(Math.PI/6), st={pairs:0, planes:0, rays:0, cycles:0};
+    function pj(v){ return [(v[0]-v[1])*C30, (v[0]+v[1])/2-v[2]]; }
+    function hull2(pts){
+      var q=pts.slice().sort(function(a,b){ return a[0]-b[0]||a[1]-b[1]; }), lo=[], up=[], i;
+      function cr(o,a,b){ return (a[0]-o[0])*(b[1]-o[1])-(a[1]-o[1])*(b[0]-o[0]); }
+      for(i=0;i<q.length;i++){ while(lo.length>=2 && cr(lo[lo.length-2],lo[lo.length-1],q[i])<=1e-15) lo.pop(); lo.push(q[i]); }
+      for(i=q.length-1;i>=0;i--){ while(up.length>=2 && cr(up[up.length-2],up[up.length-1],q[i])<=1e-15) up.pop(); up.push(q[i]); }
+      return lo.slice(0,-1).concat(up.slice(0,-1));
+    }
+    /* positive-area overlap of two convex polygons, by separating axes */
+    function overlap(A,B){
+      var polys=[A,B], k, i, j;
+      for(k=0;k<2;k++){
+        var P=polys[k];
+        for(i=0;i<P.length;i++){
+          var a=P[i], b=P[(i+1)%P.length], nx=b[1]-a[1], ny=a[0]-b[0], L=Math.hypot(nx,ny);
+          if(L<1e-15) continue; nx/=L; ny/=L;
+          var a0=1e18, a1=-1e18, b0=1e18, b1=-1e18;
+          for(j=0;j<A.length;j++){ var da=A[j][0]*nx+A[j][1]*ny; if(da<a0)a0=da; if(da>a1)a1=da; }
+          for(j=0;j<B.length;j++){ var db=B[j][0]*nx+B[j][1]*ny; if(db<b0)b0=db; if(db>b1)b1=db; }
+          if(a1<=b0+1e-9 || b1<=a0+1e-9) return null;
+        }
+      }
+      return true;
+    }
+    /* +1: B is nearer than A; -1: A is nearer; 0: no separating face plane */
+    function byPlane(A,B){
+      var i, j, sides=[[A,B,1],[B,A,-1]], k;
+      for(k=0;k<2;k++){
+        var X=sides[k][0], Y=sides[k][1], sg=sides[k][2];
+        for(i=0;i<X.P.length;i++){
+          var n=X.P[i].n, d=X.P[i].d, sv=n[0]+n[1]+n[2], all=true;
+          if(Math.abs(sv)<1e-12) continue;
+          for(j=0;j<Y.h.length && all;j++) if(n[0]*Y.h[j][0]+n[1]*Y.h[j][1]+n[2]*Y.h[j][2]<d-1e-9) all=false;
+          if(all) return sv>0?sg:-sg;
+        }
+      }
+      return 0;
+    }
+    function rayFront(Q,u,v){
+      var b=[(u/C30+2*v)/2,(2*v-u/C30)/2,0], lo=-1e18, hi=1e18, i, ax;
+      function cut(n,d){
+        var sv=n[0]+n[1]+n[2], nb=n[0]*b[0]+n[1]*b[1]+n[2]*b[2];
+        if(Math.abs(sv)<1e-14){ if(nb>d+1e-12){ lo=1; hi=0; } return; }
+        var t=(d-nb)/sv; if(sv>0){ if(t<hi) hi=t; } else if(t>lo) lo=t;
+      }
+      for(i=0;i<Q.P.length;i++) cut(Q.P[i].n,Q.P[i].d);
+      for(ax=0;ax<3;ax++){ var n1=[0,0,0]; n1[ax]=1; cut(n1,Q.cell[ax]+1); n1[ax]=-1; cut(n1,-Q.cell[ax]); }
+      return hi-lo>1e-9?hi:null;
+    }
+    function byRays(A,B,sa,sb){
+      var x0=1e18,y0=1e18,x1=-1e18,y1=-1e18, i, gx, gy, va=0, vb=0, all=sa.concat(sb);
+      for(i=0;i<all.length;i++){ if(all[i][0]<x0)x0=all[i][0]; if(all[i][0]>x1)x1=all[i][0]; if(all[i][1]<y0)y0=all[i][1]; if(all[i][1]>y1)y1=all[i][1]; }
+      for(gx=0;gx<9;gx++) for(gy=0;gy<9;gy++){
+        var u=x0+(x1-x0)*(gx+0.5)/9, v=y0+(y1-y0)*(gy+0.5)/9;
+        var ta=rayFront(A,u,v), tb=rayFront(B,u,v);
+        if(ta===null||tb===null||Math.abs(ta-tb)<1e-7) continue;
+        if(ta>tb) va++; else vb++;
+      }
+      return va>vb?-1:(vb>va?1:0);
+    }
+    var i=0, out2=[];
+    while(i<solids.length){
+      var j=i, key=solids[i].key;
+      while(j<solids.length && solids[j].key===key) j++;
+      /* one key = one slab of cells whose projections tile without overlap, so
+         only pieces of the SAME cell can need ordering */
+      var groups={}, gorder=[], m;
+      for(m=i;m<j;m++){
+        var ck=solids[m].cell?solids[m].cell.join(','):'-';
+        if(!groups[ck]){ groups[ck]=[]; gorder.push(ck); }
+        groups[ck].push(solids[m]);
+      }
+      for(m=0;m<gorder.length;m++){
+        var G=groups[gorder[m]], n=G.length, a, b2;
+        if(n<2){ out2.push(G[0]); continue; }
+        var info=G.map(function(S){ return S.pi!==undefined?T.polys[S.pi]:null; });
+        var sil=info.map(function(I){ return I?hull2(I.h.map(pj)):null; });
+        var succ=[], indeg=[];
+        for(a=0;a<n;a++){ succ.push([]); indeg.push(0); }
+        for(a=0;a<n;a++) for(b2=a+1;b2<n;b2++){
+          var A=info[a], B=info[b2];
+          if(!A||!B||(!A.hides&&!B.hides)) continue;
+          if(sil[a].length<3||sil[b2].length<3||!overlap(sil[a],sil[b2])) continue;
+          st.pairs++;
+          var r=byPlane(A,B);
+          if(r) st.planes++; else { r=byRays(A,B,sil[a],sil[b2]); if(r) st.rays++; }
+          if(r>0){ succ[b2].push(a); indeg[a]++; } else if(r<0){ succ[a].push(b2); indeg[b2]++; }
+        }
+        /* Kahn, always taking the earliest ready piece in the kit's order */
+        var done=[], used=[], left=n, q;
+        for(a=0;a<n;a++) used.push(false);
+        while(left){
+          var pick=-1;
+          for(q=0;q<n;q++) if(!used[q] && indeg[q]===0){ pick=q; break; }
+          if(pick<0){ st.cycles++; for(q=0;q<n;q++) if(!used[q]){ pick=q; break; } }
+          used[pick]=true; left--; done.push(G[pick]);
+          for(q=0;q<succ[pick].length;q++) indeg[succ[pick][q]]--;
+        }
+        for(a=0;a<n;a++) out2.push(done[a]);
+      }
+      i=j;
+    }
+    for(i=0;i<solids.length;i++) solids[i]=out2[i];
+    return st;
+  }
+
+  /* ---- order, render, tally -------------------------------------------- */
+  var cellsSeen={}, i;
+  for(i=0;i<solids.length;i++) if(solids[i].cell) cellsSeen[statKey(solids[i].cell)]=solids[i].cell;
+  for(i in cellsSeen) if(cellsSeen.hasOwnProperty(i)) T.cells.push(cellsSeen[i]);
+  K.tallyBoxes();
+  K.sort();
+  var ordStats=orderWithinCells();
+  K.tallyOrder();
+  for(i=0;i<solids.length;i++) if(solids[i].pi!==undefined) T.polys[solids[i].pi].ord=i;
+  var fs=K.render(out);
+  FACTTALLY=T;
+  FACTSTATS={lines:LINES.length, wanted:WANTL, stations:STN.length, belts:BELTS.length, curves:nCurve,
+             xfers:nXfer, items:ITEMS.length, aisles:AISLES.length, solids:solids.length,
+             points:K.points(), paths:out.length, mmest:K.mmest, order:ordStats};
+  if(!fs){ FACTINFO='nothing to draw'; return out; }
+  FACTSTATS.mm=fs*PAGEMM;
+  out.layers=['ground','structure','detail','accent'];
+  FACTINFO=W+' × '+D+' m · '+LINES.length+(LINES.length<WANTL?' of '+WANTL:'')+' lines · '+
+           STN.length+' stations · '+BELTS.length+' belts · '+
+           solids.length.toLocaleString()+' solids · '+out.length.toLocaleString()+' paths · '+
+           (fs*PAGEMM).toFixed(1)+' mm/m';
   return out;
 }
 
@@ -26830,6 +28124,7 @@ function draw(){
   if(mode==='poin' && POININFO) txt+=' \u00b7 '+POININFO;
   if(mode==='poin' && POINSNAP) txt+=' \u00b7 '+POINSNAP;
   if(mode==='stat' && STATINFO) txt+=' \u00b7 '+STATINFO;
+  if(mode==='fact' && FACTINFO) txt+=' \u00b7 '+FACTINFO;
   if(mode==='strt' && STRTINFO) txt+=' \u00b7 '+STRTINFO;
   if(mode==='mkt' && STRTINFO) txt+=' \u00b7 '+STRTINFO;
   if(mode==='harb' && STRTINFO) txt+=' \u00b7 '+STRTINFO;
@@ -27077,7 +28372,7 @@ var FAMILIES=[
   ['Lattices',   ['truchet','maze','hilbert','voronoi','pack','rows','poin']],
   ['Curves',     ['harmo','sform','lsys','string','fan','chladni']],
   ['FROM PHOTO 3D', ['isoimg']],
-  ['3D',         ['hil3','harmo3','attract','ruled','knot','spack','flow3','surf','iso','stat','strt','mkt','harb','libr','canal','stn']],
+  ['3D',         ['hil3','harmo3','attract','ruled','knot','spack','flow3','surf','iso','stat','fact','strt','mkt','harb','libr','canal','stn']],
   ['From photo', ['tonehatch','tonespiral']]
 ];
 function mountTabs(){
@@ -27564,6 +28859,14 @@ var HELP={
 'stat.budg':'How much drawing the station is allowed to be, in thousands of POINTS. It is the size control: `Keel length` seeds the shape and growth then throws off new branches until this is spent, so a longer keel makes a differently-shaped station of the same weight rather than a bigger one. The page\u2019s own ceiling caps it \u2014 the one recorded BEFORE the draft clamp, so dragging a slider cannot grow a different station \u2014 and the module pass stops at 85% of it so the greebles, tethers and rings are inside the budget rather than starved by it. Measured: 45 is 7,952 paths in 621 ms; the full page ceiling is 18,892 paths in 2,008 ms.',
 'stat.lod':'The smallest piece of hardware that still gets drawn, as its size on the SHEET. An isometric view has no perspective shrink, so there is nothing to make a distant greeble small except the station being big \u2014 and once a station fills the page at a fine module scale, a thruster quad is a blob the pen cannot resolve and a minute of plotting time. This is measured against millimetres per cell ESTIMATED BEFORE anything is built, because the decision has to be taken before the drawing exists: the lattice bounding box is the one extent known up front, so it over-estimates the scale by whatever margin the station leaves inside its own box. At 0 nothing is dropped.',
 'stat.occ':'How wide a white gap a nearer solid opens in whatever passes behind it. The station hides itself — every solid is confined to one lattice cell and sorted front to back by i+j+k, which for disjoint cells is an EXACT painter order and not a heuristic — so this is the finish on that, in millimetres on the sheet. The default matches the iso city’s and the CLI’s 0.5 mm. Wide gaps erase short segments outright rather than merely widening the breaks.',
+'fact.fwid':'How wide the hall is, in metres, along the back wall the docks are in. Columns stand on a 6 m bay grid, so the width moves in whole bays. A production line runs out along the width and back again, so a narrow hall packs fewer stations into each row; under 36 m there is no room for the near cross aisle.',
+'fact.fdep':'How deep the hall is, in metres, along the other back wall. The lines are stacked across the depth in bands, one line a band, with an aisle on a bay line between each pair — so depth is what decides how many of the Lines you ask for fit (a band needs 9 m).',
+'fact.flev':'How many levels the hall has. 1 is a single floor; 2 adds a mezzanine deck at 4.5 m along the back wall, on its own columns, with handrails and a stair; 3 adds a second deck at 9 m above part of it and raises the eaves to 13.5 m. The strip under the mezzanine is kept clear of the lines.',
+'fact.flines':'How many production lines run through the hall. Each is a serpentine from a receiving dock in the back wall, out along the width and back to a shipping dock beside it. A line needs a 9 m band of depth; when the hall is too shallow for all of them, fewer are built and the stat line says how many of how many.',
+'fact.fstat':'How many stations a line has between its two docks: processes (CNC, press, moulder, furnace, vat — chosen per line), one or two assembly cells, QA and a packer. A line too long for its two rows drops a process station rather than overflowing the hall.',
+'fact.fitem':'How full the belts are. Cartons ride every straight run at least 0.2 m apart and never across a belt end, a curve or a transfer; 0 empties the belts and changes nothing else.',
+'fact.lod':'The smallest detail still drawn, as its size on the SHEET: belt edge lines, door slats, fence mesh, pendant buttons. A bar thinner than this (handrails, legs, fence posts) is drawn as its centre line and hides nothing behind it — an occlusion gap round a 0.04 m post would be wider than the post.',
+'fact.occ':'How wide a white gap a nearer solid opens in a line passing behind it. The factory hides itself exactly — every solid is cut into 1 m lattice cells and drawn front to back — so this is only the finish. The gap is never opened at a cut, where nothing is drawn, so a belt stays one unbroken line.',
 'harb.len':'How far the yard lane runs, in metres. The camera stands part-way along it and the stacks recede toward the far end.',
 'harb.bend':'How much the lane curves, in degrees per 100 m. A container yard is laid out straight, so 0; on a bend the deep rows narrow on the inside and a container that no longer fits its row is left out.',
 'harb.width':'The yard lane between the two lines of container rows, in metres. The gantry cranes span it on legs at its edges and the yard trucks drive down it.',
