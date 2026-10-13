@@ -438,7 +438,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v316</a> &mdash; CORRIDOR KIT: MIRROR PLANE AND PUDDLES ON LOTS (refactor only) -- a theme may lift the mirror off the ground and lay its puddles on its lots; every existing engine byte-identical (queue row 87)</span></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v317</a> &mdash; WET PLATFORM -- puddles on the station&rsquo;s platforms after rain, between the yellow tactile strip and the fence and never under a column, a bench or a post, each showing the train, the canopy and the hanging signs mirrored in the platform&rsquo;s own plane; Front puddle lies on your own platform&rsquo;s walkway (queue row 87)</span></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <section class="fold" id="fold_pick"><h2>Pick engine<span class="cnt"></span></h2>
@@ -3329,6 +3329,9 @@ var SPEC={
     ['canopy','Canopy',0,100,1,85,[100,'%']],['colsp','Column spacing',4,15,0.5,8,[1,' m']],['croof','Canopy roof',0,2,1,1],
     ['psign','Platform signs',0,100,1,60,[100,'%']],['fbridge','Footbridge',0,1,1,1],['shed','Train shed',0,1,1,0],
     ['pfurn','Platform furniture',0,100,1,50,[100,'%']],['ballast','Ballast',0,100,1,40,[100,'%']],
+    ['puddles','Puddles',0,40,1,6],['pudsz','Puddle size',5,100,1,40,[100,'%']],['ripple','Ripple',0,30,1,4,[10,' mm']],
+    ['rvar','Ripple variety',0,100,1,60,[100,'%']],['hero','Front puddle',0,100,1,0,[100,'%']],
+    ['hstr','Front puddle stretch',-100,100,1,0,[100,'%']],['hrag','Front puddle edge',0,100,1,50,[100,'%']],['hturn','Front puddle turn',-45,45,1,0,[1,'°']],['hshape','Front puddle shape',0,99,1,0],
     ['hatch','Tone hatch',0,100,1,55,[100,'%']],['hatchmode','Hatch spacing',0,1,1,0],
     ['sun','Light from',0,359,1,300,[1,'°']],
     ['cams','Camera along',0,90,1,6,[100,'%']],['camx','Camera side',-100,100,1,-72,[100,'%']],
@@ -18805,7 +18808,20 @@ var STHEMES={
        strip:0.25, kerbKind:'platform', kerbHides:true, lotsToEnd:true,
        paveOf:function(p){ var k=stationKnobs(p); return k.platw+k.lane; },
        camReach:function(p){ return stationKnobs(p).platw-1.0; },
-       fixed:{shopv:0, props:0, alley:0, cars:0, dots:0, pnear:0, graff:0, cables:0, puddles:0, hero:0},
+       fixed:{shopv:0, props:0, alley:0, cars:0, dots:0, pnear:0, graff:0, cables:0},
+       /* row 87 (spec §5): THE WET PLATFORM. The mirror is the deck top, and
+          the puddles lie on the decks -- behind the tactile strip (its far
+          line 1.1 m from the coping) and in front of the fence (the deck's
+          back 0.2 m), 0.1 m clear of each -- from their own salt */
+       mirrorZ:1.30, pudOn:'lot', pudSalt:401,
+       /* THE FRONT PUDDLE KEEPS TO THE WALKWAY, in front of the column line
+          (trainTheme's OCOL, 0.6 of the platform) and 0.25 m off it: it is
+          up to 10 m long and the columns stand every Column spacing, so across
+          the whole band it met one nearly every time and was refused. Where the
+          walkway is under 1 m it takes the whole band. */
+       pudBand:function(side,p,HALFW,hero){
+         var w=stationKnobs(p).platw, o0=HALFW+1.2, o1=HALFW+w-0.3, oc=HALFW+0.6*w-0.25;
+         return hero && oc-o0>=1.0?[o0,oc]:[o0,o1]; },
        flags:{poles:false, roadMarks:false, bollards:false, manholes:false},
        content:function(K){ return trainTheme(K); }}
 };
@@ -27647,6 +27663,15 @@ var HELP={
 'stn.shed':"1 roofs the whole station with one arched train shed: brick side walls with arched windows in place of the fences, lattice iron ribs every Column spacing, glazed roof plates between them, a smoke-vent lantern along the crown and a glazed screen at the far end. The canopies, portals and the buildings behind are not built under it, and the wires hang from the ribs. 0 leaves it out.",
 'stn.pfurn':"The share of platform lots with a piece of furniture behind the line of columns: a three-seat bench with orange or blue seats, a vending machine, a row of three bins, or a red extinguisher box.",
 'stn.ballast':"How many stone dashes lie between the sleepers, up to 40 on each 4 m of track, nearer than Solid detail to and only where the sheet has room for them. The line along the foot of each platform face is drawn whatever this is.",
+'stn.puddles':'How many puddles lie on the platforms after rain, between the yellow tactile strip and the fence, each showing the station mirrored in the water: the train, the canopy, the signs and the wires, upside down. A puddle never runs under a column, a post or a bench.',
+'stn.pudsz':'How big the puddles are. At 100 a puddle is up to 3.8 m along the platform; it never reaches the tactile strip or the fence.',
+'stn.ripple':'How far the reflection wobbles sideways, in millimetres on the sheet. 0 is a still, perfect mirror.',
+'stn.rvar':'How much the ripple varies across the water: two wave trains on the platform, calm and choppy patches, longer and larger near the camera. 0 is an even ripple.',
+'stn.hero':'One large puddle on your own platform, where the camera first sees the deck at the bottom of the sheet. 0 leaves it out.',
+'stn.hstr':'Stretches the front puddle along the platform (up) or across it (down) and keeps its area. Does nothing while Front puddle is 0.',
+'stn.hrag':'How ragged the front puddle’s edge is: 0 a smooth oval, 100 a wobbly lake. It never crosses itself. Does nothing while Front puddle is 0.',
+'stn.hturn':'Turns the front puddle on the deck, up to 45° either way. Does nothing while Front puddle is 0.',
+'stn.hshape':'Another shape for the front puddle without changing anything else in the drawing. Does nothing while Front puddle is 0.',
 'stn.hatch':"How dense the shading is on the building walls facing away from the light. 0 is no shading. The face of the platform under its edge is hatched dark grey whatever this is.",
 'stn.hatchmode':"0: the shading lines are evenly spaced ON THE WALL, so they crowd together into the distance. 1: evenly spaced ON THE PAPER, so a far wall is as light as a near one.",
 'stn.sun':"Where the light comes from, as a compass bearing: 0 north, 90 east, 180 south, 270 west. The building walls facing away from it get the tone hatch.",
