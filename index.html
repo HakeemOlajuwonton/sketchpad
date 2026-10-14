@@ -438,7 +438,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v325</a> &mdash; Isofactory portal frames -- columns only where a frame meets a span line, the bays and spans picked so no two columns share a line of sight, rafters pitched 5&deg; to a ridge, eaves beams, and profiled cladding on the back walls held to the paper floor</span></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v326</a> &mdash; Corridor puddles: water marks -- short wave crests lying across the water in the puddle's own ink, each cutting a glint gap out of the reflection under it, so a puddle reads as water and not a hole in the road</span></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <section class="fold" id="fold_pick"><h2>Pick engine<span class="cnt"></span></h2>
@@ -3229,6 +3229,7 @@ var SPEC={
     ['hero','Front puddle',0,100,1,0,[100,'%']],
     ['hstr','Front puddle stretch',-100,100,1,0,[100,'%']],['hrag','Front puddle edge',0,100,1,50,[100,'%']],['hturn','Front puddle turn',-45,45,1,0,[1,'°']],['hshape','Front puddle shape',0,99,1,0],
     ['rvar','Ripple variety',0,100,1,60,[100,'%']],
+    ['wmk','Water marks',0,100,1,40,[100,'%']],['wglint','Glint gap',0,15,1,5,[10,' mm']],
     ['dots','Particles',0,3000,10,420],['pnear','Particles near',0,100,1,50,[100,'%']],['graff','Graffiti',0,100,1,20,[100,'%']],
     ['hatch','Tone hatch',0,100,1,55,[100,'%']],['hatchmode','Hatch spacing',0,1,1,0],
     ['sun','Light from',0,359,1,300,[1,'°']],
@@ -3259,6 +3260,7 @@ var SPEC={
     ['hero','Front puddle',0,100,1,0,[100,'%']],
     ['hstr','Front puddle stretch',-100,100,1,0,[100,'%']],['hrag','Front puddle edge',0,100,1,50,[100,'%']],['hturn','Front puddle turn',-45,45,1,0,[1,'°']],['hshape','Front puddle shape',0,99,1,0],
     ['rvar','Ripple variety',0,100,1,60,[100,'%']],
+    ['wmk','Water marks',0,100,1,40,[100,'%']],['wglint','Glint gap',0,15,1,5,[10,' mm']],
     ['hatch','Tone hatch',0,100,1,55,[100,'%']],['hatchmode','Hatch spacing',0,1,1,0],
     ['sun','Light from',0,359,1,300,[1,'°']],
     ['cams','Camera along',0,90,1,6,[100,'%']],['camx','Camera side',-100,100,1,0,[100,'%']],
@@ -3277,6 +3279,7 @@ var SPEC={
     ['hero','Front puddle',0,100,1,0,[100,'%']],
     ['hstr','Front puddle stretch',-100,100,1,0,[100,'%']],['hrag','Front puddle edge',0,100,1,50,[100,'%']],['hturn','Front puddle turn',-45,45,1,0,[1,'°']],['hshape','Front puddle shape',0,99,1,0],
     ['rvar','Ripple variety',0,100,1,60,[100,'%']],
+    ['wmk','Water marks',0,100,1,40,[100,'%']],['wglint','Glint gap',0,15,1,5,[10,' mm']],
     ['hatch','Tone hatch',0,100,1,50,[100,'%']],['sun','Light from',0,359,1,300,[1,'°']],
     ['cams','Camera along',0,90,1,5,[100,'%']],['camx','Camera side',-100,100,1,-20,[100,'%']],
     ['camz','Camera height',0.2,80,0.1,1.8,[1,' m']],['look','Look ahead',5,300,1,80,[1,' m']],['turn','Turn',-90,90,1,0,[1,'°']],
@@ -3314,6 +3317,7 @@ var SPEC={
     ['lang','Script',0,3,1,2],['hatch','Tone hatch',0,100,1,30,[100,'%']],
     ['puddles','Puddles',0,40,1,25],['pudsz','Puddle size',5,100,1,40,[100,'%']],['ripple','Ripple',0,30,1,0,[10,' mm']],
     ['rvar','Ripple variety',0,100,1,60,[100,'%']],
+    ['wmk','Water marks',0,100,1,40,[100,'%']],['wglint','Glint gap',0,15,1,5,[10,' mm']],
     ['cams','Camera along',0,90,1,2,[100,'%']],['camx','Camera side',-100,100,1,0,[100,'%']],
     ['camz','Camera height',0.2,6.7,0.05,1.6,[1,' m']],['look','Look ahead',2,100,1,15,[1,' m']],['turn','Turn',-90,90,1,0,[1,'°']],
     ['pitch','Pitch',-45,45,0.5,8,[1,'°']],['fov','Field of view',25,120,1,78,[1,'°']],
@@ -3351,6 +3355,7 @@ var SPEC={
     ['moss','Moss',0,100,1,40,[100,'%']],['trees','Trees',0,6,0.1,1.2,[1,' /100 m²']],['fence','Bamboo fence',0,1,1,1],
     ['puddles','Puddles',0,40,1,15],['pudsz','Puddle size',5,100,1,40,[100,'%']],['ripple','Ripple',0,30,1,0,[10,' mm']],
     ['rvar','Ripple variety',0,100,1,60,[100,'%']],['hatch','Tone hatch',0,100,1,25,[100,'%']],
+    ['wmk','Water marks',0,100,1,40,[100,'%']],['wglint','Glint gap',0,15,1,5,[10,' mm']],
     ['cams','Camera along',0,90,1,1,[100,'%']],['camx','Camera side',-100,100,1,0,[100,'%']],
     ['camz','Camera height',0.2,10,0.05,1.6,[1,' m']],['look','Look ahead',5,300,1,20,[1,' m']],['turn','Turn',-90,90,1,0,[1,'°']],
     ['pitch','Pitch',-45,45,0.5,3,[1,'°']],['fov','Field of view',25,120,1,78,[1,'°']],
@@ -3400,7 +3405,7 @@ var SPEC={
     ['psign','Platform signs',0,100,1,60,[100,'%']],['fbridge','Footbridge',0,1,1,1],['shed','Train shed',0,1,1,0],
     ['pfurn','Platform furniture',0,100,1,50,[100,'%']],['ballast','Ballast',0,100,1,40,[100,'%']],
     ['puddles','Puddles',0,40,1,6],['pudsz','Puddle size',5,100,1,40,[100,'%']],['ripple','Ripple',0,30,1,4,[10,' mm']],
-    ['rvar','Ripple variety',0,100,1,60,[100,'%']],['hero','Front puddle',0,100,1,0,[100,'%']],
+    ['rvar','Ripple variety',0,100,1,60,[100,'%']],['wmk','Water marks',0,100,1,40,[100,'%']],['wglint','Glint gap',0,15,1,5,[10,' mm']],['hero','Front puddle',0,100,1,0,[100,'%']],
     ['hstr','Front puddle stretch',-100,100,1,0,[100,'%']],['hrag','Front puddle edge',0,100,1,50,[100,'%']],['hturn','Front puddle turn',-45,45,1,0,[1,'°']],['hshape','Front puddle shape',0,99,1,0],
     ['hatch','Tone hatch',0,100,1,55,[100,'%']],['hatchmode','Hatch spacing',0,1,1,0],
     ['sun','Light from',0,359,1,300,[1,'°']],
@@ -29046,6 +29051,13 @@ function buildCorridor(p,THM){
      outline's ink (null: none) -- a theme's (row 52: the library's polish
      patches lie in a 0.55 m half-aisle and have no edge) */
   var PUDIN=THM.pudIn!==undefined?THM.pudIn:0.2, PUDCOL=THM.pudCol!==undefined?THM.pudCol:COL_LBLUE;
+  /* ROW 119: WATER MARKS. Short wave crests drawn ON the water in the rim's ink,
+     each cutting a glint gap Glint gap tall above and below it out of its own
+     puddle's reflection. A theme with no puddle ink (the library's shine, the
+     canal) draws none. Their own substream, SALT_WMARK: 401, the spec's number,
+     went to the station's puddles in row 87. */
+  var WMK=PUDCOL?Math.max(0,Math.min(1,(isFinite(p.wmk)?+p.wmk:40)/100)):0;
+  var WGL=Math.max(0,isFinite(p.wglint)?+p.wglint:5)/10/PAGEMM, SALT_WMARK=613, WMIN=3, WSP=2.2;
   /* WHERE THE CAMERA LOOKS. Spread evenly over the street, nine puddles put
      less than one on the 15 m of road nearest the camera, and that is the
      only road on which a reflection is bigger than a sliver -- at 30 m a 2 m
@@ -29296,6 +29308,96 @@ function buildCorridor(p,THM){
   STRTTALLY.mirrorZ=MZ; STRTTALLY.pudOn=PUDON;
   STRTTALLY.hero=heroRec?{ring:heroRec.ring, s0:heroRec.s0, s1:heroRec.s1, g0:heroRec.g0, o:heroRec.o, wid:heroRec.wid,
     len:heroRec.len, pieces:heroRec.pieces.length, off:!!heroInfo}:null;
+
+  /* ---- ROW 119: WATER MARKS, placed ONCE per puddle piece, here and not in
+     render(): an over-budget build re-runs render, and marks placed there grew
+     on every retry. Each piece draws from sub(0, its id, SALT_WMARK), so one
+     puddle, its count or the front puddle's shape never moves another's marks.
+     A mark is one sine period lying ACROSS the plan view (u = (-fy, fx), so
+     Turn keeps it across), its ground length scaled with distance so it is
+     about the same on paper near and far, and its swing along the view scaled
+     by d/H to undo perspective's squash. PAPER decides what is kept: under
+     WMIN mm on the sheet, or within WSP mm vertically of another mark it
+     overlaps by 60%, it is not drawn -- which is what keeps a far puddle from
+     becoming a blue smudge. Every point must lie in the piece's ring and in
+     front of the near plane. The glint bands are the marks' sheet polylines
+     moved Glint gap up and down and hulled, camera only, so built here too. */
+  function wmPlace(pd,wmk){
+    pd.wm=[]; pd.wmB=[];
+    if(!(wmk>0) || pd.channel) return;
+    var R=sub(0,pd.id,SALT_WMARK), ring=pd.ring.map(function(v){ return [v[0],v[1]]; }), n=ring.length, m;
+    function inR(x,y){ var c=false, k; for(k=0;k<n;k++){ var a=ring[k], b=ring[(k+1)%n];
+      if((a[1]>y)!==(b[1]>y) && x<a[0]+(y-a[1])*(b[0]-a[0])/(b[1]-a[1])) c=!c; } return c; }
+    var bb=bbox2(ring), ar=0;
+    for(m=0;m<n;m++){ var qa=ring[m], qb=ring[(m+1)%n]; ar+=qa[0]*qb[1]-qa[1]*qb[0]; } ar=Math.abs(ar)/2;
+    var d=Math.max(1.5,Math.hypot((bb[0]+bb[2])/2-CE[0],(bb[1]+bb[3])/2-CE[1]));
+    var ux=-fy, uy=fx, H=Math.max(0.5,CE[2]-MZ);
+    var base=Math.max(0.12,Math.min(0.9,0.22*d/5));
+    var nmax=Math.round(wmk*Math.min(60,Math.max(1,ar/(base*base*2.2)))), acc=[], t, K=12;
+    for(t=0;t<nmax*12 && acc.length<nmax;t++){
+      var x=bb[0]+(bb[2]-bb[0])*R(), y=bb[1]+(bb[3]-bb[1])*R(), ul=R(), up=R();
+      var dd=Math.max(1.5,Math.hypot(x-CE[0],y-CE[1])), sl=Math.max(0.1,Math.min(1.0,(0.16+0.16*ul)*dd/5));
+      var fs=Math.min(4,dd/H), amp=0.07*sl*fs, mg=0.12*sl*fs+0.05;
+      if(!inR(x,y)||!inR(x-ux*sl/2,y-uy*sl/2)||!inR(x+ux*sl/2,y+uy*sl/2)||!inR(x+fx*mg,y+fy*mg)||!inR(x-fx*mg,y-fy*mg)) continue;
+      var pts=[], sp=[], ok=true, ph=up<0.5?0:Math.PI;
+      for(m=0;m<=K && ok;m++){
+        var tt=m/K, a=(tt-0.5)*sl, w=amp*Math.sin(TAU*tt+ph), X=x+ux*a+fx*w, Y=y+uy*a+fy*w, c;
+        if(!inR(X,Y)){ ok=false; break; }
+        c=cam([X,Y,MZ]); if(c[2]<NEAR){ ok=false; break; }
+        pts.push([X,Y,MZ]); sp.push(scr(c));
+      }
+      if(!ok) continue;
+      var plen=Math.hypot(sp[K][0]-sp[0][0],sp[K][1]-sp[0][1])*PAGEMM;
+      if(plen<WMIN) continue;
+      var SC=sp[K/2];
+      for(m=0;m<acc.length && ok;m++){ var q=acc[m];
+        if(Math.abs(SC[0]-q[0])*PAGEMM<(plen+q[2])*0.6 && Math.abs(SC[1]-q[1])*PAGEMM<WSP) ok=false; }
+      if(!ok) continue;
+      acc.push([SC[0],SC[1],plen]);
+      pd.wm.push(pts);
+      if(WGL>0){
+        var hb=[]; sp.forEach(function(S){ hb.push([S[0],S[1]-WGL]); hb.push([S[0],S[1]+WGL]); });
+        var Hb=hull2(hb); if(Hb) pd.wmB.push(Hb);
+      }
+    }
+  }
+  var WMHALF=0, NWM=0;
+  function wmAll(wmk){ NWM=0; puds.forEach(function(pd){ wmPlace(pd,wmk); NWM+=pd.wm.length; }); }
+  wmAll(WMK);
+  /* the reflection under a mark: a run cut by its puddle's convex bands, the
+     pieces OUTSIDE every band kept with their own points untouched */
+  function wmCut(pts,B){
+    var out=[], cur=null, i, k;
+    function inT(a,b,Hc){
+      var t0=0, t1=1, m, nh=Hc.length;
+      for(m=0;m<nh;m++){
+        var p0=Hc[m], p1=Hc[(m+1)%nh], ex=p1[0]-p0[0], ey=p1[1]-p0[1];
+        var fa=ex*(a[1]-p0[1])-ey*(a[0]-p0[0]), fb=ex*(b[1]-p0[1])-ey*(b[0]-p0[0]);
+        if(fa<=0 && fb<=0) return null;
+        if(fa<0){ t0=Math.max(t0,fa/(fa-fb)); } else if(fb<0){ t1=Math.min(t1,fa/(fa-fb)); }
+        if(t1-t0<=1e-12) return null;
+      }
+      return [t0,t1];
+    }
+    function at(a,b,t){ return t<=0?[a[0],a[1]]:t>=1?[b[0],b[1]]:[a[0]+(b[0]-a[0])*t, a[1]+(b[1]-a[1])*t]; }
+    function flush(){ if(cur && cur.length>1) out.push(cur); cur=null; }
+    for(i=1;i<pts.length;i++){
+      var a=pts[i-1], b=pts[i], iv=[];
+      for(k=0;k<B.length;k++){ var r=inT(a,b,B[k]); if(r) iv.push(r); }
+      if(!cur && !iv.length) cur=[[a[0],a[1]]];
+      if(!iv.length){ cur.push([b[0],b[1]]); continue; }
+      iv.sort(function(u,v){ return u[0]-v[0]; });
+      var t=0;
+      for(k=0;k<iv.length;k++){
+        if(iv[k][1]<=t) continue;
+        if(iv[k][0]>t){ if(!cur) cur=[at(a,b,t)]; cur.push(at(a,b,iv[k][0])); }
+        flush(); t=iv[k][1];
+      }
+      if(t<1){ cur=[at(a,b,t),[b[0],b[1]]]; }
+    }
+    flush();
+    return out;
+  }
 
   /* ---- §5.2 CABLES: catenaries pole to pole, pole to facade and facade to
      facade, cut per container. THE CURVE IS A CATENARY IN THE CABLE'S
@@ -29841,6 +29943,7 @@ function buildCorridor(p,THM){
        where any piece's plate meets anything standing in its lot at the mirror
        plane: a column, a post, a bench, a wall. Counted. */
     var pudFoot={}; STRTTALLY.pudFoot=0; STRTTALLY.pudFootHero=0;
+    var nwm=0; STRTTALLY.wmarks=[];
     function pudKey(r){ return r.hero?'hero':r.grp!==undefined?'g'+r.grp:'p'+r.id; }
     if(PUDON==='lot') puds.forEach(function(pd){
       var key=pudKey(pd); if(pudFoot[key]) return;
@@ -29864,6 +29967,13 @@ function buildCorridor(p,THM){
       if(PUDCOL && pd.outline) pd.outline.forEach(function(sg){ Pq.lines.push({a:sg[0], b:sg[1], f0:1, f1:1, kind:'puddle', col:PUDCOL}); });
       else if(PUDCOL) for(m=0;m<pd.ring.length;m++)
         Pq.lines.push({a:pd.ring[m], b:pd.ring[(m+1)%pd.ring.length], f0:1, f1:1, kind:'puddle', col:PUDCOL});
+      /* row 119: the water marks, the rim's ink and faces, a kind of their own */
+      if(PUDCOL && pd.wm && pd.wm.length){
+        pd.wm.forEach(function(pts){ for(var k=1;k<pts.length;k++)
+          Pq.lines.push({a:pts[k-1], b:pts[k], f0:1, f1:1, kind:'wmark', col:PUDCOL}); });
+        STRTTALLY.wmarks.push({id:pd.id, hero:!!pd.hero, grp:pd.grp, ring:pd.ring, count:pd.wm.length, marks:pd.wm, bands:pd.wmB});
+        nwm+=pd.wm.length;
+      }
       Pq.cont=pd.C; Pq.col=PUDCOL||COL_LBLUE; Pq.kind='puddle'; Pq.layer='puddle'; Pq.hides=false;
       Pq.pud=pd; Pq.refl=[];
       pd.C.parts.push(Pq);
@@ -30256,8 +30366,12 @@ function buildCorridor(p,THM){
           if(!(rl>1e-9)) return;
           var RR=rippled(R.pts,P.pud);
           STRTTALLY.refl.push({pud:P.pud.id, rp:R.rp, col:R.col, src:RR.src, dsp:RR.dsp});
-          pp.push(RR.dsp);
-          meta.push({pre:-1, rp:R.rp, pud:P.pud.id, hero:!!P.pud.hero, ground:true, col:R.col, kind:'refl'});
+          /* row 119: each water mark's glint band is cut out of this puddle's
+             reflection, and only its reflection */
+          (P.pud.wmB && P.pud.wmB.length?wmCut(RR.dsp,P.pud.wmB):[RR.dsp]).forEach(function(pc){
+            pp.push(pc);
+            meta.push({pre:-1, rp:R.rp, pud:P.pud.id, hero:!!P.pud.hero, ground:true, col:R.col, kind:'refl'});
+          });
           nrefl++;
         });
         if(pp.length){
@@ -30325,7 +30439,7 @@ function buildCorridor(p,THM){
     return {res:res, committed:committed, live:live, cycles:cycles, ccycles:ccycles,
             splits:splits, unsep:unsep, unsepParts:unsepParts, farz:FARZ,
             rcycles:cycles-rc0, rsplits:splits-rs0, runsep:unsepParts-ru0,
-            npud:pudVis.length, nmirror:mcommitted.length, nrefl:nrefl};
+            npud:pudVis.length, nmirror:mcommitted.length, nrefl:nrefl, nwm:nwm};
   }
   lots.forEach(function(L){
     STRTTALLY.lots.push({side:L.side, idx:L.idx, s0:L.s0, s1:L.s1, poly:L.poly, base:L.baseTop,
@@ -30349,6 +30463,9 @@ function buildCorridor(p,THM){
        The Street's near particles (row 61) are drawn as plain strokes there
        too: about 180 rings cost 3,200 points on that sheet. */
     if(npts0<=BUDG || tries>=9) break;
+    /* ROW 119: before the reflections go, the water marks are halved -- a
+       step of its own, taken only when there are marks to halve */
+    if(tries===8 && !WMHALF && NWM>0){ WMHALF=1; wmAll(WMK/2); continue; }
     if(tries<8){ DN*=0.7; DF=Math.max(DN,DF*0.75); LODE=LODE+0.3; }
     tries++;
   }
@@ -30378,7 +30495,8 @@ function buildCorridor(p,THM){
              dots:(CT.dots||[]).length, penup0:penup0, penup1:penup1, dsplit:DSPLIT,
              puddles:PUDCOUNT!==null?PUDCOUNT-STRTTALLY.pudFoot:puds.length-(heroRec?heroRec.pieces.length:0), pudFoot:STRTTALLY.pudFoot||0, heroPieces:heroRec?heroRec.pieces.length-(STRTTALLY.pudFootHero||0):0, heroFoot:STRTTALLY.pudFootHero?1:0, pudRejected:prej+(STRTTALLY.pudFoot||0), rstep:RSTEPMM(), pudVisible:RR.npud, mirrored:RR.nmirror,
              reflRuns:RR.nrefl, rcycles:RR.rcycles, rsplits:RR.rsplits, runsep:RR.runsep, eyeclr:EYECLR, eyein:EYEIN,
-             propdrop:(STRTTALLY.props||[]).filter(function(r){ return !r.placed; }).length};
+             propdrop:(STRTTALLY.props||[]).filter(function(r){ return !r.placed; }).length,
+             wmarks:RR.nwm, wmHalved:WMHALF};
   STRTINFO=lots.length+' lots · '+committed.length.toLocaleString()+' parts · '+
            res.length.toLocaleString()+' paths'+
            (cycles?' · CYCLES '+cycles:' · cycles 0')+
@@ -30388,12 +30506,14 @@ function buildCorridor(p,THM){
             (STRTTALLY.dots && STRTTALLY.dots.fallback?' ('+STRTTALLY.dots.fallback+' near fell back to the street)':''))+
            ' · '+(PUDCOUNT!==null?PUDCOUNT-STRTTALLY.pudFoot:puds.length-(heroRec?heroRec.pieces.length:0))+' '+(THM.pudWord||'puddles')+
            (heroRec && !STRTTALLY.pudFootHero?' + '+(THM.heroWord||'a front puddle')+' in '+heroRec.pieces.length+' pieces':'')+heroInfo+(RR.npud?' ('+RR.npud+' in view, '+RR.nmirror.toLocaleString()+' parts reflected)':'')+
+           (RR.nwm?' · '+RR.nwm+' water marks':'')+
            (STRTTALLY.pudFoot||STRTTALLY.pudFootHero?' · '+STRTTALLY.pudFoot+' refused'+(STRTTALLY.pudFootHero?' and the front puddle':'')+' under things standing on the deck':'')+
            (EYECLR?' · '+EYECLR+' cleared from the eye':'')+
            (DPEN?' · depth pens: pen-up '+(penup0/1000).toFixed(1)+' m \u2192 '+(penup1/1000).toFixed(1)+' m (\u00d7'+
                  (penup0>0?penup1/penup0:0).toFixed(2)+')':'')+
            (tries?' · OVER BUDGET: detail pulled in to '+DN.toFixed(0)+' / '+DF.toFixed(0)+' m, LOD '+LODE.toFixed(1)+' mm'+
                   (RR.nrefl&&RIPMM>0?', ripple sampled every '+RSTEPMM().toFixed(1)+' mm':'')+
+                  (WMHALF?', water marks halved':'')+
                   (tries>=9?', and the water left unreflected'+((CT.dots||[]).some(function(d){ return d.near; })?', the near particles drawn as dots':''):''):'');
   return res;
   function KIT(){ return {slabPieces:slabPieces, bbHit:bbHit, MINSP:0.7, FW:FW, UP:UP, PAD:PAD, NS:NS, THM:THM, P3:P3, add3:add3, addCable:addCable, cam:cam, dist3:dist3, drawOn:drawOn, faceC:faceC, faceIx:faceIx, frame:frame, hitsAny:hitsAny, inConv:inConv, lateral:lateral, mmPerM:mmPerM, paperGap:paperGap, para:para, polyFromLoops:polyFromLoops, prism:prism, prismN:prismN, splitPart:splitPart, sub:sub, surf:surf, vec:vec, verts:verts, wallOf:wallOf, wp:wp, CANTI:CANTI, CANYON:CANYON, CE:CE, FF:FF, FLOORS:FLOORS, HALFW:HALFW, HW:HW, KERB:KERB, KOFF:KOFF, LEN:LEN, NEAR:NEAR, PBACK:PBACK, RT:RT, SALT_BLD:SALT_BLD, STEPB:STEPB, ZUP:ZUP, cables:cables, conts:conts, lots:lots, slabsBySide:slabsBySide, p:p}; }
@@ -32054,6 +32174,8 @@ var HELP={
 'harb.hturn':'Turns the front puddle on the ground, up to 45\u00b0 either way, so it lies diagonally across the road. Does nothing while Front puddle is 0.',
 'harb.hshape':'Another shape for the front puddle without changing anything else in the drawing: each number is a different outline, tilt and side. Does nothing while Front puddle is 0.',
 'harb.rvar':'How much the ripple varies across the water: two wave trains on the ground, calm and choppy patches, longer and larger near the camera (at most 1.25 x Ripple). 0 is the old even ripple.',
+'harb.wmk':'How many little wave marks lie on the water, in the puddles\u2019 ink. They sit across your view, so they lie flat on the yard, and far puddles get fewer, never a smudge. 0 is a plain mirror.',
+'harb.wglint':'How wide a gap each wave mark cuts in the reflection under it, in millimetres above and below the mark. It is what makes a mark read as a glint over a dark reflection. 0 draws the marks over the reflection with no gap.',
 'harb.hatch':'A tone hatch on the cranes\u2019 and trucks\u2019 faces that look away from the light: ochre on the yellow steel, dark grey on the black. Never on a container -- its ribs are its tone.',
 'harb.sun':'Where the light comes from, in degrees: the faces turned away from it carry the tone hatch.',
 'harb.cams':'Where the camera stands, as a share of the lane length. Near 0 you see the whole lane ahead.',
@@ -32125,6 +32247,8 @@ var HELP={
 'grnh.pudsz':'How big the puddles are.',
 'grnh.ripple':'How far the reflection wobbles sideways, in millimetres on the sheet. 0 is still water.',
 'grnh.rvar':'How varied the ripple is: crossing waves, calm and choppy patches, more wobble near the camera. Does nothing while Ripple is 0.',
+'grnh.wmk':'How many little wave marks lie on the water, in the puddles\u2019 ink. They sit across your view, so they lie flat on the path, and far puddles get fewer, never a smudge. 0 is a plain mirror.',
+'grnh.wglint':'How wide a gap each wave mark cuts in the reflection under it, in millimetres above and below the mark. It is what makes a mark read as a glint over a dark reflection. 0 draws the marks over the reflection with no gap.',
 'grnh.cams':'Where the camera stands, as a share of the house length. Near 0 you see the whole path ahead.',
 'grnh.camx':'The camera across the path, as a share of half its width: 0 is the middle.',
 'grnh.camz':'The camera height in metres. 1.6 is eye height; higher looks down over the benches, up to just under the gutters.',
@@ -32192,6 +32316,8 @@ var HELP={
 'tori.pudsz':'How big the puddles are.',
 'tori.ripple':'How far the reflection wobbles sideways, in millimetres on the sheet. 0 is still water.',
 'tori.rvar':'How varied the ripple is: crossing waves, calm and choppy patches, more wobble near the camera. Does nothing while Ripple is 0.',
+'tori.wmk':'How many little wave marks lie on the water, in the puddles\u2019 ink. They sit across your view, so they lie flat on the path, and far puddles get fewer, never a smudge. 0 is a plain mirror.',
+'tori.wglint':'How wide a gap each wave mark cuts in the reflection under it, in millimetres above and below the mark. It is what makes a mark read as a glint over a dark reflection. 0 draws the marks over the reflection with no gap.',
 'tori.hatch':'How dense the shading is on the posts\u2019 shaded faces. 0 is no shading.',
 'tori.cams':'Where the camera stands, as a share of the path length. Near 0 you look up the whole tunnel.',
 'tori.camx':'The camera across the path, as a share of half its width: 0 is the middle.',
@@ -32241,6 +32367,8 @@ var HELP={
 'stn.pudsz':'How big the puddles are. At 100 a puddle is up to 3.8 m along the platform; it never reaches the tactile strip or the fence.',
 'stn.ripple':'How far the reflection wobbles sideways, in millimetres on the sheet. 0 is a still, perfect mirror.',
 'stn.rvar':'How much the ripple varies across the water: two wave trains on the platform, calm and choppy patches, longer and larger near the camera. 0 is an even ripple.',
+'stn.wmk':'How many little wave marks lie on the water, in the puddles\u2019 ink. They sit across your view, so they lie flat on the platform, and far puddles get fewer, never a smudge. 0 is a plain mirror.',
+'stn.wglint':'How wide a gap each wave mark cuts in the reflection under it, in millimetres above and below the mark. It is what makes a mark read as a glint over a dark reflection. 0 draws the marks over the reflection with no gap.',
 'stn.hero':'One large puddle on your own platform, where the camera first sees the deck at the bottom of the sheet. 0 leaves it out.',
 'stn.hstr':'Stretches the front puddle along the platform (up) or across it (down) and keeps its area. Does nothing while Front puddle is 0.',
 'stn.hrag':'How ragged the front puddle’s edge is: 0 a smooth oval, 100 a wobbly lake. It never crosses itself. Does nothing while Front puddle is 0.',
@@ -32336,6 +32464,8 @@ var HELP={
 'mkt.hturn':'Turns the front puddle on the ground, up to 45\u00b0 either way, so it lies diagonally across the road. Does nothing while Front puddle is 0.',
 'mkt.hshape':'Another shape for the front puddle without changing anything else in the drawing: each number is a different outline, tilt and side. Does nothing while Front puddle is 0.',
 'mkt.rvar':'How much the ripple varies across the water: two wave trains on the ground, calm and choppy patches, longer and larger near the camera. 0 is the old even ripple.',
+'mkt.wmk':'How many little wave marks lie on the water, in the puddles\u2019 ink. They sit across your view, so they lie flat on the road, and far puddles get fewer, never a smudge. 0 is a plain mirror.',
+'mkt.wglint':'How wide a gap each wave mark cuts in the reflection under it, in millimetres above and below the mark. It is what makes a mark read as a glint over a dark reflection. 0 draws the marks over the reflection with no gap.',
 'mkt.ripple':'How far the reflection wobbles sideways, in millimetres on the sheet. 0 is a still mirror.',
 'mkt.hatch':'How dense the shading is on walls facing away from the light. 0 is no shading.',
 'mkt.hatchmode':'0: shading lines evenly spaced on the wall, crowding into the distance. 1: evenly spaced on the paper.',
@@ -32400,6 +32530,8 @@ var HELP={
 'strt.hturn':'Turns the front puddle on the ground, up to 45\u00b0 either way, so it lies diagonally across the road. Does nothing while Front puddle is 0.',
 'strt.hshape':'Another shape for the front puddle without changing anything else in the drawing: each number is a different outline, tilt and side. Does nothing while Front puddle is 0.',
 'strt.rvar':'How much the ripple lives on the water rather than on the paper: two sets of waves at different angles, calm and choppy patches, and waves that get bigger and longer toward you. At 0 every edge in the water wobbles in step with the others; at 100 none do.',
+'strt.wmk':'How many little wave marks lie on the water, in the puddles\u2019 ink. They sit across your view, so they lie flat on the road, and far puddles get fewer, never a smudge. 0 is a plain mirror.',
+'strt.wglint':'How wide a gap each wave mark cuts in the reflection under it, in millimetres above and below the mark. It is what makes a mark read as a glint over a dark reflection. 0 draws the marks over the reflection with no gap.',
 'strt.dots':'How many coloured particles hang in the air over the road, thickening toward the far end of the street: orange, light blue and pink, 5 : 3 : 2. Each is a 0.35 mm stroke on the sheet however far away it is.',
 'strt.graff':'How many ground-floor shutters and side walls carry graffiti: tags (scribbled strokes) or throw-ups (bubble outlines of 2-4 letters), in magenta, turquoise, yellow or black, drawn on the wall so they foreshorten with it.',
 'strt.dpen':'1 draws the black lines further away than Depth split in dark grey instead -- a fine far pen and a heavier near one, the plot\u2019s depth, as two inks. The stat line reports the pen-up travel with and without the split, because splitting a pen adds travel.',
