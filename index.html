@@ -438,7 +438,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v324</a> &mdash; Isofactory spirals, lifts and vacuum tubes -- spiral conveyors carry cartons down from the mezzanine, lifts (open, or an enclosed freight lift) serve the floor and the deck, and a pneumatic tube network with cabinets, diverters and 0.6 m bends links QA, the process stations and the mezzanine lab</span></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v325</a> &mdash; Isofactory portal frames -- columns only where a frame meets a span line, the bays and spans picked so no two columns share a line of sight, rafters pitched 5&deg; to a ridge, eaves beams, and profiled cladding on the back walls held to the paper floor</span></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <section class="fold" id="fold_pick"><h2>Pick engine<span class="cnt"></span></h2>
@@ -3195,6 +3195,7 @@ var SPEC={
      in this file, and §6 says to rename on any collision. */
   fact:['Isofactory',[
     ['fwid','Floor width',24,96,6,36,[1,' m']],['fdep','Floor depth',18,72,6,30,[1,' m']],
+    ['fbay','Frame spacing',6,9,0.25,7.5,[1,' m']],['fspan','Clear span',12,30,1,24,[1,' m']],
     ['flev','Levels',1,3,1,2],['flines','Lines',1,4,1,2],['fstat','Stations',4,9,1,6],
     ['fitem','Items',0,100,1,60,[100,'%']],
     ['farms','Arms per cell',0,4,1,2],['fpose','Pose',0,99,1,0],
@@ -19089,6 +19090,7 @@ function buildFactory(p){
                 rail:'yellow', guard:'yellow', fence:'yellow', lane:'yellow',
                 machine:'blue', vat:'blue',
                 carton:'brown', pallet:'brown', tool:'black', dress:'black', arm:'yellow',
+                rafter:'black', beam:'black', gusset:'black', glazing:'black',
                 rbelt:'black', spiral:'black', cab:'black', shaft:'black', hanger:'black', capsule:'black',
                 liftsteel:'yellow', cabinet:'blue', diverter:'blue', vtube:'lblue',
                 estop:'red', walk:'green'};
@@ -19103,6 +19105,8 @@ function buildFactory(p){
   var FITEM=Math.max(0,Math.min(1,(p.fitem===undefined?60:p.fitem)/100));
   var FARMS=Math.max(0,Math.min(4,Math.round(p.farms===undefined?2:p.farms)));
   var FPOSE=Math.max(0,Math.min(99,Math.round(p.fpose||0)));
+  var FBAY=Math.max(6,Math.min(9,p.fbay===undefined?7.5:+p.fbay));
+  var FSPAN=Math.max(12,Math.min(30,p.fspan===undefined?24:+p.fspan));
   var FSPIR=Math.max(0,Math.min(2,Math.round(p.fspir===undefined?1:p.fspir)));
   var FLIFT=Math.max(0,Math.min(4,Math.round(p.flift===undefined?2:p.flift)));
   var FTUBE=Math.max(0,Math.min(1,(p.ftube===undefined?60:p.ftube)/100));
@@ -19320,16 +19324,55 @@ function buildFactory(p){
         if(G[a][b]===FREE || code===FOOT) G[a][b]=code;
   }
 
-  /* Columns on the 6 m bay grid, the edge ones stepped inside the hall. */
-  var COLS=[], a6, b6;
-  for(a6=0;a6<=W/6;a6++) for(b6=0;b6<=D/6;b6++){
-    var cx0=6*a6-0.15, cy0=6*b6-0.15;
-    if(cx0<0) cx0=0; if(cx0+0.3>W) cx0=W-0.3;
-    if(cy0<0) cy0=0; if(cy0+0.3>D) cy0=D-0.3;
-    COLS.push([cx0,cy0,cx0+0.3,cy0+0.3]);
-    markRect(cx0,cy0,cx0+0.3,cy0+0.3,COLM);
+  /* PORTAL FRAMES (row 124, composition spec §1.1). A square bay grid seen at
+     45° puts column (x, y) and (x + 6, y + 6) on one screen vertical -- 40 of
+     v323's 42 columns stood on a shared line -- so the hall reads as a row of
+     poles. Frames run across the depth at x = k·bay, the depth is split into
+     ns clear spans, and a column stands only where a frame meets a span line.
+     n and ns come from the knobs by one rule: among n in [W/9, W/6] and ns in
+     [D/30, D/12], the pair nearest (fbay, fspan) by relative distance whose
+     SCREEN SEPARATION -- the smallest |Δ(x − y)| between any two columns,
+     measured on the real column centres, edge columns stepped 0.2 m inside --
+     is at least 1.2 m; else the largest separation. The clear span is a
+     MAXIMUM, but the 1.2 m floor comes first: a span longer than `fspan` is
+     taken only if no shorter one keeps the columns apart (at 96 x 72 and
+     fspan 12 every 12 m span stacks them, 0.89 m at best). Ties go to the
+     longer bay. That reading reproduces the spec's
+     table for all four of its halls (9 × 15, 7.38 × 24, 7.5 × 24, 8 × 18). */
+  function frameCols(n,ns){
+    var c=[], k, j;
+    for(k=0;k<=n;k++) for(j=0;j<=ns;j++)
+      c.push([Math.min(W-0.2,Math.max(0.2,k*W/n)), Math.min(D-0.2,Math.max(0.2,j*D/ns))]);
+    return c;
   }
+  function frameSep(c){
+    var v=c.map(function(q){ return q[0]-q[1]; }).sort(function(a,b){ return a-b; }), m=1e18, i;
+    for(i=1;i<v.length;i++) if(v[i]-v[i-1]<m) m=v[i]-v[i-1];
+    return m;
+  }
+  var FR=(function(){
+    var cand=[], n, ns;
+    for(n=Math.ceil(W/9-1e-9);n<=Math.floor(W/6+1e-9);n++) for(ns=Math.ceil(D/30-1e-9);ns<=Math.floor(D/12+1e-9);ns++){
+      var bay=W/n, span=D/ns;
+      cand.push({n:n, ns:ns, bay:bay, span:span, sep:frameSep(frameCols(n,ns)),
+                 cost:Math.abs(bay-FBAY)/FBAY+Math.abs(span-FSPAN)/FSPAN, over:span>FSPAN+1e-9});
+    }
+    var cmp=function(a,b){ return (a.cost-b.cost)||(b.bay-a.bay); };
+    var ok=cand.filter(function(c){ return !c.over && c.sep>=1.2-1e-9; });
+    if(!ok.length) ok=cand.filter(function(c){ return c.sep>=1.2-1e-9; });
+    return ok.length?ok.sort(cmp)[0]:cand.sort(function(a,b){ return (b.sep-a.sep)||cmp(a,b); })[0];
+  })();
+  /* the frame lines and span lines, and the column CENTRES on them */
+  var FXL=[], FYL=[], CT=H-1.4, a6;
+  for(a6=0;a6<=FR.n;a6++) FXL.push(Math.min(W-0.2,Math.max(0.2,a6*W/FR.n)));
+  for(a6=0;a6<=FR.ns;a6++) FYL.push(Math.min(D-0.2,Math.max(0.2,a6*D/FR.ns)));
+  var COLS=[];
+  FXL.forEach(function(cx){ FYL.forEach(function(cy){
+    COLS.push([cx-0.2,cy-0.2,cx+0.2,cy+0.2]);
+    markRect(cx-0.2,cy-0.2,cx+0.2,cy+0.2,COLM);
+  }); });
   T.cols=COLS;
+  T.frame={n:FR.n, ns:FR.ns, bay:FR.bay, span:FR.span, sep:FR.sep, fx:FXL, fy:FYL, top:CT, pitch:5, rafters:[], beams:[]};
   function colRow(y){ /* a floor row a column stands in, at some x */
     var i; for(i=0;i<COLS.length;i++) if(y+1>COLS[i][1]+1e-9 && y<COLS[i][3]-1e-9) return true;
     return false;
@@ -19338,8 +19381,12 @@ function buildFactory(p){
   /* The mezzanine's strip along the y = 0 wall, reserved below and around. */
   var Y0=NLEV>=2?6:0, MZ=null;
   if(NLEV>=2){
-    var mx1=6+6*Math.max(1,Math.min(3,Math.floor((W-18)/6)));
-    MZ={x0:6.2, x1:mx1-0.2, y0:0.3, y1:5.6, z:4.5};
+    /* the deck runs from the first frame past 6 m to the frame at or past
+       its old length (6-18 m by hall width), clear of the back-line columns */
+    var mzL=6*Math.max(1,Math.min(3,Math.floor((W-18)/6))), k1=1, k2;
+    while(k1<FR.n && FXL[k1]<6-1e-9) k1++;
+    k2=k1+1; while(k2<FR.n && FXL[k2]<FXL[k1]+mzL-1e-9) k2++;
+    MZ={x0:FXL[k1]+0.2, x1:FXL[k2]-0.2, y0:0.45, y1:5.6, z:4.5};
     markRect(0,0,W,6,RESV);
   }
   /* RISER SITES (row 105): where a spiral or a lift CAN stand, decided by the
@@ -19605,10 +19652,20 @@ function buildFactory(p){
     });
     return r;
   }
+  /* CLADDING (row 124, §1.2): profiled sheet above the ribbon window, its
+     vertical joints every 1 m as lines on the wall's inner face, thinned to
+     every 2nd or 4th where 1 m would be under the 0.7 mm paper floor (a 1 m
+     step along a wall is cos 30° m across the sheet), and a girt at 6.0 m.
+     Lines on the face: they hide nothing. In the ribbon window, glazing bars
+     every 1 m. The plinth below is concrete and takes no joints. */
+  var CLADK=1;
+  while(CLADK<4 && 0.8660254*CLADK*K.mmest<0.77) CLADK*=2;
+  T.cladding={k:CLADK, joints:[], girts:[]};
   function wall(axis,lo,hi,holes){
     /* axis 'x': the plane x=0 wall, running along y from lo to hi */
-    function wb(a0,z0,a1,z1){
+    function wb(a0,z0,a1,z1,marks){
       var o={kind:'wall'};
+      if(marks) o.marks=marks;
       T.walls.push({axis:axis, a0:a0, a1:a1, z0:z0, z1:z1});
       if(axis==='x') return box(-0.3,a0,z0,0,a1,z1,o);
       return box(a0,-0.3,z0,a1,0,z1,o);
@@ -19624,13 +19681,66 @@ function buildFactory(p){
     holes.forEach(function(hh){ /* the door's own jambs through the window band */
       wb(hh[0]-0.15,3.0,hh[0],4.2); wb(hh[1],3.0,hh[1]+0.15,4.2);
     });
-    wb(lo,5.0,hi,H);
+    var fc=axis==='x'?3:4, mk=[], g;
+    function P(a,z){ return axis==='x'?[0,a,z]:[a,0,z]; }
+    for(g=Math.ceil((lo+1e-6)/CLADK)*CLADK; g<hi-1e-6; g+=CLADK){
+      mk.push([P(g,5.0),P(g,H),fc]); T.cladding.joints.push({axis:axis, a:g, z0:5.0, z1:H});
+    }
+    if(H>6.0+1e-9){ mk.push([P(lo,6.0),P(hi,6.0),fc]); T.cladding.girts.push({axis:axis, z:6.0, a0:lo, a1:hi}); }
+    wb(lo,5.0,hi,H,mk);
+    /* glazing bars in the ribbon window, every 1 m, clear of mullions and doors */
+    for(g=Math.ceil(lo+0.5); g<hi-0.3; g++){
+      if(g%4===0) continue;
+      var inDoor=false;
+      holes.forEach(function(hh){ if(g>hh[0]-0.5 && g<hh[1]+0.5) inDoor=true; });
+      if(inDoor) continue;
+      if(axis==='x') bar(-0.17,g-0.02,3.0,-0.13,g+0.02,5.0,{kind:'glazing'});
+      else bar(g-0.02,-0.17,3.0,g+0.02,-0.13,5.0,{kind:'glazing'});
+    }
   }
   wall('x',-0.3,D,DOORS);
   wall('y',0,W,[]);
 
   /* ---- columns ----------------------------------------------------------- */
-  COLS.forEach(function(c){ box(c[0],c[1],0,c[2],c[3],7.6,{kind:'column'}); });
+  COLS.forEach(function(c){ box(c[0],c[1],0,c[2],c[3],CT,{kind:'column'}); });
+  /* RAFTERS: on every frame line, two per span, each from a column head up at
+     5° to the ridge at mid-span. Each half is ONE sheared box -- vertical end
+     faces, its bottom on the pitch line -- cut at the lattice like everything
+     else; the two halves meet flush at the ridge, a seam, so a span's rafter
+     is one outline. Haunch gussets under each end, near. */
+  var PITCH=Math.tan(5*Math.PI/180), RDV=0.45/Math.cos(5*Math.PI/180);
+  FXL.forEach(function(fx,k){
+    var j;
+    for(j=0;j+1<FYL.length;j++){
+      var ya=FYL[j], yb=FYL[j+1], ym=(ya+yb)/2;
+      [[ya,ym],[yb,ym]].forEach(function(h,hi){
+        var y0=h[0], y1=h[1], z0=CT, z1=CT+PITCH*Math.abs(y1-y0);
+        var V=[[fx-0.12,y0,z0],[fx+0.12,y0,z0],[fx+0.12,y1,z1],[fx-0.12,y1,z1],
+               [fx-0.12,y0,z0+RDV],[fx+0.12,y0,z0+RDV],[fx+0.12,y1,z1+RDV],[fx-0.12,y1,z1+RDV]];
+        var id='raf'+k+'.'+j+'.'+hi;
+        solid(V,BOXF,{kind:'rafter', id:id, seam:[false,false,false,false,true,false]});
+        T.frame.rafters.push({id:id, x:fx, y0:y0, y1:y1, z0:z0, z1:z1, depth:RDV});
+        if(near(0.08)){
+          var sg=y1>y0?1:-1, fy=y0+sg*0.2;
+          var G3=[[fy,CT-0.5],[fy,CT+PITCH*0.2],[fy+sg*0.6,CT+PITCH*0.8]], GV=[], q;
+          for(q=0;q<3;q++) GV.push([fx-0.04,G3[q][0],G3[q][1]]);
+          for(q=0;q<3;q++) GV.push([fx+0.04,G3[q][0],G3[q][1]]);
+          solid(GV,[[0,1,2],[3,5,4],[0,3,4,1],[1,4,5,2],[2,5,3,0]],{kind:'gusset', id:'gus'+k+'.'+j+'.'+hi});
+        }
+      });
+    }
+  });
+  /* EAVES BEAMS tie the column heads along every span line, column face to
+     column face, their tops at the heads */
+  FYL.forEach(function(cy,j){
+    var k;
+    for(k=0;k+1<FXL.length;k++){
+      var xa=FXL[k]+0.2, xb=FXL[k+1]-0.2;
+      if(xb-xa<1e-6) continue;
+      box(xa,cy-0.12,CT-0.3,xb,cy+0.12,CT,{kind:'beam', id:'bm'+j+'.'+k});
+      T.frame.beams.push({id:'bm'+j+'.'+k, y:cy, x0:xa, x1:xb, z0:CT-0.3, z1:CT});
+    }
+  });
 
   /* ---- mezzanine decks, columns, handrails, stairs ----------------------- */
   function handrail(x0,y0,x1,y1,z){
@@ -19671,11 +19781,12 @@ function buildFactory(p){
       var zb=lv===0?0:4.5;
       box(MZ.x0,MZ.y0,zd-0.25,dx1,MZ.y1,zd,{kind:'deck'});
       T.decks.push({x0:MZ.x0, x1:dx1, y0:MZ.y0, y1:MZ.y1, z:zd});
-      var ncol=Math.max(2,Math.ceil((dx1-MZ.x0)/6)+1), i;
-      for(i=0;i<ncol;i++){
-        var cxx=MZ.x0+0.2+(dx1-MZ.x0-0.4)*i/(ncol-1);
-        box(cxx-0.12,MZ.y1-0.36,zb,cxx+0.12,MZ.y1-0.12,zd-0.25,{kind:'column'});
-      }
+      /* the deck's own columns stand at its two ends and on every frame line
+         between them, under the open edge */
+      var mcx=[MZ.x0+0.2], i;
+      FXL.forEach(function(fx){ if(fx>MZ.x0+1.0 && fx<dx1-1.0) mcx.push(fx); });
+      mcx.push(dx1-0.2);
+      for(i=0;i<mcx.length;i++) box(mcx[i]-0.12,MZ.y1-0.36,zb,mcx[i]+0.12,MZ.y1-0.12,zd-0.25,{kind:'column'});
       handrail(MZ.x0+0.05,MZ.y1-0.05,dx1-0.05,MZ.y1-0.05,zd);
       /* the lower deck's ends open where a riser site's belt comes in, built
          or not (row 105) */
@@ -19979,9 +20090,11 @@ function buildFactory(p){
       stub(0,0.3); stub(2.7,3.0);
       lb(0.3,-1.1,0,2.7,1.1,2.6,{kind:'machine'});
       lb(0.8,1.1,0.4,2.2,1.2,2.0,{kind:'machine'});
-      lcyl(1.5,-0.5,2.6,H-0.6,0.25,0.25,10,{kind:'machine'});
+      /* the flue stops under the frame (row 124: a rafter or an eaves beam
+         may be over any station) */
+      lcyl(1.5,-0.5,2.6,CT-0.6,0.25,0.25,10,{kind:'machine'});
       st.flue=[wx(1.5),st.yc-0.5];
-      lcyl(1.5,-0.5,H-0.6,H-0.4,0.4,0.4,10,{kind:'machine'});
+      lcyl(1.5,-0.5,CT-0.6,CT-0.4,0.4,0.4,10,{kind:'machine'});
       if(near(0.04)){ lb(1.3,1.2,1.15,1.7,1.26,1.21,{kind:'detail'}); lb(2.3,0.3,2.6,2.55,0.6,2.8,{kind:'detail'}); }
     } else if(t==='vat'){
       stub(0,0.35); stub(2.65,3.0);
@@ -20120,6 +20233,17 @@ function buildFactory(p){
   }
   function deckAt(x,y){ return MZ && x>=MZ.x0-1e-9 && x<=MZ.x1+1e-9 && y>=MZ.y0-1e-9 && y<=MZ.y1+1e-9; }
   function upperAt(x,y){ return NLEV>=3 && MZ && x>=MZ.x0-0.1 && x<=DXU+0.1 && y>=MZ.y0-0.1 && y<=MZ.y1+0.1; }
+  /* THE UNDERSIDE OF WHATEVER IS OVER (x, y): a rafter, an eaves beam, the
+     upper deck, or else the eaves line. A hanger rod ends there, so it never
+     runs up through the frame (row 124). */
+  function roofUnder(x,y){
+    var z=upperAt(x,y)?8.75:H, k, j;
+    for(k=0;k<FXL.length;k++) if(Math.abs(x-FXL[k])<=0.13)
+      for(j=0;j+1<FYL.length;j++) if(y>=FYL[j]-1e-9 && y<=FYL[j+1]+1e-9)
+        z=Math.min(z,CT+PITCH*Math.min(Math.abs(y-FYL[j]),Math.abs(FYL[j+1]-y)));
+    for(j=0;j<FYL.length;j++) if(Math.abs(y-FYL[j])<=0.13) z=Math.min(z,CT-0.3);
+    return z;
+  }
   /* A RISER'S BELT: any horizontal direction, top 0.80 above its level, legs
      where something is under it, rods to the roof where nothing is. The end at
      the riser is a SEAM when it meets a spiral's plate face to face, so belt
@@ -20142,7 +20266,7 @@ function buildFactory(p){
       if(sup(rx,ry)) continue;
       [-0.25,0.25].forEach(function(t){
         var qx=rx+q[0]*t, qy=ry+q[1]*t;
-        bar(qx-0.01,qy-0.01,zd+BZ1,qx+0.01,qy+0.01,upperAt(qx,qy)?8.75:H,{kind:'hanger', id:rid+'.'+tag+'r'});
+        bar(qx-0.01,qy-0.01,zd+BZ1,qx+0.01,qy+0.01,roofUnder(qx,qy),{kind:'hanger', id:rid+'.'+tag+'r'});
       });
     }
     /* the table the belt ends at */
@@ -20402,7 +20526,7 @@ function buildFactory(p){
       var L3=Math.hypot(pc.b[0]-pc.a[0],pc.b[1]-pc.a[1]), s;
       for(s=1.5;s<L3-0.5;s+=3){
         var hx=pc.a[0]+(pc.b[0]-pc.a[0])*s/L3, hy=pc.a[1]+(pc.b[1]-pc.a[1])*s/L3;
-        bar(hx-0.01,hy-0.01,TUBZ+TR,hx+0.01,hy+0.01,upperAt(hx,hy)?8.75:H,{kind:'hanger', id:vid+'.h'});
+        bar(hx-0.01,hy-0.01,TUBZ+TR,hx+0.01,hy+0.01,roofUnder(hx,hy),{kind:'hanger', id:vid+'.h'});
       }
     });
     VROUTES.push({id:vid, from:A.id, to:B.id, divA:divA, divB:divB, cells:path.map(function(q){ return [q[0],q[1]]; }), pieces:pcs});
@@ -31898,8 +32022,10 @@ var HELP={
 'stat.budg':'How much drawing the station is allowed to be, in thousands of POINTS. It is the size control: `Keel length` seeds the shape and growth then throws off new branches until this is spent, so a longer keel makes a differently-shaped station of the same weight rather than a bigger one. The page\u2019s own ceiling caps it \u2014 the one recorded BEFORE the draft clamp, so dragging a slider cannot grow a different station \u2014 and the module pass stops at 85% of it so the greebles, tethers and rings are inside the budget rather than starved by it. Measured: 45 is 7,952 paths in 621 ms; the full page ceiling is 18,892 paths in 2,008 ms.',
 'stat.lod':'The smallest piece of hardware that still gets drawn, as its size on the SHEET. An isometric view has no perspective shrink, so there is nothing to make a distant greeble small except the station being big \u2014 and once a station fills the page at a fine module scale, a thruster quad is a blob the pen cannot resolve and a minute of plotting time. This is measured against millimetres per cell ESTIMATED BEFORE anything is built, because the decision has to be taken before the drawing exists: the lattice bounding box is the one extent known up front, so it over-estimates the scale by whatever margin the station leaves inside its own box. At 0 nothing is dropped.',
 'stat.occ':'How wide a white gap a nearer solid opens in whatever passes behind it. The station hides itself — every solid is confined to one lattice cell and sorted front to back by i+j+k, which for disjoint cells is an EXACT painter order and not a heuristic — so this is the finish on that, in millimetres on the sheet. The default matches the iso city’s and the CLI’s 0.5 mm. Wide gaps erase short segments outright rather than merely widening the breaks.',
-'fact.fwid':'How wide the hall is, in metres, along the back wall the docks are in. Columns stand on a 6 m bay grid, so the width moves in whole bays. A production line runs out along the width and back again, so a narrow hall packs fewer stations into each row; under 36 m there is no room for the near cross aisle.',
+'fact.fwid':'How wide the hall is, in metres, along the back wall the docks are in. It moves in 6 m steps, and the portal frames divide it into equal bays (Frame spacing). A production line runs out along the width and back again, so a narrow hall packs fewer stations into each row; under 36 m there is no room for the near cross aisle.',
 'fact.fdep':'How deep the hall is, in metres, along the other back wall. The lines are stacked across the depth in bands, one line a band, with an aisle on a bay line between each pair — so depth is what decides how many of the Lines you ask for fit (a band needs 9 m).',
+'fact.fbay':'The spacing you would like between the portal frames, in metres. Frames are equal across the width, so the hall takes the whole number of bays nearest this — unless that would stand columns on the same line of sight, which seen at 45° turns a hall into a row of poles; then it takes the nearest spacing that keeps them apart. On the default 36 × 30 m hall only 9 m bays do that, so this knob moves the bigger halls.',
+'fact.fspan':'The longest clear span you will allow between column lines across the depth, in metres. Each frame is a column on every span line with a rafter rising 5° to a ridge in the middle of each span, so a longer span means fewer columns on the floor. The hall picks the spans together with the frame spacing so no two columns line up on screen.',
 'fact.flev':'How many levels the hall has. 1 is a single floor; 2 adds a mezzanine deck at 4.5 m along the back wall, on its own columns, with handrails and a stair; 3 adds a second deck at 9 m above part of it and raises the eaves to 13.5 m. The strip under the mezzanine is kept clear of the lines.',
 'fact.flines':'How many production lines run through the hall. Each is a serpentine from a receiving dock in the back wall, out along the width and back to a shipping dock beside it. A line needs a 9 m band of depth; when the hall is too shallow for all of them, fewer are built and the stat line says how many of how many.',
 'fact.fstat':'How many stations a line has between its two docks: processes (CNC, press, moulder, furnace, vat — chosen per line), one or two assembly cells, QA and a packer. A line too long for its two rows drops a process station rather than overflowing the hall.',
