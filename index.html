@@ -438,7 +438,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v322</a> &mdash; Isofactory robot arms -- six-axis arms posed by inverse kinematics to real targets on the fixture and the pallet, at the corners of every assembly cell, a palletiser on its pedestal, gantry robots, and Pose for another moment of the same factory</span></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v323</a> &mdash; Barrel cellar -- the vault's brick courses are held to the paper floor and no harder (a chord's length had stood in for a unit direction, thinning them about 3x)</span></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <section class="fold" id="fold_pick"><h2>Pick engine<span class="cnt"></span></h2>
@@ -23710,7 +23710,9 @@ function cellarTheme(K){
            chord's own share of each; joints near */
         var d=dist3(mid);
         if(d<df){
-          var gp=paperGap(mid,T,u), kk=thin(gp,0.075), u0=RV*(thK(k)-TH0), u1=RV*(thK(k+1)-TH0), L0=u1-u0;
+          /* paperGap takes UNIT directions: given the 0.34 m chord it read 3x small, and the vault thinned its
+             brick that much harder than the paper floor needs (found on row 109's hatch, v321) */
+          var gp=paperGap(mid,nrm(T),nrm(u)), kk=thin(gp,0.075), u0=RV*(thK(k)-TH0), u1=RV*(thK(k+1)-TH0), L0=u1-u0;
           var j0=Math.ceil((u0+1e-9)/(0.075*kk)), uu;
           for(uu=j0*0.075*kk; uu<u1-1e-9; uu+=0.075*kk){ var P=lerp3(E0,E1,(uu-u0)/L0); ln(G,P,add3(P,T,1),'brick',COL_SEP,0); }
           if(kk===1 && d<dn){
