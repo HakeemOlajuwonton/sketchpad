@@ -438,7 +438,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v327</a> &mdash; Panning and zooming never rebuild the drawing -- the build is cached behind a generation counter, the view only repaints, and an export or a pin taken mid-drag waits for the full build</span></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v328</a> &mdash; REFACTOR ONLY: the build is a function of an explicit input -- build(input) returns plain arrays with every path tag packed, ready for row 123's worker; nothing draws differently</span></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <section class="fold" id="fold_pick"><h2>Pick engine<span class="cnt"></span></h2>
@@ -31054,6 +31054,59 @@ function drawVariations(){
    Decimation stays in paint (its budget follows the zoom). */
 var BUILDGEN=0, BUILT=null, PINCV=null;
 function draw(){ BUILDGEN++; paint(); }
+/* ROW 123 P1 (REFACTOR ONLY): THE BUILD IS A FUNCTION OF AN EXPLICIT INPUT.
+   build(input) -> {gen, err, groups, info} is what row 123's worker will run.
+   P0 (CONTEXT, workerp0.js) measured that the build reads nothing outside the
+   page script on any engine, so its inputs are the recipe plus the five module
+   globals the page fills from a file or a field: MASK, the word, FLOWTEXT,
+   POINUSER and HFACE. installInput() writes them back; on the main thread they
+   ARE those globals, so every write puts back the value already there.
+   THE RESULT IS PLAIN ARRAYS. A path's tags (PATHTAGS, z, anything a stage
+   hangs on it) are array expandos, and an expando does not survive
+   postMessage's structured clone -- the same hazard as runeng.js's
+   JSON.stringify -- so every own non-index property is packed beside the
+   points, by enumeration and not by a list, and unpackGroups() puts it back.
+   The info strings and stats the stat line reads travel in `info`. */
+function buildInput(gen){
+  return {gen:gen, mode:mode, seed:seed, draft:!!DRAFT, g:STATE.g, eng:STATE.eng[mode],
+          mask:MASK, word:{w:WORD, name:WORDNAME, strokes:WORDSTROKES, typed:WORDTYPED},
+          text:FLOWTEXT, tile:POINUSER, face:HFACE};
+}
+function installInput(I){
+  mode=I.mode; seed=I.seed; DRAFT=I.draft;
+  if(STATE.g!==I.g) Object.keys(I.g).forEach(function(k){ STATE.g[k]=I.g[k]; });
+  if(STATE.eng[I.mode]!==I.eng) Object.keys(I.eng).forEach(function(k){ STATE.eng[I.mode][k]=I.eng[k]; });
+  MASK=I.mask; WORD=I.word.w; WORDNAME=I.word.name; WORDSTROKES=I.word.strokes; WORDTYPED=I.word.typed;
+  FLOWTEXT=I.text; POINUSER=I.tile; HFACE=I.face;
+}
+function packPath(p){
+  var t=null; Object.keys(p).forEach(function(k){ if(!/^\d+$/.test(k)){ (t||(t={}))[k]=p[k]; } });
+  return t?{p:p.slice(), t:t}:{p:p.slice()};
+}
+function packGroups(groups){
+  return groups.map(function(G){
+    var o={}; Object.keys(G).forEach(function(k){ if(k!=='paths') o[k]=G[k]; });
+    o.paths=G.paths.map(packPath); return o;
+  });
+}
+function unpackGroups(groups){
+  return groups.map(function(G){
+    var o={}; Object.keys(G).forEach(function(k){ if(k!=='paths') o[k]=G[k]; });
+    o.paths=G.paths.map(function(q){ var a=q.p.slice(); if(q.t) Object.keys(q.t).forEach(function(k){ a[k]=q.t[k]; }); return a; });
+    return o;
+  });
+}
+function build(input){
+  installInput(input);
+  var err=null;
+  try{ (setGeoCap(gvals()),cur=runEngine()); }
+  catch(e){ cur=[]; err=e.message; }
+  var groups=buildGroups();
+  var info={POININFO:POININFO, POINSTATS:POINSTATS, FLOWINFO:FLOWINFO, MCONTINFO:MCONTINFO, SORTINFO:SORTINFO,
+            STATINFO:STATINFO, STATSTATS:STATSTATS, FACTINFO:FACTINFO, FACTSTATS:FACTSTATS, STRTINFO:STRTINFO,
+            STRTSTATS:STRTSTATS, POINSNAP:POINSNAP, WORDFIT:WORDFIT};
+  return {gen:input.gen, err:err, groups:packGroups(groups), info:info};
+}
 function paint(){
   /* Square is load-bearing: W===H is assumed all through the paint and export.
      So cap the SIZE on a phone rather than the aspect, and centre it. Without
@@ -31095,10 +31148,9 @@ function paint(){
   var t0=performance.now(), rebuilt=false;
   if(!BUILT || BUILT.gen!==BUILDGEN || (BUILT.draft && !DRAFT)){
     rebuilt=true;
-    try{ (setGeoCap(gvals()),cur=runEngine()); ENGERR=null; }
-    catch(e){ cur=[]; ENGERR=e.message; }
-    BUILT={gen:BUILDGEN, draft:!!DRAFT, cur:cur, err:ENGERR, groups:null, ms:0};
-    BUILT.groups=buildGroups();
+    var R=build(buildInput(BUILDGEN));
+    ENGERR=R.err;
+    BUILT={gen:R.gen, draft:!!DRAFT, cur:cur, err:R.err, groups:unpackGroups(R.groups), ms:0};
   } else { cur=BUILT.cur; ENGERR=BUILT.err; }
   /* The canvas and the export have to agree about what a multi-pen job IS.
      draw() tested copies>1 || pmap>0 while the export also counted PINS, so as
