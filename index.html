@@ -438,7 +438,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v320</a> &mdash; Barrel cellar -- an aisle of stone flags under a brick barrel vault, barriques stacked on chocks or in red racks with their heads to the aisle, transverse arches on brick piers, bottle bins, bare bulbs on a cable along the crown</span></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v321</a> &mdash; Shrine path -- a stone path winding through a tunnel of vermilion torii, broken every run by an opening with stone lanterns, a side shrine and markers, cedar trunks rising past the sheet</span></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <section class="fold" id="fold_pick"><h2>Pick engine<span class="cnt"></span></h2>
@@ -3337,6 +3337,23 @@ var SPEC={
     ['dnear','Solid detail to',1,40,0.5,10,[1,' m']],['dfar','Outline detail to',2,120,1,45,[1,' m']],
     ['dpen','Depth pens',0,1,1,0],['dsplit','Depth split',2,120,1,30,[1,' m']],
     ['lod','LOD cutoff',0,60,1,4,[10,' mm']],['budg','Size budget',10,300,5,120,[1,' k points']],
+    ['occ','Gap',0,30,1,4,[10,' mm']]]],
+  /* SHRINE PATH, queue row 109 (docs/specs/2026-10-12-corridor-themes-grnh-celr-tori.md §3.6) */
+  tori:['Shrine path',[
+    ['len','Path length',30,300,1,90,[1,' m']],['bend','Bend',0,20,1,8,[1,'°/100 m']],
+    ['width','Path width',1.4,4,0.1,2.0,[1,' m']],['gateh','Gate height',2.4,5,0.05,3.2,[1,' m']],
+    ['gap','Gate spacing',0.30,2.5,0.01,0.45,[1,' m']],['run','Gates per run',10,200,1,48],['open','Opening',2,8,0.1,3.4,[1,' m']],
+    ['strut','Centre struts',0,100,1,40,[100,'%']],['insc','Inscriptions',0,100,1,70,[100,'%']],
+    ['lant','Lanterns along runs',0,100,1,15,[100,'%']],
+    ['moss','Moss',0,100,1,40,[100,'%']],['trees','Trees',0,6,0.1,1.2,[1,' /100 m²']],['fence','Bamboo fence',0,1,1,1],
+    ['puddles','Puddles',0,40,1,15],['pudsz','Puddle size',5,100,1,40,[100,'%']],['ripple','Ripple',0,30,1,0,[10,' mm']],
+    ['rvar','Ripple variety',0,100,1,60,[100,'%']],['hatch','Tone hatch',0,100,1,25,[100,'%']],
+    ['cams','Camera along',0,90,1,1,[100,'%']],['camx','Camera side',-100,100,1,0,[100,'%']],
+    ['camz','Camera height',0.2,10,0.05,1.6,[1,' m']],['look','Look ahead',5,300,1,20,[1,' m']],['turn','Turn',-90,90,1,0,[1,'°']],
+    ['pitch','Pitch',-45,45,0.5,3,[1,'°']],['fov','Field of view',25,120,1,78,[1,'°']],
+    ['dnear','Solid detail to',2,80,0.5,14,[1,' m']],['dfar','Outline detail to',10,400,1,70,[1,' m']],
+    ['dpen','Depth pens',0,1,1,0],['dsplit','Depth split',5,300,1,30,[1,' m']],
+    ['lod','LOD cutoff',0,60,1,4,[10,' mm']],['budg','Size budget',10,300,5,140,[1,' k points']],
     ['occ','Gap',0,30,1,4,[10,' mm']]]],
   /* CANAL CITY, queue row 53 (docs/specs/2026-10-04-corridor-themes.md §6) */
   canal:['Canal',[
@@ -17147,7 +17164,7 @@ function buildIsoImg(p){
 
 var ENG={record:buildRecord, flow:buildFlow, growth:buildGrowth, contour:buildContour, ridge:buildRidge,
          pack:buildPack, voronoi:buildVoronoi, truchet:buildTruchet, maze:buildMaze, hilbert:buildHilbert,
-         rows:buildRows, poin:buildPoincare, flag:buildFlag, stat:buildStation, fact:buildFactory, strt:buildStreet, mkt:buildMarket, harb:buildHarbour, libr:buildLibrary, grnh:buildGreenhouse, celr:buildCellar, canal:buildCanal, stn:buildTrainStation,
+         rows:buildRows, poin:buildPoincare, flag:buildFlag, stat:buildStation, fact:buildFactory, strt:buildStreet, mkt:buildMarket, harb:buildHarbour, libr:buildLibrary, grnh:buildGreenhouse, celr:buildCellar, tori:buildShrine, canal:buildCanal, stn:buildTrainStation,
          harmo:buildHarmo, chladni:buildChladni, moire:buildMoire, disc:buildChladniDisc, fan:buildFan,
   string:buildString, fermat:buildFermat, logsp:buildLogSpiral, chuck:buildChuck,
          apoll:buildApollonian, wave:buildWave, sform:buildSuper,
@@ -20143,6 +20160,26 @@ var STHEMES={
         lotGen:function(R,p,li,sd){ return cellarLotGen(R,p,li,sd); },
         fixed:{shopv:0, props:0, alley:0, cars:0, dots:0, graff:0, signs:0, cables:0, canyon:0, stepb:0, canti:0, pave:0},
         content:function(K){ return cellarTheme(K); }},
+  /* row 109 (docs/specs/2026-10-12-corridor-themes-grnh-celr-tori.md §3.2): a
+     path through a tunnel of torii. Not §3.2's entry verbatim, each measured:
+     the lots are walked along the CENTRELINE (paveOf, minus half the path) so
+     the two sides' gates and openings stay opposite on a bend; and the kit's
+     kerb strip is 0 (edgeZ 0, the theme draws its own kerb inside the path) --
+     with a strip a bend pushes the lots' front past the posts' sleeves. And
+     the strip is -0.2: the lots begin 0.2 m inside the path's edge, because a
+     post leans in and its top's inner side stands 0.07-0.12 m nearer the path
+     than its foot (past the path's edge itself at Gate height 5); the path's
+     last 0.2 m and its kerb are drawn on the lots' floor. The kit places a
+     puddle out to the path's edge less pudIn, so pudIn is that 0.2 m and 8 cm
+     more, or every puddle overran the slab and was refused (15 of 15). */
+  tori:{key:'tori', label:'Shrine path', lotDepth:[10,10], alleyW:[0,0], baseN2:0, baseH:[3.2,3.2],
+        midH:[3.2,3.2], edgeZ:0, slabLen:4, clear:3.6, ztop:200, mirror:'puddles', minWidth:1.4, minLen:30,
+        strip:-0.2, pudIn:0.28, zfit:30,
+        paveOf:function(p){ return -shrineKnobs(p).HALFW; },
+        lotGen:function(R,p,li,sd){ return shrineLotGen(R,p,li,sd); },
+        fixed:{shopv:0, props:0, alley:0, cars:0, dots:0, graff:0, signs:0, cables:0, canyon:0, stepb:0, canti:0, pave:0, neon:0},
+        flags:{poles:false, roadMarks:false, bollards:false, manholes:false},
+        content:function(K){ return shrineTheme(K); }},
   /* §6: a water channel between plastered houses; the whole road is water and
      the mirror; the kerb is the quay's edge, 0.8 m over the water */
   canal:{key:'canal', label:'Canal', lotDepth:[8,16], alleyW:[1.0,2.2], baseN2:0, baseH:[3.0,3.6],
@@ -20189,6 +20226,7 @@ function buildHarbour(p){ return buildCorridor(p,STHEMES.harb); }
 function buildLibrary(p){ return buildCorridor(p,STHEMES.libr); }
 function buildGreenhouse(p){ return buildCorridor(p,STHEMES.grnh); }
 function buildCellar(p){ return buildCorridor(p,STHEMES.celr); }
+function buildShrine(p){ return buildCorridor(p,STHEMES.tori); }
 function buildCanal(p){ return buildCorridor(p,STHEMES.canal); }
 function buildTrainStation(p){ return buildCorridor(p,STHEMES.stn); }
 /* THE NIGHT MARKET THEME (queue row 50, docs/specs/2026-10-04-corridor-themes.md
@@ -23741,6 +23779,568 @@ function cellarTheme(K){
     info:function(){ return ' · '+TAL.bays.length+' bays · '+TAL.barrels.length.toLocaleString()+' barrels · '+
       TAL.bottles.length.toLocaleString()+' bottles · '+TAL.lamps.filter(function(l){ return l.placed; }).length+' lamps'+
       (TAL.refused?' · '+TAL.refused+' top tiers refused under the vault':''); }
+  };
+}
+/* THE SHRINE PATH THEME (queue row 109, docs/specs/2026-10-12-corridor-themes-grnh-celr-tori.md
+   §3): a stone path winding up through a tunnel of vermilion torii standing
+   so close they read as one, broken every run by an opening with stone
+   lanterns and a small side shrine, cedar trunks rising on both sides.
+   - THE LOTS (shrineLotGen) are walked along the CENTRELINE (paveOf returns
+     minus half the path), so both sides' lot faces and the openings fall at
+     the same arc on a bend too -- walked along each side's own edge they
+     drifted metres apart over a winding path, and a gate cannot stand with
+     its two posts in different places. A run of gates is cut into lots of
+     about 4 m, each a whole number of gate spacings, so a lot face falls
+     midway between two gates (a post never straddles one) and the lot's
+     chord stays within millimetres of the arc. The opening after every run
+     is the lot gap, libr's cross-aisle.
+   - THE GATES (salt 1097): myojin torii. Two leaning posts on black sleeves
+     in their sides' lots; the nuki cut round the posts (it passes through
+     them), wedges at their outer faces, the shimaki on the posts, the black
+     kasagi over it with separate turned-up ends, a centre strut on some.
+     Every beam is ONE convex solid across the path CUT at every container
+     face it crosses. Inscriptions (salt 1103) in a column of pseudo-kanji on
+     the post faces, and the shaded faces hatched.
+   - THE OPENINGS (salts 1109, 1129): stone lanterns at both ends, a side
+     shrine on one side, stone markers; small lanterns beside some gates.
+   - THE PATH AND FOREST (salts 1123, 1117, 1153): flags of random width
+     with gravel beyond, the stone kerb, moss on the verges and leaf litter,
+     cedar trunks to the sheet's top, a bamboo fence behind the post line,
+     the kit's puddles.
+   Colours: orange posts and beams, black kasagi and sleeves, grey stone,
+   brown trunks, olive moss, ochre bamboo. */
+function shrineKnobs(p){
+  function kn(v,d,lo,hi){ return Math.max(lo,Math.min(hi,isFinite(v)?+v:d)); }
+  return {G:kn(p.gap,0.45,0.30,2.5), RUN:Math.round(kn(p.run,48,10,200)), OPEN:kn(p.open,3.4,2,8),
+          HALFW:Math.max(1.4,+p.width||7)/2};
+}
+function shrineLotGen(R,p,li,sd){
+  /* a whole number of gate spacings, about 4 m, a run cut into them; after a
+     run's last lot the opening. Draws nothing: the gates are the content's. */
+  var k=shrineKnobs(p), C=Math.max(1,Math.round(4/k.G)), per=Math.ceil(k.RUN/C), j=li%per, n=Math.min(C,k.RUN-j*C);
+  return {wl:n*k.G-1e-9, depth:k.HALFW+10, gap:j===per-1?k.OPEN:0, gates:n, run:Math.floor(li/per), j:j, first:j===0, last:j===per-1, G:k.G};
+}
+function shrineTheme(K){
+  var p=K.p, P3=K.P3, frame=K.frame, sub=K.sub, polyFromLoops=K.polyFromLoops, prismN=K.prismN, splitPart=K.splitPart,
+      inConv=K.inConv, slabsBySide=K.slabsBySide, slabPieces=K.slabPieces, conts=K.conts, lots=K.lots, dist3=K.dist3,
+      verts=K.verts, paperGap=K.paperGap, bbHit=K.bbHit, cam=K.cam,
+      CE=K.CE, HALFW=K.HALFW, KOFF=K.KOFF, LEN=K.LEN, MINSP=K.MINSP, FF=K.FF;
+  function kn(v,d,lo,hi){ return Math.max(lo,Math.min(hi,isFinite(v)?+v:d)); }
+  var SK=shrineKnobs(p), GAP=SK.G, GATEH=kn(p.gateh,3.2,2.4,5), STRUT=kn(p.strut,40,0,100)/100, INSC=kn(p.insc,70,0,100)/100,
+      LANT=kn(p.lant,15,0,100)/100, MOSS=kn(p.moss,40,0,100)/100, TREES=kn(p.trees,1.2,0,6), FENCE=Math.round(kn(p.fence,1,0,1)),
+      HATCH=kn(p.hatch,25,0,100)/100;
+  var SALT_GATE=1097, SALT_INSC=1103, SALT_LANT=1109, SALT_TREE=1117, SALT_PATH=1123, SALT_SHRINE=1129, SALT_FLOOR=1153;
+  var COL_K='#1a1a1a', COL_DG='#4a4a4a', COL_GREY='#8a8a8a', COL_ORG='#ec7a1c', COL_BRN='#8b5a2b', COL_OLIVE='#6b7a2a',
+      COL_OCHRE='#c8962e';
+  var SCR=corridorScripts(sub,SALT_INSC,null);
+  /* the cross-section (§3.1), lateral from the centreline */
+  var OPOST=HALFW+0.25, VERGE1=HALFW+1.2, FENCEO=HALFW+1.45, LEAN=1.5*Math.PI/180;
+  /* AT A TIGHT SPACING THE POSTS AND SLEEVES SHRINK TO FIT: 0.30 m apart, Ø 0.36 m
+     sleeves would interpenetrate their neighbours */
+  var RPOST=Math.min(0.15,GAP/2-0.012), RSLV=Math.min(0.18,GAP/2-0.005), SLVH=0.35;
+  var TAL={lots:[], gates:[], posts:[], members:[], lanterns:[], shrines:[], markers:[], trunks:[], forestArea:0, insc:[], miss:0,
+           openings:[], fence:0, kerb:0};
+  STRTTALLY.tori=TAL;
+
+  /* ---- containers. THE SLOT (the greenhouse's): on a bend the kit pushes a
+     lot back off the slabs, and the strip between the slab's back chord and
+     the lot's front chord belonged to no container -- a beam crossing it would
+     lose a piece. One convex container per slab there. */
+  function cutAt(s,sd,A,B){
+    var P0=P3(s,sd,0,0), P1=P3(s,sd,1,0), dx=P1[0]-P0[0], dy=P1[1]-P0[1], ex=B[0]-A[0], ey=B[1]-A[1];
+    var den=dx*ey-dy*ex; if(Math.abs(den)<1e-15) return null;
+    var t=((A[0]-P0[0])*ey-(A[1]-P0[1])*ex)/den; return [P0[0]+dx*t, P0[1]+dy*t];
+  }
+  lots.forEach(function(L){
+    if(!(L.fe>KOFF+1e-9)) return;
+    var A=P3(L.s0,L.side,L.fe,0), B=P3(L.s1,L.side,L.fe,0);
+    slabsBySide[L.side].forEach(function(C){
+      var sa=Math.max(C.s0,L.s0), sb=Math.min(C.s1,L.s1); if(sb-sa<1e-6) return;
+      var CA=P3(C.s0,L.side,KOFF,0), CB=P3(C.s1,L.side,KOFF,0);
+      var f0=cutAt(sa,L.side,CA,CB), f1=cutAt(sb,L.side,CA,CB), g0=cutAt(sa,L.side,A,B), g1=cutAt(sb,L.side,A,B);
+      if(!f0||!f1||!g0||!g1) return;
+      if(Math.hypot(g0[0]-f0[0],g0[1]-f0[1])<1e-6 && Math.hypot(g1[0]-f1[0],g1[1]-f1[1])<1e-6) return;
+      var Q=[f0,f1,g1,g0], b=[1e18,1e18,-1e18,-1e18];
+      Q.forEach(function(q){ if(q[0]<b[0])b[0]=q[0]; if(q[1]<b[1])b[1]=q[1]; if(q[0]>b[2])b[2]=q[0]; if(q[1]>b[3])b[3]=q[1]; });
+      conts.push({kind:'slot', side:L.side, s0:sa, s1:sb, poly:Q, bb:b, parts:[], lot:L});
+    });
+  });
+
+  /* ---- small geometry (the cellar's) ------------------------------------- */
+  function sub3(a,b){ return [a[0]-b[0],a[1]-b[1],a[2]-b[2]]; }
+  function add3(a,b,k){ return [a[0]+b[0]*k,a[1]+b[1]*k,a[2]+b[2]*k]; }
+  function lerp3(a,b,t){ return [a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t,a[2]+(b[2]-a[2])*t]; }
+  function nrm(v){ var l=Math.hypot(v[0],v[1],v[2])||1; return [v[0]/l,v[1]/l,v[2]/l]; }
+  function SP(s,o,z){ return P3(s,1,o,z); }
+  function PS(sd,s,o,z){ return P3(s,sd,o,z); }
+  function ringFace(pts,ins){
+    var a=pts[0], b=pts[1], c=pts[2];
+    var ux=b[0]-a[0],uy=b[1]-a[1],uz=b[2]-a[2], vx=c[0]-a[0],vy=c[1]-a[1],vz=c[2]-a[2];
+    var n=[uy*vz-uz*vy, uz*vx-ux*vz, ux*vy-uy*vx], L=Math.hypot(n[0],n[1],n[2])||1;
+    n=[n[0]/L,n[1]/L,n[2]/L];
+    var d=n[0]*a[0]+n[1]*a[1]+n[2]*a[2];
+    if(n[0]*ins[0]+n[1]*ins[1]+n[2]*ins[2]-d>0){ n=[-n[0],-n[1],-n[2]]; d=-d; }
+    return {n:n, d:d, pts:pts};
+  }
+  function loft(RG){
+    var m=RG.length, n=RG[0].length, ins=[0,0,0], i, k, F=[], L=[];
+    RG.forEach(function(r){ r.forEach(function(q){ ins[0]+=q[0]/(m*n); ins[1]+=q[1]/(m*n); ins[2]+=q[2]/(m*n); }); });
+    F.push(ringFace(RG[0],ins)); F.push(ringFace(RG[m-1],ins));
+    for(i=0;i<m-1;i++) for(k=0;k<n;k++){ var k2=(k+1)%n; F.push(ringFace([RG[i][k],RG[i][k2],RG[i+1][k2],RG[i+1][k]],ins)); }
+    function sf(i2,k3){ return 2+i2*n+((k3%n)+n)%n; }
+    for(k=0;k<n;k++){ var k1=(k+1)%n;
+      L.push({a:RG[0][k], b:RG[0][k1], f0:0, f1:sf(0,k)});
+      L.push({a:RG[m-1][k], b:RG[m-1][k1], f0:1, f1:sf(m-2,k)});
+      for(i=1;i<m-1;i++) L.push({a:RG[i][k], b:RG[i][k1], f0:sf(i-1,k), f1:sf(i,k)});
+      for(i=0;i<m-1;i++) L.push({a:RG[i][k], b:RG[i+1][k], f0:sf(i,k-1), f1:sf(i,k)});
+    }
+    return {faces:F, lines:L, ins:ins, sf:sf, RG:RG};
+  }
+  function rings(lo,hi){ return loft([lo,hi]); }
+  /* a prism over the (s,o) rectangle on side sd (signed o on side 1), z0..z1.
+     Faces: 0 bottom, 1 top, 2 the oA face, 3 sB, 4 oB, 5 sA */
+  function bx(sd,sA,sB,oA,oB,zA,zB){
+    var Q=[PS(sd,sA,oA,0),PS(sd,sB,oA,0),PS(sd,sB,oB,0),PS(sd,sA,oB,0)].map(function(v){ return [v[0],v[1]]; });
+    return rings(Q.map(function(q){ return [q[0],q[1],zA]; }),Q.map(function(q){ return [q[0],q[1],zB]; }));
+  }
+  /* an (o,z) section swept across [s0,s1] by one translation: planar on a bend */
+  function sweepO(sd,s0,s1,sec,om){
+    var lo=sec.map(function(q){ return PS(sd,s0,q[0],q[1]); }), T=sub3(PS(sd,s1,om,0),PS(sd,s0,om,0));
+    return rings(lo,lo.map(function(v){ return add3(v,T,1); }));
+  }
+  /* a vertical n-gon tube: foot centre F, top centre Tp, radius r; vertex k at
+     angle (k+0.5)*TAU/n from -s, so a FACE looks along -s (and one along +s) */
+  function tube(F,Tp,r,n,s){
+    var fr=frame(s), bs=[-fr[2],-fr[3],0], bo=[-fr[3],fr[2],0], lo=[], hi=[], k;
+    for(k=0;k<n;k++){ var a=TAU*(k+0.5)/n, c=Math.cos(a), sn=Math.sin(a);
+      lo.push([F[0]+r*(c*bs[0]+sn*bo[0]),F[1]+r*(c*bs[1]+sn*bo[1]),F[2]]); hi.push([Tp[0]+r*(c*bs[0]+sn*bo[0]),Tp[1]+r*(c*bs[1]+sn*bo[1]),Tp[2]]); }
+    return rings(lo,hi);
+  }
+  function vis(f){ return f.n[0]*CE[0]+f.n[1]*CE[1]+f.n[2]*CE[2]-f.d>1e-9; }
+  function smooth(P,first){
+    P.lines=P.lines.filter(function(Ln){ if(Ln.f0<first || Ln.f1<first || Ln.f0===Ln.f1) return true; return vis(P.faces[Ln.f0])!==vis(P.faces[Ln.f1]); });
+    return P;
+  }
+  function tag(P,kind,col,layer,extra){
+    P.kind=kind; P.col=col; P.layer=layer;
+    P.lines.forEach(function(Ln){ if(Ln.col===undefined) Ln.col=col; if(!Ln.kind) Ln.kind=kind; });
+    if(extra) for(var k in extra) P[k]=extra[k];
+    return P;
+  }
+  function see(P){ P.hides=false; P.seeThru=true; return P; }
+  function ln(P,a,b,kind,col,f){ P.lines.push({a:a, b:b, f0:f||0, f1:f||0, kind:kind, col:col}); }
+  function poly(P,pts,kind,col,closed,f){ for(var i=1;i<pts.length;i++) ln(P,pts[i-1],pts[i],kind,col,f); if(closed && pts.length>2) ln(P,pts[pts.length-1],pts[0],kind,col,f); }
+  function shClip(R,Q){
+    var ar=0, m; for(m=0;m<Q.length;m++){ var qa=Q[m], qb=Q[(m+1)%Q.length]; ar+=qa[0]*qb[1]-qa[1]*qb[0]; }
+    var sg=ar>0?1:-1, out=R;
+    for(m=0;m<Q.length && out.length;m++){
+      var a=Q[m], b=Q[(m+1)%Q.length], inp=out, k; out=[];
+      for(k=0;k<inp.length;k++){
+        var P0=inp[k], P1=inp[(k+1)%inp.length];
+        var s0=sg*((b[0]-a[0])*(P0[1]-a[1])-(b[1]-a[1])*(P0[0]-a[0])), s1=sg*((b[0]-a[0])*(P1[1]-a[1])-(b[1]-a[1])*(P1[0]-a[0]));
+        if(s0>=0) out.push(P0);
+        if((s0>=0)!==(s1>=0)){ var t=s0/(s0-s1); out.push([P0[0]+(P1[0]-P0[0])*t, P0[1]+(P1[1]-P0[1])*t]); }
+      }
+    }
+    return out;
+  }
+  function area2(Q){ var a=0; for(var m=0;m<Q.length;m++){ var qa=Q[m], qb=Q[(m+1)%Q.length]; a+=qa[0]*qb[1]-qa[1]*qb[0]; } return Math.abs(a)/2; }
+  function hullXY(V){
+    var q=V.map(function(v){ return [v[0],v[1]]; }).sort(function(a,b){ return a[0]-b[0]||a[1]-b[1]; }), lo=[], up=[], m;
+    function cr(o,a,b){ return (a[0]-o[0])*(b[1]-o[1])-(a[1]-o[1])*(b[0]-o[0]); }
+    for(m=0;m<q.length;m++){ while(lo.length>=2 && cr(lo[lo.length-2],lo[lo.length-1],q[m])<=1e-15) lo.pop(); lo.push(q[m]); }
+    for(m=q.length-1;m>=0;m--){ while(up.length>=2 && cr(up[up.length-2],up[up.length-1],q[m])<=1e-15) up.pop(); up.push(q[m]); }
+    return lo.slice(0,-1).concat(up.slice(0,-1));
+  }
+  function contPieces(P){
+    var VP=verts(P), H=hullXY(VP), b=[1e18,1e18,-1e18,-1e18], out=[], cov=0, tot=area2(H), k;
+    VP.forEach(function(v){ if(v[0]<b[0])b[0]=v[0]; if(v[1]<b[1])b[1]=v[1]; if(v[0]>b[2])b[2]=v[0]; if(v[1]>b[3])b[3]=v[1]; });
+    for(k=0;k<conts.length;k++){
+      var C=conts[k]; if(!bbHit(b,C.bb)) continue;
+      var Q=C.poly, piece=P, cx=0, cy=0, e;
+      Q.forEach(function(q){ cx+=q[0]/Q.length; cy+=q[1]/Q.length; });
+      for(e=0;e<Q.length && piece;e++){
+        var a=Q[e], c=Q[(e+1)%Q.length], nx=-(c[1]-a[1]), ny=c[0]-a[0], L=Math.hypot(nx,ny); nx/=L; ny/=L;
+        if(nx*(cx-a[0])+ny*(cy-a[1])<0){ nx=-nx; ny=-ny; }
+        var d=nx*a[0]+ny*a[1], V=verts(piece), lo=1e18, hi=-1e18;
+        V.forEach(function(v){ var w=nx*v[0]+ny*v[1]-d; if(w<lo) lo=w; if(w>hi) hi=w; });
+        if(hi<=1e-9){ piece=null; break; }
+        if(lo<-1e-9){ var Hh=splitPart(piece,[nx,ny,0],d); piece=Hh[0];
+          if(!piece.faces.length || verts(piece).length<4) piece=null; }
+      }
+      if(piece){ piece.cont=C; out.push(piece); cov+=area2(shClip(H,Q)); }
+    }
+    return {pieces:out, miss:tot>1e-12?Math.max(0,1-cov/tot):0};
+  }
+  /* P into every container it is in; recorded in `list` with the gate's id */
+  function put(P,list,rec){
+    var cp=contPieces(P);
+    cp.pieces.forEach(function(Q){
+      Q.kind=P.kind; Q.col=P.col; Q.layer=P.layer;
+      if(P.hides===false){ Q.hides=false; Q.seeThru=true; }
+      if(P.gapless) Q.gapless=true;
+      Q.cont.parts.push(Q);
+    });
+    if(cp.miss>1e-6) TAL.miss=Math.max(TAL.miss,cp.miss);
+    if(list) list.push({kind:P.kind, info:rec||null, miss:cp.miss, V:verts(P),
+      pieces:cp.pieces.map(function(Q){ return {cont:Q.cont.kind, side:Q.cont.side, s0:Q.cont.s0, poly:Q.cont.poly, V:verts(Q),
+        F:Q.faces.map(function(f){ return {n:f.n, d:f.d}; })}; })});
+    return cp.pieces;
+  }
+  function inLot(P,L){ P.cont=L; L.parts.push(P); return P; }
+  function thin(gapMMperM,step){ var k=1; while(k<64 && gapMMperM*step*k<MINSP) k*=2; return k; }
+  function mmAt(P){ var c=cam(P); return c[2]>0.25?FF*(0.5-K.PAD)*PAGEMM/c[2]:1e9; }
+
+  /* ---- the lots, per side; both sides share their faces (the centreline) -- */
+  var bySide={'1':[],'-1':[]};
+  lots.forEach(function(L){ bySide[L.side].push(L); });
+  [1,-1].forEach(function(sd){ bySide[sd].sort(function(a,b){ return a.s0-b.s0; }); });
+  /* the lot of side sd that holds arc s */
+  function lotAt(sd,s){ var A=bySide[sd]; for(var i=0;i<A.length;i++) if(s>A[i].s0-1e-9 && s<A[i].s1+1e-9) return A[i]; return null; }
+
+  /* ---- §3.3 THE GATES ------------------------------------------------------ */
+  /* the post's centre at height z: its foot at OPOST, its top LEAN in */
+  function postO(z){ return OPOST-z*Math.tan(LEAN); }
+  var NUKI=[0.65,0.22,0.16], SHIM=[0.20,0.18,0.20], KASA=[0.20,0.26];
+  function gate(g,dn,df){
+    var s=g.s, H=g.h, zN=H-NUKI[0], zS0=H-SHIM[0]-SHIM[1], zS1=H-SHIM[0], zK0=H-KASA[0];
+    /* THE BANDS, BY DISTANCE (§3.6) AND BY SIZE ON THE SHEET: a gate keeps its
+       beams while it stands 20 mm tall on the paper, its posts and kasagi to
+       10 mm, and its kasagi only below that. And where gates stand closer on
+       the paper than the paper floor, a far one is drawn every 2^k-th, as every
+       other spaced line here is. Measured: the tunnel stacks every far gate
+       into the same few cells of the occluder's grid, and by distance alone
+       the defaults took 3.7 s and 1,000 gates far longer. */
+    var Cg=SP(s,0,H/2), d=dist3(SP(s,0,H)), hmm=H*mmAt(Cg);
+    var band=d<dn&&hmm>=40?'near':d<df&&hmm>=20?'mid':d<2*df&&hmm>=10?'far':'vfar';
+    var rec={s:s, h:H, idx:g.idx, run:g.run, band:band, strut:false, wantStrut:!!g.R.strut, wantInsc:!!g.insc, posts:[], kasagi:null, insc:false, drawn:true};
+    TAL.gates.push(rec);
+    if(band==='far' || band==='vfar'){
+      var gp=paperGap(Cg,sub3(SP(s,1,H/2),Cg),sub3(SP(s+1,0,H/2),Cg)), kk=thin(gp,GAP);
+      if(g.idx%kk){ rec.drawn=false; rec.k=kk; return; }
+    }
+    var R=g.R, members=TAL.members;
+    /* the posts, each in its side's lot, on its sleeve */
+    [1,-1].forEach(function(sd){
+      var L=lotAt(sd,s); if(!L) return;
+      if(band==='vfar') return;
+      /* the axis leans in from the FOOT (z 0): at height z its centre is postO(z) */
+      var nG=band==='near'?12:8, F=PS(sd,s,postO(SLVH),SLVH), Tp=PS(sd,s,postO(zS0),zS0);
+      var Pst=smooth(tag(tube(F,Tp,RPOST,nG,s),'post',COL_ORG,'gate'),2);
+      var Sl=smooth(tag(tube(PS(sd,s,OPOST,0),PS(sd,s,postO(SLVH),SLVH),RSLV,nG,s),'sleeve',COL_K,'gate'),2);
+      /* the tone hatch on the post's shaded faces */
+      if(HATCH>0 && band==='near'){
+        /* THE GATES ARE BACKLIT: light from ahead, a little left, above. Looking up
+           the tunnel the camera sees the posts' backs, so those are the faces in
+           shade; lit from the side, the shaded faces were the ones seen edge-on
+           and the paper floor drew no hatch on any post ahead (measured). The
+           face that carries an inscription is left clear for it. */
+        var fr=frame(s), sun=nrm([fr[2]*1.0-fr[3]*0.5, fr[3]*1.0+fr[2]*0.5, 0.8]);
+        for(var k=0;k<nG;k++){ var fi=2+k, f=Pst.faces[fi];
+          if(f.n[0]*sun[0]+f.n[1]*sun[1]+f.n[2]*sun[2]>-0.15) continue;
+          if(fi===2+(nG-1) && g.insc) continue;
+          var a0=Pst.RG[0][k], a1=Pst.RG[0][(k+1)%nG], b0=Pst.RG[1][k], b1=Pst.RG[1][(k+1)%nG];
+          /* paperGap takes UNIT directions: given the 7.8 cm face edge it read 13x small and the paper floor drew nothing (measured) */
+          var Pm=lerp3(lerp3(a0,a1,0.5),lerp3(b0,b1,0.5),0.5), gp=paperGap(Pm,nrm(sub3(b0,a0)),nrm(sub3(a1,a0)));
+          var nl=Math.max(1,Math.floor(1+2*HATCH)); if(gp>0 && gp*Math.hypot(a1[0]-a0[0],a1[1]-a0[1])/(nl+1)<MINSP) nl=Math.max(0,Math.floor(gp*Math.hypot(a1[0]-a0[0],a1[1]-a0[1])/MINSP)-1);
+          for(var j=1;j<=nl;j++){ var t=j/(nl+1); ln(Pst,lerp3(a0,a1,t),lerp3(b0,b1,t),'hatch',COL_DG,fi); }
+        }
+      }
+      /* inscriptions: a column of pseudo-kanji on the face looking along -s, on
+         Inscriptions of the gates; on the face looking along +s, on every gate */
+      if(band==='near' && mmAt(F)*0.06>=1.0){
+        [[2+(nG-1),g.insc],[2+(nG/2-1),true]].forEach(function(fq,qi){
+          if(!fq[1]) return;
+          var fi=fq[0], k=fi-2, a0=Pst.RG[0][k], a1=Pst.RG[0][(k+1)%nG], b0=Pst.RG[1][k], b1=Pst.RG[1][(k+1)%nG];
+          var c0=lerp3(a0,a1,0.5), c1=lerp3(b0,b1,0.5), ev=nrm(sub3(c1,c0)), eu=nrm(sub3(a1,a0)), wF=Math.hypot(a1[0]-a0[0],a1[1]-a0[1]);
+          /* the viewer of this face reads left to right: u along the face's own horizontal, pointing to that viewer's right */
+          var fn=Pst.faces[fi].n, rgt=[-(fn[1]*1-0), fn[0]*1, 0]; if(rgt[0]*eu[0]+rgt[1]*eu[1]<0) eu=[-eu[0],-eu[1],-eu[2]];
+          /* the box is the face's width less 4 mm; the glyphs sit in it with setText's margins */
+          var RT=sub(sd<0?2:1,g.idx*4+qi,SALT_INSC), nCh=6+Math.floor(RT()*7), WB=wF-0.004, W=WB/1.24, Hc=nCh*W*1.12+0.24*W;
+          var z0=Math.max(SLVH+0.15,Math.min(1.0,zN-NUKI[1]/2-0.1-Hc));
+          var T=SCR.setText('kanji',WB,Hc,true,RT,0.01);
+          var org=add3(add3(c0,ev,(z0-SLVH)/Math.max(1e-9,ev[2])),eu,-WB/2);
+          T.lines.forEach(function(pl){ for(var j=1;j<pl.length;j++)
+            ln(Pst,add3(add3(org,eu,pl[j-1][0]),ev,pl[j-1][1]),add3(add3(org,eu,pl[j][0]),ev,pl[j][1]),'insc',COL_K,fi); });
+          TAL.insc.push({gate:g.idx, side:sd, face:qi?'far':'near', lines:T.lines.length, s:s, d:d,
+            box:[org, eu, ev, WB, Hc], fi:fi, V:Pst.faces[fi].pts});
+          if(!qi) rec.insc=true;
+        });
+      }
+      inLot(Sl,L); inLot(Pst,L);
+      rec.posts.push({side:sd, lot:{s0:L.s0, s1:L.s1, idx:L.idx}, foot:PS(sd,s,OPOST,0), top:Tp, r:RPOST, rs:RSLV, zTop:zS0});
+    });
+    /* the beams, across the path: each ONE convex solid, cut at every container face */
+    var cTop=postO(zS0), cN0=postO(zN+NUKI[1]/2), cN1=postO(zN-NUKI[1]/2), dpth=function(w){ return [s-w/2,s+w/2]; };
+    if(band==='near' || band==='mid'){
+      var nS=dpth(NUKI[2]), oIn=cN0-RPOST-0.004, oOut=cN1+RPOST+0.004, oEnd=OPOST+0.35;
+      put(tag(bx(1,nS[0],nS[1],-oIn,oIn,zN-NUKI[1]/2,zN+NUKI[1]/2),'nuki',COL_ORG,'gate',{gapless:true}),members,{gate:g.idx, part:'nuki'});
+      [1,-1].forEach(function(sd){
+        put(tag(bx(sd,nS[0],nS[1],oOut,oEnd,zN-NUKI[1]/2,zN+NUKI[1]/2),'nuki',COL_ORG,'gate',{gapless:true}),members,{gate:g.idx, part:'nukiend'});
+        put(tag(bx(sd,s-0.05,s+0.05,oOut,oOut+0.06,zN+NUKI[1]/2,zN+NUKI[1]/2+0.10),'wedge',COL_ORG,'gate'),members,{gate:g.idx, part:'wedge'});
+      });
+      if(R.strut){ rec.strut=true;
+        put(tag(bx(1,s-0.07,s+0.07,-0.07,0.07,zN+NUKI[1]/2,zS0),'strut',COL_ORG,'gate',{gapless:true}),members,{gate:g.idx, part:'strut'}); }
+      var sS=dpth(SHIM[2]);
+      put(tag(bx(1,sS[0],sS[1],-(cTop+0.30),cTop+0.30,zS0,zS1),'shimaki',COL_ORG,'gate',{gapless:true}),members,{gate:g.idx, part:'shimaki'});
+    }
+    /* the kasagi: its straight run post to post, and the turned-up ends, each a
+       separate convex prism whose top rises 0.10 m outward */
+    /* ALL THREE ON ONE TRANSLATION, so the faces where they meet are the same
+       plane on a bend too: as a box and two sweeps they were not, and on the
+       default Bend 8 the ends and the run interpenetrated (55 pairs, measured) */
+    var kS=dpth(KASA[1]);
+    put(tag(sweepO(1,kS[0],kS[1],[[-cTop,zK0],[cTop,zK0],[cTop,H],[-cTop,H]],0),'kasagi',COL_K,'gate',{gapless:true}),members,{gate:g.idx, part:'kasagi'});
+    [1,-1].forEach(function(sd){
+      put(tag(sweepO(1,kS[0],kS[1],[[sd*cTop,zK0],[sd*(cTop+0.55),zK0+0.04],[sd*(cTop+0.55),H+0.10],[sd*cTop,H]],0),'kasagi',COL_K,'gate',{gapless:true}),
+          members,{gate:g.idx, part:'kasagiend'});
+    });
+    rec.kasagi={top:H, cTop:cTop};
+  }
+
+  /* ---- §3.4 LANTERNS, the side shrine, markers --------------------------- */
+  function lanternParts(sd,s,o,sc,R){
+    var parts=[], c=function(z){ return PS(sd,s,o,z); }, fr=frame(s);
+    function ngon(r,z,n,ph){ var C=c(z), q=[]; for(var k=0;k<n;k++){ var a=TAU*(k+(ph||0.5))/n; q.push([C[0]+r*Math.cos(a),C[1]+r*Math.sin(a),z]); } return q; }
+    var z=0, H=[0.15,0.85,0.10,0.32,0.06,0.30,0.14].map(function(h){ return h*sc; });
+    parts.push(tag(bx(sd,s-0.30*sc,s+0.30*sc,o-0.30*sc,o+0.30*sc,0,H[0]),'lbase',COL_GREY,'lantern')); z=H[0];
+    parts.push(smooth(tag(rings(ngon(0.11*sc,z,12),ngon(0.11*sc,z+H[1],12)),'lpillar',COL_GREY,'lantern'),2)); z+=H[1];
+    parts.push(tag(bx(sd,s-0.25*sc,s+0.25*sc,o-0.25*sc,o+0.25*sc,z,z+H[2]),'lplatform',COL_GREY,'lantern')); z+=H[2];
+    var FB=rings(ngon(0.175*sc,z,6),ngon(0.175*sc,z+H[3],6)); tag(FB,'firebox',COL_GREY,'lantern');
+    /* two window openings as lines, on the faces toward and away from the path */
+    for(var k=0;k<6;k++){ var f=FB.faces[2+k], dot=f.n[0]*(-fr[3]*sd)+f.n[1]*(fr[2]*sd); if(Math.abs(dot)<0.8) continue;
+      var a0=FB.RG[0][k], a1=FB.RG[0][(k+1)%6], b0=FB.RG[1][k], b1=FB.RG[1][(k+1)%6];
+      var q=[lerp3(lerp3(a0,a1,0.25),lerp3(b0,b1,0.25),0.2),lerp3(lerp3(a0,a1,0.75),lerp3(b0,b1,0.75),0.2),lerp3(lerp3(a0,a1,0.75),lerp3(b0,b1,0.75),0.8),lerp3(lerp3(a0,a1,0.25),lerp3(b0,b1,0.25),0.8)];
+      poly(FB,q,'window',COL_GREY,true,2+k); }
+    parts.push(FB); z+=H[3];
+    parts.push(tag(rings(ngon(0.32*sc,z,6),ngon(0.30*sc,z+H[4],6)),'lroof',COL_GREY,'lantern')); z+=H[4];
+    parts.push(tag(rings(ngon(0.30*sc,z,6),ngon(0.05*sc,z+H[5],6)),'lroof',COL_GREY,'lantern')); z+=H[5];
+    parts.push(smooth(tag(loft([ngon(0.04*sc,z,8),ngon(0.06*sc,z+H[6]*0.5,8),ngon(0.02*sc,z+H[6],8)]),'finial',COL_GREY,'lantern'),2)); z+=H[6];
+    return {parts:parts, h:z};
+  }
+  function bb3(V){ var b=[1e18,1e18,1e18,-1e18,-1e18,-1e18]; V.forEach(function(v){ for(var k=0;k<3;k++){ if(v[k]<b[k]) b[k]=v[k]; if(v[k]>b[k+3]) b[k+3]=v[k]; } }); return b; }
+  function boxMeet(a,b){ return !(a[3]<=b[0]||b[3]<=a[0]||a[4]<=b[1]||b[4]<=a[1]||a[5]<=b[2]||b[5]<=a[2]); }
+  function placeIn(parts,L,list,rec){
+    /* every part wholly inside lot L, clear of the stone already there (lanterns,
+       shrines, markers) by box, or none of them */
+    var ok=parts.every(function(P){ return verts(P).every(function(v){ return inConv(L.poly,v); }); });
+    if(ok) ok=parts.every(function(P){ var b=bb3(verts(P));
+      return L.parts.every(function(X){ return (X.layer!=='lantern' && X.layer!=='shrine') || !boxMeet(b,bb3(verts(X))); }); });
+    if(ok){ parts.forEach(function(P){ inLot(P,L); }); if(list) list.push(rec); }
+    return ok;
+  }
+  function openingThings(L0,L1,oi){
+    /* L0 the run's last lot (before the opening), L1 the next run's first */
+    var R=sub(0,oi,SALT_LANT), rec={i:oi, s0:L0.s1, s1:L1.s0, lanterns:0, shrine:false, markers:0};
+    TAL.openings.push(rec);
+    /* one at each end, one on each side; 1.0 m out, about 2 m tall: under the
+       kasagi's end at the lowest Gate height, and clear of the nuki's */
+    [[L0,L0.s1-0.4],[lotAt(-1,L1.s0+0.4),L1.s0+0.4]].forEach(function(q){
+      var L=q[0]; if(!L) return;
+      var sc=1.04+0.06*R(), lp=lanternParts(L.side,q[1],HALFW+1.0,sc,R);
+      if(placeIn(lp.parts,L,TAL.lanterns,{side:L.side, idx:L.idx, s:q[1], h:lp.h, small:false, open:oi})) rec.lanterns++;
+    });
+    /* the side shrine, on one side, in the next run's first lot */
+    var RS=sub(0,oi,SALT_SHRINE), sd=RS()<0.5?1:-1, Ls=lotAt(sd,L1.s0+0.6);
+    if(Ls){
+      var sc0=Ls.s0+0.9, oS=HALFW+2.0, parts=[];
+      parts.push(tag(bx(sd,sc0,sc0+1.0,oS-0.5,oS+0.5,0,0.3),'plinth',COL_GREY,'shrine'));
+      var B=tag(bx(sd,sc0+0.1,sc0+0.9,oS-0.3,oS+0.3,0.3,1.0),'hokora',COL_BRN,'shrine'); parts.push(B);
+      /* the gabled roof: two plates meeting at the ridge, over the body */
+      [[oS-0.42,oS],[oS,oS+0.42]].forEach(function(r,ri){
+        var zA=ri?1.24:1.0, zB=ri?1.0:1.24;
+        /* both plates on ONE translation, or on a bend their ridge faces part and they cross */
+        parts.push(tag(sweepO(sd,sc0+0.02,sc0+0.98,[[r[0],zA],[r[1],zB],[r[1],zB+0.04],[r[0],zA+0.04]],oS),'hroof',COL_K,'shrine'));
+      });
+      /* the rope and its three paper streamers, on a part that hides nothing, before the body */
+      var Rp=see(tag(bx(sd,sc0+0.06,sc0+0.94,oS-0.36,oS-0.33,0.75,0.98),'rope',COL_GREY,'shrine')); Rp.lines=[];
+      var X=function(s2,z){ return PS(sd,s2,oS-0.345,z); };
+      for(var k=0;k<8;k++) ln(Rp,X(sc0+0.1+0.8*k/8,0.96-0.02*Math.sin(Math.PI*k/8)),X(sc0+0.1+0.8*(k+1)/8,0.96-0.02*Math.sin(Math.PI*(k+1)/8)),'rope',COL_K);
+      [0.3,0.5,0.7].forEach(function(f){ var s2=sc0+0.1+0.8*f, zz=0.94, pts=[X(s2,zz)];
+        for(var m=1;m<=4;m++){ pts.push(X(s2+(m%2?0.03:-0.01),zz-0.04*m)); } poly(Rp,pts,'shide',COL_GREY,false); });
+      parts.push(Rp);
+      /* the offering box, before the plinth, slats as lines */
+      var Ob=tag(bx(sd,sc0+0.3,sc0+0.7,oS-0.95,oS-0.65,0,0.35),'offering',COL_BRN,'shrine'); parts.push(Ob);
+      for(var sl=1;sl<6;sl++){ var zz2=0.05+0.05*sl; ln(Ob,PS(sd,sc0+0.3,oS-0.95,zz2),PS(sd,sc0+0.7,oS-0.95,zz2),'slat',COL_K,2); }
+      if(placeIn(parts,Ls,TAL.shrines,{side:sd, idx:Ls.idx, s:sc0+0.5, open:oi})) { rec.shrine=true; Ls.hasShrine=true; }
+    }
+    /* stone markers, 2-5, on the verges of the run ends */
+    var RM=sub(1,oi,SALT_SHRINE), nM=2+Math.floor(RM()*4);
+    for(var mi=0;mi<nM;mi++){
+      var L2=mi%2?L1:L0, sd2=RM()<0.5?1:-1, Lm=lotAt(sd2,mi%2?L1.s0+0.9+0.5*RM():L0.s1-0.9-0.5*RM()), hM=0.8+0.6*RM();
+      if(!Lm) continue;
+      var sm=mi%2?L1.s0+0.9+0.5*mi/4:L0.s1-0.9-0.5*mi/4, om=HALFW+0.6+0.4*RM();
+      var Mk=tag(bx(sd2,sm-0.1,sm+0.1,om-0.1,om+0.1,0,hM),'marker',COL_GREY,'shrine');
+      if(mmAt(PS(sd2,sm,om,hM/2))*0.05>=1.0 && dist3(PS(sd2,sm,om,hM/2))<40){
+        var T=SCR.setText('kanji',0.16,hM-0.2,true,RM,0.01), org=PS(sd2,sm+0.08,om-0.1,0.1), eu=nrm(sub3(PS(sd2,sm-0.08,om-0.1,0.1),org));
+        T.lines.forEach(function(pl){ for(var j=1;j<pl.length;j++) ln(Mk,add3(add3(org,eu,pl[j-1][0]),[0,0,1],pl[j-1][1]),add3(add3(org,eu,pl[j][0]),[0,0,1],pl[j][1]),'insc',COL_K,2); });
+      }
+      if(placeIn([Mk],Lm,TAL.markers,{side:sd2, idx:Lm.idx, s:sm, h:hM, open:oi})) rec.markers++;
+    }
+  }
+
+  /* ---- per lot: the gates' posts come from the gate pass; here the fence and
+     the forest (salt 1117), keeping clear of everything placed in the lot ---- */
+  function dress(L,dn,df){
+    if(L===lots[0]){ TAL.lots=[]; TAL.gates=[]; TAL.members=[]; TAL.lanterns=[]; TAL.shrines=[]; TAL.markers=[]; TAL.trunks=[];
+                     TAL.forestArea=0; TAL.insc=[]; TAL.openings=[]; TAL.miss=0; TAL.fence=0; TAL.kerb=0; gatesDone=false; }
+    TAL.lots.push({side:L.side, idx:L.idx, s0:L.s0, s1:L.s1, fe:L.fe, back:L.back, gates:L.gen.gates, run:L.gen.run, j:L.gen.j, first:L.gen.first, last:L.gen.last});
+    if(!gatesDone){ gatesDone=true; gatesAll(dn,df); }
+  }
+  var gatesDone=false;
+  function gatesAll(dn,df){
+    /* the gates of every lot of side +1, in arc order; side -1's lots share the faces */
+    var A=bySide['1'], gi=0, runs={};
+    A.forEach(function(L){
+      var n=L.gen.gates, w=(L.s1-L.s0)/n, i;
+      (runs[L.gen.run]=runs[L.gen.run]||[]).push(L);
+      for(i=0;i<n;i++){
+        var R=sub(0,gi,SALT_GATE), uh=R(), us=R(), ust=R(), uin=R();
+        /* jitter: +-2 % in height, and along the path as far as the sleeve stays in the lot */
+        var mg=Math.max(0,w/2-RSLV-0.003), s=L.s0+w*(i+0.5)+(us*2-1)*Math.min(0.03*GAP,mg);
+        gate({s:s, h:GATEH*(1+0.02*(uh*2-1)), idx:gi, run:L.gen.run, R:{strut:ust<STRUT}, insc:uin<INSC}, dn, df);
+        gi++;
+      }
+    });
+    /* the openings first, so their lanterns have the verge; then the small
+       lanterns beside every 6th gate, Lanterns along runs of them */
+    var keys=Object.keys(runs).map(Number).sort(function(a,b){ return a-b; });
+    for(var ki=0;ki+1<keys.length;ki++){ var r0=runs[keys[ki]], r1=runs[keys[ki+1]];
+      openingThings(r0[r0.length-1],r1[0],ki); }
+    TAL.gates.forEach(function(g){
+      if(g.idx%6) return;
+      var R=sub(1,g.idx,SALT_LANT), u=R(), sd=R()<0.5?1:-1; if(!(u<LANT)) return;
+      var L=lotAt(sd,g.s); if(!L) return;
+      var lp=lanternParts(sd,g.s,HALFW+0.95,0.5,R);
+      placeIn(lp.parts,L,TAL.lanterns,{side:sd, idx:L.idx, s:g.s, h:lp.h, small:true});
+    });
+  }
+  function forest(dn,df){
+    /* every trunk already standing on each side: the spacing holds across lot faces too */
+    var stand={'1':[],'-1':[]};
+    lots.forEach(function(L){
+      var sd=L.side, a=sd<0?2:1, R=sub(a,L.idx,SALT_TREE), o0=VERGE1+0.3, o1=L.back-0.05;
+      var area=(L.s1-L.s0)*(o1-o0), want=TREES*area/100, n=Math.floor(want)+(R()<want-Math.floor(want)?1:0), placed=[], t, k;
+      TAL.forestArea+=area;
+      /* what else stands in the forest strip of this lot: the shrine and its box */
+      var busy=L.parts.filter(function(P){ return P.layer==='shrine'; }).map(function(P){ var V=verts(P); return V; });
+      for(k=0;k<n;k++){
+        var ok=false;
+        for(t=0;t<20 && !ok;t++){
+          var r=0.2+0.4*R(), s=L.s0+r+(L.s1-L.s0-2*r)*R(), o=o0+r+(o1-o0-2*r)*R();
+          if(L.s1-L.s0<2*r+0.01) break;
+          var A0=PS(sd,s,o,0);
+          ok=placed.concat(stand[sd]).every(function(q){ return Math.hypot(A0[0]-q.c[0],A0[1]-q.c[1])>=r+q.r+0.8; });
+          if(ok && o-r<OPOST+RSLV+0.8) ok=false;
+          if(ok) busy.forEach(function(V){ var c=PS(sd,s,o,0); V.forEach(function(v){ if(Math.hypot(v[0]-c[0],v[1]-c[1])<r+0.3) ok=false; }); });
+          if(ok){ var C=PS(sd,s,o,0); placed.push({s:s, o:o, r:r, c:C}); }
+        }
+        if(!ok) TAL.trunks.push({side:sd, idx:L.idx, refused:true});
+      }
+      placed.forEach(function(q){ stand[sd].push(q); });
+      placed.forEach(function(q){
+        var d=dist3([q.c[0],q.c[1],1.5]), nT=d<dn?12:8, P=tube([q.c[0],q.c[1],0],[q.c[0],q.c[1],200],q.r,nT,q.s);
+        tag(P,'trunk',COL_BRN,'forest'); smooth(P,2);
+        if(d<dn){ var nb=6+Math.floor(R()*5);
+          for(var b=0;b<nb;b++){ var a2=-Math.PI/2+Math.PI*(b+0.5)/nb, dir=nrm(sub3(CE,q.c)), ang=Math.atan2(dir[1],dir[0])+a2*0.9;
+            var bx0=q.c[0]+q.r*1.002*Math.cos(ang), by0=q.c[1]+q.r*1.002*Math.sin(ang);
+            var fi=2, best=-2; for(var f=2;f<P.faces.length;f++){ var dd=P.faces[f].n[0]*Math.cos(ang)+P.faces[f].n[1]*Math.sin(ang); if(dd>best){ best=dd; fi=f; } }
+            ln(P,[bx0,by0,0],[bx0,by0,8],'bark',COL_BRN,fi); } }
+        inLot(P,L);
+        TAL.trunks.push({side:sd, idx:L.idx, s:q.s, o:q.o, r:q.r, c:q.c, refused:false});
+      });
+    });
+  }
+  function fence(dn,df){
+    if(!FENCE) return;
+    lots.forEach(function(L){
+      if(L.hasShrine) return;
+      var sd=L.side, parts=[], d=dist3(PS(sd,(L.s0+L.s1)/2,FENCEO,1));
+      if(d>=df) return;
+      for(var s=L.s0+0.1; s<L.s1-0.05; s+=1.8){
+        parts.push(smooth(tag(tube(PS(sd,s,FENCEO,0),PS(sd,s,FENCEO,2.2),0.03,8,s),'fencepost',COL_OCHRE,'fence'),2));
+      }
+      /* three poles before the posts, on parts that hide nothing, ONE A BAY
+         between two posts: a pole the lot long is a chord, and on a bend it
+         bowed 10 mm into the posts standing on the arc (Bend 30, measured);
+         and the lashing at every post */
+      var nPost=parts.length, sp=[], s3;
+      for(s3=L.s0+0.1; s3<L.s1-0.05; s3+=1.8) sp.push(s3);
+      sp.push(L.s1-0.02);
+      for(var bi=0; bi+1<sp.length; bi++){ var sa=bi===0?L.s0+0.02:sp[bi], sb=sp[bi+1];
+        var Pl=see(tag(bx(sd,sa,sb,FENCEO-0.075,FENCEO-0.05,0.5,2.0),'pole',COL_OCHRE,'fence')); Pl.lines=[];
+        [0.6,1.3,1.9].forEach(function(z){ ln(Pl,PS(sd,sa,FENCEO-0.0625,z),PS(sd,sb,FENCEO-0.0625,z),'pole',COL_OCHRE); });
+        if(d<dn) [0.6,1.3,1.9].forEach(function(z){ ln(Pl,PS(sd,sa+0.02,FENCEO-0.0625,z-0.03),PS(sd,sa+0.08,FENCEO-0.0625,z+0.03),'lashing',COL_OCHRE); });
+        parts.push(Pl); }
+      parts.forEach(function(P){ inLot(P,L); }); TAL.fence+=nPost;
+    });
+  }
+  /* ---- §3.5 THE PATH: flags of random width, a joint on the centreline on
+     40 % of them, gravel beyond Outline detail to; the kerb at its edge ----- */
+  /* the path's flag joints on side sd between s0 and s1, from the slab's own
+     stream: the slab draws them to its edge, a lot the path's last 0.2 m */
+  function joints(sd,C){
+    var R=sub(sd<0?2:1,Math.round(C.s0*4),SALT_PATH), s=C.s0, J=[];
+    while(s<C.s1-1e-6){ var w=0.4+0.5*R(), s2=Math.min(C.s1,s+w), uL=R(); J.push({s:s, s2:s2, inner:s2<C.s1-1e-6, long:uL<0.4}); s=s2; }
+    return J;
+  }
+  function floors(dn,df){
+    var EDGE=HALFW-0.05;
+    conts.forEach(function(C){
+      if(C.kind==='slab'){
+        var sd=C.side, Pl=prismN(C.poly,-0.02,0);
+        Pl.lines=[]; Pl.hides=false; Pl.cont=C; Pl.col=COL_GREY; Pl.kind='plate'; Pl.layer='floor';
+        var mid=P3((C.s0+C.s1)/2,sd,KOFF/2,0);
+        if(dist3(mid)<df){
+          var g=paperGap(mid,nrm(sub3(P3((C.s0+C.s1)/2,sd,KOFF/2+1,0),mid)),nrm(sub3(P3((C.s0+C.s1)/2+1,sd,KOFF/2,0),mid)));
+          joints(sd,C).forEach(function(j){
+            if(j.inner && g*(j.s2-j.s)>=MINSP) Pl.lines.push({a:P3(j.s2,sd,0,0), b:P3(j.s2,sd,KOFF,0), f0:1, f1:1, col:COL_GREY, kind:'flag'});
+            if(sd===1 && j.long) Pl.lines.push({a:P3(j.s,1,0,0), b:P3(j.s2,1,0,0), f0:1, f1:1, col:COL_GREY, kind:'flag'});
+          });
+        } else {
+          /* gravel: short dashes, as many as the paper floor holds */
+          var Rg=sub(sd<0?2:1,Math.round(C.s0*4)+5000,SALT_PATH), gg=paperGap(mid,nrm(sub3(P3((C.s0+C.s1)/2+1,sd,KOFF/2,0),mid)),nrm(sub3(P3((C.s0+C.s1)/2,sd,KOFF/2+1,0),mid)));
+          var nD=Math.max(0,Math.min(60,Math.floor(gg*gg*(C.s1-C.s0)*KOFF/(4*MINSP*MINSP))));
+          for(var k=0;k<nD;k++){ var ss=C.s0+(C.s1-C.s0)*Rg(), oo=(KOFF-0.05)*Rg(), dz=0.04+0.04*Rg();
+            Pl.lines.push({a:P3(ss,sd,oo,0), b:P3(ss+dz,sd,oo,0), f0:1, f1:1, col:COL_GREY, kind:'gravel'}); }
+        }
+        C.parts.push(Pl);
+      } else if(C.kind==='lot'){
+        var sdL=C.side, Pv=prismN(C.poly,-0.02,0);
+        Pv.lines=[]; Pv.hides=false; Pv.cont=C; Pv.col=COL_OLIVE; Pv.kind='plate'; Pv.layer='floor';
+        /* the path's last 0.2 m: the slab's joints carried across it */
+        var mp=P3((C.s0+C.s1)/2,sdL,HALFW-0.1,0);
+        if(dist3(mp)<df) slabsBySide[sdL].forEach(function(S){
+          if(S.s1<C.s0-1e-9 || S.s0>C.s1+1e-9) return;
+          joints(sdL,S).forEach(function(j){ if(j.inner && j.s2>C.s0+1e-6 && j.s2<C.s1-1e-6)
+            Pv.lines.push({a:P3(j.s2,sdL,C.fe,0), b:P3(j.s2,sdL,EDGE,0), f0:1, f1:1, col:COL_GREY, kind:'flag'}); });
+        });
+        /* the stone kerb: the path's last 5 cm, 0.10 m high, hiding nothing (the kit's kerb's reason) */
+        var Kb=bx(sdL,C.s0,C.s1,EDGE,HALFW,0,0.10); Kb.lines=[];
+        Kb.lines.push({a:P3(C.s0,sdL,EDGE,0), b:P3(C.s1,sdL,EDGE,0), f0:2, f1:2, col:COL_GREY, kind:'kerb'});
+        Kb.lines.push({a:P3(C.s0,sdL,EDGE,0.10), b:P3(C.s1,sdL,EDGE,0.10), f0:2, f1:1, col:COL_GREY, kind:'kerb'});
+        see(tag(Kb,'kerb',COL_GREY,'floor')); Kb.cont=C; C.parts.push(Kb); TAL.kerb++;
+        var mv=P3((C.s0+C.s1)/2,sdL,HALFW+0.8,0), dv=dist3(mv);
+        if(MOSS>0 && dv<df){
+          /* moss on the verge, beyond the kerb: short strokes along the path, as dense as Moss, held to the paper floor */
+          var Rm=sub(sdL<0?2:1,C.idx,SALT_FLOOR), gv=paperGap(mv,nrm(sub3(P3((C.s0+C.s1)/2+1,sdL,HALFW+0.8,0),mv)),nrm(sub3(P3((C.s0+C.s1)/2,sdL,HALFW+1.8,0),mv)));
+          var o0=HALFW+0.05, area=(C.s1-C.s0)*(VERGE1-o0), nm=Math.min(400,Math.floor(MOSS*area*Math.min(400,gv*gv/(2*MINSP*MINSP))));
+          for(var m=0;m<nm;m++){ var sm=C.s0+(C.s1-C.s0)*Rm(), om=o0+(VERGE1-o0)*Rm(), lm=0.05+0.05*Rm();
+            Pv.lines.push({a:P3(sm,sdL,om,0), b:P3(Math.min(C.s1,sm+lm),sdL,om,0), f0:1, f1:1, col:COL_OLIVE, kind:'moss'}); }
+          if(dv<dn){ var nl=Math.floor(8*(C.s1-C.s0));
+            for(var q=0;q<nl;q++){ var sl=C.s0+(C.s1-C.s0)*Rm(), ol=VERGE1+(Math.min(C.back,VERGE1+4)-VERGE1)*Rm(), al=TAU*Rm();
+              var A=P3(sl,sdL,ol,0); Pv.lines.push({a:A, b:[A[0]+0.06*Math.cos(al),A[1]+0.06*Math.sin(al),0], f0:1, f1:1, col:COL_BRN, kind:'litter'}); } }
+        }
+        C.parts.push(Pv);
+      }
+    });
+  }
+  return {
+    dress:dress, signsFor:function(){},
+    furnish:function(dn,df){ floors(dn,df); forest(dn,df); fence(dn,df); },
+    cars:[], dots:[],
+    info:function(){ return ' · '+TAL.gates.length+' gates · '+TAL.openings.length+' openings · '+
+      TAL.lanterns.length+' lanterns · '+TAL.trunks.filter(function(t){ return !t.refused; }).length+' trunks'; }
   };
 }
 /* THE CANAL CITY THEME (queue row 53, docs/specs/2026-10-04-corridor-themes.md
@@ -29984,6 +30584,7 @@ function draw(){
   if(mode==='libr' && STRTINFO) txt+=' \u00b7 '+STRTINFO;
   if(mode==='grnh' && STRTINFO) txt+=' \u00b7 '+STRTINFO;
   if(mode==='celr' && STRTINFO) txt+=' \u00b7 '+STRTINFO;
+  if(mode==='tori' && STRTINFO) txt+=' \u00b7 '+STRTINFO;
   if(mode==='canal' && STRTINFO) txt+=' \u00b7 '+STRTINFO;
   if(mode==='stn' && STRTINFO) txt+=' \u00b7 '+STRTINFO;
   if(mode==='fan'){
@@ -30227,7 +30828,7 @@ var FAMILIES=[
   ['Lattices',   ['truchet','maze','hilbert','voronoi','pack','rows','poin']],
   ['Curves',     ['harmo','sform','lsys','string','fan','chladni']],
   ['FROM PHOTO 3D', ['isoimg']],
-  ['3D',         ['hil3','harmo3','attract','ruled','knot','spack','flow3','surf','iso','stat','fact','strt','mkt','harb','libr','grnh','celr','canal','stn']],
+  ['3D',         ['hil3','harmo3','attract','ruled','knot','spack','flow3','surf','iso','stat','fact','strt','mkt','harb','libr','grnh','celr','tori','canal','stn']],
   ['From photo', ['tonehatch','tonespiral']]
 ];
 function mountTabs(){
@@ -30860,6 +31461,38 @@ var HELP={
 'celr.lod':'The smallest part still drawn, as its size on the sheet.',
 'celr.budg':'How many points the drawing may use, in thousands. Over it, the detail distances come in and the LOD cutoff rises until it fits.',
 'celr.occ':'How wide a white gap a nearer object leaves in whatever passes behind it, in millimetres on the sheet.',
+'tori.len':'How long the path is, in metres, from the camera to its end. The gates stand along all of it, in runs with openings between.',
+'tori.bend':'How much the path winds, in degrees per 100 m: at 8 the tunnel of gates curves out of sight.',
+'tori.width':'How wide the stone path is, in metres, between the two rows of gate posts.',
+'tori.gateh':'How tall the gates are, in metres, to the top of the black kasagi. Each gate varies by up to 2 % either way.',
+'tori.gap':'How far apart the gates stand along the path, in metres, centre to centre. Close, they make a tunnel; at 0.30 m their posts shrink to fit.',
+'tori.run':'How many gates stand in each run before an opening.',
+'tori.open':'How long each opening is, in metres: a gap in the tunnel with a stone lantern at each end, a small side shrine and stone markers.',
+'tori.strut':'How many gates have the short centre strut between the tie beam and the top.',
+'tori.insc':'How many gates carry a column of inscribed characters on the posts\u2019 faces toward you. The far faces always carry one, seen when you turn.',
+'tori.lant':'How many of every sixth gate also have a small stone lantern on the verge beside them.',
+'tori.moss':'How thick the moss is on the verges beside the path. 0 is none.',
+'tori.trees':'How many cedar trunks stand in the forest beside the path, per 100 m\u00b2. They rise past the top of the sheet.',
+'tori.fence':'1 puts a bamboo fence behind the gate posts along the runs.',
+'tori.puddles':'How many puddles lie on the path. Each shows the gates reflected in it, upside down.',
+'tori.pudsz':'How big the puddles are.',
+'tori.ripple':'How far the reflection wobbles sideways, in millimetres on the sheet. 0 is still water.',
+'tori.rvar':'How varied the ripple is: crossing waves, calm and choppy patches, more wobble near the camera. Does nothing while Ripple is 0.',
+'tori.hatch':'How dense the shading is on the posts\u2019 shaded faces. 0 is no shading.',
+'tori.cams':'Where the camera stands, as a share of the path length. Near 0 you look up the whole tunnel.',
+'tori.camx':'The camera across the path, as a share of half its width: 0 is the middle.',
+'tori.camz':'The camera height in metres. 1.6 is eye height; higher looks down on the tops of the gates.',
+'tori.look':'How far ahead the camera aims, in metres along the path. On a winding path this is what turns the camera to follow it.',
+'tori.turn':'Turns the camera left (+) or right (\u2212) from looking up the path: \u00b190 faces the posts, and shows the far faces of the ones behind you.',
+'tori.pitch':'Tilts the camera up (positive) or down, in degrees. Up shows the beams and the tops of the gates.',
+'tori.fov':'The field of view across the sheet, in degrees.',
+'tori.dnear':'Up to this distance, in metres, the gates are drawn whole with round posts, the inscriptions and the shading, and the verges carry their leaves.',
+'tori.dfar':'Up to this distance, in metres, the gates keep their beams; beyond it only their posts and top, and beyond twice it only the top. A gate small on the sheet is simplified sooner.',
+'tori.dpen':'1 draws the black lines further away than Depth split in dark grey instead: a near pen and a far pen.',
+'tori.dsplit':'With Depth pens on: how far away, in metres, black turns to dark grey.',
+'tori.lod':'The smallest part still drawn, as its size on the sheet.',
+'tori.budg':'How many points the drawing may use, in thousands. Over it, the detail distances come in and the LOD cutoff rises until it fits.',
+'tori.occ':'How wide a white gap a nearer object leaves in whatever passes behind it, in millimetres on the sheet.',
 'stn.len':"How long the platforms are, in metres. The camera stands part-way along them (Camera along) and the rails, the platform edges and the wires run away to the far end. A longer station reaches further toward the vanishing point and costs more lines.",
 'stn.bend':"How much the station curves, in degrees per 100 m. 0 is dead straight, so the rails and both platform edges meet at one vanishing point; a bend carries the far end out of sight behind the buildings on the inside of the curve. A car on a bend is a straight body between its two bogies.",
 'stn.width':"The track bed between the two platform edges, in metres: two tracks, each centred 1.6 m out from its own platform edge. Wider moves the two tracks apart and opens bare ballast between them; at the narrowest the two trains nearly touch.",
