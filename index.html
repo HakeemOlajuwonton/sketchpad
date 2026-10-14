@@ -438,7 +438,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v323</a> &mdash; Barrel cellar -- the vault's brick courses are held to the paper floor and no harder (a chord's length had stood in for a unit direction, thinning them about 3x)</span></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v324</a> &mdash; Isofactory spirals, lifts and vacuum tubes -- spiral conveyors carry cartons down from the mezzanine, lifts (open, or an enclosed freight lift) serve the floor and the deck, and a pneumatic tube network with cabinets, diverters and 0.6 m bends links QA, the process stations and the mezzanine lab</span></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <section class="fold" id="fold_pick"><h2>Pick engine<span class="cnt"></span></h2>
@@ -3198,6 +3198,7 @@ var SPEC={
     ['flev','Levels',1,3,1,2],['flines','Lines',1,4,1,2],['fstat','Stations',4,9,1,6],
     ['fitem','Items',0,100,1,60,[100,'%']],
     ['farms','Arms per cell',0,4,1,2],['fpose','Pose',0,99,1,0],
+    ['fspir','Spirals',0,2,1,1],['flift','Lifts',0,4,1,2],['ftube','Vacuum tubes',0,100,1,60,[100,'%']],
     ['lod','LOD cutoff',0,60,1,5,[10,' mm']],
     ['occ','Occlusion gap',0,80,1,5,[10,' mm']]]],
   /* STREET, queue rows 30-33. ONLY THE KNOBS A BUILT ROW READS ARE DECLARED --
@@ -19072,6 +19073,10 @@ function buildFactory(p){
      not) -- layout, so `fpose` never reaches it; POSE is what it reaches for,
      indexed by `fpose`. Neither is read by anything but the robots. */
   var FACT_SALT_ARMS=727, FACT_SALT_POSE=733;
+  /* Row 105. LIFT is what a lift is (open or enclosed), LIFTPOSE where its cab
+     stands (indexed by `fpose`); TUBES which candidate links are built and in
+     what order, TUBEPOSE the capsules in the hoppers (indexed by `fpose`). */
+  var FACT_SALT_LIFT=739, FACT_SALT_LIFTPOSE=743, FACT_SALT_TUBES=751, FACT_SALT_TUBEPOSE=757;
   /* §5's ink roles, by INKS name. No grey anywhere: Albert has no grey pen. */
   var FACTCOL={black:'#1a1a1a', yellow:'#f2c230', orange:'#ec7a1c', blue:'#2156c7',
                lblue:'#5aa9e6', brown:'#8b5a2b', red:'#d42a2a', green:'#2f9a44'};
@@ -19084,6 +19089,8 @@ function buildFactory(p){
                 rail:'yellow', guard:'yellow', fence:'yellow', lane:'yellow',
                 machine:'blue', vat:'blue',
                 carton:'brown', pallet:'brown', tool:'black', dress:'black', arm:'yellow',
+                rbelt:'black', spiral:'black', cab:'black', shaft:'black', hanger:'black', capsule:'black',
+                liftsteel:'yellow', cabinet:'blue', diverter:'blue', vtube:'lblue',
                 estop:'red', walk:'green'};
   /* Station footprints: length along the line in whole metres. Depth is 3 m for
      every type, which is what lets a row be one 3-cell strip. */
@@ -19096,6 +19103,9 @@ function buildFactory(p){
   var FITEM=Math.max(0,Math.min(1,(p.fitem===undefined?60:p.fitem)/100));
   var FARMS=Math.max(0,Math.min(4,Math.round(p.farms===undefined?2:p.farms)));
   var FPOSE=Math.max(0,Math.min(99,Math.round(p.fpose||0)));
+  var FSPIR=Math.max(0,Math.min(2,Math.round(p.fspir===undefined?1:p.fspir)));
+  var FLIFT=Math.max(0,Math.min(4,Math.round(p.flift===undefined?2:p.flift)));
+  var FTUBE=Math.max(0,Math.min(1,(p.ftube===undefined?60:p.ftube)/100));
   var SEED=Math.round(rnd(0)*1e6);
   var H=NLEV===3?13.5:9.0;                         /* eaves */
   var out=[];
@@ -19331,6 +19341,29 @@ function buildFactory(p){
     var mx1=6+6*Math.max(1,Math.min(3,Math.floor((W-18)/6)));
     MZ={x0:6.2, x1:mx1-0.2, y0:0.3, y1:5.6, z:4.5};
     markRect(0,0,W,6,RESV);
+  }
+  /* RISER SITES (row 105): where a spiral or a lift CAN stand, decided by the
+     layout alone, so `fspir` and `flift` only choose which are built and move
+     nothing else -- the handrail gaps and the tube router's keep-out are the
+     sites', built or not. They stand at the lower deck's two ENDS, on the
+     reserved strip under the back wall: the west end between the walls and the
+     deck, the east end past the stair. A spiral's helix is fixed by §4.3 (pitch
+     1.4, radius 1.1) and the rise by the belts (0.8 to 4.5 + 0.8), so where it
+     leaves at the bottom follows from where it must leave at the top; the top
+     is set so its belt runs straight onto the deck. East needs room past the
+     stair, and at three levels the upper deck's stair must end short of the
+     east tables. Every lane a belt crosses the deck edge on is in RLANES. */
+  var RSITES=[], RLANES={W:[], E:[]}, DXU=0;
+  if(MZ){
+    DXU=MZ.x0+(MZ.x1-MZ.x0)*0.6;
+    var eRoom=NLEV<3 || DXU+4.5<=MZ.x1-1.3;
+    RSITES.push({key:'Wsp', kind:'spiral', side:'W', O:[2.05,1.85], top:-90, lane:0.75});
+    RSITES.push({key:'Wlf', kind:'lift', side:'W', c:[3.6,4.4], lane:4.4, face:1});
+    if(eRoom && MZ.x1+2.95<=W) RSITES.push({key:'Elf', kind:'lift', side:'E', c:[MZ.x1+1.35,3.15], lane:3.15, face:-1});
+    if(eRoom && MZ.x1+6.9<=W) RSITES.push({key:'Esp', kind:'spiral', side:'E', O:[MZ.x1+4.6,3.5], top:90, lane:4.6});
+    /* a riser's id is its SITE's, so building one never renames another */
+    var RID={Wsp:'sp0', Esp:'sp1', Elf:'lift0', Wlf:'lift1'};
+    RSITES.forEach(function(S){ S.id=RID[S.key]; RLANES[S.side].push(S.lane); });
   }
 
   /* AISLES ON THE BAY LINES BETWEEN THE LINES' BANDS, decided FIRST. A belt
@@ -19644,9 +19677,16 @@ function buildFactory(p){
         box(cxx-0.12,MZ.y1-0.36,zb,cxx+0.12,MZ.y1-0.12,zd-0.25,{kind:'column'});
       }
       handrail(MZ.x0+0.05,MZ.y1-0.05,dx1-0.05,MZ.y1-0.05,zd);
-      handrail(MZ.x0+0.05,MZ.y0+0.05,MZ.x0+0.05,MZ.y1-0.05,zd);
+      /* the lower deck's ends open where a riser site's belt comes in, built
+         or not (row 105) */
+      function endRail(x,ya,yb,lanes){
+        wallRuns(ya,yb,lv===0?lanes.map(function(l){ return [l-0.45,l+0.45]; }):[]).forEach(function(q){
+          if(q[1]-q[0]>0.3) handrail(x,q[0],x,q[1],zd);
+        });
+      }
+      endRail(MZ.x0+0.05,MZ.y0+0.05,MZ.y1-0.05,RLANES.W);
       var sy0=lv===0?0.6:2.2, sy1=sy0+1.2;
-      handrail(dx1-0.05,sy1+0.1,dx1-0.05,MZ.y1-0.05,zd);
+      endRail(dx1-0.05,sy1+0.1,MZ.y1-0.05,RLANES.E);
       handrail(dx1-0.05,MZ.y0+0.05,dx1-0.05,sy0-0.1,zd);
       stair(dx1,sy0,sy1,zd,zb);
     });
@@ -19940,6 +19980,7 @@ function buildFactory(p){
       lb(0.3,-1.1,0,2.7,1.1,2.6,{kind:'machine'});
       lb(0.8,1.1,0.4,2.2,1.2,2.0,{kind:'machine'});
       lcyl(1.5,-0.5,2.6,H-0.6,0.25,0.25,10,{kind:'machine'});
+      st.flue=[wx(1.5),st.yc-0.5];
       lcyl(1.5,-0.5,H-0.6,H-0.4,0.4,0.4,10,{kind:'machine'});
       if(near(0.04)){ lb(1.3,1.2,1.15,1.7,1.26,1.21,{kind:'detail'}); lb(2.3,0.3,2.6,2.55,0.6,2.8,{kind:'detail'}); }
     } else if(t==='vat'){
@@ -20022,6 +20063,370 @@ function buildFactory(p){
     (st.stubs||[]).forEach(function(rec){ if(rec.items) placeItems(rec,rngI); });
   });
 
+  /* ================= SPIRALS, LIFTS, VACUUM TUBES (row 105) ================= */
+  var RISERS=[], RBELTS=[], VROUTES=[], CABS=[], TUBESTAT={cand:0, want:0, built:0, dropped:0};
+  /* THE CONVEX HULL OF A FEW POINTS, as faces: every plane through three of
+     them with all the rest on one side, its on-plane points in order. A spiral
+     plate's top is a piece of a helicoid and its four corners are not
+     coplanar, so the plate is the hull of its eight corners and the top folds
+     once along a diagonal; the two fold faces are marked smooth, so the fold
+     draws nothing and the plate keeps exactly the outline the helicoid has. */
+  function hullFaces(P){
+    var n=P.length, F=[], seen={}, i, j, k, m;
+    for(i=0;i<n;i++) for(j=i+1;j<n;j++) for(k=j+1;k<n;k++){
+      var a=[P[j][0]-P[i][0],P[j][1]-P[i][1],P[j][2]-P[i][2]], b=[P[k][0]-P[i][0],P[k][1]-P[i][1],P[k][2]-P[i][2]];
+      var nv=cross3(a,b), L=Math.sqrt(nv[0]*nv[0]+nv[1]*nv[1]+nv[2]*nv[2]);
+      if(L<1e-12) continue;
+      nv=[nv[0]/L,nv[1]/L,nv[2]/L];
+      var d=nv[0]*P[i][0]+nv[1]*P[i][1]+nv[2]*P[i][2], pos=0, neg=0, on=[];
+      for(m=0;m<n;m++){
+        var sd=nv[0]*P[m][0]+nv[1]*P[m][1]+nv[2]*P[m][2]-d;
+        if(sd>1e-9) pos++; else if(sd<-1e-9) neg++; else on.push(m);
+      }
+      if(pos&&neg) continue;
+      var key=on.join(','); if(seen[key]) continue; seen[key]=1;
+      var c=[0,0,0]; on.forEach(function(q){ c[0]+=P[q][0]/on.length; c[1]+=P[q][1]/on.length; c[2]+=P[q][2]/on.length; });
+      var e0=v3n([P[on[0]][0]-c[0],P[on[0]][1]-c[1],P[on[0]][2]-c[2]]), e1=cross3(nv,e0);
+      on.sort(function(p1,p2){
+        var u1=[P[p1][0]-c[0],P[p1][1]-c[1],P[p1][2]-c[2]], u2=[P[p2][0]-c[0],P[p2][1]-c[1],P[p2][2]-c[2]];
+        return Math.atan2(u1[0]*e1[0]+u1[1]*e1[1]+u1[2]*e1[2],u1[0]*e0[0]+u1[1]*e0[1]+u1[2]*e0[2])-
+               Math.atan2(u2[0]*e1[0]+u2[1]*e1[1]+u2[2]*e1[2],u2[0]*e0[0]+u2[1]*e0[1]+u2[2]*e0[2]);
+      });
+      F.push(on);
+    }
+    return F;
+  }
+  /* A TUBE PIECE BETWEEN TWO MITRE PLANES: a cylinder of radius r along the
+     chord p0 -> p1, cut by the plane through p0 with normal n0 and the plane
+     through p1 with normal n1 (§2: "a mitred bend piece is convex because it is
+     a cylinder between two planes"). On a bend both planes are radial, so two
+     neighbouring pieces share one plane and meet in one ellipse. The ends are
+     seams unless asked otherwise, so a tube draws its two silhouette lines. */
+  function mitreTube(p0,p1,n0,n1,r,nf,o){
+    var a=v3n([p1[0]-p0[0],p1[1]-p0[1],p1[2]-p0[2]]);
+    var u=v3n(cross3(a,Math.abs(a[2])<0.9?[0,0,1]:[1,0,0])), v=cross3(a,u), V=[], F=[[],[]], sm=[false,false], sea=[!o.cap0,!o.cap1], i;
+    [[p0,n0],[p1,n1]].forEach(function(E){
+      var na=E[1][0]*a[0]+E[1][1]*a[1]+E[1][2]*a[2];
+      for(i=0;i<nf;i++){
+        var al=TAU*(i+0.5)/nf, dv=[r*(Math.cos(al)*u[0]+Math.sin(al)*v[0]), r*(Math.cos(al)*u[1]+Math.sin(al)*v[1]), r*(Math.cos(al)*u[2]+Math.sin(al)*v[2])];
+        var sk=-(E[1][0]*dv[0]+E[1][1]*dv[1]+E[1][2]*dv[2])/na;
+        V.push([E[0][0]+dv[0]+sk*a[0], E[0][1]+dv[1]+sk*a[1], E[0][2]+dv[2]+sk*a[2]]);
+      }
+    });
+    for(i=0;i<nf;i++){ F[0].push(nf-1-i); F[1].push(nf+i); }
+    for(i=0;i<nf;i++){ F.push([i,(i+1)%nf,nf+(i+1)%nf,nf+i]); sm.push(true); sea.push(false); }
+    o.smooth=sm; o.seam=sea;
+    return solid(V,F,o);
+  }
+  function deckAt(x,y){ return MZ && x>=MZ.x0-1e-9 && x<=MZ.x1+1e-9 && y>=MZ.y0-1e-9 && y<=MZ.y1+1e-9; }
+  function upperAt(x,y){ return NLEV>=3 && MZ && x>=MZ.x0-0.1 && x<=DXU+0.1 && y>=MZ.y0-0.1 && y<=MZ.y1+0.1; }
+  /* A RISER'S BELT: any horizontal direction, top 0.80 above its level, legs
+     where something is under it, rods to the roof where nothing is. The end at
+     the riser is a SEAM when it meets a spiral's plate face to face, so belt
+     and helix are one outline; at a lift it is a real end at the shaft face. */
+  function riserBelt(rid,a,b,zd,seamA,tag){
+    var dx=b[0]-a[0], dy=b[1]-a[1], L=Math.hypot(dx,dy);
+    if(L<1e-6) return null;
+    var d=[dx/L,dy/L,0], q=[-d[1],d[0],0], c=[(a[0]+b[0])/2,(a[1]+b[1])/2,zd+BZ0+(BZ1-BZ0)/2];
+    obox(c,vsc(d,L/2),vsc(q,BW),[0,0,(BZ1-BZ0)/2],{kind:'rbelt', id:rid+'.'+tag, seam:[false,false,false,false,false,!!seamA]});
+    var s, sup=function(x,y){ return zd===0 || deckAt(x,y); };
+    for(s=0.15;s<=L-0.15+1e-9;s+=1.5){
+      var px=a[0]+d[0]*s, py=a[1]+d[1]*s;
+      [-0.25,0.25].forEach(function(t){
+        var qx=px+q[0]*t, qy=py+q[1]*t;
+        if(sup(qx,qy)) bar(qx-0.02,qy-0.02,zd,qx+0.02,qy+0.02,zd+BZ0,{kind:'leg', id:rid+'.'+tag+'l'});
+      });
+    }
+    for(s=0.5;s<=L-0.3+1e-9;s+=3){
+      var rx=a[0]+d[0]*s, ry=a[1]+d[1]*s;
+      if(sup(rx,ry)) continue;
+      [-0.25,0.25].forEach(function(t){
+        var qx=rx+q[0]*t, qy=ry+q[1]*t;
+        bar(qx-0.01,qy-0.01,zd+BZ1,qx+0.01,qy+0.01,upperAt(qx,qy)?8.75:H,{kind:'hanger', id:rid+'.'+tag+'r'});
+      });
+    }
+    /* the table the belt ends at */
+    var tc=[b[0]+d[0]*0.4,b[1]+d[1]*0.4,zd+0.4];
+    obox(tc,vsc(d,0.4),vsc(q,0.4),[0,0,0.4],{kind:'table', id:rid+'.'+tag+'t'});
+    var rec={riser:rid, tag:tag, a:[a[0],a[1],zd+BZ1], b:[b[0],b[1],zd+BZ1], level:zd, dir:d};
+    RBELTS.push(rec);
+    return rec;
+  }
+  /* SPIRAL CONVEYOR (§4.3): column r 0.12, helix radius 1.1, pitch 1.4 a turn,
+     slats 0.6 wide and 0.12 deep, one convex plate per 15° or less, from the
+     ground belt's top (0.8) to the deck belt's (5.3). It carries DOWN. */
+  function buildSpiral(S){
+    var rid=S.id, O=S.O, R=1.1, PIT=1.4, zb=BZ1, zt=MZ.z+BZ1;
+    var turns=(zt-zb)/PIT, phe=S.top*Math.PI/180, phs=phe-TAU*turns;
+    var np=Math.ceil(turns*24-1e-9), dph=(phe-phs)/np, k;
+    function zz(ph){ return zb+(ph-phs)/TAU*PIT; }
+    function at(ph,r,z){ return [O[0]+r*Math.cos(ph),O[1]+r*Math.sin(ph),z]; }
+    for(k=0;k<np;k++){
+      var p0=phs+k*dph, p1=p0+dph, z0=zz(p0), z1=zz(p1);
+      var pts=[at(p0,R-BW,z0),at(p0,R+BW,z0),at(p1,R+BW,z1),at(p1,R-BW,z1),
+               at(p0,R-BW,z0-0.12),at(p0,R+BW,z0-0.12),at(p1,R+BW,z1-0.12),at(p1,R-BW,z1-0.12)];
+      var F=hullFaces(pts), sm=[], sea=[];
+      F.forEach(function(f){
+        var e0=f.every(function(q){ return q===0||q===1||q===4||q===5; }), e1=f.every(function(q){ return q===2||q===3||q===6||q===7; });
+        var A=pts[f[0]], B=pts[f[1]], Cc=pts[f[2]], nv=v3n(cross3([B[0]-A[0],B[1]-A[1],B[2]-A[2]],[Cc[0]-A[0],Cc[1]-A[1],Cc[2]-A[2]]));
+        sea.push(e0||e1); sm.push(!(e0||e1) && Math.abs(nv[2])>0.5);
+      });
+      solid(pts,F,{kind:'spiral', id:rid+'.s', smooth:sm, seam:sea});
+      /* a support arm under every fourth plate, column to the slat's inner edge */
+      if(near(0.06) && k%4===2){
+        var pm=(p0+p1)/2, zm=zz(pm)-0.12-0.04, rm=(0.12+R-BW)/2;
+        obox(at(pm,rm,zm),[Math.cos(pm)*(rm-0.12),Math.sin(pm)*(rm-0.12),0],[-Math.sin(pm)*0.03,Math.cos(pm)*0.03,0],[0,0,0.03],{kind:'spiral', id:rid+'.a'});
+      }
+      /* the outer guard rail, a mitred tube chain 0.3 above the slat */
+      if(near(0.05)){
+        var g0=at(p0,R+BW+0.05,z0+0.3), g1=at(p1,R+BW+0.05,z1+0.3), sl=PIT/(TAU*(R+BW+0.05));
+        var t0=v3n([-Math.sin(p0),Math.cos(p0),sl]), t1=v3n([-Math.sin(p1),Math.cos(p1),sl]);
+        mitreTube(g0,g1,t0,t1,0.025,6,{kind:'spiral', id:rid+'.g', cap0:k===0, cap1:k===np-1});
+      }
+    }
+    prism([O[0],O[1],0],[O[0],O[1],zt+0.6],0.12,0.12,12,{kind:'spiral', id:rid+'.c'});
+    var Pb=at(phs,R,zb), Pt=at(phe,R,zt), dB=[Math.sin(phs),-Math.cos(phs)], dT=[-Math.sin(phe),Math.cos(phe)];
+    var gL=1.6, gB=[Pb[0]+dB[0]*gL, Pb[1]+dB[1]*gL];
+    var xEdge=S.side==='W'?MZ.x0+0.8:MZ.x1-0.8;
+    var lo=riserBelt(rid,[Pb[0],Pb[1]],gB,0,true,'g');
+    var up=riserBelt(rid,[Pt[0],Pt[1]],[xEdge,Pt[1]],MZ.z,true,'d');
+    RISERS.push({id:rid, kind:'spiral', site:S.key, O:O, R:R, pitch:PIT, zb:zb, zt:zt, phs:phs, phe:phe, plates:np,
+                 Pb:Pb, Pt:Pt, dirB:dB, dirT:dT, belts:[lo,up]});
+  }
+  /* LIFT (§4.4): a vertical reciprocating conveyor. Four 0.16 m posts on a
+     2.0 m square from the ground to the deck + 2.5 m, a head frame and a drive
+     box on it, a cab whose roller deck is level with the belts, gated (two
+     bars) on its two closed sides. 30 % of the west sites are a FREIGHT lift:
+     the shaft's two far faces walled, its near faces cut away like the hall,
+     a car instead of a platform, counterweight rails. The cab stands at a
+     level, or (three times in ten) between, from the pose stream. */
+  function buildLift(S){
+    var rid=S.id, c=S.c, f=S.face, lv=[0,MZ.z], top=MZ.z+2.5;
+    var rL=statRng(SEED,FACT_SALT_LIFT,S.key==='Wlf'?0:1,0), rP=statRng(SEED,FACT_SALT_LIFTPOSE,S.key==='Wlf'?0:1,FPOSE);
+    var freight=S.side==='W' && rL()<0.3;
+    var steel=function(part){ return {kind:'liftsteel', id:rid+'.'+part}; };
+    [-1,1].forEach(function(sx){ [-1,1].forEach(function(sy){
+      var x0=c[0]+(sx<0?-1.0:0.84), y0=c[1]+(sy<0?-1.0:0.84);
+      box(x0,y0,0,x0+0.16,y0+0.16,top-0.2,steel('p'));
+    }); });
+    [-1,1].forEach(function(sy){ var y0=c[1]+(sy<0?-1.0:0.84); box(c[0]-1.0,y0,top-0.2,c[0]+1.0,y0+0.16,top,steel('h')); });
+    [-1,1].forEach(function(sx){ var x0=c[0]+(sx<0?-1.0:0.84); box(x0,c[1]-0.84,top-0.2,x0+0.16,c[1]+0.84,top,steel('h')); });
+    box(c[0]-0.84,c[1]-0.08,top-0.2,c[0]+0.84,c[1]+0.08,top,steel('h'));
+    box(c[0]-0.4,c[1]-0.3,top,c[0]+0.4,c[1]+0.3,top+0.5,{kind:'machine', id:rid+'.m'});
+    if(freight){
+      box(c[0]-1.08,c[1]-1.0,0,c[0]-1.0,c[1]+1.0,top-0.2,{kind:'shaft', id:rid+'.w'});
+      box(c[0]-1.0,c[1]-1.08,0,c[0]+1.0,c[1]-1.0,top-0.2,{kind:'shaft', id:rid+'.w'});
+      [-0.4,0.4].forEach(function(dx){ bar(c[0]+dx-0.03,c[1]-0.98,0,c[0]+dx+0.03,c[1]-0.92,top-0.2,steel('r')); });
+    }
+    /* the cab: at a served level, or between two (flagged) */
+    var u=rP(), between=u<0.3, lev=rP()<0.5?0:1;
+    var cz=between?lv[0]+(lv[1]-lv[0])*(0.2+0.6*rP()):lv[lev];
+    var deck=cz+BZ1;
+    var cabo={kind:'cab', id:rid+'.c'};
+    /* the car is 1.4 m tall, so at the top level it clears the head (+2.5) */
+    if(freight) box(c[0]-0.8,c[1]-0.8,deck-0.12,c[0]+0.8,c[1]+0.8,deck+1.4,cabo);
+    else {
+      box(c[0]-0.8,c[1]-0.8,deck-0.12,c[0]+0.8,c[1]+0.8,deck,cabo);
+      /* the gate: two bars along each closed side, on posts at the cab's corners */
+      [-1,1].forEach(function(sy){
+        var yb=c[1]+sy*0.75;
+        [-0.75,0.75].forEach(function(dx){ bar(c[0]+dx-0.02,yb-0.02,deck,c[0]+dx+0.02,yb+0.02,deck+1.05,steel('g')); });
+        [0.5,1.0].forEach(function(h2){ bar(c[0]-0.73,yb-0.02,deck+h2-0.02,c[0]+0.73,yb+0.02,deck+h2+0.02,steel('g')); });
+      });
+    }
+    var carton=rP()<0.5 && !freight;
+    if(carton) box(c[0]-0.2,c[1]-0.18,deck,c[0]+0.2,c[1]+0.18,deck+0.3,{kind:'carton', id:rid+'.k'});
+    /* one belt per served level, from the shaft face on the deck's side */
+    var fx=c[0]+f*1.0, belts=[];
+    belts.push(riserBelt(rid,[fx,S.lane],[S.side==='W'?MZ.x0+0.6:MZ.x1-1.6,S.lane],0,false,'g'));
+    belts.push(riserBelt(rid,[fx,S.lane],[S.side==='W'?MZ.x0+0.8:MZ.x1-0.8,S.lane],MZ.z,false,'d'));
+    RISERS.push({id:rid, kind:'lift', site:S.key, c:c, face:f, freight:freight, levels:lv, top:top,
+                 cab:deck, between:between, carton:carton, belts:belts});
+  }
+  if(MZ){
+    var nSp=0, nLf=0;
+    ['Wsp','Esp'].forEach(function(k){ var S=RSITES.filter(function(q){ return q.key===k; })[0]; if(S && nSp<FSPIR){ buildSpiral(S); nSp++; } });
+    ['Elf','Wlf'].forEach(function(k){ var S=RSITES.filter(function(q){ return q.key===k; })[0]; if(S && nLf<FLIFT){ buildLift(S); nLf++; } });
+  }
+
+  /* ---- vacuum tubes (§4.6) ---------------------------------------------- */
+  /* CABINETS: one per station that can have a link (QA, every process station)
+     and the mezzanine lab, in the first free floor cell beside its footprint.
+     Placed for EVERY candidate, whether or not a tube reaches it, so the share
+     `ftube` builds moves nothing else. A route runs on the 1 m grid at TUBZ
+     between two cabinets; its cells, every cabinet, the columns, the flues, the
+     upper deck's stair and columns and every riser site are out of bounds to
+     the others. A bend is 0.6 m radius, so two turns need two cells between
+     them; a route that finds no room is dropped and counted. */
+  var TUBZ=6.6, TR=0.09, BR=0.6, BPIECE=6, CAB=7;
+  function cabinetFor(st){
+    var x, y, ring=[];
+    for(x=st.x0;x<st.x1;x++){ ring.push([x,st.y0-1]); ring.push([x,st.y1]); }
+    for(y=st.y0;y<st.y1;y++){ ring.push([st.x0-1,y]); ring.push([st.x1,y]); }
+    for(x=0;x<ring.length;x++) if(gget(ring[x][0],ring[x][1])===FREE){ G[ring[x][0]][ring[x][1]]=CAB; return ring[x]; }
+    return null;
+  }
+  var cabOf={}, LAB=null;
+  STN.forEach(function(st){
+    if(st.type==='qa'||st.type==='cnc'||st.type==='press'||st.type==='moulder'||st.type==='furnace'||st.type==='vat'){
+      var cc=cabinetFor(st); if(cc) cabOf[st.id]={id:'cab'+st.id, cell:cc, z:st.z, st:st.id, routes:[]};
+    }
+  });
+  if(MZ){ LAB={id:'cablab', cell:[Math.floor(MZ.x0)+3,2], z:MZ.z, st:-1, routes:[]}; }
+  var cand=[];
+  LINES.forEach(function(Ln){
+    var qa=Ln.stations.filter(function(st){ return st.type==='qa'; })[0];
+    if(!qa || !cabOf[qa.id]) return;
+    Ln.stations.forEach(function(st){ if(st!==qa && cabOf[st.id]) cand.push([cabOf[qa.id],cabOf[st.id]]); });
+    if(LAB) cand.push([LAB,cabOf[qa.id]]);
+  });
+  TUBESTAT.cand=cand.length;
+  var rT=statRng(SEED,FACT_SALT_TUBES,0,0), order=cand.map(function(q,i){ return [rT(),i]; }).sort(function(a,b){ return a[0]-b[0]||a[1]-b[1]; });
+  var want=Math.round(FTUBE*cand.length);
+  TUBESTAT.want=want;
+  var TB={};
+  function tblock(x,y){ if(x>=0&&y>=0&&x<W&&y<D) TB[x+','+y]=1; }
+  function tblockRect(x0,y0,x1,y1){ var a, b; for(a=Math.floor(x0);a<Math.ceil(x1);a++) for(b=Math.floor(y0);b<Math.ceil(y1);b++) tblock(a,b); }
+  COLS.forEach(function(c){ tblockRect(c[0],c[1],c[2],c[3]); });
+  STN.forEach(function(st){ if(st.flue) tblockRect(st.flue[0]-0.5,st.flue[1]-0.5,st.flue[0]+0.5,st.flue[1]+0.5); });
+  RSITES.forEach(function(S){
+    if(S.kind==='spiral'){ tblockRect(S.O[0]-1.6,S.O[1]-1.6,S.O[0]+1.6,S.O[1]+1.6); }
+    else tblockRect(S.c[0]-1.1,S.c[1]-1.1,S.c[0]+1.1,S.c[1]+1.1);
+    /* the deck belt's rods, where it crosses to the deck */
+    var x0=S.side==='W'?(S.kind==='spiral'?S.O[0]:S.c[0]):MZ.x1, x1=S.side==='W'?MZ.x0:(S.kind==='spiral'?S.O[0]:S.c[0]);
+    tblockRect(Math.min(x0,x1),S.lane-0.5,Math.max(x0,x1),S.lane+0.5);
+  });
+  if(NLEV>=3 && MZ){ tblockRect(DXU,2.2,DXU+4.5,3.4); tblockRect(MZ.x0,MZ.y1-0.4,DXU,MZ.y1); }
+  var CABS0=[]; Object.keys(cabOf).forEach(function(k){ CABS0.push(cabOf[k]); }); if(LAB) CABS0.push(LAB);
+  CABS0.forEach(function(cb){ tblock(cb.cell[0],cb.cell[1]); });
+  /* A*, with the turn rule: `run` counts the straight cells since the last
+     bend, and a turn needs two (a 0.6 m bend each side of a corner). */
+  function tubeRoute(A,B){
+    var key=function(x,y,d,r){ return ((x*D+y)*4+d)*3+r; };
+    var open=[], best={}, from={}, i, tx=B.cell[0], ty=B.cell[1], guard=0;
+    function free(x,y){ return x>=0&&y>=0&&x<W&&y<D && (!TB[x+','+y] || (x===tx&&y===ty)); }
+    for(i=0;i<4;i++){
+      var nx=A.cell[0]+DIRS[i][0], ny=A.cell[1]+DIRS[i][1];
+      if(!free(nx,ny)) continue;
+      var k0=key(nx,ny,i,1); best[k0]=1; from[k0]=-1; open.push([1+Math.abs(nx-tx)+Math.abs(ny-ty),1,nx,ny,i,1]);
+    }
+    while(open.length && guard++<400000){
+      var bi=0; for(i=1;i<open.length;i++) if(open[i][0]<open[bi][0]) bi=i;
+      var cur=open[bi]; open[bi]=open[open.length-1]; open.pop();
+      var cx=cur[2], cy=cur[3], cd=cur[4], cr=cur[5], cg=cur[1], ck=key(cx,cy,cd,cr);
+      if(cg>best[ck]) continue;
+      if(cx===tx && cy===ty){
+        if(cr<2) continue;
+        var path=[[cx,cy,cd]], kk=ck;
+        while(from[kk]!==-1){ kk=from[kk]; var q=Math.floor(kk/3), d4=q%4, cell=Math.floor(q/4); path.push([Math.floor(cell/D),cell%D,d4]); }
+        path.push([A.cell[0],A.cell[1],path[path.length-1][2]]);
+        return path.reverse();
+      }
+      for(i=0;i<4;i++){
+        if((i+2)%4===cd) continue;
+        if(i!==cd && cr<2) continue;
+        var mx=cx+DIRS[i][0], my=cy+DIRS[i][1];
+        if(!free(mx,my)) continue;
+        if(i!==cd && mx===tx && my===ty) continue;
+        var nr=i===cd?Math.min(2,cr+1):1, ng=cg+1+(i!==cd?3:0), nk=key(mx,my,i,nr);
+        if(best[nk]===undefined || ng<best[nk]){ best[nk]=ng; from[nk]=ck; open.push([ng+Math.abs(mx-tx)+Math.abs(my-ty),ng,mx,my,i,nr]); }
+      }
+    }
+    return null;
+  }
+  /* the centreline, as pieces: straight runs and 15° bend pieces */
+  function bendPieces(P0,t0,t1,R,out){
+    var C=[P0[0]+R*t1[0],P0[1]+R*t1[1],P0[2]+R*t1[2]], e0=[-t1[0],-t1[1],-t1[2]], k, n=BPIECE;
+    function Q(th){ return [C[0]+R*(Math.cos(th)*e0[0]+Math.sin(th)*t0[0]), C[1]+R*(Math.cos(th)*e0[1]+Math.sin(th)*t0[1]), C[2]+R*(Math.cos(th)*e0[2]+Math.sin(th)*t0[2])]; }
+    function Tn(th){ return [Math.sin(th)*t1[0]+Math.cos(th)*t0[0], Math.sin(th)*t1[1]+Math.cos(th)*t0[1], Math.sin(th)*t1[2]+Math.cos(th)*t0[2]]; }
+    for(k=0;k<n;k++){
+      var ta=Math.PI/2*k/n, tb=Math.PI/2*(k+1)/n;
+      out.push({k:'b', a:Q(ta), b:Q(tb), na:Tn(ta), nb:Tn(tb), C:C, R:R, ang:tb-ta});
+    }
+    return Q(Math.PI/2);
+  }
+  /* A cabinet one route reaches gets that route's riser and bend; a cabinet
+     several reach gets ONE riser to a DIVERTER at the tube level, and each
+     route leaves the diverter's face in its own direction (its first cell is
+     closed to the others, so no two leave the same way). */
+  var DIVH=0.25;
+  function centreline(A,B,path,divA,divB){
+    var out=[], Z=[0,0,1], dZ=[0,0,-1], i;
+    var cA=[A.cell[0]+0.5,A.cell[1]+0.5], cB=[B.cell[0]+0.5,B.cell[1]+0.5];
+    var zA=A.z+1.4, zB=B.z+1.4;
+    var d0=DIRS[path[1][2]], dv0=[d0[0],d0[1],0], cur;
+    if(divA) cur=[cA[0]+DIVH*dv0[0],cA[1]+DIVH*dv0[1],TUBZ];
+    else {
+      out.push({k:'s', a:[cA[0],cA[1],zA], b:[cA[0],cA[1],TUBZ-BR]});
+      cur=bendPieces([cA[0],cA[1],TUBZ-BR],Z,dv0,BR,out);
+    }
+    var dir=dv0;
+    for(i=1;i<path.length-1;i++){
+      var nd=DIRS[path[i+1][2]];
+      if(nd[0]!==dir[0]||nd[1]!==dir[1]){
+        var cp=[path[i][0]+0.5-BR*dir[0], path[i][1]+0.5-BR*dir[1], TUBZ];
+        out.push({k:'s', a:cur, b:cp});
+        cur=bendPieces(cp,dir,[nd[0],nd[1],0],BR,out); dir=[nd[0],nd[1],0];
+      }
+    }
+    if(divB){ out.push({k:'s', a:cur, b:[cB[0]-DIVH*dir[0], cB[1]-DIVH*dir[1], TUBZ]}); return out; }
+    var ce=[cB[0]-BR*dir[0], cB[1]-BR*dir[1], TUBZ];
+    out.push({k:'s', a:cur, b:ce});
+    var dn=bendPieces(ce,dir,dZ,BR,out);
+    out.push({k:'s', a:dn, b:[cB[0],cB[1],zB]});
+    return out;
+  }
+  var PLANNED=[];
+  order.forEach(function(oi){
+    if(TUBESTAT.built+TUBESTAT.dropped>=want) return;
+    var L2=cand[oi[1]], A=L2[0], B=L2[1];
+    var path=tubeRoute(A,B);
+    if(!path){ TUBESTAT.dropped++; return; }
+    path.forEach(function(q){ if(!(q[0]===A.cell[0]&&q[1]===A.cell[1]) && !(q[0]===B.cell[0]&&q[1]===B.cell[1])) tblock(q[0],q[1]); });
+    var vid='vt'+PLANNED.length;
+    A.routes.push(vid); B.routes.push(vid);
+    PLANNED.push([vid,A,B,path]);
+    TUBESTAT.built++;
+  });
+  PLANNED.forEach(function(pl){
+    var vid=pl[0], A=pl[1], B=pl[2], path=pl[3], divA=A.routes.length>1, divB=B.routes.length>1;
+    var pcs=centreline(A,B,path,divA,divB);
+    pcs.forEach(function(pc){
+      var dd=v3n([pc.b[0]-pc.a[0],pc.b[1]-pc.a[1],pc.b[2]-pc.a[2]]);
+      if(Math.hypot(pc.b[0]-pc.a[0],pc.b[1]-pc.a[1],pc.b[2]-pc.a[2])<1e-9) return;
+      mitreTube(pc.a,pc.b,pc.k==='b'?pc.na:dd,pc.k==='b'?pc.nb:dd,TR,10,{kind:'vtube', id:vid+'.p'});
+    });
+    /* hangers on the level runs, every 3 m */
+    pcs.forEach(function(pc){
+      if(pc.k!=='s' || Math.abs(pc.a[2]-TUBZ)>1e-9 || Math.abs(pc.b[2]-TUBZ)>1e-9) return;
+      var L3=Math.hypot(pc.b[0]-pc.a[0],pc.b[1]-pc.a[1]), s;
+      for(s=1.5;s<L3-0.5;s+=3){
+        var hx=pc.a[0]+(pc.b[0]-pc.a[0])*s/L3, hy=pc.a[1]+(pc.b[1]-pc.a[1])*s/L3;
+        bar(hx-0.01,hy-0.01,TUBZ+TR,hx+0.01,hy+0.01,upperAt(hx,hy)?8.75:H,{kind:'hanger', id:vid+'.h'});
+      }
+    });
+    VROUTES.push({id:vid, from:A.id, to:B.id, divA:divA, divB:divB, cells:path.map(function(q){ return [q[0],q[1]]; }), pieces:pcs});
+  });
+  /* the cabinets that a tube reaches, each with its hopper and, from the pose
+     stream, 0-2 capsules waiting in it */
+  CABS0.forEach(function(cb,ci){
+    if(!cb.routes.length) return;
+    var x=cb.cell[0], y=cb.cell[1], z=cb.z;
+    box(x+0.05,y+0.05,z,x+0.95,y+0.95,z+1.4,{kind:'cabinet', id:cb.id});
+    var div=null;
+    if(cb.routes.length>1){
+      div=[x+0.5,y+0.5,TUBZ];
+      box(x+0.5-DIVH,y+0.5-DIVH,TUBZ-DIVH,x+0.5+DIVH,y+0.5+DIVH,TUBZ+DIVH,{kind:'diverter', id:cb.id+'.v'});
+      mitreTube([x+0.5,y+0.5,z+1.4],[x+0.5,y+0.5,TUBZ-DIVH],[0,0,1],[0,0,1],TR,10,{kind:'vtube', id:cb.id+'.r'});
+    }
+    var rC=statRng(SEED,FACT_SALT_TUBEPOSE,ci,FPOSE), ncap=Math.floor(rC()*3), k;
+    if(near(0.08)){
+      box(x+0.1,y+0.62,z+1.4,x+0.5,y+0.92,z+1.52,{kind:'cabinet', id:cb.id});
+      for(k=0;k<ncap;k++) prism([x+0.15,y+0.7+0.1*k,z+1.56],[x+0.45,y+0.7+0.1*k,z+1.56],0.04,0.04,8,{kind:'capsule', id:'cap'});
+    }
+    CABS.push({id:cb.id, cell:cb.cell, z:z, routes:cb.routes.slice(), capsules:ncap, top:[x+0.5,y+0.5,z+1.4], diverter:div});
+  });
+
   /* ---- floor marks: aisle lines and walkway dashes ---------------------- */
   K.lay='ground';
   AISLES.forEach(function(A){
@@ -20058,6 +20463,9 @@ function buildFactory(p){
     return {id:bt.id, line:bt.line, from:bt.from, to:bt.to, z:bt.z, pts:bt.pts, pieces:bt.pieces, cells:bt.cells};
   });
   T.items=ITEMS; T.role=FACTROLE; T.colours=FACTCOL;
+  T.risers=RISERS; T.rbelts=RBELTS; T.vroutes=VROUTES; T.cabinets=CABS; T.tubestat=TUBESTAT;
+  T.rsites=RSITES.map(function(S){ return {key:S.key, kind:S.kind, side:S.side, lane:S.lane}; });
+  T.tube={Z:TUBZ, R:TR, BR:BR};
   T.arms=ARMS; T.arm={L1:ARML1, L2:ARML2, SH:ARMSH, TCP:ARMTCP, J2:ARMJ2, J3:ARMJ3, HOME:ARMHOME,
                       up:ARMUP, fore:ARMFORE, IK:armIK, FK:armFK};
   T.lines=LINES.map(function(L){ return {id:L.id, stations:L.stations.map(function(s){ return s.id; })}; });
@@ -20206,7 +20614,10 @@ function buildFactory(p){
              points:K.points(), paths:out.length, mmest:K.mmest, order:ordStats,
              arms:ARMS.filter(function(A){ return A.type==='arm'; }).length,
              armsHome:ARMS.filter(function(A){ return A.home; }).length,
-             gantries:ARMS.filter(function(A){ return A.type==='gantry'; }).length};
+             gantries:ARMS.filter(function(A){ return A.type==='gantry'; }).length,
+             spirals:RISERS.filter(function(R){ return R.kind==='spiral'; }).length, spiralsWanted:FSPIR,
+             lifts:RISERS.filter(function(R){ return R.kind==='lift'; }).length, liftsWanted:FLIFT,
+             tubes:TUBESTAT.built, tubesWanted:TUBESTAT.want, tubesDropped:TUBESTAT.dropped, tubeLinks:TUBESTAT.cand};
   if(!fs){ FACTINFO='nothing to draw'; return out; }
   FACTSTATS.mm=fs*PAGEMM;
   out.layers=['ground','structure','detail','accent'];
@@ -20214,6 +20625,9 @@ function buildFactory(p){
            STN.length+' stations · '+BELTS.length+' belts · '+
            (ARMS.length?FACTSTATS.arms+' arms'+(FACTSTATS.armsHome?' ('+FACTSTATS.armsHome+' home)':'')+
              (FACTSTATS.gantries?' + '+FACTSTATS.gantries+' gantr'+(FACTSTATS.gantries>1?'ies':'y'):'')+' · ':'')+
+           (FACTSTATS.spirals||FSPIR&&MZ?FACTSTATS.spirals+(FACTSTATS.spirals<FSPIR?' of '+FSPIR:'')+' spiral'+(FSPIR===1?'':'s')+' · ':'')+
+           (FACTSTATS.lifts||FLIFT&&MZ?FACTSTATS.lifts+(FACTSTATS.lifts<FLIFT?' of '+FLIFT:'')+' lift'+(FLIFT===1?'':'s')+' · ':'')+
+           (TUBESTAT.want?TUBESTAT.built+' tube'+(TUBESTAT.built===1?'':'s')+(TUBESTAT.dropped?' ('+TUBESTAT.dropped+' found no room)':'')+' · ':'')+
            solids.length.toLocaleString()+' solids · '+out.length.toLocaleString()+' paths · '+
            (fs*PAGEMM).toFixed(1)+' mm/m';
   return out;
@@ -31492,6 +31906,9 @@ var HELP={
 'fact.fitem':'How full the belts are. Cartons ride every straight run at least 0.2 m apart and never across a belt end, a curve or a transfer; 0 empties the belts and changes nothing else.',
 'fact.farms':'How many six-axis robot arms stand in each assembly cell, at its corners round the fixture: 1, a diagonal pair, three, or all four. Each is posed by inverse kinematics to a real target on the fixture, yellow or orange per cell; at 2 or more about one cell in four has a gantry robot instead. Shipping docks get one palletiser arm at 1 or more. 0 removes every arm and changes nothing else.',
 'fact.fpose':'Another moment of the same factory: re-rolls what every arm is reaching for (a point on the fixture, a slot on the pallet) and the cartons on the belts. The layout, the machines, the belts and where each arm stands never move. An arm whose target is out of reach stands in its home pose, and the stat line counts it.',
+'fact.fspir':'Spiral conveyors carrying cartons down from the mezzanine to the floor: a helix 2.2 m across, 1.4 m a turn, from the belt on the deck to the belt on the floor. They stand at the mezzanine\u2019s ends, the west first; there is room for two, so asking for more says so on the stat line. Nothing without a mezzanine.',
+'fact.flift':'Lifts between the floor and the mezzanine: four posts, a head frame with its drive, and a cab level with the belts at each floor it serves (or, now and then, caught between floors). Some at the west end are enclosed freight lifts. They stand at the mezzanine\u2019s ends beside the spirals; there is room for two.',
+'fact.ftube':'The share of the possible vacuum-tube links that are built: QA to every process station of its line, and the mezzanine lab to QA. A tube rises from a cabinet beside its station to 6.6 m, runs on the 1 m grid with 0.6 m bends, and drops to the other cabinet. A route that finds no room is dropped and the stat line counts it.',
 'fact.lod':'The smallest detail still drawn, as its size on the SHEET: belt edge lines, door slats, fence mesh, pendant buttons. A bar thinner than this (handrails, legs, fence posts) is drawn as its centre line and hides nothing behind it — an occlusion gap round a 0.04 m post would be wider than the post.',
 'fact.occ':'How wide a white gap a nearer solid opens in a line passing behind it. The factory hides itself exactly — every solid is cut into 1 m lattice cells and drawn front to back — so this is only the finish. The gap is never opened at a cut, where nothing is drawn, so a belt stays one unbroken line.',
 'harb.len':'How far the yard lane runs, in metres. The camera stands part-way along it and the stacks recede toward the far end.',
