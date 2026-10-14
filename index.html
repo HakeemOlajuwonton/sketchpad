@@ -438,7 +438,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v326</a> &mdash; Corridor puddles: water marks -- short wave crests lying across the water in the puddle's own ink, each cutting a glint gap out of the reflection under it, so a puddle reads as water and not a hole in the road</span></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v327</a> &mdash; Panning and zooming never rebuild the drawing -- the build is cached behind a generation counter, the view only repaints, and an export or a pin taken mid-drag waits for the full build</span></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <section class="fold" id="fold_pick"><h2>Pick engine<span class="cnt"></span></h2>
@@ -12066,6 +12066,7 @@ function liveBack(k){
   if(typeof foldSummaries==='function') foldSummaries();
 }
 function pinCurrent(){
+  ensureFull();                       /* row 122: never pin a DRAFT build */
   var gs=buildGroups(), live=0;
   gs.forEach(function(G){ G.paths.forEach(function(p){ if(p&&p.length>1) live++; }); });
   if(!live){ msg('nothing to pin \u2014 ' + mode + ' produced no geometry'); return; }
@@ -31039,7 +31040,21 @@ function drawVariations(){
     ' \u00b7 click one to keep it'+
     (sweepSeed&&!usesSeed()?' \u00b7 THIS ENGINE IGNORES THE SEED \u2014 sweep a knob instead':'');
 }
-function draw(){
+/* ROW 122: A VIEW CHANGE NEVER REBUILDS THE DRAWING.
+   draw() was the whole pipeline -- runEngine() and buildGroups() -- and pan,
+   zoom, fit, 1:1 and resize all reached it through sched(), so dragging the
+   view of a 1.4 s Record rebuilt it every frame. The build is now cached
+   behind an explicit GENERATION, BUILDGEN: draw() bumps it and paints, paint()
+   rebuilds only when the generation moved (or when the cached build is a
+   DRAFT and the draft is over), and the five view paths call schedPaint().
+   EVERY OTHER PATH STILL REACHES draw() THROUGH sched() OR DIRECTLY, so a
+   mutation site that was missed rebuilds exactly as before -- the cache can
+   only be stale where a path was deliberately moved to schedPaint(). Never a
+   hash of STATE: a hash that misses a field is the failure that stays silent.
+   Decimation stays in paint (its budget follows the zoom). */
+var BUILDGEN=0, BUILT=null, PINCV=null;
+function draw(){ BUILDGEN++; paint(); }
+function paint(){
   /* Square is load-bearing: W===H is assumed all through the paint and export.
      So cap the SIZE on a phone rather than the aspect, and centre it. Without
      the cap a 412 px screen gets a 396 px canvas and the sticky header eats
@@ -31074,16 +31089,23 @@ function draw(){
   cv.width=w*2; cv.height=w*2;
   cv.style.width=w+'px'; cv.style.height=w+'px'; cv.style.margin='0 auto';
   W=w*2; H=w*2;
-  if(VARI.on){ drawVariations(); return; }
-  var t0=performance.now();
-  try{ (setGeoCap(gvals()),cur=runEngine()); ENGERR=null; }
-  catch(e){ cur=[]; ENGERR=e.message; }
+  /* the variations sheet builds twelve drawings into `cur` and the info
+     globals; whatever is cached is not the drawing any more */
+  if(VARI.on){ BUILT=null; drawVariations(); return; }
+  var t0=performance.now(), rebuilt=false;
+  if(!BUILT || BUILT.gen!==BUILDGEN || (BUILT.draft && !DRAFT)){
+    rebuilt=true;
+    try{ (setGeoCap(gvals()),cur=runEngine()); ENGERR=null; }
+    catch(e){ cur=[]; ENGERR=e.message; }
+    BUILT={gen:BUILDGEN, draft:!!DRAFT, cur:cur, err:ENGERR, groups:null, ms:0};
+    BUILT.groups=buildGroups();
+  } else { cur=BUILT.cur; ENGERR=BUILT.err; }
   /* The canvas and the export have to agree about what a multi-pen job IS.
      draw() tested copies>1 || pmap>0 while the export also counted PINS, so as
      soon as anything was pinned the FILE had colours the PREVIEW never showed.
      A preview that does not match the plot is the one thing this app cannot
      afford. Both now include pins and an explicitly set pen colour. */
-  var g=gvals(), groups=buildGroups();
+  var g=gvals(), groups=BUILT.groups;
   /* RING PENS FORCE IT TOO, and this line is not optional. At Pens 1 with no
      pin and no pen set, `multi` is false, and the single-group path draws every
      group in one colour -- so six rings in six pens would preview as one. Same
@@ -31223,9 +31245,13 @@ function draw(){
      reference" should look like, and separate pins still stack against each
      other because each gets its own pass. */
   if(PINS.length){
-    var poff=document.createElement('canvas');
-    poff.width=W; poff.height=H;
+    /* row 122: one offscreen canvas kept across paints, made again only when
+       the size changes; it is cleared and redrawn every paint, because the
+       pins move with the view */
+    if(!PINCV || PINCV.width!==W || PINCV.height!==H){ PINCV=document.createElement('canvas'); PINCV.width=W; PINCV.height=H; }
+    var poff=PINCV;
     var pc=poff.getContext('2d');
+    pc.clearRect(0,0,W,H);
     pc.lineCap='round'; pc.lineJoin='round'; pc.lineWidth=ctx.lineWidth;
     for(var K=0;K<PINS.length;K++){
       var ph=PINS[K].hex, pmix=ph;
@@ -31383,7 +31409,7 @@ function draw(){
         (cost.draw/1000).toFixed(1)+' m down + '+(cost.travel/1000).toFixed(1)+' m up \u00b7 \u2248'+
         (mins<1?'<1':Math.round(mins))+' min ('+Math.round(100*cost.upMin/Math.max(mins,1e-9))+
         '% pen-up'+(SORTINFO?', '+SORTINFO:'')+') \u00b7 seed '+Math.round(seed)+
-        ' \u00b7 '+Math.round(performance.now()-t0)+'ms'+
+        ' \u00b7 '+(rebuilt?(BUILT.ms=Math.round(performance.now()-t0)):BUILT.ms)+'ms'+
         /* The contour grid cap is REPORTED because the failure it guards is a
            smooth curve in the wrong place, which nothing else on this line
            would show. */
@@ -31618,7 +31644,20 @@ function decimateGroups(groups,budget){
    frame, but that is no help when a build outlasts the frame -- it just queues
    another 400 ms of work every 16 ms. Dragging thins harder, and the release
    fires one full-quality pass. */
-function sched(){ if(pend)return; pend=true; requestAnimationFrame(function(){pend=false; draw();}); }
+/* row 122: sched() rebuilds; schedPaint() only repaints the cached build. One
+   frame, one pass, and a rebuild already queued for it is never downgraded */
+var pendBuild=false;
+function sched(){ pendBuild=true; queueFrame(); }
+function schedPaint(){ queueFrame(); }
+function queueFrame(){ if(pend)return; pend=true; requestAnimationFrame(function(){ pend=false; var b=pendBuild; pendBuild=false; if(b) draw(); else paint(); }); }
+/* EXPORT AND PIN READ A FULL BUILD. The DRAFT clamp is a build input: inside
+   the 220 ms after a poke the cache can hold a 45,000-point drawing, and the
+   file must never be that. */
+function ensureFull(){
+  if(!(DRAFT || (BUILT && BUILT.draft))) return;
+  if(draftIdle){ clearTimeout(draftIdle); draftIdle=null; }
+  DRAFT=false; draw();
+}
 function setDraft(on){
   if(DRAFT===on) return;
   DRAFT=on;
@@ -33487,7 +33526,7 @@ function zoomAt(px,py,f){
   viewUser=true;
   var wx=(px/W-VIEW.ox)/VIEW.s, wy=(py/H-VIEW.oy)/VIEW.s;
   VIEW.s=ns; VIEW.ox=px/W-wx*ns; VIEW.oy=py/H-wy*ns;
-  sched();
+  schedPaint();
 }
 function cvPt(e){
   var r=cv.getBoundingClientRect();
@@ -33510,12 +33549,12 @@ cv.addEventListener('pointermove',function(e){
   var q=cvPt(e);
   viewUser=true;
   VIEW.ox+=(q[0]-panFrom[0])/W; VIEW.oy+=(q[1]-panFrom[1])/H;
-  panFrom=q; sched();
+  panFrom=q; schedPaint();
 });
 function endPan(){ panning=false; }
 cv.addEventListener('pointerup',endPan);
 cv.addEventListener('pointercancel',endPan);
-cv.addEventListener('dblclick',function(){ viewUser=false; sched(); });
+cv.addEventListener('dblclick',function(){ viewUser=false; schedPaint(); });
 
 /* Pinch, because half of this is used on a phone and a phone has no wheel. */
 var pinch={};
@@ -34183,7 +34222,7 @@ document.getElementById('reroll').addEventListener('click',function(){
     b11.className=oneToOne?'armed':'';
     b11.textContent=oneToOne?'Fit':'1:1';
     viewUser=false;          /* asking for a framing is asking for it back */
-    sched();
+    schedPaint();
   });
   /* A TOGGLE HAS TO LOOK LIKE ONE.
      The grid shipped in v122 as a 0..50 mm spacing slider inside Bed & fit,
@@ -34222,6 +34261,7 @@ document.getElementById('reroll').addEventListener('click',function(){
     });
 })();
 document.getElementById('dl').addEventListener('click',function(){
+  ensureFull();                       /* row 122: never export a DRAFT build */
   if(ENGERR){ msg('cannot export: '+mode+' failed to build'); return; }
   var live=0; (cur||[]).forEach(function(p){ if(p&&p.length>1) live++; });
   if(!live){ msg(mode+' produced no geometry \u2014 nothing to export'); return; }
@@ -34315,7 +34355,7 @@ document.getElementById('dl').addEventListener('click',function(){
       (mb>4?' \u2014 that is large enough to stall the tab; thin the engine or drop pens':''));
   paintName();
 });
-window.addEventListener('resize',sched);
+window.addEventListener('resize',schedPaint);
 mountG(); mountTabs(); mount();
 })();
 </script>
