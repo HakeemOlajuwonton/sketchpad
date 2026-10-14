@@ -438,7 +438,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v321</a> &mdash; Shrine path -- a stone path winding through a tunnel of vermilion torii, broken every run by an opening with stone lanterns, a side shrine and markers, cedar trunks rising past the sheet</span></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v322</a> &mdash; Isofactory robot arms -- six-axis arms posed by inverse kinematics to real targets on the fixture and the pallet, at the corners of every assembly cell, a palletiser on its pedestal, gantry robots, and Pose for another moment of the same factory</span></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <section class="fold" id="fold_pick"><h2>Pick engine<span class="cnt"></span></h2>
@@ -3197,6 +3197,7 @@ var SPEC={
     ['fwid','Floor width',24,96,6,36,[1,' m']],['fdep','Floor depth',18,72,6,30,[1,' m']],
     ['flev','Levels',1,3,1,2],['flines','Lines',1,4,1,2],['fstat','Stations',4,9,1,6],
     ['fitem','Items',0,100,1,60,[100,'%']],
+    ['farms','Arms per cell',0,4,1,2],['fpose','Pose',0,99,1,0],
     ['lod','LOD cutoff',0,60,1,5,[10,' mm']],
     ['occ','Occlusion gap',0,80,1,5,[10,' mm']]]],
   /* STREET, queue rows 30-33. ONLY THE KNOBS A BUILT ROW READS ARE DECLARED --
@@ -19067,6 +19068,10 @@ function buildFactory(p){
      feature's stream (§6). statRng(SEED,salt,a,b): `a`/`b` index the line or the
      station, so a line's numbers depend on the line and nothing else. */
   var FACT_SALT_LAYOUT=701, FACT_SALT_ITEMS=709, FACT_SALT_MACH=719;
+  /* Row 104. ARMS is where an arm STANDS and what it is (paint, tool, gantry or
+     not) -- layout, so `fpose` never reaches it; POSE is what it reaches for,
+     indexed by `fpose`. Neither is read by anything but the robots. */
+  var FACT_SALT_ARMS=727, FACT_SALT_POSE=733;
   /* §5's ink roles, by INKS name. No grey anywhere: Albert has no grey pen. */
   var FACTCOL={black:'#1a1a1a', yellow:'#f2c230', orange:'#ec7a1c', blue:'#2156c7',
                lblue:'#5aa9e6', brown:'#8b5a2b', red:'#d42a2a', green:'#2f9a44'};
@@ -19078,7 +19083,7 @@ function buildFactory(p){
                 frame:'black', detail:'black', trailer:'black', table:'black',
                 rail:'yellow', guard:'yellow', fence:'yellow', lane:'yellow',
                 machine:'blue', vat:'blue',
-                carton:'brown', pallet:'brown',
+                carton:'brown', pallet:'brown', tool:'black', dress:'black', arm:'yellow',
                 estop:'red', walk:'green'};
   /* Station footprints: length along the line in whole metres. Depth is 3 m for
      every type, which is what lets a row be one 3-cell strip. */
@@ -19089,6 +19094,8 @@ function buildFactory(p){
   var WANTL=Math.max(1,Math.min(4,Math.round(p.flines||1)));
   var NST=Math.max(4,Math.min(9,Math.round(p.fstat||6)));
   var FITEM=Math.max(0,Math.min(1,(p.fitem===undefined?60:p.fitem)/100));
+  var FARMS=Math.max(0,Math.min(4,Math.round(p.farms===undefined?2:p.farms)));
+  var FPOSE=Math.max(0,Math.min(99,Math.round(p.fpose||0)));
   var SEED=Math.round(rnd(0)*1e6);
   var H=NLEV===3?13.5:9.0;                         /* eaves */
   var out=[];
@@ -19209,6 +19216,85 @@ function buildFactory(p){
       s.cell=c; s.lay='ground'; s.col=col(kind); s.kind=kind;
       K.addE(s,[q0,q1]); K.push(s);
       T.marks.push({a:q0, b:q1, kind:kind, cell:c});
+    }
+  }
+
+  /* ================= ROBOTS (row 104, §4.5) ================================== */
+  /* ONE ARM, SIX AXES, ONE SIZE: base, turret, shoulder hub, upper arm L1, elbow
+     hub, forearm L2, a wrist pointing straight down and a tool. Only three
+     joints are free (yaw, J2, J3): the wrist is held vertical, so J4-J6 are what
+     that takes and nothing is drawn that depends on them.
+     ANGLES ARE DEGREES. J2 is the upper arm's elevation from horizontal, J3 the
+     forearm's angle relative to the upper arm (negative bends it down), so the
+     forearm's own elevation is J2 + J3. The gate re-derives every drawn link
+     from these three numbers and the base (F3), so a pose is its record. */
+  var ARML1=0.85, ARML2=0.80, ARMSH=0.75, ARMTCP=0.25;
+  var ARMJ2=[-80,150], ARMJ3=[-160,0], ARMHOME=[60,-60];
+  var ARMUP=0.12, ARMFORE=0.09;                 /* half-sections of the links */
+  var DEG=180/Math.PI, ARMS=[];
+  function armFK(B,J){
+    var yw=J[0]/DEG, a2=J[1]/DEG, a3=(J[1]+J[2])/DEG, u=[Math.cos(yw),Math.sin(yw),0];
+    var S=[B[0],B[1],B[2]+ARMSH];
+    var E=[S[0]+ARML1*Math.cos(a2)*u[0], S[1]+ARML1*Math.cos(a2)*u[1], S[2]+ARML1*Math.sin(a2)];
+    var Wp=[E[0]+ARML2*Math.cos(a3)*u[0], E[1]+ARML2*Math.cos(a3)*u[1], E[2]+ARML2*Math.sin(a3)];
+    return {u:u, S:S, E:E, W:Wp, G:[Wp[0],Wp[1],Wp[2]-ARMTCP]};
+  }
+  function clampA(v,r){ return v<r[0]?r[0]:(v>r[1]?r[1]:v); }
+  /* INVERSE KINEMATICS, ELBOW UP, as §4.5 states it: yaw toward the target; in
+     the arm's vertical plane the distance d from the shoulder to the wrist point
+     (target + TCP up), clamped to 0.97 (L1 + L2); the law of cosines; the
+     joint limits; then forward kinematics decides. A gripper more than 0.05 m
+     from its target means the target was out of reach, and the arm stands in
+     its HOME pose (upper arm 60° up, forearm level) and is counted. The limits
+     are what refuse elbow-down: it needs J3 > 0. */
+  function armIK(B,tg){
+    var S=[B[0],B[1],B[2]+ARMSH], Wp=[tg[0],tg[1],tg[2]+ARMTCP];
+    var dx=Wp[0]-S[0], dy=Wp[1]-S[1], r=Math.hypot(dx,dy), h=Wp[2]-S[2];
+    var yaw=Math.atan2(dy,dx)*DEG;
+    var d=Math.min(0.97*(ARML1+ARML2), Math.max(Math.abs(ARML1-ARML2)+1e-6, Math.hypot(r,h)));
+    var phi=Math.atan2(h,r);
+    var alpha=Math.acos(Math.max(-1,Math.min(1,(ARML1*ARML1+d*d-ARML2*ARML2)/(2*ARML1*d))));
+    var beta=Math.acos(Math.max(-1,Math.min(1,(ARML1*ARML1+ARML2*ARML2-d*d)/(2*ARML1*ARML2))));
+    var a2=(phi+alpha)*DEG, a3=-(180-beta*DEG);
+    var j2=clampA(a2,ARMJ2), j3=clampA(a3,ARMJ3);
+    var J=[yaw,j2,j3], P=armFK(B,[yaw,j2,j3]), home=false;
+    if(Math.hypot(P.G[0]-tg[0],P.G[1]-tg[1],P.G[2]-tg[2])>0.05){ J=[yaw,ARMHOME[0],ARMHOME[1]]; P=armFK(B,J); home=true; }
+    return {J:J, P:P, home:home};
+  }
+  function vadd(a,b,k){ return [a[0]+b[0]*k, a[1]+b[1]*k, a[2]+b[2]*k]; }
+  function vmid(a,b){ return [(a[0]+b[0])/2, (a[1]+b[1])/2, (a[2]+b[2])/2]; }
+  function vsc(a,k){ return [a[0]*k, a[1]*k, a[2]*k]; }
+  /* AN ARM IS ITS POSE. Every part is one convex solid built whole and cut at
+     the lattice like everything else. The hubs sit inside the links they join
+     and the wrist inside the forearm's end -- §8 L2's one allowed
+     interpenetration, so every piece carries its arm's id (`armN.part`). */
+  function buildArm(aid,B,R,col,tool){
+    var P=R.P, u=P.u, lat=[-u[1],u[0],0], Z=[0,0,1];
+    function armPart(part){ return {kind:'arm', col:col, id:aid+'.'+part}; }
+    prism(B,vadd(B,Z,0.45),0.35,0.35,16,armPart('b'));
+    obox(vadd(B,Z,0.6),vsc(u,0.3),vsc(lat,0.28),[0,0,0.15],armPart('t'));
+    prism(vadd(P.S,lat,-0.15),vadd(P.S,lat,0.15),0.16,0.16,12,armPart('h2'));
+    var a=v3n([P.E[0]-P.S[0],P.E[1]-P.S[1],P.E[2]-P.S[2]]), n2=cross3(a,lat);
+    obox(vmid(P.S,P.E),vsc(a,ARML1/2),vsc(lat,ARMUP),vsc(n2,ARMUP),armPart('u'));
+    prism(vadd(P.E,lat,-0.13),vadd(P.E,lat,0.13),0.12,0.12,12,armPart('h3'));
+    var f=v3n([P.W[0]-P.E[0],P.W[1]-P.E[1],P.W[2]-P.E[2]]), nf=cross3(f,lat);
+    obox(vmid(P.E,P.W),vsc(f,ARML2/2),vsc(lat,ARMFORE),vsc(nf,ARMFORE),armPart('f'));
+    var Wb=vadd(P.W,Z,-(ARMTCP-0.03));
+    if(near(0.12)) prism(P.W,Wb,0.06,0.06,10,armPart('w'));
+    else bar(P.W[0]-0.06,P.W[1]-0.06,Wb[2],P.W[0]+0.06,P.W[1]+0.06,P.W[2],armPart('w'));
+    if(near(0.03)){
+      if(tool==='cup') prism(Wb,P.G,0.02,0.05,10,{kind:'tool', id:aid+'.g'});
+      else [-1,1].forEach(function(sg){
+        obox(vadd(vadd(P.G,Z,0.015),lat,sg*0.045),vsc(u,0.025),vsc(lat,0.0125),[0,0,0.015],{kind:'tool', id:aid+'.g'});
+      });
+    }
+    /* the dress pack: a cable chain from the turret's back, over the shoulder,
+       along the top of the upper arm to the forearm */
+    if(near(0.06)){
+      var D=[vadd(vadd(B,Z,0.75),u,-0.25), vadd(P.S,n2,ARMUP+0.04),
+             vadd(vadd(P.E,n2,ARMUP+0.04),a,-0.15), vadd(vadd(P.E,nf,ARMFORE+0.04),f,0.2)], k;
+      for(k=0;k+1<D.length;k++)
+        prism(D[k],D[k+1],0.03,0.03,6,{kind:'dress', id:aid+'.d', seam0:k>0, seam1:k+2<D.length});
     }
   }
 
@@ -19680,7 +19766,7 @@ function buildFactory(p){
     while(s+0.4<=L-0.25){
       if(rngI()<FITEM){
         var cx=a[0]+ux*(s+0.2), cy=a[1]+uy*(s+0.2), hx=Math.abs(ux)>0.5?0.2:0.18, hy=Math.abs(ux)>0.5?0.18:0.2;
-        box(cx-hx,cy-hy,a[2],cx+hx,cy+hy,a[2]+0.3,{kind:'carton'});
+        box(cx-hx,cy-hy,a[2],cx+hx,cy+hy,a[2]+0.3,{kind:'carton', id:'item'});
         ITEMS.push({c:[cx,cy,a[2]], hx:hx, hy:hy, h:0.3});
         s+=0.4+0.2+rngI()*0.5;
       } else s+=0.5+rngI()*0.4;
@@ -19731,6 +19817,65 @@ function buildFactory(p){
       box(0,oy0-0.25,0.8,0.15,oy0,1.2,{kind:'frame'});
       box(0,oy1,0.8,0.15,oy1+0.25,1.2,{kind:'frame'});
     }
+    /* ---- robots (row 104). rA is the arm's LAYOUT (paint, tool, gantry),
+       rP what it reaches for; neither is any other part's stream. */
+    function L3(s,t2,z){ return [wx(s),st.yc+t2,st.z+z]; }
+    function robotStreams(){ return [statRng(SEED,FACT_SALT_ARMS,st.id,0), statRng(SEED,FACT_SALT_POSE,st.id,FPOSE)]; }
+    function armAt(rA,rP,bs,bt2,bz,tgt,col,tool){
+      var aid='arm'+ARMS.length, B=L3(bs,bt2,bz), tg=L3(tgt[0],tgt[1],tgt[2]), R=armIK(B,tg);
+      buildArm(aid,B,R,col,tool);
+      ARMS.push({id:aid, type:'arm', st:st.id, base:B, ped:bz>0, J:R.J, S:R.P.S, E:R.P.E, W:R.P.W, G:R.P.G,
+                 target:tg, home:R.home, col:col, tool:tool});
+    }
+    /* A FIXTURE TARGET in the arm's own quarter of the table: half the time a
+       point on the part's top, else a point on the table clear of the part by
+       0.08 m, so a gripper never lands in it. Quarters never share a point, so
+       two arms in one cell never reach for the same place. */
+    function fixtureTarget(rP,s0,s1,sg){
+      var ps0=Math.max(s0,1.26), ps1=Math.min(s1,1.74), k;
+      if(rP()<0.5 && ps1>ps0) return [ps0+(ps1-ps0)*rP(), sg*(0.1+0.14*rP()), 1.1];
+      for(k=0;k<30;k++){
+        var ts=s0+(s1-s0)*rP(), tt=0.1+0.64*rP();
+        if(!(ts>=1.12 && ts<=1.88 && tt<=0.38)) return [ts, sg*tt, 0.85];
+      }
+      return [(ps0+ps1)/2, sg*0.17, 1.1];
+    }
+    function gantry(rA,rP,col){
+      var gid='gan'+ARMS.length, tool=rA()<0.5?'cup':'grip', tg, fixd={kind:'arm', col:col, id:gid+'.x'};
+      function mv(part){ return {kind:'arm', col:col, id:gid+'.'+part}; }
+      var whole=rP()<0.5;
+      tg=whole?[1.26+0.48*rP(), -0.24+0.48*rP(), 1.1]:fixtureTarget(rP,1.01,1.99,rP()<0.5?-1:1);
+      [0.25,2.75].forEach(function(ps){ [-1.25,1.25].forEach(function(pt){ lbar(ps-0.05,pt-0.05,0,ps+0.05,pt+0.05,2.3,fixd); }); });
+      [-1.25,1.25].forEach(function(pt){ lb(0.2,pt-0.05,2.3,2.8,pt+0.05,2.45,fixd); });
+      var sb=tg[0]-0.16;
+      /* the bridge rides the two rails, the carriage hangs off the bridge's
+         side, and the vertical axis drops from the carriage's middle */
+      lb(sb-0.06,-1.3,2.45,sb+0.06,1.3,2.6,mv('m'));
+      lb(sb+0.06,tg[1]-0.12,2.3,sb+0.26,tg[1]+0.12,2.7,mv('c'));
+      if(near(0.08)) lcyl(tg[0],tg[1],tg[2]+0.03,2.3,0.04,0.04,10,mv('z'));
+      else lbar(tg[0]-0.04,tg[1]-0.04,tg[2]+0.03,tg[0]+0.04,tg[1]+0.04,2.3,mv('z'));
+      var G=L3(tg[0],tg[1],tg[2]);
+      if(near(0.03)){
+        if(tool==='cup') lcyl(tg[0],tg[1],tg[2],tg[2]+0.03,0.05,0.02,10,{kind:'tool', id:gid+'.g'});
+        else [-1,1].forEach(function(sg){ lb(tg[0]-0.025,tg[1]+sg*0.045-0.0125,tg[2],tg[0]+0.025,tg[1]+sg*0.045+0.0125,tg[2]+0.03,{kind:'tool', id:gid+'.g'}); });
+      }
+      ARMS.push({id:gid, type:'gantry', st:st.id, target:G, G:G, home:false, col:col, tool:tool,
+                 tube:[L3(tg[0],tg[1],2.3),L3(tg[0],tg[1],tg[2]+0.03)]});
+    }
+    /* ARMS STAND AT THE CELL'S CORNERS, in the order 1 / diagonal pair / three /
+       four, mirrored across the flow per cell. The corner is the only place a
+       0.35 m base and a 0.41 m turret fit inside a 3 m fence beside a table. */
+    function cellRobots(){
+      if(FARMS<1) return;
+      var sr=robotStreams(), rA=sr[0], rP=sr[1];
+      var col=rA()<0.6?C.yellow:C.orange, flip=rA()<0.5?-1:1;
+      if(FARMS>=2 && rA()<0.25){ gantry(rA,rP,col); return; }
+      var SL=[[0.5,1],[2.5,-1],[0.5,-1],[2.5,1]], k;
+      for(k=0;k<FARMS;k++){
+        var bs=SL[k][0], sg=SL[k][1]*flip, tool=rA()<0.5?'grip':'cup';
+        armAt(rA,rP,bs,sg*1.0,0,fixtureTarget(rP,bs<1.5?1.01:1.6,bs<1.5?1.4:1.99,sg),col,tool);
+      }
+    }
     var t=st.type;
     if(t==='receive'){
       door();
@@ -19743,8 +19888,18 @@ function buildFactory(p){
     } else if(t==='ship'){
       door();
       stub(0,0.9);
-      lb(1.1,-1.15,0,1.7,-0.55,0.6,{kind:'frame'});          /* palletiser pedestal (arm: row 104) */
-      pallet(1.0,0.15,1+Math.floor(rngM()*4));
+      lb(1.1,-1.15,0,1.7,-0.55,0.6,{kind:'frame'});          /* palletiser pedestal */
+      var nLay=1+Math.floor(rngM()*4);
+      pallet(1.0,0.15,nLay);
+      /* THE PALLETISER places the next carton on the stack it is building: a
+         slot of the top layer. The far row is beyond its reach -- it stands in
+         its home pose then -- so it is chosen one time in ten. */
+      if(FARMS>=1){
+        var srp=robotStreams(), pA=srp[0], pP=srp[1];
+        var pcol=pA()<0.6?C.yellow:C.orange;
+        var si=pP()<0.5?0:1, sj=pP()<0.1?2:(pP()<0.5?0:1);
+        armAt(pA,pP,1.4,-0.85,0.6,[1.28+0.44*si, 0.37+0.38*sj, 0.15+(nLay-1)*0.31+0.3],pcol,'cup');
+      }
       if(near(0.04)) lbar(2.13,1.33,0,2.17,1.37,2.2,{kind:'detail'});
       /* 1.75, not 2.0: the station runs toward the wall, and at 2.0 this
          pallet stood in the door's jamb and bumper */
@@ -19796,7 +19951,11 @@ function buildFactory(p){
       if(near(0.03)){ var rz; for(rz=0.3;rz<2.5;rz+=0.3) lbar(1.32,1.12,rz,1.68,1.16,rz+0.03,{kind:'detail'}); }
     } else if(t==='assembly'){
       stub(0,0.6); stub(2.4,3.0);
-      lb(0.6,-0.8,0,2.4,0.8,0.85,{kind:'table'});
+      /* THE TABLE IS 1.1 m ALONG THE FLOW, NOT §4.1's 1.8: between a 1.8 m
+         table and the fence there is 0.6 m, and an arm's base is 0.7 m across
+         with a turret 0.82 m corner to corner. At 1.1 the four corners hold one
+         arm each (row 104), clear of table, fence and light curtain. */
+      lb(0.95,-0.8,0,2.05,0.8,0.85,{kind:'table'});
       lb(1.2,-0.3,0.85,1.8,0.3,1.1,{kind:'detail'});
       /* the fence: posts every 2 m, a top rail at 2.0, gaps where the belts come in */
       var F=[[0.05,-1.45,2.95,-1.45],[0.05,1.45,2.95,1.45]];
@@ -19818,6 +19977,7 @@ function buildFactory(p){
       [[0.05,-0.42],[0.05,0.42],[2.95,-0.42],[2.95,0.42]].forEach(function(f){
         lbar(f[0]-0.03,f[1]-0.03,0,f[0]+0.03,f[1]+0.03,1.5,{kind:'guard'});
       });
+      cellRobots();
     } else if(t==='qa'){
       var qs=stub(0,1.0);
       lbar(0.35,-0.75,0,0.65,-0.6,2.0,{kind:'frame'});
@@ -19854,11 +20014,11 @@ function buildFactory(p){
 
   /* items: on every routed run and every station stub that carries them */
   BELTS.forEach(function(bt){
-    var rngI=statRng(SEED,FACT_SALT_ITEMS,bt.id,0);
+    var rngI=statRng(SEED,FACT_SALT_ITEMS,bt.id,FPOSE);
     bt.pieces.forEach(function(rec){ if(rec.k==='run') placeItems(rec,rngI); });
   });
   STN.forEach(function(st){
-    var rngI=statRng(SEED,FACT_SALT_ITEMS,1000+st.id,0);
+    var rngI=statRng(SEED,FACT_SALT_ITEMS,1000+st.id,FPOSE);
     (st.stubs||[]).forEach(function(rec){ if(rec.items) placeItems(rec,rngI); });
   });
 
@@ -19898,6 +20058,8 @@ function buildFactory(p){
     return {id:bt.id, line:bt.line, from:bt.from, to:bt.to, z:bt.z, pts:bt.pts, pieces:bt.pieces, cells:bt.cells};
   });
   T.items=ITEMS; T.role=FACTROLE; T.colours=FACTCOL;
+  T.arms=ARMS; T.arm={L1:ARML1, L2:ARML2, SH:ARMSH, TCP:ARMTCP, J2:ARMJ2, J3:ARMJ3, HOME:ARMHOME,
+                      up:ARMUP, fore:ARMFORE, IK:armIK, FK:armFK};
   T.lines=LINES.map(function(L){ return {id:L.id, stations:L.stations.map(function(s){ return s.id; })}; });
 
   /* ---- the order INSIDE a cell, exactly -------------------------------- */
@@ -20041,12 +20203,17 @@ function buildFactory(p){
   FACTTALLY=T;
   FACTSTATS={lines:LINES.length, wanted:WANTL, stations:STN.length, belts:BELTS.length, curves:nCurve,
              xfers:nXfer, items:ITEMS.length, aisles:AISLES.length, solids:solids.length,
-             points:K.points(), paths:out.length, mmest:K.mmest, order:ordStats};
+             points:K.points(), paths:out.length, mmest:K.mmest, order:ordStats,
+             arms:ARMS.filter(function(A){ return A.type==='arm'; }).length,
+             armsHome:ARMS.filter(function(A){ return A.home; }).length,
+             gantries:ARMS.filter(function(A){ return A.type==='gantry'; }).length};
   if(!fs){ FACTINFO='nothing to draw'; return out; }
   FACTSTATS.mm=fs*PAGEMM;
   out.layers=['ground','structure','detail','accent'];
   FACTINFO=W+' × '+D+' m · '+LINES.length+(LINES.length<WANTL?' of '+WANTL:'')+' lines · '+
            STN.length+' stations · '+BELTS.length+' belts · '+
+           (ARMS.length?FACTSTATS.arms+' arms'+(FACTSTATS.armsHome?' ('+FACTSTATS.armsHome+' home)':'')+
+             (FACTSTATS.gantries?' + '+FACTSTATS.gantries+' gantr'+(FACTSTATS.gantries>1?'ies':'y'):'')+' · ':'')+
            solids.length.toLocaleString()+' solids · '+out.length.toLocaleString()+' paths · '+
            (fs*PAGEMM).toFixed(1)+' mm/m';
   return out;
@@ -31321,6 +31488,8 @@ var HELP={
 'fact.flines':'How many production lines run through the hall. Each is a serpentine from a receiving dock in the back wall, out along the width and back to a shipping dock beside it. A line needs a 9 m band of depth; when the hall is too shallow for all of them, fewer are built and the stat line says how many of how many.',
 'fact.fstat':'How many stations a line has between its two docks: processes (CNC, press, moulder, furnace, vat — chosen per line), one or two assembly cells, QA and a packer. A line too long for its two rows drops a process station rather than overflowing the hall.',
 'fact.fitem':'How full the belts are. Cartons ride every straight run at least 0.2 m apart and never across a belt end, a curve or a transfer; 0 empties the belts and changes nothing else.',
+'fact.farms':'How many six-axis robot arms stand in each assembly cell, at its corners round the fixture: 1, a diagonal pair, three, or all four. Each is posed by inverse kinematics to a real target on the fixture, yellow or orange per cell; at 2 or more about one cell in four has a gantry robot instead. Shipping docks get one palletiser arm at 1 or more. 0 removes every arm and changes nothing else.',
+'fact.fpose':'Another moment of the same factory: re-rolls what every arm is reaching for (a point on the fixture, a slot on the pallet) and the cartons on the belts. The layout, the machines, the belts and where each arm stands never move. An arm whose target is out of reach stands in its home pose, and the stat line counts it.',
 'fact.lod':'The smallest detail still drawn, as its size on the SHEET: belt edge lines, door slats, fence mesh, pendant buttons. A bar thinner than this (handrails, legs, fence posts) is drawn as its centre line and hides nothing behind it — an occlusion gap round a 0.04 m post would be wider than the post.',
 'fact.occ':'How wide a white gap a nearer solid opens in a line passing behind it. The factory hides itself exactly — every solid is cut into 1 m lattice cells and drawn front to back — so this is only the finish. The gap is never opened at a cut, where nothing is drawn, so a belt stays one unbroken line.',
 'harb.len':'How far the yard lane runs, in metres. The camera stands part-way along it and the stacks recede toward the far end.',
