@@ -438,7 +438,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v328</a> &mdash; REFACTOR ONLY: the build is a function of an explicit input -- build(input) returns plain arrays with every path tag packed, ready for row 123's worker; nothing draws differently</span></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v329</a> &mdash; The build runs in a Web Worker made from the page's own source -- a newer request terminates a busy build, the last drawing stays up with a building tag, and anything that cannot use a worker builds inline as before</span></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <section class="fold" id="fold_pick"><h2>Pick engine<span class="cnt"></span></h2>
@@ -713,6 +713,10 @@ Watch the pen-down estimate; this engine reaches hundreds of metres easily.
 <script>
 (function(){
 var TAU=Math.PI*2;
+/* ROW 123: THE PAGE'S OWN SOURCE, KEPT AT BOOT for the build worker, which is
+   made from it -- there is no second file (CLAUDE.md rule 2). Empty where the
+   browser gives no currentScript, and then the build runs inline. */
+var PAGESRC=(typeof document!=='undefined' && document.currentScript && document.currentScript.textContent)||'';
 var cv=document.getElementById('cv'), ctx=cv.getContext('2d');
 var W=800,H=800, seed=41, mode='record', cur=null, pend=false;
 
@@ -31052,8 +31056,17 @@ function drawVariations(){
    only be stale where a path was deliberately moved to schedPaint(). Never a
    hash of STATE: a hash that misses a field is the failure that stays silent.
    Decimation stays in paint (its budget follows the zoom). */
-var BUILDGEN=0, BUILT=null, PINCV=null;
+var BUILDGEN=0, BUILT=null, PINCV=null, PAINTED=null;
 function draw(){ BUILDGEN++; paint(); }
+/* the tag, on the canvas only: a build is running and this is the last one */
+function paintBuilding(){
+  ctx.save();
+  var fs=Math.max(11,Math.round(W/60));
+  ctx.font='600 '+fs+'px system-ui,sans-serif'; ctx.textBaseline='top'; ctx.textAlign='left';
+  ctx.globalAlpha=0.9; ctx.fillStyle='#fbf8f3'; ctx.fillRect(fs*0.6,fs*0.6,fs*6.2,fs*1.6);
+  ctx.globalAlpha=1; ctx.fillStyle='#c96f3a'; ctx.fillText('building\u2026', fs, fs);
+  ctx.restore();
+}
 /* ROW 123 P1 (REFACTOR ONLY): THE BUILD IS A FUNCTION OF AN EXPLICIT INPUT.
    build(input) -> {gen, err, groups, info} is what row 123's worker will run.
    P0 (CONTEXT, workerp0.js) measured that the build reads nothing outside the
@@ -31095,6 +31108,111 @@ function unpackGroups(groups){
     o.paths=G.paths.map(function(q){ var a=q.p.slice(); if(q.t) Object.keys(q.t).forEach(function(k){ a[k]=q.t[k]; }); return a; });
     return o;
   });
+}
+/* ---- ROW 123 P2: THE BUILD RUNS IN A WEB WORKER ----------------------------
+   made from PAGESRC through a blob URL. Inside it, workerPrelude() stands up
+   the inert document/window the page's boot touches (P0 measured that no build
+   reads any of it), the page script boots with __SPAD_WORKER set so it does not
+   mount the UI, and the handler answers build(input) with the same plain arrays
+   the main thread gets. Every request carries `gen`; a newer request
+   TERMINATES a busy worker and starts a fresh one, so a long build is never
+   awaited only to be thrown away; a result for an older gen is dropped. The
+   page keeps painting the last good drawing meanwhile, with a "building…" tag
+   on the canvas -- never in the SVG. If `new Worker` throws, if the worker
+   errors, or if `Worker` does not exist (jsdom, a browser that refuses a blob
+   worker on file://), the build runs inline exactly as it did at v328. Export
+   and Pin read `cur` on the main thread, so ensureFull() builds inline first. */
+function workerPrelude(){
+  /* THIS RUNS ONLY IN THE WORKER: the page never calls it, it ships it as text */
+  var g=self;
+  g.__SPAD_WORKER=true;
+  function el(){
+    var e={style:{},dataset:{},classList:{add:function(){},remove:function(){},toggle:function(){},contains:function(){return false;}},
+      children:[],value:'',textContent:'',innerHTML:'',className:'',checked:false,width:900,height:900,
+      appendChild:function(c){return c;},insertBefore:function(c){return c;},removeChild:function(){},
+      addEventListener:function(){},removeEventListener:function(){},setAttribute:function(){},getAttribute:function(){return null;},
+      querySelector:function(){return el();},querySelectorAll:function(){return [];},
+      getBoundingClientRect:function(){return {width:900,height:900,left:0,top:0,right:900,bottom:900};},
+      focus:function(){},blur:function(){},click:function(){},remove:function(){},setPointerCapture:function(){},closest:function(){return null;},
+      scrollIntoView:function(){},offsetWidth:900,offsetHeight:900,clientWidth:900,clientHeight:900};
+    /* a parent made on demand, as the boot walks up from an element */
+    Object.defineProperty(e,'parentNode',{get:function(){ return this._p||(this._p=el()); }});
+    Object.defineProperty(e,'parentElement',{get:function(){ return this.parentNode; }});
+    var n=function(){ return {width:0}; }, c2={};
+    ['save','restore','beginPath','moveTo','lineTo','stroke','fill','arc','rect','clip','clearRect','fillRect','setLineDash',
+     'drawImage','fillText','translate','scale','rotate','closePath','quadraticCurveTo','bezierCurveTo','measureText',
+     'setTransform','strokeRect','putImageData'].forEach(function(k){ c2[k]=n; });
+    c2.getImageData=function(x,y,w,h){ return {data:new Uint8ClampedArray(Math.max(4,(w|0)*(h|0)*4))}; };
+    c2.createLinearGradient=function(){ return {addColorStop:function(){}}; };
+    e.getContext=function(){ return c2; };
+    return e;
+  }
+  var d=el();
+  d.createElement=function(){return el();}; d.createElementNS=function(){return el();}; d.getElementById=function(){return el();};
+  d.body=el(); d.documentElement=el(); d.currentScript=null;
+  g.document=d;
+  g.window=g; g.innerWidth=1280; g.innerHeight=800; g.devicePixelRatio=1;
+  g.matchMedia=function(){ return {matches:false,addListener:function(){}}; };
+  g.getComputedStyle=function(){ return {}; };
+  g.requestAnimationFrame=function(){ return 0; }; g.cancelAnimationFrame=function(){};
+  g.addEventListener=g.addEventListener||function(){};
+  g.localStorage={getItem:function(){return null;},setItem:function(){},removeItem:function(){},key:function(){return null;},length:0};
+  if(typeof g.Image==='undefined') g.Image=function(){};
+  if(typeof g.FileReader==='undefined') g.FileReader=function(){};
+  if(typeof g.DOMParser==='undefined') g.DOMParser=function(){ this.parseFromString=function(){ return {getElementsByTagName:function(){return [];}}; }; };
+  if(typeof g.alert==='undefined') g.alert=function(){};
+}
+/* the worker's whole source, from the page's own text; '' when that is not available */
+function workerSource(){
+  if(!PAGESRC) return '';
+  var i=PAGESRC.lastIndexOf('})();');
+  if(i<0) return '';
+  return '('+workerPrelude.toString()+')();\n'+PAGESRC.slice(0,i)+
+    '\n;self.__SPAD={build:build};\n'+PAGESRC.slice(i)+
+    '\nself.onmessage=function(e){ var I=e.data, R;'+
+    ' try{ R=self.__SPAD.build(I); self.postMessage(R); }'+
+    ' catch(err){ self.postMessage({gen:I&&I.gen, fatal:String((err&&err.message)||err)}); } };\n';
+}
+var WK={w:null, url:null, broken:false, busy:null, t0:0, posted:0, killed:0, results:0, dropped:0};
+function workerOK(){ return !WK.broken && !VARI.on && typeof Worker!=='undefined' && typeof Blob!=='undefined' && typeof URL!=='undefined' && !!PAGESRC; }
+function workerFail(){ WK.broken=true; WK.busy=null; if(WK.w){ try{ WK.w.terminate(); }catch(e){} } WK.w=null; }
+function requestBuild(gen){
+  var key=gen+(DRAFT?'d':'f');
+  if(WK.busy===key) return true;
+  if(WK.busy!==null && WK.w){ try{ WK.w.terminate(); }catch(e){} WK.w=null; WK.killed++; }
+  WK.busy=null;
+  try{
+    if(!WK.url){ var src=workerSource(); if(!src){ workerFail(); return false; }
+      WK.url=URL.createObjectURL(new Blob([src],{type:'text/javascript'})); }
+    if(!WK.w){
+      WK.w=new Worker(WK.url);
+      WK.w.onmessage=onWorker;
+      WK.w.onerror=function(){ workerFail(); sched(); };
+    }
+    WK.w.postMessage(buildInput(gen));
+  }catch(e){
+    /* a blob worker refused, or an input that cannot be cloned: this build is inline */
+    if(!WK.w) workerFail();
+    return false;
+  }
+  WK.busy=key; WK.t0=performance.now(); WK.posted++;
+  return true;
+}
+function onWorker(e){
+  var R=e.data||{};
+  if(WK.busy===null || String(R.gen)!==WK.busy.slice(0,-1)){ WK.dropped++; return; }
+  var draft=WK.busy.slice(-1)==='d';
+  WK.busy=null;
+  if(R.fatal){ workerFail(); sched(); return; }
+  if(VARI.on || R.gen!==BUILDGEN){ WK.dropped++; return; }
+  WK.results++;
+  var I=R.info||{};
+  POININFO=I.POININFO; POINSTATS=I.POINSTATS; FLOWINFO=I.FLOWINFO; MCONTINFO=I.MCONTINFO; SORTINFO=I.SORTINFO;
+  STATINFO=I.STATINFO; STATSTATS=I.STATSTATS; FACTINFO=I.FACTINFO; FACTSTATS=I.FACTSTATS; STRTINFO=I.STRTINFO;
+  STRTSTATS=I.STRTSTATS; POINSNAP=I.POINSNAP; WORDFIT=I.WORDFIT;
+  ENGERR=R.err;
+  BUILT={gen:R.gen, draft:draft, remote:true, cur:null, err:R.err, groups:unpackGroups(R.groups), ms:Math.round(performance.now()-WK.t0)};
+  paint();
 }
 function build(input){
   installInput(input);
@@ -31139,19 +31257,42 @@ function paint(){
     w=Math.min(w, Math.max(150, avail));
   }
   w=Math.max(80,w);
-  cv.width=w*2; cv.height=w*2;
-  cv.style.width=w+'px'; cv.style.height=w+'px'; cv.style.margin='0 auto';
-  W=w*2; H=w*2;
+  /* row 123: SIZING CLEARS THE CANVAS (assigning a canvas's width wipes it), so
+     it runs after the decision below, which may leave the canvas as it is */
+  function sizeIt(){
+    cv.width=w*2; cv.height=w*2;
+    cv.style.width=w+'px'; cv.style.height=w+'px'; cv.style.margin='0 auto';
+    W=w*2; H=w*2;
+  }
   /* the variations sheet builds twelve drawings into `cur` and the info
      globals; whatever is cached is not the drawing any more */
-  if(VARI.on){ BUILT=null; drawVariations(); return; }
+  if(VARI.on){ sizeIt(); BUILT=null; drawVariations(); return; }
   var t0=performance.now(), rebuilt=false;
+  var waiting=false;
   if(!BUILT || BUILT.gen!==BUILDGEN || (BUILT.draft && !DRAFT)){
-    rebuilt=true;
-    var R=build(buildInput(BUILDGEN));
-    ENGERR=R.err;
-    BUILT={gen:R.gen, draft:!!DRAFT, cur:cur, err:R.err, groups:unpackGroups(R.groups), ms:0};
-  } else { cur=BUILT.cur; ENGERR=BUILT.err; }
+    if(workerOK() && requestBuild(BUILDGEN)) waiting=true;
+    else {
+      rebuilt=true;
+      var R=build(buildInput(BUILDGEN));
+      ENGERR=R.err;
+      BUILT={gen:R.gen, draft:!!DRAFT, cur:cur, err:R.err, groups:unpackGroups(R.groups), ms:0};
+    }
+  }
+  if(!rebuilt && BUILT){ if(!BUILT.remote) cur=BUILT.cur; ENGERR=BUILT.err; }
+  if(waiting && !BUILT){
+    /* the first build of the page is in the worker: a blank sheet and the tag */
+    sizeIt(); ctx.clearRect(0,0,W,H); paintBuilding(); PAINTED=null; return;
+  }
+  /* A BUILD WAS JUST POSTED AND THE CANVAS ALREADY SHOWS THE LAST ONE, at this
+     view and size: put the tag on it rather than painting the same drawing
+     again. Measured on a 476,388-point Record in Chromium, that repaint was a
+     second 200-400 ms main-thread block for every knob change, which made the
+     worker cost more main-thread time than the inline build it replaced. */
+  if(waiting && PAINTED && PAINTED.b===BUILT && PAINTED.w===w*2 && PAINTED.h===w*2 &&
+     PAINTED.s===VIEW.s && PAINTED.ox===VIEW.ox && PAINTED.oy===VIEW.oy && PAINTED.pins===PINS.length){
+    paintBuilding(); return;
+  }
+  sizeIt();
   /* The canvas and the export have to agree about what a multi-pen job IS.
      draw() tested copies>1 || pmap>0 while the export also counted PINS, so as
      soon as anything was pinned the FILE had colours the PREVIEW never showed.
@@ -31380,6 +31521,8 @@ function paint(){
      the disc. Painted here and nowhere else: it is not a path, so like the
      grid and the bed outline it never reaches the export or the path count. */
   var PNOTE=(mode==='poin'&&!ENGERR&&POINSTATS&&POINSTATS.notice)?POINSTATS.notice:null;
+  if(WK.busy!==null) paintBuilding();
+  PAINTED={b:BUILT, w:W, h:H, s:VIEW.s, ox:VIEW.ox, oy:VIEW.oy, pins:PINS.length};
   if(PNOTE&&PNOTE.length){
     ctx.save();
     var nfs=Math.max(11,Math.round(W/52)), nw=0, nk;
@@ -31706,9 +31849,16 @@ function queueFrame(){ if(pend)return; pend=true; requestAnimationFrame(function
    the 220 ms after a poke the cache can hold a 45,000-point drawing, and the
    file must never be that. */
 function ensureFull(){
-  if(!(DRAFT || (BUILT && BUILT.draft))) return;
+  if(!(DRAFT || !BUILT || BUILT.draft || BUILT.remote || BUILT.gen!==BUILDGEN)) return;
   if(draftIdle){ clearTimeout(draftIdle); draftIdle=null; }
-  DRAFT=false; draw();
+  DRAFT=false;
+  /* row 123: export and Pin rebuild from `cur` on THIS thread, which a worker
+     build does not set, so the full build they wait for is an inline one */
+  if(WK.busy!==null && WK.w){ try{ WK.w.terminate(); }catch(e){} WK.w=null; WK.busy=null; WK.killed++; }
+  var R=build(buildInput(BUILDGEN));
+  ENGERR=R.err;
+  BUILT={gen:R.gen, draft:false, cur:cur, err:R.err, groups:unpackGroups(R.groups), ms:0};
+  paint();
 }
 function setDraft(on){
   if(DRAFT===on) return;
@@ -34408,7 +34558,8 @@ document.getElementById('dl').addEventListener('click',function(){
   paintName();
 });
 window.addEventListener('resize',schedPaint);
-mountG(); mountTabs(); mount();
+/* row 123: inside the build worker the page boots without its UI */
+if(!(typeof self!=='undefined' && self.__SPAD_WORKER)){ mountG(); mountTabs(); mount(); }
 })();
 </script>
 </body>
