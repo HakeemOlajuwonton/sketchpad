@@ -438,7 +438,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v330</a> &mdash; Isofactory floor plan -- planned aisles (the main one on a span line), lines that serpentine across their whole band, floor zones filling what is left (staging, racks, tool crib, maintenance, charging, bins, compressor skid, a glass lab), a seeded mezzanine carrying an office pod, a vat pair and stores, and one green walkway from its stair to a dock door</span></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v331</a> &mdash; ink sets: Mr. Pen vintage 8 behind True colour</span></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <section class="fold" id="fold_pick"><h2>Pick engine<span class="cnt"></span></h2>
@@ -9643,6 +9643,7 @@ var GSPEC=[
   ['lshy','Layer Y',-600,600,1,0,[10,' mm']],
   ['pmap','Pen map',0,3,1,0],
   ['bands','Colours',2,24,1,6],
+  ['inkset','Ink set',0,1,1,0,null,{menu:'inkset'}],
   ['pang','Band angle',0,360,1,225,[1,'\u00b0']],
   ['weav','Weave',0,4,1,0],
   ['weavg','Weave gap',0,60,1,12,[10,' mm']],
@@ -11042,6 +11043,43 @@ var INKS=[
   {name:'green',hex:'#2f9a44'},      {name:'light green',hex:'#8cc44a'},
   {name:'olive',hex:'#6b7a2a'},      {name:'sand',hex:'#d8c08e'}
 ];
+/* INK SETS: REAL PEN BOXES BEHIND TRUE COLOUR (row 126,
+   docs/specs/2026-10-14-ink-sets.md). Set 0 is `INKS` itself -- the SAME array,
+   not a copy -- and the default, so nothing anyone has drawn moves. A new pen box
+   is ONE entry here (and the same entry in inks.py) and nothing else is edited:
+   the Ink set menu, its range and the export all read this table.
+
+   THE mrpen8 HEXES ARE THE PLASTIC, NOT THE INK: the median of a 50x24 px box on
+   each barrel in Albert's photo of the box, under a warm lamp. They are unmeasured
+   on paper, and a swatch scan changes those eight strings and nothing else.
+
+   `from` maps every reference-ink name to this set's ink, and it is the RULE, not
+   a convenience: plain OKLab nearest is mostly a lightness match against pens this
+   dark (light blue -> olive, red/pink/lavender -> rust). Glass and steel go
+   cobalt, wood and drums rust, foliage olive, key lines navy, and magenta only
+   where the drawing asks for pink or magenta. A set without `from` takes the
+   nearest set ink by OKLab with L weighted 0.5. A set's ORDER is its tie-break. */
+const INKSETS = [
+  { id: 'ref24',  name: 'Reference 24',      inks: INKS },          // the SAME array, not a copy
+  { id: 'mrpen8', name: 'Mr. Pen vintage 8', inks: [
+      ['navy',    '#14183E'],
+      ['plum',    '#6B3B5F'],
+      ['brick',   '#932F31'],
+      ['rust',    '#B8603F'],
+      ['mustard', '#AF6E2F'],
+      ['olive',   '#71763C'],
+      ['cobalt',  '#143C75'],
+      ['magenta', '#A21F62'] ],
+    from: {   // reference-ink name -> this set's ink name
+      'black':'navy', 'dark grey':'navy', 'grey':'plum', 'sepia':'brick', 'brown':'rust',
+      'ochre':'mustard', 'yellow':'mustard', 'orange':'rust', 'red':'brick', 'dark red':'brick',
+      'pink':'magenta', 'magenta':'magenta', 'purple':'plum', 'lavender':'plum',
+      'navy':'navy', 'blue':'cobalt', 'light blue':'cobalt', 'turquoise':'cobalt',
+      'teal':'olive', 'dark green':'olive', 'green':'olive', 'light green':'olive',
+      'olive':'olive', 'sand':'mustard' } },
+];
+/* The knob's range is the table's: GSPEC is written before this table exists. */
+GSPEC.forEach(function(r){ if(r[0]==='inkset') r[3]=INKSETS.length-1; });
 /* THE DISTANCE IS OKLab, AND THAT IS NOT A DETAIL. sRGB distance says pure
    blue and pure yellow are about equally far from mid-grey, so a greedy pass
    in it spends its second pen on whichever of them appears first. OKLab is
@@ -11064,6 +11102,39 @@ function oklabD2(a,b){
   var x=a[0]-b[0], y=a[1]-b[1], z=a[2]-b[2];
   return x*x+y*y+z*z;
 }
+/* THE INK-SET DISTANCE: OKLab with L weighted 0.5 (squared, like oklabD2). Real
+   pens are darker than the reference hexes, so at full weight the nearest pen is
+   mostly the nearest LIGHTNESS. */
+function oklabD2L(a,b){
+  var x=0.5*(a[0]-b[0]), y=a[1]-b[1], z=a[2]-b[2];
+  return x*x+y*y+z*z;
+}
+/* The ink set the knob names, its inks as {name,hex}; null for set 0 (and for an
+   index the table does not have), which is the reference path exactly. Read only
+   at Pen map 3, because only penByColour calls it. */
+function inksetOf(g){
+  var k=Math.round((g&&g.inkset)||0);
+  if(!(k>0) || !INKSETS[k]) return null;
+  var S=INKSETS[k];
+  return {id:S.id, name:S.name, from:S.from||null,
+          inks:S.inks.map(function(t){ return Array.isArray(t)?{name:t[0],hex:t[1]}:t; })};
+}
+/* nearest reference ink to a true colour, ties by `INKS` order */
+function nearestRefInk(hex){
+  var lab=oklabOf(hex), bk=0, bd=Infinity, k;
+  for(k=0;k<INKS.length;k++){ var d=oklabD2(lab,oklabOf(INKS[k].hex)); if(d<bd){ bd=d; bk=k; } }
+  return bk;
+}
+/* a reference ink (index) to the set's ink (index): `from` when the set has one
+   and names it, else the nearest set ink at L weighted 0.5, ties by set order */
+function inksetInkOf(S,r){
+  var nm=INKS[r].name, k;
+  if(S.from && S.from[nm]!==undefined)
+    for(k=0;k<S.inks.length;k++) if(S.inks[k].name===S.from[nm]) return k;
+  var lab=oklabOf(INKS[r].hex), bk=0, bd=Infinity;
+  for(k=0;k<S.inks.length;k++){ var d=oklabD2L(lab,oklabOf(S.inks[k].hex)); if(d<bd){ bd=d; bk=k; } }
+  return bk;
+}
 /* CHOOSE N INKS FOR THIS DRAWING. `cols` is the distinct true colours and `w`
    their total stroke LENGTH -- weighing by length rather than by path count is
    what stops fifty tiny eye-dots outvoting every pumpkin on the sheet.
@@ -11076,14 +11147,18 @@ function oklabD2(a,b){
 
    TIES BREAK BY `INKS` ORDER, so the answer is deterministic and a preset
    drawn today comes back the same tomorrow. */
-function pickInks(cols,w,N){
+function pickInks(cols,w,N,pal,dist){
+  /* `pal` is the ink list to choose from (an ink set's, row 126) and `dist` its
+     distance; absent, they are `INKS` and oklabD2 -- the call every Pen map 3
+     drawing made before ink sets, unchanged. */
+  var PAL=pal||INKS, D2=dist||oklabD2;
   var i,j,k,n=cols.length;
   if(!n) return {inks:[], err:0, of:[]};
   var lab=[], il=[];
   for(i=0;i<n;i++) lab.push(oklabOf(cols[i]));
-  for(i=0;i<INKS.length;i++) il.push(oklabOf(INKS[i].hex));
+  for(i=0;i<PAL.length;i++) il.push(oklabOf(PAL[i].hex));
   var d2=[];                                  /* d2[i][k] colour i to ink k */
-  for(i=0;i<n;i++){ var row=[]; for(k=0;k<INKS.length;k++) row.push(oklabD2(lab[i],il[k])); d2.push(row); }
+  for(i=0;i<n;i++){ var row=[]; for(k=0;k<PAL.length;k++) row.push(D2(lab[i],il[k])); d2.push(row); }
   var chosen=[], best=[];
   for(i=0;i<n;i++) best.push(Infinity);
   function errWith(set){
@@ -11094,10 +11169,10 @@ function pickInks(cols,w,N){
     }
     return e;
   }
-  var want=Math.max(1,Math.min(INKS.length,N));
+  var want=Math.max(1,Math.min(PAL.length,N));
   while(chosen.length<want){
     var bk=-1, be=Infinity;
-    for(k=0;k<INKS.length;k++){
+    for(k=0;k<PAL.length;k++){
       if(chosen.indexOf(k)>=0) continue;
       var e=errWith(chosen.concat([k]));
       if(e<be-1e-12){ be=e; bk=k; }
@@ -11115,7 +11190,7 @@ function pickInks(cols,w,N){
     moved=false; passes++;
     for(i=0;i<chosen.length;i++){
       var cur2=errWith(chosen);
-      for(k=0;k<INKS.length;k++){
+      for(k=0;k<PAL.length;k++){
         if(chosen.indexOf(k)>=0) continue;
         var trial=chosen.slice(); trial[i]=k;
         if(errWith(trial)<cur2-1e-12){ chosen=trial; moved=true; break; }
@@ -11141,7 +11216,7 @@ function pickInks(cols,w,N){
      same without them: no colour is nearest to an unused ink. */
   var keep=chosen.filter(function(k2){ return used[k2]; });
   /* LIGHT TO DARK, so black is plotted last and lies on top of everything. */
-  keep.sort(function(a,b){ return oklabOf(INKS[b].hex)[0]-oklabOf(INKS[a].hex)[0]; });
+  keep.sort(function(a,b){ return oklabOf(PAL[b].hex)[0]-oklabOf(PAL[a].hex)[0]; });
   return {inks:keep, err:errWith(chosen), of:of};
 }
 /* THE LAST SELECTION, so `penCount` and the readout report what was EXPORTED
@@ -11154,7 +11229,7 @@ var PENS={};
 function penHex(i,g){
   if(PENS[i]) return PENS[i];
   if(g && Math.round(g.pmap||0)===3 && PENSEL && PENSEL.inks.length)
-    return INKS[PENSEL.inks[Math.min(i,PENSEL.inks.length-1)]].hex;
+    return (PENSEL.pal||INKS)[PENSEL.inks[Math.min(i,PENSEL.inks.length-1)]].hex;
   var P=PALETTES[Math.min(PALETTES.length-1,Math.max(0,(g.pal||0)|0))][1];
   return P[i%P.length][1];
 }
@@ -11165,7 +11240,7 @@ function penName(i,g){
      operator has overridden still wins, because that is the operator saying
      which pen is really in the holder. */
   if(!PENS[i] && g && Math.round(g.pmap||0)===3 && PENSEL && PENSEL.inks.length)
-    return INKS[PENSEL.inks[Math.min(i,PENSEL.inks.length-1)]].name;
+    return (PENSEL.pal||INKS)[PENSEL.inks[Math.min(i,PENSEL.inks.length-1)]].name;
   if(PENS[i]) return PENS[i].replace('#','');
   var P=PALETTES[Math.min(PALETTES.length-1,Math.max(0,(g.pal||0)|0))][1];
   return P[i%P.length][0];
@@ -14213,13 +14288,34 @@ function penByColour(groups,g){
   });
   if(!cols.length){ PENSEL={inks:[],err:0,names:[],asked:N}; return groups; }
   var w=cols.map(function(c){ return wsum[c]; });
-  var sel=pickInks(cols,w,N);
-  var inkOf={};
-  for(i=0;i<cols.length;i++) inkOf[cols[i]]=sel.of[i];
+  var S=inksetOf(g), PAL=S?S.inks:INKS, sel, inkOf={};
+  if(!S){
+    sel=pickInks(cols,w,N);
+    for(i=0;i<cols.length;i++) inkOf[cols[i]]=sel.of[i];
+  }else{
+    /* AN INK SET (row 126): each true colour goes to its nearest REFERENCE ink
+       (the step above, unchanged), that ink to the set's ink by the set's rule,
+       and the lengths fold onto the set's inks. Then the same greedy + swap
+       runs over the set's inks, a stroke's error being the L-0.5 distance from
+       its set ink to the nearest chosen one. */
+    var sOf=[], sw={}, scols=[], sidx=[];
+    for(i=0;i<cols.length;i++){
+      var si=inksetInkOf(S,nearestRefInk(cols[i]));
+      sOf.push(si);
+      if(sw[si]===undefined){ sw[si]=0; sidx.push(si); }
+      sw[si]+=w[i];
+    }
+    sidx.sort(function(a,b){ return a-b; });
+    scols=sidx.map(function(k2){ return PAL[k2].hex; });
+    sel=pickInks(scols,sidx.map(function(k2){ return sw[k2]; }),N,PAL,oklabD2L);
+    var at={};
+    for(i=0;i<sidx.length;i++) at[sidx[i]]=sel.of[i];
+    for(i=0;i<cols.length;i++) inkOf[cols[i]]=at[sOf[i]];
+  }
   var order={}, out=[];
   for(i=0;i<sel.inks.length;i++){
     order[sel.inks[i]]=i;
-    out.push({name:INKS[sel.inks[i]].name, hex:INKS[sel.inks[i]].hex, paths:[]});
+    out.push({name:PAL[sel.inks[i]].name, hex:PAL[sel.inks[i]].hex, paths:[]});
   }
   groups.forEach(function(G){
     G.paths.forEach(function(pl){
@@ -14230,8 +14326,8 @@ function penByColour(groups,g){
       out[b].paths.push(pl);
     });
   });
-  PENSEL={inks:sel.inks, err:sel.err, asked:N,
-          names:sel.inks.map(function(k2){ return INKS[k2].name; })};
+  PENSEL={inks:sel.inks, err:sel.err, asked:N, pal:PAL, set:S?Math.round(g.inkset):0,
+          names:sel.inks.map(function(k2){ return PAL[k2].name; })};
   return out;
 }
 
@@ -32886,6 +32982,7 @@ var HELP={
 '_g.shy':'The other axis of the copy shift. Set both and copies march diagonally.',
 '_g.pmap':'0 colours by COPY, which is what the palette has always done. That is a fact about the drawing\u2019s history, not about where anything is. 1 colours by a LINEAR band along Band angle, 2 by RADIAL distance from the node. Either one SPLITS the strokes where they cross a band edge rather than sorting whole paths, which matters: every groove of a Record is a circle centred on the node, so sorting by midpoint would drop the entire disc into one band. 3 is TRUE COLOUR: draw every part in the colour it really is \u2014 the motif library knows a pumpkin is orange with a green stem and a manta is slate blue \u2014 using the Colours inks that best cover the drawing. Abstract tiles and engines that declare no colour draw in black, so a Classic joiner or a spiral comes out as ONE black pen rather than as an invented palette. Unlike 1 and 2 it sorts WHOLE PATHS: a colour belongs to the stroke, so there is nothing to split. The inks are real fineliner colours, the layers export LIGHT TO DARK so black plots last and on top, and inks nothing is assigned to are dropped \u2014 a drawing that needs five comes out as five layers at Colours 8. TURN LINE PENS OFF for this: Line pens, Ring pens and engine layers all claim the same groups and all of them win over the pen map.',
 '_g.bands':'How many pens the gradient is quantised into. This is a plotter, so it cannot fade \u2014 it can only change pen. Six bands is six pen swaps. Empty bands are dropped rather than exported as empty layers, so a disc across six bands usually yields four. AT TRUE COLOUR IT IS HOW MANY REAL INKS the drawing\u2019s own colours are reduced to, 2 to 24, and the parts that get their own pen change with the count: at 3 a Spooky field is orange, grey and black; raise it and the stems part from the leaves and the ribs take their darker orange. It is a CEILING, not a promise \u2014 unused inks are dropped, so the swatch row says how many actually came out.',
+'_g.inkset':'Which box of pens True colour (Pen map 3) chooses from. Reference 24 is the default set of approximate fineliner colours; Mr. Pen vintage 8 is that eight-pen box, and its hexes are read off the barrels in a photo, not measured on paper. Each line keeps its own colour and goes to the nearest pen in the box. At any other Pen map it changes nothing.',
 '_g.pang':'Direction the colour bands run. 225 degrees is top-right to bottom-left. Ignored when Pen map is radial.',
 '_g.weav':'Occlusion for the engines that are not 3D. It never needed a third dimension \u2014 it needs an ORDERING, and depth is only one way to get one. 1 orders by progress through the drawing, which is MONOTONIC and therefore a stack, not a weave: the later strand is on top at 100% of crossings. 2 orders by pen. 3 oscillates along each strand so a strand goes over in one place and under in another, measured 48-53% later-on-top. 4 uses the engine\u2019s OWN depth where it has one, and then it stops being a heuristic and becomes hidden-line removal.',
 '_g.weavg':'Width of the break where a strand passes behind another. At least two pen widths or it does not read as a gap.',
@@ -33657,6 +33754,15 @@ function mkRow(box,spec,prefix,get,set){
     d.querySelector('label').setAttribute('for', sel.id);
     sel.addEventListener('change',function(){ push(+sel.value,true); });
   }
+  /* THE INK SET MENU (row 126): one option per INKSETS entry, by name. */
+  if(spec[7] && spec[7].menu==='inkset' && typeof INKSETS!=='undefined'){
+    sel=document.createElement('select'); sel.id=prefix+'sel_'+key; sel.className='menu';
+    sel.innerHTML=INKSETS.map(function(S,i){ return '<option value="'+i+'">'+S.name+'</option>'; }).join('');
+    rg.hidden=true; nu.hidden=true;
+    d.insertBefore(sel, rst);
+    d.querySelector('label').setAttribute('for', sel.id);
+    sel.addEventListener('change',function(){ push(+sel.value,true); });
+  }
   /* pointerup can land outside the thumb, so listen on the window; change fires
      on release for a range and is the reliable backstop on touch. */
   rg.addEventListener('pointerdown',function(){
@@ -33739,7 +33845,7 @@ function setGVal(key,raw){
    Anything in GSPEC that is not named in a group falls into "Other" rather
    than vanishing, so adding a knob later cannot silently hide it. */
 var GGROUPS=[
-  ['copies','Copies &amp; pens', ['copies','elay','step','shx','shy','nx','ny','pw','truew','sortp','weav','weavg','weavf','pal','pmap','bands','pang','wt','wtmode','wtsrc','wtang','wtinv','simp','tilt','tspin','tpersp','mir','mira',
+  ['copies','Copies &amp; pens', ['copies','elay','step','shx','shy','nx','ny','pw','truew','sortp','weav','weavg','weavf','pal','pmap','bands','inkset','pang','wt','wtmode','wtsrc','wtang','wtinv','simp','tilt','tspin','tpersp','mir','mira',
               'lpen','lfrom','lrank','iring','istep','iclr','iside','ipen','cscl']],
   ['warp',  'Warp',             ['warpa','warpp']],
   ['bed',   'Bed &amp; fit',     ['page','pagel','pageor','bedon','bedw','bedh','grid']],
