@@ -438,7 +438,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v329</a> &mdash; The build runs in a Web Worker made from the page's own source -- a newer request terminates a busy build, the last drawing stays up with a building tag, and anything that cannot use a worker builds inline as before</span></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v330</a> &mdash; Isofactory floor plan -- planned aisles (the main one on a span line), lines that serpentine across their whole band, floor zones filling what is left (staging, racks, tool crib, maintenance, charging, bins, compressor skid, a glass lab), a seeded mezzanine carrying an office pod, a vat pair and stores, and one green walkway from its stair to a dock door</span></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <section class="fold" id="fold_pick"><h2>Pick engine<span class="cnt"></span></h2>
@@ -19067,10 +19067,12 @@ function buildStation(p){
    top is z = 0.
 
    THE LAYOUT IS DECIDED IN PLAN BEFORE ANYTHING IS BUILT, on the floor's 1 m
-   grid: columns, the mezzanine's strip, aisles on bay lines between the lines'
-   bands, station footprints with their clearance, then the belts by A*. The
-   flow graph and every footprint go on FACTTALLY so the gate can check the
-   plan without re-deriving it. */
+   grid: the portal frame's columns, the mezzanine and its riser sites, the
+   planned aisles and the lines' bands between them, the serpentines and their
+   stations, the belts by A*, the walkway, then the floor zones in what is left
+   and what stands on the decks (row 125). The flow graph, every footprint,
+   zone and aisle go on FACTTALLY so the gate can check the plan without
+   re-deriving it. */
 var FACTINFO='';
 var FACTSTATS={lines:0,stations:0,belts:0,solids:0,paths:0,points:0};
 var FACTTALLY={cells:[],boxes:[],order:[],tubes:[],polys:[],stations:[],belts:[],flow:null,
@@ -19103,7 +19105,9 @@ function buildFactory(p){
                 rafter:'black', beam:'black', gusset:'black', glazing:'black',
                 rbelt:'black', spiral:'black', cab:'black', shaft:'black', hanger:'black', capsule:'black',
                 liftsteel:'yellow', cabinet:'blue', diverter:'blue', vtube:'lblue',
-                estop:'red', walk:'green'};
+                estop:'red', walk:'green',
+                zpaint:'yellow', rack:'orange', tote:'blue', cage:'black', bench:'black', toolcab:'red',
+                charger:'black', bin:'green', skid:'black', tank:'black', glass:'lblue', pod:'black', sill:'black'};
   /* Station footprints: length along the line in whole metres. Depth is 3 m for
      every type, which is what lets a row be one 3-cell strip. */
   var FACTLEN={receive:3, cnc:3, press:4, moulder:6, furnace:3, vat:3, assembly:3, qa:1, pack:2, ship:3};
@@ -19388,80 +19392,194 @@ function buildFactory(p){
     return false;
   }
 
-  /* The mezzanine's strip along the y = 0 wall, reserved below and around. */
-  var Y0=NLEV>=2?6:0, MZ=null;
+  /* THE FLOOR PLAN (row 125, composition spec §2). One stream decides it all
+     -- where along the y = 0 wall the mezzanine stands and how long it is, how
+     far the upper deck steps back, the order of the lines' bands, each
+     serpentine's turns, the main aisle's span line -- and it is never the pose
+     stream, so `fpose` moves nothing here (F9). The zones (§2.2) have their own. */
+  var FACT_SALT_PLAN=761, FACT_SALT_ZONES=769;
+  var rPL=statRng(SEED,FACT_SALT_PLAN,0,0);
+  /* A BAND holds two 3 m passes at least 4 m apart, clear of every column row
+     (a pass every 6 m where the band allows it, §2.2). Which layouts of bands
+     and aisles the floor admits from y0 is a pure function of the frame, so
+     the deck can ask it how deep it may be. */
+  var BMIN=7;
+  function rowClear(y){ return !colRow(y)&&!colRow(y+1)&&!colRow(y+2); }
+  function rowsOK(ya,yb){
+    var lo=Math.ceil(ya-1e-9), hi=Math.floor(yb-3+1e-9), a=null, b=null, y;
+    for(y=lo;y<=hi;y++) if(rowClear(y)){ a=y; break; }
+    for(y=hi;y>=lo;y--) if(rowClear(y)){ b=y; break; }
+    return a!==null && b!==null && b-a>=4;
+  }
+  function splitRegion(a,b,m){
+    var bw=(b-a-3*(m-1))/m, out=[], i;
+    for(i=0;i<m;i++) out.push([a+i*(bw+3), a+i*(bw+3)+bw]);
+    return out;
+  }
+  function regionOK(a,b,m){
+    if(m<=0) return true;
+    if(b-a<m*BMIN+(m-1)*3-1e-9) return false;
+    return splitRegion(a,b,m).every(function(q){ return rowsOK(q[0],q[1]); });
+  }
+  /* THE MAIN AISLE ON A SPAN LINE, with k bands below it and the rest above,
+     the frame's columns on that line standing in the aisle rather than in a
+     band (§1.1); if no span line will do, the bands share [y0, D] evenly */
+  function layouts(y0,nl){
+    var out=[], j, k;
+    for(j=1;j+1<FYL.length;j++){
+      var c=FYL[j];
+      if(c-1.5<y0-1e-9 || c+1.5>D+1e-9) continue;
+      for(k=0;k<=nl;k++) if(regionOK(y0,c-1.5,k) && regionOK(c+1.5,D,nl-k)) out.push({main:c, k:k});
+    }
+    if(!out.length && regionOK(y0,D,nl)) out.push({main:null, k:nl});
+    return out;
+  }
+  var Y0=0, MZ=null, DXU=0;
   if(NLEV>=2){
-    /* the deck runs from the first frame past 6 m to the frame at or past
-       its old length (6-18 m by hall width), clear of the back-line columns */
-    var mzL=6*Math.max(1,Math.min(3,Math.floor((W-18)/6))), k1=1, k2;
-    while(k1<FR.n && FXL[k1]<6-1e-9) k1++;
-    k2=k1+1; while(k2<FR.n && FXL[k2]<FXL[k1]+mzL-1e-9) k2++;
-    MZ={x0:FXL[k1]+0.2, x1:FXL[k2]-0.2, y0:0.45, y1:5.6, z:4.5};
-    markRect(0,0,W,6,RESV);
+    /* THE MEZZANINE (§2.4) stands on the y = 0 wall -- the x = 0 wall is the
+       docks' -- for 40-70 % of it: its west end atI least 6.2 m in (the west
+       riser sites stand there), its east end 5 m short of the hall's end (its
+       stair runs out that way). One span deep, capped atI 12 m, and no deeper
+       than leaves the Lines asked for their bands: an operator's Lines outrank
+       a deeper deck. Its ends need not be on frame lines; its open edge stands
+       on its own columns, atI its two ends and on every frame line between. */
+    var mX0min=6.2, mX1max=W-5.0;
+    var mLen=Math.round(W*(0.4+0.3*rPL()));
+    mLen=Math.max(6,Math.min(mLen,Math.floor(mX1max-mX0min)));
+    var mX0=mX0min+Math.floor(rPL()*(Math.floor(mX1max-mX0min-mLen)+1));
+    var dep=Math.min(FYL[1]-1.05,12);
+    while(dep>5.15+1e-9 && !layouts(Math.ceil(0.45+dep+0.4),WANTL).length) dep-=0.5;
+    dep=Math.max(5.15,dep);
+    MZ={x0:mX0, x1:mX0+mLen, y0:0.45, y1:0.45+dep, z:4.5};
+    MZ.yu1=MZ.y1;
+    if(NLEV>=3){
+      /* the upper deck covers 50-70 % of the lower, stepped 1.5-3 m back from
+         its open edge, from the west end; it leaves the lower deck's east end
+         its stair (4.5 m) and the east riser sites' 1.3 m */
+      var step=1.5+0.5*Math.floor(rPL()*4), fr=0.5+0.2*rPL();
+      MZ.yu1=Math.max(MZ.y0+3.5,MZ.y1-step);
+      var uLen=fr*mLen*(MZ.y1-MZ.y0)/(MZ.yu1-MZ.y0);
+      uLen=Math.max(4,Math.min(uLen,mLen-5.8));
+      DXU=MZ.x0+Math.round(uLen*2)/2;
+    }
+    Y0=Math.ceil(MZ.y1+0.4);
   }
   /* RISER SITES (row 105): where a spiral or a lift CAN stand, decided by the
      layout alone, so `fspir` and `flift` only choose which are built and move
      nothing else -- the handrail gaps and the tube router's keep-out are the
-     sites', built or not. They stand at the lower deck's two ENDS, on the
-     reserved strip under the back wall: the west end between the walls and the
-     deck, the east end past the stair. A spiral's helix is fixed by §4.3 (pitch
-     1.4, radius 1.1) and the rise by the belts (0.8 to 4.5 + 0.8), so where it
-     leaves at the bottom follows from where it must leave at the top; the top
-     is set so its belt runs straight onto the deck. East needs room past the
-     stair, and at three levels the upper deck's stair must end short of the
-     east tables. Every lane a belt crosses the deck edge on is in RLANES. */
-  var RSITES=[], RLANES={W:[], E:[]}, DXU=0;
+     sites', built or not. They stand atI the lower deck's two ENDS: the west end
+     between the x = 0 wall and the deck (moved with the deck, so never farther
+     from it than atI v324's defaults), the east end past the stair. A spiral's
+     helix is fixed by §4.3 (pitch 1.4, radius 1.1) and the rise by the belts
+     (0.8 to 4.5 + 0.8), so where it leaves atI the bottom follows from where it
+     must leave atI the top; the top is set so its belt runs straight onto the
+     deck. East needs room past the stair, and atI three levels the upper deck's
+     stair must end short of the east tables. Every lane a belt crosses the
+     deck edge on is in RLANES. */
+  var RSITES=[], RLANES={W:[], E:[]}, RESVR=[];
+  function resv(x0,y0,x1,y1,code){ RESVR.push([x0,y0,x1,y1]); markRect(x0,y0,x1,y1,code); }
   if(MZ){
-    DXU=MZ.x0+(MZ.x1-MZ.x0)*0.6;
-    var eRoom=NLEV<3 || DXU+4.5<=MZ.x1-1.3;
-    RSITES.push({key:'Wsp', kind:'spiral', side:'W', O:[2.05,1.85], top:-90, lane:0.75});
-    RSITES.push({key:'Wlf', kind:'lift', side:'W', c:[3.6,4.4], lane:4.4, face:1});
+    var eRoom=NLEV<3 || DXU+4.5<=MZ.x1-1.3, wS=Math.max(0,MZ.x0-9.2);
+    /* the west spiral's deck lane is 0.85, not v324's 0.75: the deck's west
+       end moves with the seed now, and at 0.75 its table (0.4 either side)
+       reached 5 cm into a back-line frame column wherever the two met */
+    RSITES.push({key:'Wsp', kind:'spiral', side:'W', O:[2.05+wS,1.95], top:-90, lane:0.85});
+    RSITES.push({key:'Wlf', kind:'lift', side:'W', c:[3.6+wS,4.4], lane:4.4, face:1});
     if(eRoom && MZ.x1+2.95<=W) RSITES.push({key:'Elf', kind:'lift', side:'E', c:[MZ.x1+1.35,3.15], lane:3.15, face:-1});
     if(eRoom && MZ.x1+6.9<=W) RSITES.push({key:'Esp', kind:'spiral', side:'E', O:[MZ.x1+4.6,3.5], top:90, lane:4.6});
     /* a riser's id is its SITE's, so building one never renames another */
     var RID={Wsp:'sp0', Esp:'sp1', Elf:'lift0', Wlf:'lift1'};
     RSITES.forEach(function(S){ S.id=RID[S.key]; RLANES[S.side].push(S.lane); });
+    /* ON THE FLOOR, under and beside the deck, everything a site would stand
+       on is reserved whether it is built or not: the helix or the shaft, and
+       the ground belt to its table. A spiral's ground port is where its helix
+       starts, 4.5 / 1.4 turns before the top, and its belt runs out along the
+       tangent there. */
+    RSITES.forEach(function(S){
+      if(S.kind==='spiral'){
+        var phs=S.top*Math.PI/180-TAU*MZ.z/1.4;
+        var Pb=[S.O[0]+1.1*Math.cos(phs),S.O[1]+1.1*Math.sin(phs)], dB=[Math.sin(phs),-Math.cos(phs)];
+        var Pe=[Pb[0]+dB[0]*2.4,Pb[1]+dB[1]*2.4];
+        resv(Math.min(S.O[0]-1.6,Pe[0]-0.6),Math.min(S.O[1]-1.6,Pe[1]-0.6),
+             Math.max(S.O[0]+1.6,Pe[0]+0.6),Math.max(S.O[1]+1.6,Pe[1]+0.6),RESV);
+      } else {
+        var gx1=S.side==='W'?MZ.x0+1.4:MZ.x1-2.4, fx=S.c[0]+S.face*1.0;
+        resv(S.c[0]-1.1,S.c[1]-1.1,S.c[0]+1.1,S.c[1]+1.1,RESV);
+        resv(Math.min(fx,gx1),S.lane-0.6,Math.max(fx,gx1),S.lane+0.6,RESV);
+      }
+    });
+    /* the lower deck's stair, and its columns under the open edge */
+    resv(MZ.x1,0.45,MZ.x1+4.8,2.0,RESV);
+    var mcx0=[MZ.x0+0.2]; FXL.forEach(function(fx){ if(fx>MZ.x0+1.0 && fx<MZ.x1-1.0) mcx0.push(fx); }); mcx0.push(MZ.x1-0.2);
+    mcx0.forEach(function(cx){ resv(cx-0.12,MZ.y1-0.36,cx+0.12,MZ.y1-0.12,COLM); });
   }
 
-  /* AISLES ON THE BAY LINES BETWEEN THE LINES' BANDS, decided FIRST. A belt
-     never enters an aisle (§3), and a 3 m strip chosen after the belts were
-     routed would be wherever they happened not to go; chosen first, the
-     strips are on bay lines by construction and the router is told to keep
-     out. The near cross aisle on the last-but-one bay line is the one forklifts
-     (row 106) come in by. */
-  var avail=D-Y0, NL=WANTL, bounds=null;
-  for(;NL>=1;NL--){
-    var bl=[], k2, okb=true, prev=Y0;
-    for(k2=1;k2<NL;k2++){
-      var tgt=Y0+avail*k2/NL, best=null, b2;
-      for(b2=1;b2<D/6;b2++){ var yy=6*b2; if(yy>prev+10 && (best===null || Math.abs(yy-tgt)<Math.abs(best-tgt))) best=yy; }
-      if(best===null){ okb=false; break; }
-      bl.push(best); prev=best;
+  /* BANDS AND AISLES, PLANNED (§2.1), before any station. A belt never enters
+     an aisle (§3), so the aisles are what the lines are laid out around, not
+     what is left over between them:
+     - the CROSS AISLE on the frame line nearest 6 m from the far end (a hall
+       36 m or wider), which every other aisle joins, and which the lines turn
+       short of;
+     - the MAIN AISLE along x on a span line, the seed choosing which span line
+       and how many bands lie on each side of it, wherever the Lines asked for
+       still fit; else on the separator nearest the middle;
+     - ONE AISLE BETWEEN EACH PAIR OF ADJACENT BANDS.
+     A free bay line is never an aisle any more (v318-v325 made every one an
+     aisle, which crosshatched the empty floor). */
+  var NL=WANTL;
+  while(NL>1 && !layouts(Y0,NL).length) NL--;
+  var CROSS=null, ECAP=W-2;
+  if(W>=36){
+    var kc=1, kk;
+    for(kk=1;kk<FR.n;kk++) if(Math.abs(FXL[kk]-(W-6))<Math.abs(FXL[kc]-(W-6))) kc=kk;
+    CROSS=FXL[kc]; ECAP=Math.floor(CROSS-1.5-2.5);
+  }
+  var LOPT=layouts(Y0,NL), BANDS=[], MAINC=null;
+  if(LOPT.length){
+    var op=LOPT[Math.floor(rPL()*LOPT.length)];
+    MAINC=op.main;
+    if(MAINC===null) BANDS=splitRegion(Y0,D,NL);
+    else {
+      if(op.k>0) BANDS=BANDS.concat(splitRegion(Y0,MAINC-1.5,op.k));
+      if(NL-op.k>0) BANDS=BANDS.concat(splitRegion(MAINC+1.5,D,NL-op.k));
     }
-    if(!okb) continue;
-    var edges=[Y0].concat(bl.map(function(v){ return v-1.5; })), ends=bl.map(function(v){ return v-1.5; }).concat([D]);
-    var starts=[Y0].concat(bl.map(function(v){ return v+1.5; }));
-    var bands=[], k3, fits=true;
-    for(k3=0;k3<NL;k3++) bands.push([starts[k3], ends[k3]]);
-    for(k3=0;k3<NL && fits;k3++) if(bands[k3][1]-bands[k3][0]<9) fits=false;
-    if(fits){ bounds={lines:bl, bands:bands}; break; }
   }
-  if(!bounds){ NL=1; bounds={lines:[], bands:[[Y0,D]]}; }
+  var AXEND=CROSS!==null?CROSS+1.5:W;
   var AISLES=[];
-  bounds.lines.forEach(function(yy){ AISLES.push({ax:'x', c:yy, a:0, b:W, x0:0, y0:yy-1.5, x1:W, y1:yy+1.5}); });
-  if(W>=36) AISLES.push({ax:'y', c:W-6, a:Y0, b:D, x0:W-7.5, y0:Y0, x1:W-4.5, y1:D});
-  AISLES.forEach(function(A){ markRect(A.x0,A.y0,A.x1,A.y1,AISLE); });
-  var ROWCAP=W>=36?W-10:W-2;
-
-  /* ---- the lines: stations, rows, ports -------------------------------- */
-  var STN=[], LINES=[];
-  function rowIn(ya,yb,fromTop){
-    /* the first 3-cell strip from one side of a band that no column stands in */
-    var y;
-    if(!fromTop){ for(y=Math.ceil(ya);y+3<=yb;y++) if(!colRow(y)&&!colRow(y+1)&&!colRow(y+2)) return y; }
-    else { for(y=Math.floor(yb)-3;y>=ya;y--) if(!colRow(y)&&!colRow(y+1)&&!colRow(y+2)) return y; }
-    return null;
+  function xAisle(c,main){ AISLES.push({ax:'x', c:c, a:0, b:AXEND, x0:0, y0:c-1.5, x1:AXEND, y1:c+1.5, main:!!main}); }
+  var b6;
+  for(b6=0;b6+1<BANDS.length;b6++){
+    var cc6=(BANDS[b6][1]+BANDS[b6+1][0])/2;
+    if(MAINC!==null && Math.abs(cc6-MAINC)<1e-6) continue;
+    xAisle(cc6,false);
   }
+  if(MAINC!==null) xAisle(MAINC,true);
+  else if(AISLES.length){
+    var mid=(Y0+D)/2, bi6=0;
+    AISLES.forEach(function(A,i){ if(Math.abs(A.c-mid)<Math.abs(AISLES[bi6].c-mid)) bi6=i; });
+    AISLES[bi6].main=true;
+  }
+  if(CROSS!==null){
+    /* from the back wall unless the deck, its stair or a riser site is there */
+    var cy0=0;
+    for(gx=Math.floor(CROSS-1.5);gx<Math.ceil(CROSS+1.5);gx++) for(gy=0;gy<Y0;gy++) if(gget(gx,gy)!==FREE) cy0=Y0;
+    if(MZ && CROSS+1.5>MZ.x0 && CROSS-1.5<MZ.x1+4.8) cy0=Y0;
+    AISLES.push({ax:'y', c:CROSS, a:cy0, b:D, x0:CROSS-1.5, y0:cy0, x1:CROSS+1.5, y1:D, main:false});
+  }
+  AISLES.forEach(function(A){ markRect(A.x0,A.y0,A.x1,A.y1,AISLE); });
+  T.plan={Y0:Y0, bands:BANDS.slice(), main:MAINC, cross:CROSS, ecap:ECAP, nl:NL, reserved:RESVR,
+          mz:MZ?{x0:MZ.x0,x1:MZ.x1,y0:MZ.y0,y1:MZ.y1,yu1:MZ.yu1,xu1:DXU}:null};
+
+  /* ---- the lines: stations, passes, ports ------------------------------- */
+  /* LINES USE THEIR BAND (§2.2): a serpentine of passes 3 m deep, a pass every
+     6 m or more across the band -- two, or four in a band deep enough when
+     the line has the stations to fill them (more passes than that is belt
+     with nothing on it). An EVEN count, because receiving and shipping are
+     both docks on the x = 0 wall. Each turn is seeded: an east turn on the
+     line's end mark or one frame short of it, a west turn 3 m from the wall or
+     one frame in. The stations SPREAD along the whole serpentine, each pass
+     taking its share by length and its slack shared out between them. */
+  var STN=[], LINES=[];
   function seqFor(rng,nst){
     var a=nst>=6?2:1, pcount=Math.max(1,nst-2-a), seq=['receive'], i;
     var kinds=[['cnc',30],['press',20],['moulder',20],['furnace',15],['vat',15]];
@@ -19474,56 +19592,83 @@ function buildFactory(p){
     seq.push('qa'); seq.push('pack'); seq.push('ship');
     return seq;
   }
-  /* Pack a row along x: footprints in order, each `gap` cells after the last,
-     shifted past any cell the row cannot take. Returns the x of each, or null. */
-  function packRow(types,y0,gapMin,rng,startX){
-    var xs=[], cur=startX, i;
-    for(i=0;i<types.length;i++){
-      var L=FACTLEN[types[i]], x=cur, tries=0;
-      while(tries++<200){
-        var ok=x+L<=ROWCAP, a2, b3;
-        for(a2=x;a2<x+L && ok;a2++) for(b3=y0;b3<y0+3 && ok;b3++){ var gc=gget(a2,b3); if(gc!==FREE) ok=false; }
-        if(ok) break;
-        x++;
-        if(x+L>ROWCAP){ return null; }
-      }
-      xs.push(x);
-      cur=x+L+gapMin+(rng()<0.5?1:0);
-    }
-    return xs;
+  function rowFree(y){
+    var x; if(colRow(y)||colRow(y+1)||colRow(y+2)) return false;
+    for(x=0;x<=ECAP;x++){ if(gget(x,y)!==FREE||gget(x,y+1)!==FREE||gget(x,y+2)!==FREE) return false; }
+    return true;
   }
-  var li;
-  for(li=0;li<NL;li++){
-    var rngL=statRng(SEED,FACT_SALT_LAYOUT,li,0);
-    var band=bounds.bands[li], flip=(li%2===1);
-    var yA=rowIn(band[0],band[1],flip), yB=rowIn(band[0],band[1],!flip);
-    if(yA===null||yB===null||Math.abs(yA-yB)<4) continue;
-    var placed=null, nst=NST, gapMin=2;
-    for(;!placed;){
-      var seq=seqFor(statRng(SEED,FACT_SALT_LAYOUT,li,1),nst), rowA=[], rowB=[], cur=0, s2;
-      /* row A takes stations while their packed length fits, row B the rest */
-      for(s2=0;s2<seq.length-1;s2++){
-        if(cur+FACTLEN[seq[s2]]>ROWCAP-3 && s2>0) break;
-        rowA.push(seq[s2]); cur+=FACTLEN[seq[s2]]+gapMin+1;
+  /* the passes' rows: p strips spread evenly across [ya, yb], each nudged to
+     the nearest strip no column stands in */
+  function rowsFor(ya,yb,p){
+    var ys=[], i, lo=Math.ceil(ya-1e-9), hi=Math.floor(yb-3+1e-9);
+    for(i=0;i<p;i++){
+      var t=lo+(hi-lo)*i/(p-1), y=null, d;
+      for(d=0;d<=3 && y===null;d++){
+        [Math.round(t)+d,Math.round(t)-d].forEach(function(c){
+          if(y===null && c>=lo && c<=hi && (!ys.length || c>=ys[ys.length-1]+4) && rowFree(c)) y=c;
+        });
       }
-      for(;s2<seq.length;s2++) rowB.push(seq[s2]);
-      /* SPREAD a row over the length it has: in a wide hall a tight pack
-         leaves the near half empty. Each gap is the row's slack shared out,
-         at most 6 m; the tight pack is the fallback when the spread fails. */
-      var sumA=0, sumB=0, revB=rowB.slice().reverse();
-      rowA.forEach(function(tp){ sumA+=FACTLEN[tp]; });
-      revB.forEach(function(tp){ sumB+=FACTLEN[tp]; });
-      var gA=Math.max(gapMin,Math.min(6,Math.floor((ROWCAP-3-sumA)/Math.max(1,rowA.length))-1));
-      var gB=Math.max(gapMin,Math.min(6,Math.floor((ROWCAP-3-sumB)/Math.max(1,revB.length))-1));
-      var xA=packRow(rowA,yA,gA,rngL,0)||packRow(rowA,yA,gapMin,rngL,0);
-      var xB=packRow(revB,yB,gB,rngL,0)||packRow(revB,yB,gapMin,rngL,0);
-      if(xA&&xB&&rowB.length>=1){ placed={seq:seq,rowA:rowA,rowB:revB,xA:xA,xB:xB}; break; }
-      if(gapMin>1){ gapMin=1; continue; }
-      if(nst>4){ nst--; gapMin=2; continue; }
+      if(y===null) return null;
+      ys.push(y);
+    }
+    return ys;
+  }
+  var bandOrder=BANDS.map(function(b,i){ return [rPL(),i]; }).sort(function(a,b){ return a[0]-b[0]||a[1]-b[1]; }).map(function(q){ return q[1]; });
+  var li;
+  for(li=0;li<BANDS.length;li++){
+    var band=BANDS[bandOrder[li]], upB=rPL()<0.5, Bw=band[1]-band[0];
+    var turnE=[rPL(),rPL()], turnW=rPL();
+    var placed=null, nst=NST, NP=(Math.floor((Bw-3)/6)+1>=4 && NST>=6)?4:2, full=false;
+    for(;!placed;){
+      var ys=rowsFor(band[0],band[1],NP);
+      if(!ys){ if(NP>2){ NP=2; continue; } break; }
+      if(upB) ys.reverse();
+      /* each pass's usable x-interval [ua, ub] */
+      var E0=ECAP-(full||turnE[0]<0.5?0:Math.round(FR.bay)), E1=ECAP-(full||turnE[1]<0.5?0:Math.round(FR.bay));
+      var Wt=3+(full||turnW<0.5?0:Math.round(FR.bay));
+      var pass=[], r;
+      for(r=0;r<NP;r++){
+        var eR=(r>>1)%2===0?E0:E1;
+        pass.push(r%2===0?{ua:r===0?0:Wt, ub:eR, sx:1}:{ua:r===NP-1?0:Wt, ub:eR, sx:-1});
+      }
+      var seq=seqFor(statRng(SEED,FACT_SALT_LAYOUT,li,1),nst);
+      /* receive opens pass 0 atI the wall, ship closes the last; the middle
+         stations go to the passes by usable length */
+      var mids=seq.slice(1,seq.length-1), lens=pass.map(function(q,i){ return q.ub-q.ua-((i===0||i===NP-1)?3:0); });
+      var acc=0, i5;
+      var tot=lens.reduce(function(a,b){ return a+b; },0);
+      var cnt=lens.map(function(){ return 0; });
+      for(i5=0;i5<NP;i5++){ var to=Math.round(mids.length*(acc+lens[i5])/tot)-Math.round(mids.length*acc/tot); cnt[i5]=to; acc+=lens[i5]; }
+      /* a pass that cannot hold its share hands the rest on */
+      var ok5=true, k6, atI=0, plan5=[];
+      for(r=0;r<NP && ok5;r++){
+        var take=Math.max(0,Math.min(mids.length-atI,cnt[r]+(r===NP-1?mids.length:0)));
+        if(r===NP-1) take=mids.length-atI;
+        var lo5=pass[r].ua+((r===0||r===NP-1)?3:0), len5=pass[r].ub-lo5;
+        while(take>0){
+          var S5=0; for(k6=0;k6<take;k6++) S5+=FACTLEN[mids[atI+k6]];
+          if((len5-S5)/(take+1)>=2-1e-9) break;
+          if(r===NP-1){ ok5=false; break; }
+          take--;
+        }
+        if(!ok5) break;
+        var g5=(len5-S5)/(take+1), cur=0, list=[];
+        for(k6=0;k6<take;k6++){
+          var Lk=FACTLEN[mids[atI+k6]], off=Math.round(g5*(k6+1)+cur);
+          list.push([mids[atI+k6],off,Lk]); cur+=Lk;
+        }
+        plan5.push({r:r, lo:lo5, list:list}); atI+=take;
+        if(r<NP-1) cnt[r+1]+=cnt[r]-take;
+      }
+      if(ok5 && atI===mids.length){ placed={seq:seq, ys:ys, pass:pass, plan:plan5}; break; }
+      /* a seeded short turn is taken only where the line still fits */
+      if(!full){ full=true; continue; }
+      if(nst>4){ nst--; full=false; continue; }
+      if(NP>2){ NP=2; nst=NST; full=false; continue; }
       break;
     }
     if(!placed) continue;
-    var line={id:LINES.length, stations:[], yA:yA, yB:yB};
+    var line={id:LINES.length, stations:[], band:band, rows:placed.ys};
     LINES.push(line);
     var mk=function(type,x,y0,sx){
       var L=FACTLEN[type];
@@ -19533,11 +19678,17 @@ function buildFactory(p){
       STN.push(st); line.stations.push(st);
       return st;
     };
-    placed.rowA.forEach(function(tp,i){ mk(tp,placed.xA[i],yA,1); });
-    var bst=placed.rowB.map(function(tp,i){ return mk(tp,placed.xB[i],yB,-1); });
-    /* row B was packed from the wall outward, so its stations were made in
-       reverse flow order; put the line back in flow order */
-    line.stations=line.stations.slice(0,placed.rowA.length).concat(bst.reverse());
+    /* in FLOW ORDER: along a +x pass a station's offset is from the pass's
+       west end, along a -x pass from its east end */
+    mk('receive',0,placed.ys[0],1);
+    placed.plan.forEach(function(pl){
+      var ps=placed.pass[pl.r], y0=placed.ys[pl.r];
+      pl.list.forEach(function(it){
+        var x=ps.sx>0?pl.lo+it[1]:ps.ub-it[1]-it[2];
+        mk(it[0],x,y0,ps.sx);
+      });
+    });
+    mk('ship',0,placed.ys[placed.ys.length-1],-1);
   }
   STN.forEach(function(st){
     var zin=st.z+0.8, xin=st.sx>0?st.x0:st.x1, xout=st.sx>0?st.x1:st.x0;
@@ -19611,27 +19762,223 @@ function buildFactory(p){
       if(bt){ bt.line=Ln.id; }
     }
   });
-  /* Any OTHER bay line no station and no belt touches is an aisle too. */
-  (function(){
-    var b2, a2, x, y;
-    for(b2=1;b2<D/6;b2++){
-      var yy=6*b2, clear=yy-1.5>=Y0, already=AISLES.some(function(A){ return A.ax==='x'&&A.c===yy; });
-      if(already) continue;
-      for(x=0;x<W && clear;x++) for(y=Math.floor(yy-1.5);y<Math.ceil(yy+1.5) && clear;y++){
-        var g2=gget(x,y); if(g2===FOOT||g2===BELT||g2===RESV) clear=false;
+  T.aisles=AISLES;
+
+  /* ---- the walkway (§2.1): the only green on the floor ------------------- */
+  /* ONE pedestrian walkway, from the mezzanine stair's foot to the nearest dock
+     door: the cheapest path over aisles and open floor (a metre of aisle
+     costs 1, of open floor 3, a turn 3, so it keeps to the aisles and reads
+     as a few straight runs), its cells kept clear of the zones. A door is reached at the free cells either side of its dock. */
+  var WALK=8, ZONE=9, WALKWAY=null;
+  function heapPush(h,e){ h.push(e); var i=h.length-1; while(i>0){ var p2=(i-1)>>1; if(h[p2][0]<=e[0]) break; h[i]=h[p2]; i=p2; } h[i]=e; }
+  function heapPop(h){
+    var top=h[0], last=h.pop(), n=h.length, i=0;
+    if(n){
+      for(;;){
+        var l=2*i+1, r=l+1, m=i, mv=last;
+        if(l<n && h[l][0]<mv[0]){ m=l; mv=h[l]; }
+        if(r<n && h[r][0]<mv[0]) m=r;
+        if(m===i) break;
+        h[i]=h[m]; i=m;
       }
-      if(clear){ AISLES.push({ax:'x', c:yy, a:0, b:W, x0:0, y0:yy-1.5, x1:W, y1:yy+1.5}); markRect(0,yy-1.5,W,yy+1.5,AISLE); }
+      h[i]=last;
     }
-    for(a2=1;a2<W/6;a2++){
-      var xx=6*a2, clr=true, alr=AISLES.some(function(A){ return A.ax==='y'&&A.c===xx; });
-      if(alr) continue;
-      for(y=Y0;y<D && clr;y++) for(x=Math.floor(xx-1.5);x<Math.ceil(xx+1.5) && clr;x++){
-        var g3=gget(x,y); if(g3===FOOT||g3===BELT||g3===RESV) clr=false;
+    return top;
+  }
+  if(MZ){
+    var wPass=function(x,y){ var g=gget(x,y); return g===FREE||g===AISLE; };
+    var wTarget={};
+    STN.forEach(function(st){
+      if(st.x0!==0 || (st.type!=='receive' && st.type!=='ship')) return;
+      var x; for(x=0;x<st.x1;x++){ wTarget[x+','+(st.y0-1)]=1; wTarget[x+','+st.y1]=1; }
+    });
+    /* it leaves the stair where the floor is open: the riser sites past the
+       deck's east end can stand right up to the foot, so it starts at the open
+       cells within 5 m of it, each at its distance */
+    var wfx=Math.floor(MZ.x1+4.5), wfy=1, wq=[], wbest={}, wfrom={}, wend=null, wg=0, wsx=wfx, wsy=wfy, dxs, dys;
+    for(dxs=-5;dxs<=5;dxs++) for(dys=-5;dys<=5;dys++){
+      var sxw=wfx+dxs, syw=wfy+dys, c0=Math.abs(dxs)+Math.abs(dys);
+      if(c0>5 || !wPass(sxw,syw)) continue;
+      [0,1,2,3].forEach(function(d){ var k=(sxw*D+syw)*4+d; if(wbest[k]===undefined || c0<wbest[k]){ wbest[k]=c0; heapPush(wq,[c0,sxw,syw,d]); } });
+    }
+    {
+      while(wq.length && wg++<400000){
+        var wc=heapPop(wq), wk=(wc[1]*D+wc[2])*4+wc[3];
+        if(wc[0]>wbest[wk]) continue;
+        if(wTarget[wc[1]+','+wc[2]] && wPass(wc[1],wc[2])){ wend=wk; break; }
+        var d5;
+        for(d5=0;d5<4;d5++){
+          var nx5=wc[1]+DIRS[d5][0], ny5=wc[2]+DIRS[d5][1];
+          if(!wPass(nx5,ny5)) continue;
+          var ng5=wc[0]+(gget(nx5,ny5)===AISLE?1:3)+(d5!==wc[3]?3:0), nk5=(nx5*D+ny5)*4+d5;
+          if(wbest[nk5]===undefined || ng5<wbest[nk5]){ wbest[nk5]=ng5; wfrom[nk5]=wk; heapPush(wq,[ng5,nx5,ny5,d5]); }
+        }
       }
-      if(clr){ AISLES.push({ax:'y', c:xx, a:Y0, b:D, x0:xx-1.5, y0:Y0, x1:xx+1.5, y1:D}); markRect(xx-1.5,Y0,xx+1.5,D,AISLE); }
+    }
+    if(wend!==null){
+      var wcells=[], kq=wend;
+      while(kq!==undefined){ var cq=Math.floor(kq/4); wcells.push([Math.floor(cq/D),cq%D]); kq=wfrom[kq]; }
+      wcells.reverse();
+      wcells.forEach(function(c){ if(G[c[0]][c[1]]===FREE) G[c[0]][c[1]]=WALK; });
+      WALKWAY={cells:wcells, len:wcells.length-1, foot:[MZ.x1+4.5,1.2]};
+    }
+  }
+
+  /* ---- floor zones (§2.2): the floor fills -------------------------------- */
+  /* After the stations, belts, aisles, riser sites and the walkway, the largest
+     axis-aligned rectangle of open floor that keeps 1 m to everything else gets a
+     zone, and again, until none is left of 6 m2. A strip 1 m wide -- the 3 m
+     between two passes of a line, less its clearances -- takes only line-side
+     WIP racks (0.6 m deep) or a row of bins; every other type wants 2 m or
+     more. An aisle and the walkway are paint on the floor, so a zone may
+     border them (never sit in them); the metre is kept to every OBJECT --
+     station, belt, column, riser site, stair, another zone. A zone is at
+     most 12 m on a side (a bigger rectangle is shared into equal zones 1 m
+     apart), may stand against a back wall (the charging bay's chargers are on
+     it) and under the mezzanine (nothing in a zone is 3 m tall), and never in
+     an aisle, a belt's metre either side, a column's cell or a riser site.
+     WHICH zone is from its own stream, weighted as §2.2 says, among the types
+     that fit the rectangle. */
+  var ZTYPES=[['staging',25,3,3],['shelving',15,1,3],['crib',10,3,3],['maint',10,2,3],
+              ['charging',10,3,4],['bins',10,1,2],['skid',10,2,3],['lab',10,4,4]];
+  var ZONES=[];
+  function availGrid(){
+    var A=[], x, y, dx, dy;
+    for(x=0;x<W;x++){ A.push([]); for(y=0;y<D;y++) A[x].push(true); }
+    for(x=0;x<W;x++) for(y=0;y<D;y++) if(G[x][y]!==FREE){
+      if(G[x][y]===WALK || G[x][y]===AISLE){ A[x][y]=false; continue; }   /* paint: a zone may border it */
+      for(dx=-1;dx<=1;dx++) for(dy=-1;dy<=1;dy++){ var ax=x+dx, ay=y+dy; if(ax>=0&&ay>=0&&ax<W&&ay<D) A[ax][ay]=false; }
+    }
+    return A;
+  }
+  /* the largest rectangle of true cells in an nx-by-ny grid: a histogram per
+     row, the first found of the largest kept (lowest y, then x) */
+  function maxRect(A,nx,ny){
+    var hgt=[], x, y, best=null;
+    for(x=0;x<nx;x++) hgt.push(0);
+    for(y=0;y<ny;y++){
+      for(x=0;x<nx;x++) hgt[x]=A[x][y]?hgt[x]+1:0;
+      var st=[];
+      for(x=0;x<=nx;x++){
+        var hh=x<nx?hgt[x]:0, start=x;
+        while(st.length && st[st.length-1][1]>=hh){
+          var tp=st.pop(), ar=tp[1]*(x-tp[0]);
+          if(tp[1]>0 && (!best || ar>best.a)) best={a:ar, x0:tp[0], x1:x, y0:y-tp[1]+1, y1:y+1};
+          start=tp[0];
+        }
+        st.push([start,hh]);
+      }
+    }
+    return best;
+  }
+  (function(){
+    var guard=0;
+    for(;guard<200;guard++){
+      var A=availGrid(), R=maxRect(A,W,D);
+      if(!R) break;
+      var w=R.x1-R.x0, h=R.y1-R.y0;
+      if(w*h<6 || Math.max(w,h)<3) break;
+      var nx=Math.ceil((w+1)/13), ny=Math.ceil((h+1)/13);
+      var zw=Math.floor((w-(nx-1))/nx), zh=Math.floor((h-(ny-1))/ny);
+      var Z={id:'z'+ZONES.length, x0:R.x0, y0:R.y0, x1:R.x0+zw, y1:R.y0+zh, z:0};
+      var rz=statRng(SEED,FACT_SALT_ZONES,ZONES.length,0), sw=Math.min(zw,zh), lw=Math.max(zw,zh);
+      var fit=ZTYPES.filter(function(t){ return sw>=t[2] && lw>=t[3]; }), tot=0, pick=null;
+      fit.forEach(function(t){ tot+=t[1]; });
+      var u=rz()*tot;
+      fit.forEach(function(t){ if(pick===null){ if(u<t[1]) pick=t[0]; else u-=t[1]; } });
+      Z.type=pick||fit[fit.length-1][0]; Z.rng=rz;
+      ZONES.push(Z);
+      markRect(Z.x0,Z.y0,Z.x1,Z.y1,ZONE);
     }
   })();
-  T.aisles=AISLES;
+
+  /* ---- what stands on the decks (§2.4) ------------------------------------ */
+  /* The OFFICE POD (a room with a window band, a door and an AC unit on its
+     roof) on the lower deck, the VAT PAIR (row 105 put no process station up
+     here), and STORES SHELVING filling what is left, up to three runs of low
+     racks a deck. On a 1 m grid of the deck, keeping 1 m to each other and
+     clear of what the deck already carries: the riser belts and tables at its
+     ends, the lab cabinet, the upper deck's columns and stair, the handrails. */
+  var DECKITEMS=[];
+  function deckPlan(lv){
+    var x0=MZ.x0, x1=lv===0?MZ.x1:DXU, y1=lv===0?MZ.y1:MZ.yu1, z=lv===0?MZ.z:9.0;
+    var gx0=Math.ceil(x0+0.5), gx1=Math.floor(x1-0.5), gy0=1, gy1=Math.floor(y1-0.6);
+    var nW=gx1-gx0, nD=gy1-gy0, B=[], i, j;
+    if(nW<2||nD<2) return;
+    for(i=0;i<nW;i++){ B.push([]); for(j=0;j<nD;j++) B[i].push(true); }
+    function blk(ax0,ay0,ax1,ay1){
+      var a, b;
+      for(a=Math.max(0,Math.floor(ax0)-gx0);a<Math.min(nW,Math.ceil(ax1)-gx0);a++)
+        for(b=Math.max(0,Math.floor(ay0)-gy0);b<Math.min(nD,Math.ceil(ay1)-gy0);b++) B[a][b]=false;
+    }
+    if(lv===0){
+      /* the riser belts' lanes and tables at the two ends, the stair's top,
+         the lab cabinet (in the west end, between the lanes) and its ring */
+      RSITES.forEach(function(S){
+        if(S.side==='W') blk(x0,S.lane-0.7,x0+2.0,S.lane+0.7);
+        else blk(x1-2.6,S.lane-0.7,x1,S.lane+0.7);
+      });
+      blk(x1-1.5,0,x1,2.4);
+      blk(Math.floor(MZ.x0),1,Math.floor(MZ.x0)+3,4);
+      if(NLEV>=3){
+        blk(DXU-0.5,1.7,DXU+5.0,3.9);                           /* the upper deck's stair */
+        var ucx=[MZ.x0+0.2]; FXL.forEach(function(fx){ if(fx>MZ.x0+1.0 && fx<DXU-1.0) ucx.push(fx); }); ucx.push(DXU-0.2);
+        ucx.forEach(function(cx){ blk(cx-0.5,MZ.yu1-0.9,cx+0.5,MZ.yu1+0.4); });
+      }
+    } else blk(DXU-1.5,1.7,DXU,3.9);                            /* its stair's top */
+    function rectAt(w,h){
+      var a, b, c, d;
+      for(a=0;a+w<=nW;a++) for(b=0;b+h<=nD;b++){
+        var ok=true;
+        for(c=a;c<a+w && ok;c++) for(d=b;d<b+h && ok;d++) if(!B[c][d]) ok=false;
+        if(ok) return [a,b];
+      }
+      return null;
+    }
+    function take(type,a,b,w,h){
+      var R={id:'d'+lv+'.'+DECKITEMS.length, type:type, lv:lv, x0:gx0+a, y0:gy0+b, x1:gx0+a+w, y1:gy0+b+h, z:z};
+      DECKITEMS.push(R);
+      var c, d;
+      for(c=Math.max(0,a-1);c<Math.min(nW,a+w+1);c++) for(d=Math.max(0,b-1);d<Math.min(nD,b+h+1);d++) B[c][d]=false;
+      return R;
+    }
+    var rD=statRng(SEED,FACT_SALT_ZONES,500+lv,0), pos;
+    /* THE VAT PAIR FIRST: it stands where row 105's process stations would,
+       and §2.4 gives those priority -- unless it would leave no room for the
+       pod on a hall with no other deck */
+    var vatR=null;
+    var Bsave=B.map(function(c){ return c.slice(); });
+    if(lv===0){
+      if((pos=rectAt(6,3))) vatR=take('vats',pos[0],pos[1],6,3);
+      else if((pos=rectAt(3,6))) vatR=take('vats',pos[0],pos[1],3,6);
+    }
+    function podFits(){ var d; for(d=Math.min(5,nD);d>=3;d--) if(rectAt(3,d)) return true; return false; }
+    if(vatR && NLEV<3 && !podFits()){ DECKITEMS.splice(DECKITEMS.indexOf(vatR),1); B=Bsave; }
+    if(!DECKITEMS.some(function(R){ return R.type==='pod'; })){
+      /* the pod goes on the lower deck, or on the upper one when the lower has
+         no room for it -- on exactly one */
+      var pw=Math.min(8,Math.max(3,Math.floor(nW*0.6))), pd=Math.min(5,nD);
+      for(;pd>=3 && !rectAt(3,pd);pd--);
+      for(;pw>=3 && !(pos=rectAt(pw,pd));pw--);
+      if(pos){
+        /* the seed slides it along the deck among the places it fits */
+        var cands=[], a2;
+        for(a2=0;a2+pw<=nW;a2++){ var ok2=true, c2, d2; for(c2=a2;c2<a2+pw && ok2;c2++) for(d2=0;d2<pd && ok2;d2++) if(!B[c2][d2]) ok2=false; if(ok2) cands.push(a2); }
+        if(cands.length) pos=[cands[Math.floor(rD()*cands.length)],0];
+        take('pod',pos[0],pos[1],pw,pd);
+      }
+    }
+    var nS=0;
+    while(nS<3){
+      var R3=maxRect(B,nW,nD);
+      if(!R3 || Math.max(R3.x1-R3.x0,R3.y1-R3.y0)<3 || R3.a<3) break;
+      take('stores',R3.x0,R3.y0,Math.min(16,R3.x1-R3.x0),Math.min(10,R3.y1-R3.y0)); nS++;
+    }
+  }
+  if(MZ){ deckPlan(0); if(NLEV>=3) deckPlan(1); }
+  T.zones=ZONES.map(function(Z){ return {id:Z.id, type:Z.type, x0:Z.x0, y0:Z.y0, x1:Z.x1, y1:Z.y1, z:0}; });
+  T.deckItems=DECKITEMS.map(function(R){ return {id:R.id, type:R.type, lv:R.lv, x0:R.x0, y0:R.y0, x1:R.x1, y1:R.y1, z:R.z}; });
+  T.walkway=WALKWAY?{cells:WALKWAY.cells, len:WALKWAY.len}:null;
 
   /* ================= THE BUILD =============================================== */
   K.lay='structure';
@@ -19787,17 +20134,17 @@ function buildFactory(p){
   if(MZ){
     var levs=[4.5]; if(NLEV>=3) levs.push(9.0);
     levs.forEach(function(zd,lv){
-      var dx1=lv===0?MZ.x1:MZ.x0+(MZ.x1-MZ.x0)*0.6;
+      var dx1=lv===0?MZ.x1:DXU, dy1=lv===0?MZ.y1:MZ.yu1;
       var zb=lv===0?0:4.5;
-      box(MZ.x0,MZ.y0,zd-0.25,dx1,MZ.y1,zd,{kind:'deck'});
-      T.decks.push({x0:MZ.x0, x1:dx1, y0:MZ.y0, y1:MZ.y1, z:zd});
+      box(MZ.x0,MZ.y0,zd-0.25,dx1,dy1,zd,{kind:'deck'});
+      T.decks.push({x0:MZ.x0, x1:dx1, y0:MZ.y0, y1:dy1, z:zd});
       /* the deck's own columns stand at its two ends and on every frame line
          between them, under the open edge */
       var mcx=[MZ.x0+0.2], i;
       FXL.forEach(function(fx){ if(fx>MZ.x0+1.0 && fx<dx1-1.0) mcx.push(fx); });
       mcx.push(dx1-0.2);
-      for(i=0;i<mcx.length;i++) box(mcx[i]-0.12,MZ.y1-0.36,zb,mcx[i]+0.12,MZ.y1-0.12,zd-0.25,{kind:'column'});
-      handrail(MZ.x0+0.05,MZ.y1-0.05,dx1-0.05,MZ.y1-0.05,zd);
+      for(i=0;i<mcx.length;i++) box(mcx[i]-0.12,dy1-0.36,zb,mcx[i]+0.12,dy1-0.12,zd-0.25,{kind:'column'});
+      handrail(MZ.x0+0.05,dy1-0.05,dx1-0.05,dy1-0.05,zd);
       /* the lower deck's ends open where a riser site's belt comes in, built
          or not (row 105) */
       function endRail(x,ya,yb,lanes){
@@ -19805,9 +20152,9 @@ function buildFactory(p){
           if(q[1]-q[0]>0.3) handrail(x,q[0],x,q[1],zd);
         });
       }
-      endRail(MZ.x0+0.05,MZ.y0+0.05,MZ.y1-0.05,RLANES.W);
+      endRail(MZ.x0+0.05,MZ.y0+0.05,dy1-0.05,RLANES.W);
       var sy0=lv===0?0.6:2.2, sy1=sy0+1.2;
-      endRail(dx1-0.05,sy1+0.1,MZ.y1-0.05,RLANES.E);
+      endRail(dx1-0.05,sy1+0.1,dy1-0.05,RLANES.E);
       handrail(dx1-0.05,MZ.y0+0.05,dx1-0.05,sy0-0.1,zd);
       stair(dx1,sy0,sy1,zd,zb);
     });
@@ -20186,6 +20533,239 @@ function buildFactory(p){
     (st.stubs||[]).forEach(function(rec){ if(rec.items) placeItems(rec,rngI); });
   });
 
+
+  /* ================= FLOOR ZONES AND DECK CONTENTS (row 125, §§2.2, 2.4) ===== */
+  /* Every zone is built inside its own rectangle from its own stream; nothing
+     in one is 3 m tall, and no two of its parts interpenetrate: a shelf runs
+     between its uprights, a load sits on its pallet, a bench stands clear of
+     the cabinets. The floor paint is paint (floorLine), on the slab only. */
+  function zpaintRect(x0,y0,x1,y1){
+    floorLine([x0,y0],[x1,y0],'zpaint'); floorLine([x1,y0],[x1,y1],'zpaint');
+    floorLine([x1,y1],[x0,y1],'zpaint'); floorLine([x0,y1],[x0,y0],'zpaint');
+  }
+  /* low racks with totes, as RUNS along the longer side of [x0,x1]x[y0,y1]:
+     0.6 m deep, 1.5 m high, three shelves, a bay every 1.8 m or less, runs
+     1.6 m apart (an aisle of 1.0) */
+  function racks(id,x0,y0,x1,y1,z,r){
+    var along=x1-x0>=y1-y0, L=along?x1-x0:y1-y0, Wd=along?y1-y0:x1-x0, n=Math.max(1,Math.floor((Wd+1.0)/1.6)), k;
+    function B(s0,t0,s1,t1,z0,z1,o){ return along?box(x0+s0,y0+t0,z+z0,x0+s1,y0+t1,z+z1,o):box(x0+t0,y0+s0,z+z0,x0+t1,y0+s1,z+z1,o); }
+    function Bar(s0,t0,s1,t1,z0,z1,o){ return along?bar(x0+s0,y0+t0,z+z0,x0+s1,y0+t1,z+z1,o):bar(x0+t0,y0+s0,z+z0,x0+t1,y0+s1,z+z1,o); }
+    for(k=0;k<n;k++){
+      var t0=k*1.6+(Wd-((n-1)*1.6+0.6))/2, t1=t0+0.6, nb=Math.max(1,Math.ceil((L-0.2)/1.8)), bl=(L-0.2-0.06*(nb+1))/nb, b;
+      for(b=0;b<=nb;b++){
+        var s=0.1+b*(bl+0.06);
+        Bar(s,t0,s+0.06,t0+0.06,0,1.5,{kind:'rack', id:id+'.r'});
+        Bar(s,t1-0.06,s+0.06,t1,0,1.5,{kind:'rack', id:id+'.r'});
+      }
+      for(b=0;b<nb;b++){
+        var sa=0.16+b*(bl+0.06), sb=sa+bl;
+        [0.1,0.6,1.1].forEach(function(zs,li){
+          B(sa,t0,sb,t1,zs,zs+0.04,{kind:'rack', id:id+'.s'});
+          if(near(0.25)){
+            var nt=Math.floor(r()*3), q;
+            for(q=0;q<nt;q++){
+              var ts=sa+0.05+q*0.55; if(ts+0.5>sb) break;
+              B(ts,t0+0.08,ts+0.5,t1-0.08,zs+0.04,zs+0.04+(li===2?0.3:0.25),{kind:'tote', id:id+'.t'});
+            }
+          }
+        });
+      }
+    }
+  }
+  function bench(id,x0,y0,x1,y1,z){
+    box(x0,y0,z+0.8,x1,y1,z+0.9,{kind:'bench', id:id+'.b'});
+    [[x0,y0],[x1-0.06,y0],[x0,y1-0.06],[x1-0.06,y1-0.06]].forEach(function(c){
+      bar(c[0],c[1],z,c[0]+0.06,c[1]+0.06,z+0.8,{kind:'bench', id:id+'.b'});
+    });
+  }
+  function toolcab(id,x0,y0,x1,y1,z,face){
+    var o={kind:'toolcab', id:id+'.c'};
+    if(near(0.1)){
+      o.marks=[]; [0.25,0.45,0.65,0.85].forEach(function(h){
+        if(face===2) o.marks.push([[x0+0.05,y0,z+h],[x1-0.05,y0,z+h],2]);
+        else if(face===4) o.marks.push([[x0+0.05,y1,z+h],[x1-0.05,y1,z+h],4]);
+        else if(face===5) o.marks.push([[x0,y0+0.05,z+h],[x0,y1-0.05,z+h],5]);
+        else o.marks.push([[x1,y0+0.05,z+h],[x1,y1-0.05,z+h],3]);
+      });
+    }
+    box(x0,y0,z,x1,y1,z+1.0,o);
+  }
+  function buildZone(Z){
+    var r=Z.rng, id=Z.id, x0=Z.x0, y0=Z.y0, x1=Z.x1, y1=Z.y1, z=Z.z, w=x1-x0, h=y1-y0, i, j, seen={};
+    var along=w>=h;
+    if(Z.type==='staging'){
+      if(z===0) zpaintRect(x0+0.1,y0+0.1,x1-0.1,y1-0.1);
+      var nx=Math.max(1,Math.floor((w-0.8+0.6)/1.8)), ny=Math.max(1,Math.floor((h-0.8+0.6)/1.6)), slots=[];
+      for(i=0;i<nx;i++) for(j=0;j<ny;j++) slots.push([i,j,r()]);
+      slots.sort(function(a,b){ return a[2]-b[2]; });
+      var cnt=Math.min(slots.length,4+Math.floor(r()*9));
+      var ox=x0+(w-(nx*1.8-0.6))/2, oy=y0+(h-(ny*1.6-0.6))/2;
+      for(i=0;i<cnt;i++){
+        var px=ox+slots[i][0]*1.8, py=oy+slots[i][1]*1.6, lh=0.5+0.9*r();
+        box(px,py,z,px+1.2,py+1.0,z+0.15,{kind:'pallet', id:id+'.p'});
+        var lo={kind:'carton', id:id+'.l'};
+        if(near(0.15)){ var mz=z+0.15+lh*0.5; lo.marks=[[[px+0.05,py+0.95,mz],[px+1.15,py+0.95,mz],4],[[px+1.15,py+0.05,mz],[px+1.15,py+0.95,mz],3]]; }
+        box(px+0.05,py+0.05,z+0.15,px+1.15,py+0.95,z+0.15+lh,lo);
+      }
+    } else if(Z.type==='shelving'){
+      racks(id,x0,y0,x1,y1,z,r);
+    } else if(Z.type==='crib'){
+      /* a mesh cage 2.4 m high on posts, a 1 m door gap on its +y side, a
+         bench and a tool cabinet inside along its back */
+      var cx0=x0+0.1, cy0=y0+0.1, cx1=x1-0.1, cy1=y1-0.1, dx=cx0+(cx1-cx0)/2-0.5;
+      var sides=[[cx0,cy0,cx1,cy0],[cx1,cy0,cx1,cy1],[cx0,cy1,dx,cy1],[dx+1.0,cy1,cx1,cy1],[cx0,cy0,cx0,cy1]];
+      sides.forEach(function(sd){
+        var L=Math.hypot(sd[2]-sd[0],sd[3]-sd[1]), n=Math.max(1,Math.round(L/2)), k;
+        if(L<0.2) return;
+        var ux=(sd[2]-sd[0])/L, uy=(sd[3]-sd[1])/L;
+        for(k=0;k<=n;k++){
+          var qx=sd[0]+ux*L*k/n, qy=sd[1]+uy*L*k/n, pk=qx.toFixed(3)+','+qy.toFixed(3);
+          if(seen[pk]) continue; seen[pk]=1;
+          bar(qx-0.03,qy-0.03,z,qx+0.03,qy+0.03,z+2.4,{kind:'cage', id:id+'.m'});
+        }
+        if(Math.abs(ux)>0.5) bar(Math.min(sd[0],sd[2])+0.03,sd[1]-0.02,z+2.36,Math.max(sd[0],sd[2])-0.03,sd[1]+0.02,z+2.4,{kind:'cage', id:id+'.m'});
+        else bar(sd[0]-0.02,Math.min(sd[1],sd[3])+0.03,z+2.36,sd[0]+0.02,Math.max(sd[1],sd[3])-0.03,z+2.4,{kind:'cage', id:id+'.m'});
+        if(near(0.25)){
+          var mo={kind:'cage', id:id+'.m', hides:false, marks:[]}, ms;
+          for(ms=0.25;ms<L-0.1;ms+=0.25) mo.marks.push([[sd[0]+ux*ms,sd[1]+uy*ms,z+0.1],[sd[0]+ux*ms,sd[1]+uy*ms,z+2.3],-1]);
+          if(Math.abs(ux)>0.5) box(Math.min(sd[0],sd[2])+0.03,sd[1]-0.005,z+0.1,Math.max(sd[0],sd[2])-0.03,sd[1]+0.005,z+2.3,mo);
+          else box(sd[0]-0.005,Math.min(sd[1],sd[3])+0.03,z+0.1,sd[0]+0.005,Math.max(sd[1],sd[3])-0.03,z+2.3,mo);
+        }
+      });
+      var bl2=Math.min(2.0,cx1-cx0-1.6);
+      if(bl2>0.6) bench(id,cx0+0.3,cy0+0.3,cx0+0.3+bl2,cy0+1.0,z);
+      if(cx1-0.3-0.7>cx0+0.3+Math.max(0,bl2)+0.3) toolcab(id,cx1-1.0,cy0+0.3,cx1-0.3,cy0+0.8,z,4);
+    } else if(Z.type==='maint'){
+      /* one or two benches along the zone's back, tool cabinets beside them */
+      var nb2=along?Math.max(1,Math.min(2,Math.floor((w-1.2)/3))):1, k2, sx=x0+0.3;
+      for(k2=0;k2<nb2;k2++){
+        var bL=Math.min(2.2,(along?w:h)-1.6);
+        if(bL<0.8) break;
+        if(along){ bench(id,sx,y0+0.2,sx+bL,y0+0.95,z); sx+=bL+0.3; }
+        else bench(id,x0+0.2,y0+0.3,x0+0.95,y0+0.3+bL,z);
+      }
+      var nc=1+Math.floor(r()*3), k3;
+      for(k3=0;k3<nc;k3++){
+        if(along){ var cx=x1-0.3-0.8*(k3+1); if(cx<sx+0.2) break; toolcab(id,cx,y0+0.2,cx+0.7,y0+0.7,z,4); }
+        else { var cy=y1-0.3-0.8*(k3+1); if(cy<y0+0.3+2.5) break; toolcab(id,x0+0.2,cy,x0+0.7,cy+0.7,z,3); }
+      }
+    } else if(Z.type==='charging'){
+      /* bays 2.5 m wide, painted, a charger at the back of each: the back is
+         a back wall where the zone stands against one */
+      var backY=y0<=0.5?'y0':(x0<=0.5?'x0':'y0'), nb3, k4;
+      if(backY==='y0'){
+        nb3=Math.max(1,Math.floor(w/2.5));
+        var bw=w/nb3;
+        for(k4=0;k4<nb3;k4++){
+          var bx=x0+k4*bw;
+          if(z===0 && k4>0) floorLine([bx,y0+0.1],[bx,y1-0.1],'zpaint');
+          box(bx+bw/2-0.3,y0+0.05,z,bx+bw/2+0.3,y0+0.45,z+1.5,{kind:'charger', id:id+'.c'});
+        }
+      } else {
+        nb3=Math.max(1,Math.floor(h/2.5));
+        var bh=h/nb3;
+        for(k4=0;k4<nb3;k4++){
+          var by=y0+k4*bh;
+          if(z===0 && k4>0) floorLine([x0+0.1,by],[x1-0.1,by],'zpaint');
+          box(x0+0.05,by+bh/2-0.3,z,x0+0.45,by+bh/2+0.3,z+1.5,{kind:'charger', id:id+'.c'});
+        }
+      }
+      if(z===0) zpaintRect(x0+0.1,y0+0.1,x1-0.1,y1-0.1);
+    } else if(Z.type==='bins'){
+      /* scrap and recycling bins in rows, 1.2 along the zone's long side and
+         1.0 across it, 0.3 apart */
+      var Ls=along?w:h, Lt=along?h:w;
+      var ns2=Math.max(1,Math.floor((Ls+0.3)/1.5)), nt2=Math.max(1,Math.floor((Lt+0.3)/1.3));
+      var os2=(Ls-(ns2*1.5-0.3))/2, ot2=(Lt-(nt2*1.3-0.3))/2;
+      for(i=0;i<ns2;i++) for(j=0;j<nt2;j++){
+        if(r()<0.15) continue;
+        var sa2=os2+i*1.5, ta2=ot2+j*1.3, bhh=0.9+0.3*r();
+        var bx2=along?x0+sa2:x0+ta2, by2=along?y0+ta2:y0+sa2, bdx=along?1.2:1.0, bdy=along?1.0:1.2;
+        var bo={kind:'bin', id:id+'.b'};
+        if(near(0.15)) bo.marks=[[[bx2,by2+bdy,z+bhh-0.12],[bx2+bdx,by2+bdy,z+bhh-0.12],4],[[bx2+bdx,by2,z+bhh-0.12],[bx2+bdx,by2+bdy,z+bhh-0.12],3]];
+        box(bx2,by2,z,bx2+bdx,by2+bdy,z+bhh,bo);
+      }
+    } else if(Z.type==='skid'){
+      /* a compressor skid: base, a horizontal receiver on two saddles, the
+         compressor box beside it, pipe stubs up */
+      var sw2=Math.min(along?w:h,4.4)-0.4, sd2=Math.min(along?h:w,2.6)-0.4;
+      var bx3=x0+0.2, by3=y0+0.2;
+      function SB(s0,t0,s1,t1,z0,z1,o){ return along?box(bx3+s0,by3+t0,z+z0,bx3+s1,by3+t1,z+z1,o):box(bx3+t0,by3+s0,z+z0,bx3+t1,by3+s1,z+z1,o); }
+      function SP(s0,t0,z0,s1,t1,z1,r0,n,o){ return along?prism([bx3+s0,by3+t0,z+z0],[bx3+s1,by3+t1,z+z1],r0,r0,n,o):prism([bx3+t0,by3+s0,z+z0],[bx3+t1,by3+s1,z+z1],r0,r0,n,o); }
+      SB(0,0,sw2,sd2,0,0.15,{kind:'skid', id:id+'.k'});
+      var tl=Math.max(1.0,sw2-1.6), tr=Math.min(0.45,(sd2-0.1)/2);
+      SB(0.3,sd2/2-0.25,0.5,sd2/2+0.25,0.15,0.6-tr+0.15,{kind:'skid', id:id+'.k'});
+      SB(tl-0.3,sd2/2-0.25,tl-0.1,sd2/2+0.25,0.15,0.6-tr+0.15,{kind:'skid', id:id+'.k'});
+      SP(0.1,sd2/2,0.6+0.15,tl+0.1,sd2/2,0.6+0.15,tr,12,{kind:'tank', id:id+'.t'});
+      if(sw2-tl-0.3>=0.8){
+        SB(tl+0.3,0.1,sw2-0.1,sd2-0.1,0.15,1.15,{kind:'machine', id:id+'.m'});
+        if(near(0.05)){
+          SP(tl+0.6,sd2/2,1.15,tl+0.6,sd2/2,1.45,0.05,8,{kind:'detail', id:id+'.d'});
+          SP((tl+0.2)/2,sd2/2,0.75+tr,(tl+0.2)/2,sd2/2,0.75+tr+0.3,0.05,8,{kind:'detail', id:id+'.d'});
+        }
+      }
+    } else if(Z.type==='lab'){
+      /* a glass-walled room 2.8 m high: a solid sill to 0.9, frame posts at the
+         corners, glazing bars every 1 m, a head rail, a door on its +y side,
+         two benches inside */
+      var lx0=x0+0.1, ly0=y0+0.1, lx1=x1-0.1, ly1=y1-0.1, ld=lx0+(lx1-lx0)/2-0.5, H2=2.8;
+      var walls=[[lx0,ly0,lx1,ly0],[lx1,ly0,lx1,ly1],[lx0,ly1,ld,ly1],[ld+1.0,ly1,lx1,ly1],[lx0,ly0,lx0,ly1]];
+      walls.forEach(function(sd){
+        var L=Math.hypot(sd[2]-sd[0],sd[3]-sd[1]); if(L<0.2) return;
+        var ux=(sd[2]-sd[0])/L, uy=(sd[3]-sd[1])/L, xa=Math.min(sd[0],sd[2]), xb=Math.max(sd[0],sd[2]), ya=Math.min(sd[1],sd[3]), yb=Math.max(sd[1],sd[3]);
+        if(Math.abs(ux)>0.5) box(xa+0.05,ya-0.04,z,xb-0.05,ya+0.04,z+0.9,{kind:'sill', id:id+'.w'});
+        else box(xa-0.04,ya+0.05,z,xa+0.04,yb-0.05,z+0.9,{kind:'sill', id:id+'.w'});
+        var n=Math.max(1,Math.round(L)), k;
+        for(k=0;k<=n;k++){
+          var qx=sd[0]+ux*L*k/n, qy=sd[1]+uy*L*k/n, end=(k===0||k===n);
+          var pk2=qx.toFixed(3)+','+qy.toFixed(3);
+          if(end){ if(seen[pk2]) continue; seen[pk2]=1; bar(qx-0.05,qy-0.05,z,qx+0.05,qy+0.05,z+H2,{kind:'frame', id:id+'.f'}); }
+          else bar(qx-0.02,qy-0.02,z+0.9,qx+0.02,qy+0.02,z+H2-0.08,{kind:'glass', id:id+'.g'});
+        }
+        if(Math.abs(ux)>0.5) bar(xa+0.05,ya-0.04,z+H2-0.08,xb-0.05,ya+0.04,z+H2,{kind:'frame', id:id+'.f'});
+        else bar(xa-0.04,ya+0.05,z+H2-0.08,xa+0.04,yb-0.05,z+H2,{kind:'frame', id:id+'.f'});
+      });
+      var bL2=Math.min(2.4,lx1-lx0-0.8);
+      if(bL2>0.8){
+        bench(id,lx0+0.3,ly0+0.3,lx0+0.3+bL2,ly0+1.0,z);
+        if(ly1-ly0>=3.6) bench(id,lx0+0.3,ly0+1.8,lx0+0.3+bL2,ly0+2.5,z);
+      }
+    }
+  }
+  ZONES.forEach(buildZone);
+  /* the deck items, on their decks */
+  DECKITEMS.forEach(function(R){
+    var r=statRng(SEED,FACT_SALT_ZONES,1000+DECKITEMS.indexOf(R),0), z=R.z;
+    if(R.type==='pod'){
+      /* a box room 2.8 m high: a window band and a door on its open (+y) face,
+         an AC unit on its roof */
+      var o={kind:'pod', id:R.id+'.w', marks:[]}, x0=R.x0+0.1, x1=R.x1-0.1, y0=R.y0+0.1, y1=R.y1-0.1;
+      o.marks.push([[x0+0.2,y1,z+1.0],[x1-1.6,y1,z+1.0],4]);
+      o.marks.push([[x0+0.2,y1,z+2.2],[x1-1.6,y1,z+2.2],4]);
+      var wx2;
+      if(near(0.08)) for(wx2=x0+0.2+1.2;wx2<x1-1.7;wx2+=1.2) o.marks.push([[wx2,y1,z+1.0],[wx2,y1,z+2.2],4]);
+      o.marks.push([[x1-1.3,y1,z],[x1-1.3,y1,z+2.1],4]);
+      o.marks.push([[x1-1.3,y1,z+2.1],[x1-0.4,y1,z+2.1],4]);
+      o.marks.push([[x1-0.4,y1,z+2.1],[x1-0.4,y1,z],4]);
+      box(x0,y0,z,x1,y1,z+2.8,o);
+      /* the AC unit on its roof, never under a rafter (on the upper deck the
+         roof is 0.3 m below the frame) */
+      var ax=x0+(x1-x0)*(0.2+0.4*r()), tries=0;
+      while(tries++<20 && FXL.some(function(fx){ return fx>ax-0.35 && fx<ax+1.25; })) ax+=0.5;
+      if(ax+0.9<=x1-0.1 && !FXL.some(function(fx){ return fx>ax-0.35 && fx<ax+1.25; }))
+        box(ax,y0+0.4,z+2.8,ax+0.9,y0+1.0,z+3.25,{kind:'machine', id:R.id+'.a'});
+    } else if(R.type==='vats'){
+      var along=R.x1-R.x0>=R.y1-R.y0, k;
+      for(k=0;k<2;k++){
+        var cx=along?R.x0+1.5+3*k:R.x0+1.5, cy=along?R.y0+1.5:R.y0+1.5+3*k;
+        prism([cx,cy,z],[cx,cy,z+2.4],1.1,1.1,16,{kind:'vat', id:R.id+'.v'});
+        prism([cx,cy,z+2.4],[cx,cy,z+3.0],0.25,0.25,10,{kind:'vat', id:R.id+'.v'});
+      }
+    } else if(R.type==='stores'){
+      racks(R.id,R.x0,R.y0,R.x1,R.y1,z,r);
+    }
+  });
+
   /* ================= SPIRALS, LIFTS, VACUUM TUBES (row 105) ================= */
   var RISERS=[], RBELTS=[], VROUTES=[], CABS=[], TUBESTAT={cand:0, want:0, built:0, dropped:0};
   /* THE CONVEX HULL OF A FEW POINTS, as faces: every plane through three of
@@ -20241,8 +20821,9 @@ function buildFactory(p){
     o.smooth=sm; o.seam=sea;
     return solid(V,F,o);
   }
+  function cellUnderDeck(x,y){ return !!MZ && x+1>MZ.x0+1e-9 && x<MZ.x1-1e-9 && y+1>MZ.y0+1e-9 && y<MZ.y1-1e-9; }
   function deckAt(x,y){ return MZ && x>=MZ.x0-1e-9 && x<=MZ.x1+1e-9 && y>=MZ.y0-1e-9 && y<=MZ.y1+1e-9; }
-  function upperAt(x,y){ return NLEV>=3 && MZ && x>=MZ.x0-0.1 && x<=DXU+0.1 && y>=MZ.y0-0.1 && y<=MZ.y1+0.1; }
+  function upperAt(x,y){ return NLEV>=3 && MZ && x>=MZ.x0-0.1 && x<=DXU+0.1 && y>=MZ.y0-0.1 && y<=MZ.yu1+0.1; }
   /* THE UNDERSIDE OF WHATEVER IS OVER (x, y): a rafter, an eaves beam, the
      upper deck, or else the eaves line. A hanger rod ends there, so it never
      runs up through the frame (row 124). */
@@ -20397,7 +20978,8 @@ function buildFactory(p){
     var x, y, ring=[];
     for(x=st.x0;x<st.x1;x++){ ring.push([x,st.y0-1]); ring.push([x,st.y1]); }
     for(y=st.y0;y<st.y1;y++){ ring.push([st.x0-1,y]); ring.push([st.x1,y]); }
-    for(x=0;x<ring.length;x++) if(gget(ring[x][0],ring[x][1])===FREE){ G[ring[x][0]][ring[x][1]]=CAB; return ring[x]; }
+    /* never under a deck: its riser would go up through it */
+    for(x=0;x<ring.length;x++) if(gget(ring[x][0],ring[x][1])===FREE && !cellUnderDeck(ring[x][0],ring[x][1])){ G[ring[x][0]][ring[x][1]]=CAB; return ring[x]; }
     return null;
   }
   var cabOf={}, LAB=null;
@@ -20406,7 +20988,7 @@ function buildFactory(p){
       var cc=cabinetFor(st); if(cc) cabOf[st.id]={id:'cab'+st.id, cell:cc, z:st.z, st:st.id, routes:[]};
     }
   });
-  if(MZ){ LAB={id:'cablab', cell:[Math.floor(MZ.x0)+3,2], z:MZ.z, st:-1, routes:[]}; }
+  if(MZ){ LAB={id:'cablab', cell:[Math.floor(MZ.x0)+1,2], z:MZ.z, st:-1, routes:[]}; }
   var cand=[];
   LINES.forEach(function(Ln){
     var qa=Ln.stations.filter(function(st){ return st.type==='qa'; })[0];
@@ -20430,9 +21012,11 @@ function buildFactory(p){
     var x0=S.side==='W'?(S.kind==='spiral'?S.O[0]:S.c[0]):MZ.x1, x1=S.side==='W'?MZ.x0:(S.kind==='spiral'?S.O[0]:S.c[0]);
     tblockRect(Math.min(x0,x1),S.lane-0.5,Math.max(x0,x1),S.lane+0.5);
   });
-  if(NLEV>=3 && MZ){ tblockRect(DXU,2.2,DXU+4.5,3.4); tblockRect(MZ.x0,MZ.y1-0.4,DXU,MZ.y1); }
+  if(NLEV>=3 && MZ){ tblockRect(DXU,2.2,DXU+4.5,3.4); tblockRect(MZ.x0,MZ.yu1-0.4,DXU,MZ.yu1); }
   var CABS0=[]; Object.keys(cabOf).forEach(function(k){ CABS0.push(cabOf[k]); }); if(LAB) CABS0.push(LAB);
   CABS0.forEach(function(cb){ tblock(cb.cell[0],cb.cell[1]); });
+  /* the office pod and the vats on a deck stand above the tube level */
+  DECKITEMS.forEach(function(R){ if(R.type==='pod'||R.type==='vats') tblockRect(R.x0,R.y0,R.x1,R.y1); });
   /* A*, with the turn rule: `run` counts the straight cells since the last
      bend, and a turn needs two (a 0.6 m bend each side of a corner). */
   function tubeRoute(A,B){
@@ -20561,19 +21145,43 @@ function buildFactory(p){
     CABS.push({id:cb.id, cell:cb.cell, z:z, routes:cb.routes.slice(), capsules:ncap, top:[x+0.5,y+0.5,z+1.4], diverter:div});
   });
 
-  /* ---- floor marks: aisle lines and walkway dashes ---------------------- */
+  /* ---- floor marks: aisle edges and the walkway ------------------------- */
+  /* TWO EDGE LINES AN AISLE (§2.1), broken where another aisle crosses or
+     joins it and where it meets a dock door; the walkway's green dashes are
+     the only other paint on the floor (the zones' outlines are their own). */
   K.lay='ground';
   AISLES.forEach(function(A){
+    var e;
     if(A.ax==='x'){
-      [A.y0+0.08,A.y1-0.08].forEach(function(yy){ floorLine([A.a+0.02,yy],[A.b-0.02,yy],'lane'); });
-      var s;
-      for(s=A.a+0.5;s+1<A.b;s+=2) floorLine([s,A.c+0.03],[s+1,A.c+0.03],'walk');
+      [A.y0+0.08,A.y1-0.08].forEach(function(yy){
+        var holes=[];
+        AISLES.forEach(function(B){ if(B!==A && yy>B.y0-1e-9 && yy<B.y1+1e-9) holes.push([B.x0,B.x1]); });
+        DOORS.forEach(function(dd){ if(yy>dd[0]-0.5 && yy<dd[1]+0.5) holes.push([0,0.6]); });
+        wallRuns(A.a+0.02,A.b-0.02,holes).forEach(function(q){ if(q[1]-q[0]>0.3) floorLine([q[0],yy],[q[1],yy],'lane'); });
+      });
     } else {
-      [A.x0+0.08,A.x1-0.08].forEach(function(xx){ floorLine([xx,A.a+0.02],[xx,A.b-0.02],'lane'); });
-      var s2;
-      for(s2=A.a+0.5;s2+1<A.b;s2+=2) floorLine([A.c+0.03,s2],[A.c+0.03,s2+1],'walk');
+      [A.x0+0.08,A.x1-0.08].forEach(function(xx){
+        var holes=[];
+        AISLES.forEach(function(B){ if(B!==A && xx>B.x0-1e-9 && xx<B.x1+1e-9) holes.push([B.y0,B.y1]); });
+        wallRuns(A.a+0.02,A.b-0.02,holes).forEach(function(q){ if(q[1]-q[0]>0.3) floorLine([xx,q[0]],[xx,q[1]],'lane'); });
+      });
     }
+    void e;
   });
+  if(WALKWAY){
+    /* dashes 1 m on, 1 m off, along the path's straight runs */
+    var wc=WALKWAY.cells, runs=[], ri=0, k8;
+    for(k8=1;k8<wc.length;k8++){
+      var dxw=wc[k8][0]-wc[k8-1][0], dyw=wc[k8][1]-wc[k8-1][1];
+      if(k8===1 || dxw!==runs[runs.length-1].d[0] || dyw!==runs[runs.length-1].d[1]) runs.push({a:wc[k8-1], b:wc[k8], d:[dxw,dyw]});
+      else runs[runs.length-1].b=wc[k8];
+    }
+    runs.forEach(function(R){
+      var ax=R.a[0]+0.5, ay=R.a[1]+0.5, L=Math.abs(R.b[0]-R.a[0])+Math.abs(R.b[1]-R.a[1]), s;
+      for(s=0.5;s+1<=L+1e-9;s+=2) floorLine([ax+R.d[0]*s,ay+R.d[1]*s],[ax+R.d[0]*(s+1),ay+R.d[1]*(s+1)],'walk');
+    });
+    void ri;
+  }
   K.lay='structure';
 
   /* ---- the flow graph --------------------------------------------------- */
@@ -32384,12 +32992,12 @@ var HELP={
 'stat.lod':'The smallest piece of hardware that still gets drawn, as its size on the SHEET. An isometric view has no perspective shrink, so there is nothing to make a distant greeble small except the station being big \u2014 and once a station fills the page at a fine module scale, a thruster quad is a blob the pen cannot resolve and a minute of plotting time. This is measured against millimetres per cell ESTIMATED BEFORE anything is built, because the decision has to be taken before the drawing exists: the lattice bounding box is the one extent known up front, so it over-estimates the scale by whatever margin the station leaves inside its own box. At 0 nothing is dropped.',
 'stat.occ':'How wide a white gap a nearer solid opens in whatever passes behind it. The station hides itself — every solid is confined to one lattice cell and sorted front to back by i+j+k, which for disjoint cells is an EXACT painter order and not a heuristic — so this is the finish on that, in millimetres on the sheet. The default matches the iso city’s and the CLI’s 0.5 mm. Wide gaps erase short segments outright rather than merely widening the breaks.',
 'fact.fwid':'How wide the hall is, in metres, along the back wall the docks are in. It moves in 6 m steps, and the portal frames divide it into equal bays (Frame spacing). A production line runs out along the width and back again, so a narrow hall packs fewer stations into each row; under 36 m there is no room for the near cross aisle.',
-'fact.fdep':'How deep the hall is, in metres, along the other back wall. The lines are stacked across the depth in bands, one line a band, with an aisle on a bay line between each pair — so depth is what decides how many of the Lines you ask for fit (a band needs 9 m).',
+'fact.fdep':'How deep the hall is, in metres, along the other back wall. The lines are stacked across the depth in bands, one line a band, with an aisle between each pair and the main aisle on a span line where they still fit — so depth decides how many of the Lines you ask for fit (a band needs 7 m clear of the columns), and the mezzanine gets shallower before a line is dropped.',
 'fact.fbay':'The spacing you would like between the portal frames, in metres. Frames are equal across the width, so the hall takes the whole number of bays nearest this — unless that would stand columns on the same line of sight, which seen at 45° turns a hall into a row of poles; then it takes the nearest spacing that keeps them apart. On the default 36 × 30 m hall only 9 m bays do that, so this knob moves the bigger halls.',
 'fact.fspan':'The longest clear span you will allow between column lines across the depth, in metres. Each frame is a column on every span line with a rafter rising 5° to a ridge in the middle of each span, so a longer span means fewer columns on the floor. The hall picks the spans together with the frame spacing so no two columns line up on screen.',
-'fact.flev':'How many levels the hall has. 1 is a single floor; 2 adds a mezzanine deck at 4.5 m along the back wall, on its own columns, with handrails and a stair; 3 adds a second deck at 9 m above part of it and raises the eaves to 13.5 m. The strip under the mezzanine is kept clear of the lines.',
-'fact.flines':'How many production lines run through the hall. Each is a serpentine from a receiving dock in the back wall, out along the width and back to a shipping dock beside it. A line needs a 9 m band of depth; when the hall is too shallow for all of them, fewer are built and the stat line says how many of how many.',
-'fact.fstat':'How many stations a line has between its two docks: processes (CNC, press, moulder, furnace, vat — chosen per line), one or two assembly cells, QA and a packer. A line too long for its two rows drops a process station rather than overflowing the hall.',
+'fact.flev':'How many levels the hall has. 1 is a single floor; 2 adds a mezzanine deck at 4.5 m along the back wall, on its own columns, with handrails and a stair; 3 adds a second deck at 9 m above part of it and raises the eaves to 13.5 m. The seed decides where along the wall it stands (40-70 % of it) and the decks carry an office pod, a vat pair and stores shelving; zones fill the floor under it.',
+'fact.flines':'How many production lines run through the hall. Each is a serpentine from a receiving dock in the back wall, out along the width and back to a shipping dock beside it. A line needs a 7 m band of depth, and in a deep band it serpentines four passes rather than two; when the hall is too shallow for all of them, fewer are built and the stat line says how many of how many.',
+'fact.fstat':'How many stations a line has between its two docks: processes (CNC, press, moulder, furnace, vat — chosen per line), one or two assembly cells, QA and a packer. The stations spread along the whole serpentine; a line too long for its passes drops a process station rather than overflowing the hall.',
 'fact.fitem':'How full the belts are. Cartons ride every straight run at least 0.2 m apart and never across a belt end, a curve or a transfer; 0 empties the belts and changes nothing else.',
 'fact.farms':'How many six-axis robot arms stand in each assembly cell, at its corners round the fixture: 1, a diagonal pair, three, or all four. Each is posed by inverse kinematics to a real target on the fixture, yellow or orange per cell; at 2 or more about one cell in four has a gantry robot instead. Shipping docks get one palletiser arm at 1 or more. 0 removes every arm and changes nothing else.',
 'fact.fpose':'Another moment of the same factory: re-rolls what every arm is reaching for (a point on the fixture, a slot on the pallet) and the cartons on the belts. The layout, the machines, the belts and where each arm stands never move. An arm whose target is out of reach stands in its home pose, and the stat line counts it.',
