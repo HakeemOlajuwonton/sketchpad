@@ -438,7 +438,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v333</a> &mdash; Baggage hall bagh, a corridor theme</span></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v334</a> &mdash; REFACTOR ONLY -- the corridor kit is plan + draw</span></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <section class="fold" id="fold_pick"><h2>Pick engine<span class="cnt"></span></h2>
@@ -31051,13 +31051,39 @@ function streetTheme(K){
   return {dress:dress, signsFor:signsFor, furnish:furnish, cars:cars, dots:dots, poles:poles,
           setText:setText, LANG:LANG, TEXTMM:TEXTMM};
 }
-function buildCorridor(p,THM){
+/* ROW 93 (docs/specs/2026-10-11-corridor-city_v2.md §2), REFACTOR ONLY: THE
+   CORRIDOR KIT IS A PLAN AND A DRAW. corridorPlan(p,THM,ix,hooks) is one corridor
+   laid on the ground -- its knobs, its spline (frame, P3), its slabs and its
+   lots, nothing that depends on where the eye is. corridorDraw(p,plans,THM,
+   camera) is everything after: the camera, the puddles, the theme's content
+   (called ONCE PER PLAN with KIT(plan)), the budget loop, the order, the mirror
+   and the render. A network (row 95) hands the draw several plans; every engine
+   today hands it one, ix 0, and draws what buildCorridor drew, byte for byte
+   (enginetest/kitident.js). Hooks, each absent exactly as before:
+     ix           keys every substream the plan draws: sub(a+ix*1000003,b,salt)
+     hooks.sGaps  [[s0,s1],..] where the plan lays no slab (a junction owns it);
+                  a lane part with a vertex in no slab is refused by slabPieces
+                  as it always was, and counted in STRTSTATS.nohome
+     hooks.Z0     metres added to every point of every part in a container the
+                  plan owns (its slabs and lots, and any its content adds)
+     hooks.theme  the theme the plan's content comes from; absent, the draw's
+   camera: null, the only value today -- the camera the knobs place on the first
+   plan. STILL READ FROM THE FIRST PLAN ALONE, for row 95 to make per plan: the
+   camera, the puddles and the front puddle, the kerbs and box stacks in render,
+   wallOf, and the stat line's content counts. */
+function buildCorridor(p,THM){ return corridorDraw(p,[corridorPlan(p,THM,0)],THM,null); }
+/* the knobs a theme pins or renames, read the same way by the plan and the draw */
+function corridorKnobs(p,THM){
   /* a theme PINS the knobs it has no use for (row 50): a market alley has no
      cars, so its build must not read the street's default of three */
   if(THM.fixed) p=Object.assign({},p,THM.fixed);
   /* row 52: a theme may read a kit knob under its own name (the library's
      floor shine IS the puddle generator), and may be shorter than a street */
   if(THM.alias){ p=Object.assign({},p); for(var ak in THM.alias) p[ak]=p[THM.alias[ak]]; }
+  return p;
+}
+function corridorPlan(p,THM,ix,hooks){
+  p=corridorKnobs(p,THM); ix=ix||0; hooks=hooks||{};
   var LEN=Math.max(THM.minLen||60,+p.len||220), BEND=Math.max(0,+p.bend||0);
   var WID=Math.max(THM.minWidth||4,+p.width||7), PAVE=Math.max(0,isFinite(p.pave)?+p.pave:2.5);
   /* ROW 85: a theme may say how deep its pavement is from knobs of its own
@@ -31079,19 +31105,16 @@ function buildCorridor(p,THM){
   /* the theme's (row 49): the kerb's height and the envelopes' top */
   var PAD=0.06, NEAR=0.25, KERB=THM.edgeZ, DS=0.5, ZTOP=THM.ztop, SLAB=THM.slabLen;
   var HALFW=WID/2, KOFF=HALFW+(THM.strip!==undefined?THM.strip:0.3), PBACK=HALFW+PAVE;
-  var out=[], i, j, k;
-  /* the kit's own inks: structure, tone hatch, the puddles' edge */
-  var COL_K='#1a1a1a', COL_HATCH='#4a4a4a', COL_LBLUE='#5aa9e6';
-  STRTINFO=''; STRTSTATS={lots:0,conts:0,parts:0,paths:0,points:0,cycles:0};
-  STRTTALLY={cam:null,project:null,parts:[],pre:[],sil:[],conts:[],lots:[],slabs:[],
-             signs:[],bank:null,words:[],poles:[],cables:[],cars:[],dots:null,graff:[],
-             puds:[],rparts:[],rpre:[],rsil:[],refl:[],allparts:[],upr:[],urows:[]};
+  var i;
 
   /* ---- substreams: the splitmix finaliser iso's cellRnd uses, keyed on
      (a, b, salt). Every layer salts its own, so turning one layer on or off
      never moves another's numbers (spec §2.5). */
   var SALT_SPLINE=11, SALT_LOT=23, SALT_BLD=37;
+  /* ROW 93: a plan's substreams key on its index in a network. ix 0 (every
+     engine today) never takes the branch, so a is today's a exactly */
   function sub(a,b,salt){
+    if(ix) a=a+ix*1000003;
     var s=(rnd(a*7919+b*104729+salt*1299709+17)*4294967296)>>>0;
     return function(){
       s=(s+0x9E3779B9)>>>0;
@@ -31171,16 +31194,20 @@ function buildCorridor(p,THM){
     return b; }
   function bbHit(a,b){ return !(a[2]<b[0]||b[2]<a[0]||a[3]<b[1]||b[3]<a[1]); }
 
+  /* ROW 93, hooks.sGaps: s intervals where this corridor lays no slab (a
+     junction owns them). Absent, [] -- the test never runs */
+  var SGAPS=hooks.sGaps||[];
+  function inGap(a,b){ for(var g=0;g<SGAPS.length;g++) if(a<SGAPS[g][1]-1e-9 && b>SGAPS[g][0]+1e-9) return true; return false; }
   /* ---- §2.3 road slabs: 4 m of carriageway, kerb and the first 0.3 m of
      pavement, one per side of the centreline. */
   var conts=[], slabsBySide={'1':[],'-1':[]};
   [1,-1].forEach(function(sd){
     for(var sa=0;sa<LEN-1e-9;sa+=SLAB){
       var sb=Math.min(LEN,sa+SLAB);
+      if(SGAPS.length && inGap(sa,sb)) continue;
       var Q=[P3(sa,sd,0,0),P3(sb,sd,0,0),P3(sb,sd,KOFF,0),P3(sa,sd,KOFF,0)].map(function(v){return [v[0],v[1]];});
       var C={kind:'slab', side:sd, s0:sa, s1:sb, poly:Q, bb:bbox2(Q), parts:[]};
       conts.push(C); slabsBySide[sd].push(C);
-      STRTTALLY.slabs.push({side:sd, s0:sa, s1:sb, poly:Q});
     }
   });
 
@@ -31253,6 +31280,40 @@ function buildCorridor(p,THM){
       conts.push(LOT); lots.push(LOT);
     }
   });
+
+  /* the signed lateral offset of plan point X from the centreline, on side sd */
+  function lateral(X,sGuess,sd){
+    var best=1e18, bs=sGuess, s, k;
+    for(k=-16;k<=16;k++){ s=sGuess+k*0.25; var F=frame(s), d=(X[0]-F[0])*F[2]+(X[1]-F[1])*F[3];
+      if(Math.abs(d)<best){ best=Math.abs(d); bs=s; } }
+    var G=frame(bs);
+    return ((X[0]-G[0])*(-G[3])+(X[1]-G[1])*G[2])*sd;
+  }
+
+  /* the knobs every plan reads from the same p ride on the plan, so the draw
+     takes them from it rather than parsing p a second time */
+  return {ix:ix, p:p, theme:hooks.theme, sGaps:SGAPS, Z0:hooks.Z0||0,
+          LEN:LEN, BEND:BEND, WID:WID, PAVE:PAVE, LOTMIN:LOTMIN, LOTMAX:LOTMAX, ALLEY:ALLEY, FLOORS:FLOORS, CANYON:CANYON, STEPB:STEPB, CANTI:CANTI, CAMS:CAMS, CAMX:CAMX, CAMZ:CAMZ, LOOK:LOOK, PITCH:PITCH, TURN:TURN, FOV:FOV, LODMM:LODMM, GAP:GAP, PAD:PAD, NEAR:NEAR, KERB:KERB, DS:DS, ZTOP:ZTOP, SLAB:SLAB, HALFW:HALFW, KOFF:KOFF, PBACK:PBACK, SALT_BLD:SALT_BLD, NS:NS, SX:SX, SY:SY, SH:SH, frame:frame, P3:P3, sub:sub, lateral:lateral, polyOverlap:polyOverlap, convex:convex, bbox2:bbox2, bbHit:bbHit, conts:conts, slabsBySide:slabsBySide, lots:lots, dropped:dropped, pushed:pushed};
+}
+function corridorDraw(p,plans,THM,camera){
+  p=corridorKnobs(p,THM);
+  var PL=plans[0];
+  var LEN=PL.LEN, WID=PL.WID, FLOORS=PL.FLOORS, CANYON=PL.CANYON, STEPB=PL.STEPB, CANTI=PL.CANTI, CAMS=PL.CAMS, CAMX=PL.CAMX, CAMZ=PL.CAMZ, LOOK=PL.LOOK, PITCH=PL.PITCH, TURN=PL.TURN, FOV=PL.FOV, LODMM=PL.LODMM, GAP=PL.GAP, PAD=PL.PAD, NEAR=PL.NEAR, KERB=PL.KERB, DS=PL.DS, SLAB=PL.SLAB, HALFW=PL.HALFW, KOFF=PL.KOFF, PBACK=PL.PBACK, NS=PL.NS, SX=PL.SX, SY=PL.SY, frame=PL.frame, P3=PL.P3, sub=PL.sub, polyOverlap=PL.polyOverlap, bbox2=PL.bbox2, bbHit=PL.bbHit, slabsBySide=PL.slabsBySide;
+  var out=[], i, j, k;
+  /* the kit's own inks: structure, tone hatch, the puddles' edge */
+  var COL_K='#1a1a1a', COL_HATCH='#4a4a4a', COL_LBLUE='#5aa9e6';
+  STRTINFO=''; STRTSTATS={lots:0,conts:0,parts:0,paths:0,points:0,cycles:0};
+  STRTTALLY={cam:null,project:null,parts:[],pre:[],sil:[],conts:[],lots:[],slabs:[],
+             signs:[],bank:null,words:[],poles:[],cables:[],cars:[],dots:null,graff:[],
+             puds:[],rparts:[],rpre:[],rsil:[],refl:[],allparts:[],upr:[],urows:[]};
+  /* every plan's slabs, then its lots, in plan order: one plan is today's list */
+  var conts=[], lots=[], dropped=0, pushed=0;
+  plans.forEach(function(PLk){
+    PLk.conts.forEach(function(C){ conts.push(C); if(C.kind==='slab') STRTTALLY.slabs.push({side:C.side, s0:C.s0, s1:C.s1, poly:C.poly}); });
+    PLk.lots.forEach(function(L){ lots.push(L); });
+    dropped+=PLk.dropped; pushed+=PLk.pushed;
+  });
+  var NOHOME=plans.some(function(PLk){ return PLk.sGaps.length>0; })?0:null;
 
   /* ---- the camera, §3.1 --------------------------------------------------- */
   var sC=CAMS*LEN;
@@ -31863,14 +31924,6 @@ function buildCorridor(p,THM){
     }
     return [t0,t1];
   }
-  /* the signed lateral offset of plan point X from the centreline, on side sd */
-  function lateral(X,sGuess,sd){
-    var best=1e18, bs=sGuess, s, k;
-    for(k=-16;k<=16;k++){ s=sGuess+k*0.25; var F=frame(s), d=(X[0]-F[0])*F[2]+(X[1]-F[1])*F[3];
-      if(Math.abs(d)<best){ best=Math.abs(d); bs=s; } }
-    var G=frame(bs);
-    return ((X[0]-G[0])*(-G[3])+(X[1]-G[1])*G[2])*sd;
-  }
   var cables=[];
   function addCable(kind,A,B,ends){
     var dx=B[0]-A[0], dy=B[1]-A[1], Lp=Math.hypot(dx,dy), k;
@@ -31909,7 +31962,18 @@ function buildCorridor(p,THM){
   /* THE THEME'S CONTENT, made here: after the lots, the camera, the shared
      primitives, the mirror's puddles and the cable machinery exist, which
      is everything its own top-level code reads. */
-  var CT=THM.content(KIT());
+  /* ROW 93: ONCE PER PLAN, each with KIT(plan) -- its own spline, slabs, lots
+     and substreams, the shared containers, camera and cables. A container the
+     content adds belongs to the plan whose content added it (OWN, for Z0).
+     One plan: one call, exactly as before. */
+  var CTS=[], OWN=[], LOTCT=new Map();
+  plans.forEach(function(PLk){
+    var n0=conts.length, ct=(PLk.theme||THM).content(KIT(PLk));
+    CTS.push(ct); OWN.push(PLk.conts.concat(conts.slice(n0)));
+    PLk.lots.forEach(function(L){ LOTCT.set(L,ct); });
+  });
+  /* the stat line's content counts read the first plan's (row 95 sums them) */
+  var CT=CTS[0];
   /* ---- the cables' pieces, into their containers, LAST so the parts they
      must miss are all there. The drawn line is the piece; its box (2 cm
      thick, for the order) is shortened until it sits inside the container. */
@@ -32233,7 +32297,7 @@ function buildCorridor(p,THM){
        in the lane at all */
     for(k=0;k<VP.length;k++){ var v=VP[k], inAny=false;
       for(var m=0;m<conts.length && !inAny;m++) if(conts[m].kind==='slab' && inConv(conts[m].poly,v)) inAny=true;
-      if(!inAny) return null; }
+      if(!inAny){ if(NOHOME!==null) NOHOME++; return null; } }
     return out;
   }
 
@@ -32329,7 +32393,7 @@ function buildCorridor(p,THM){
      built once and never depends on the detail settings. */
   var LODNOW=LODMM, EYECLR=0, EYEIN=0;
   function render(lodmm,dn,df){
-    LODNOW=lodmm; out=[];
+    LODNOW=lodmm; out=[]; if(NOHOME!==null) NOHOME=0;
     STRTTALLY.parts=[]; STRTTALLY.pre=[]; STRTTALLY.sil=[]; STRTTALLY.conts=[];
     /* the mirror's tally too, per pass (row 59): set once per BUILD, an
        over-budget build handed the gate the reflections of every pass */
@@ -32353,8 +32417,8 @@ function buildCorridor(p,THM){
         });
         P.cont=L; P.col='#1a1a1a'; P.kind='block'; L.parts.push(P);
       });
-      CT.dress(L,dn,df);
-      CT.signsFor(L,dn,df);
+      LOTCT.get(L).dress(L,dn,df);
+      LOTCT.get(L).signsFor(L,dn,df);
     });
     /* The kerb: a prism from the road edge to the slab's back, 0.15 high. Only
        its road-facing face carries lines -- the kerb's foot and its top edge.
@@ -32377,7 +32441,7 @@ function buildCorridor(p,THM){
       if(THM.kerbHides){ P.hides=true; P.gapless=true; }
       P.cont=C; P.col='#1a1a1a'; P.kind=THM.kerbKind||'kerb'; C.parts.push(P);
     });
-    CT.furnish(dn,df,tries);
+    CTS.forEach(function(ct){ ct.furnish(dn,df,tries); });
     cablesInto();
     /* the puddles: a plate 4 mm thin under the road's surface, its outline
        on the top face. It hides nothing; it carries the reflection (below). */
@@ -32420,6 +32484,23 @@ function buildCorridor(p,THM){
       Pq.cont=pd.C; Pq.col=PUDCOL||COL_LBLUE; Pq.kind='puddle'; Pq.layer='puddle'; Pq.hides=false;
       Pq.pud=pd; Pq.refl=[];
       pd.C.parts.push(Pq);
+    });
+
+    /* ROW 93, hooks.Z0: a plan raised off the ground (row 97's deck). Every
+       part in a container the plan owns is replaced by a copy whose points
+       are Z0 higher -- a copy, because a point may be shared with a puddle
+       ring or a block that the next pass of the budget loop reads again.
+       Absent (0 on every plan today), nothing runs. */
+    plans.forEach(function(PLk,ki){
+      var dz=PLk.Z0; if(!dz) return;
+      var memo=new Map();
+      function lp(v){ var w=memo.get(v); if(!w){ w=v.slice(); w[2]+=dz; memo.set(v,w); } return w; }
+      OWN[ki].forEach(function(C){ C.parts=C.parts.map(function(P){
+        var Q=Object.assign({},P);
+        Q.faces=P.faces.map(function(f){ return Object.assign({},f,{d:f.d+f.n[2]*dz, pts:f.pts.map(lp)}); });
+        Q.lines=P.lines.map(function(Ln){ return Object.assign({},Ln,{a:lp(Ln.a), b:lp(Ln.b)}); });
+        if(P.ins) Q.ins=lp(P.ins);
+        return Q; }); });
     });
 
     /* ---- ROW 72: THE EYE STAYS CLEAR. A movable thing -- a car, a stall, a
@@ -32940,6 +33021,7 @@ function buildCorridor(p,THM){
              reflRuns:RR.nrefl, rcycles:RR.rcycles, rsplits:RR.rsplits, runsep:RR.runsep, eyeclr:EYECLR, eyein:EYEIN,
              propdrop:(STRTTALLY.props||[]).filter(function(r){ return !r.placed; }).length,
              wmarks:RR.nwm, wmHalved:WMHALF};
+  if(NOHOME!==null) STRTSTATS.nohome=NOHOME;
   STRTINFO=lots.length+' lots · '+committed.length.toLocaleString()+' parts · '+
            res.length.toLocaleString()+' paths'+
            (cycles?' · CYCLES '+cycles:' · cycles 0')+
@@ -32959,7 +33041,7 @@ function buildCorridor(p,THM){
                   (WMHALF?', water marks halved':'')+
                   (tries>=9?', and the water left unreflected'+((CT.dots||[]).some(function(d){ return d.near; })?', the near particles drawn as dots':''):''):'');
   return res;
-  function KIT(){ return {slabPieces:slabPieces, bbHit:bbHit, MINSP:0.7, FW:FW, UP:UP, PAD:PAD, NS:NS, THM:THM, P3:P3, add3:add3, addCable:addCable, cam:cam, dist3:dist3, drawOn:drawOn, faceC:faceC, faceIx:faceIx, frame:frame, hitsAny:hitsAny, inConv:inConv, lateral:lateral, mmPerM:mmPerM, paperGap:paperGap, para:para, polyFromLoops:polyFromLoops, prism:prism, prismN:prismN, splitPart:splitPart, sub:sub, surf:surf, vec:vec, verts:verts, wallOf:wallOf, wp:wp, CANTI:CANTI, CANYON:CANYON, CE:CE, FF:FF, FLOORS:FLOORS, HALFW:HALFW, HW:HW, KERB:KERB, KOFF:KOFF, LEN:LEN, NEAR:NEAR, PBACK:PBACK, RT:RT, SALT_BLD:SALT_BLD, STEPB:STEPB, ZUP:ZUP, cables:cables, conts:conts, lots:lots, slabsBySide:slabsBySide, p:p}; }
+  function KIT(PL){ return {slabPieces:slabPieces, bbHit:bbHit, MINSP:0.7, FW:FW, UP:UP, PAD:PAD, NS:PL.NS, THM:PL.theme||THM, P3:PL.P3, add3:add3, addCable:addCable, cam:cam, dist3:dist3, drawOn:drawOn, faceC:faceC, faceIx:faceIx, frame:PL.frame, hitsAny:hitsAny, inConv:inConv, lateral:PL.lateral, mmPerM:mmPerM, paperGap:paperGap, para:para, polyFromLoops:polyFromLoops, prism:prism, prismN:prismN, splitPart:splitPart, sub:PL.sub, surf:surf, vec:vec, verts:verts, wallOf:wallOf, wp:wp, CANTI:PL.CANTI, CANYON:PL.CANYON, CE:CE, FF:FF, FLOORS:PL.FLOORS, HALFW:PL.HALFW, HW:HW, KERB:PL.KERB, KOFF:PL.KOFF, LEN:PL.LEN, NEAR:NEAR, PBACK:PL.PBACK, RT:RT, SALT_BLD:PL.SALT_BLD, STEPB:PL.STEPB, ZUP:ZUP, cables:cables, conts:conts, lots:PL.lots, slabsBySide:PL.slabsBySide, p:p}; }
 }
 
 /* ---------- 14. MOIRE : swept section along a 3D spine, ONE path ----------
