@@ -438,7 +438,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v334</a> &mdash; REFACTOR ONLY -- the corridor kit is plan + draw</span></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v335</a> &mdash; Isometric camera on every corridor engine</span></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <section class="fold" id="fold_pick"><h2>Pick engine<span class="cnt"></span></h2>
@@ -3240,6 +3240,8 @@ var SPEC={
     ['cams','Camera along',0,90,1,12,[100,'%']],['camx','Camera side',-100,100,1,-10,[100,'%']],
     ['camz','Camera height',0.2,80,0.1,1.6,[1,' m']],['look','Look ahead',5,300,1,60,[1,' m']],['turn','Turn',-90,90,1,0,[1,'°']],
     ['pitch','Pitch',-45,45,0.5,6,[1,'°']],['fov','Field of view',25,120,1,72,[1,'°']],
+    ['proj','Projection',0,1,1,0],['isoaz','Iso turn',-180,180,1,45,[1,'°']],['isoel','Iso tilt',10,89,1,30,[1,'°']],
+    ['zoom','Iso zoom',10,800,1,100,[100,'%']],['panx','Iso pan across',-100,100,1,0,[100,'%']],['pany','Iso pan along',-100,100,1,0,[100,'%']],
     ['dnear','Solid detail to',2,80,1,18,[1,' m']],['dfar','Outline detail to',10,400,5,90,[1,' m']],
     ['dpen','Depth pens',0,1,1,0],['dsplit','Depth split',5,300,5,60,[1,' m']],
     ['mono','Colour only in reflections',0,2,1,0],
@@ -3270,6 +3272,8 @@ var SPEC={
     ['cams','Camera along',0,90,1,6,[100,'%']],['camx','Camera side',-100,100,1,0,[100,'%']],
     ['camz','Camera height',0.2,80,0.1,1.6,[1,' m']],['look','Look ahead',5,300,1,25,[1,' m']],['turn','Turn',-90,90,1,0,[1,'°']],
     ['pitch','Pitch',-45,45,0.5,4,[1,'°']],['fov','Field of view',25,120,1,80,[1,'°']],
+    ['proj','Projection',0,1,1,0],['isoaz','Iso turn',-180,180,1,45,[1,'°']],['isoel','Iso tilt',10,89,1,30,[1,'°']],
+    ['zoom','Iso zoom',10,800,1,100,[100,'%']],['panx','Iso pan across',-100,100,1,0,[100,'%']],['pany','Iso pan along',-100,100,1,0,[100,'%']],
     ['dnear','Solid detail to',2,80,1,18,[1,' m']],['dfar','Outline detail to',10,400,5,90,[1,' m']],
     ['dpen','Depth pens',0,1,1,0],['dsplit','Depth split',5,300,5,60,[1,' m']],
     ['lod','LOD cutoff',0,60,1,4,[10,' mm']],['budg','Size budget',10,300,5,90,[1,' k points']],
@@ -3288,6 +3292,8 @@ var SPEC={
     ['cams','Camera along',0,90,1,5,[100,'%']],['camx','Camera side',-100,100,1,-20,[100,'%']],
     ['camz','Camera height',0.2,80,0.1,1.8,[1,' m']],['look','Look ahead',5,300,1,80,[1,' m']],['turn','Turn',-90,90,1,0,[1,'°']],
     ['pitch','Pitch',-45,45,0.5,3,[1,'°']],['fov','Field of view',25,120,1,70,[1,'°']],
+    ['proj','Projection',0,1,1,0],['isoaz','Iso turn',-180,180,1,45,[1,'°']],['isoel','Iso tilt',10,89,1,30,[1,'°']],
+    ['zoom','Iso zoom',10,800,1,100,[100,'%']],['panx','Iso pan across',-100,100,1,0,[100,'%']],['pany','Iso pan along',-100,100,1,0,[100,'%']],
     ['dnear','Solid detail to',2,80,1,18,[1,' m']],['dfar','Outline detail to',10,400,5,90,[1,' m']],
     ['dpen','Depth pens',0,1,1,0],['dsplit','Depth split',5,300,5,60,[1,' m']],
     ['lod','LOD cutoff',0,60,1,4,[10,' mm']],['budg','Size budget',10,300,5,90,[1,' k points']],
@@ -3306,6 +3312,8 @@ var SPEC={
     ['cams','Camera along',0,90,1,2,[100,'%']],['camx','Camera side',-100,100,1,0,[100,'%']],
     ['camz','Camera height',0.2,3,0.05,1.55,[1,' m']],['look','Look ahead',2,100,1,15,[1,' m']],['turn','Turn',-90,90,1,0,[1,'°']],
     ['pitch','Pitch',-45,45,0.5,2,[1,'°']],['fov','Field of view',25,120,1,75,[1,'°']],
+    ['proj','Projection',0,1,1,0],['isoaz','Iso turn',-180,180,1,45,[1,'°']],['isoel','Iso tilt',10,89,1,30,[1,'°']],
+    ['zoom','Iso zoom',10,800,1,100,[100,'%']],['panx','Iso pan across',-100,100,1,0,[100,'%']],['pany','Iso pan along',-100,100,1,0,[100,'%']],
     ['dnear','Solid detail to',1,40,0.5,6,[1,' m']],['dfar','Outline detail to',2,120,1,20,[1,' m']],
     ['dpen','Depth pens',0,1,1,0],['dsplit','Depth split',2,120,1,15,[1,' m']],
     ['lod','LOD cutoff',0,60,1,4,[10,' mm']],['budg','Size budget',10,300,5,90,[1,' k points']],
@@ -3325,6 +3333,8 @@ var SPEC={
     ['cams','Camera along',0,90,1,2,[100,'%']],['camx','Camera side',-100,100,1,0,[100,'%']],
     ['camz','Camera height',0.2,6.7,0.05,1.6,[1,' m']],['look','Look ahead',2,100,1,15,[1,' m']],['turn','Turn',-90,90,1,0,[1,'°']],
     ['pitch','Pitch',-45,45,0.5,8,[1,'°']],['fov','Field of view',25,120,1,78,[1,'°']],
+    ['proj','Projection',0,1,1,0],['isoaz','Iso turn',-180,180,1,45,[1,'°']],['isoel','Iso tilt',10,89,1,30,[1,'°']],
+    ['zoom','Iso zoom',10,800,1,100,[100,'%']],['panx','Iso pan across',-100,100,1,0,[100,'%']],['pany','Iso pan along',-100,100,1,0,[100,'%']],
     ['dnear','Solid detail to',1,40,0.5,12,[1,' m']],['dfar','Outline detail to',2,200,1,50,[1,' m']],
     ['dpen','Depth pens',0,1,1,0],['dsplit','Depth split',2,200,1,30,[1,' m']],
     ['lod','LOD cutoff',0,60,1,4,[10,' mm']],['budg','Size budget',10,300,5,120,[1,' k points']],
@@ -3345,6 +3355,8 @@ var SPEC={
     ['cams','Camera along',0,90,1,2,[100,'%']],['camx','Camera side',-100,100,1,0,[100,'%']],
     ['camz','Camera height',0.2,5.6,0.05,1.6,[1,' m']],['look','Look ahead',2,100,1,15,[1,' m']],['turn','Turn',-90,90,1,0,[1,'°']],
     ['pitch','Pitch',-45,45,0.5,4,[1,'°']],['fov','Field of view',25,120,1,78,[1,'°']],
+    ['proj','Projection',0,1,1,0],['isoaz','Iso turn',-180,180,1,45,[1,'°']],['isoel','Iso tilt',10,89,1,30,[1,'°']],
+    ['zoom','Iso zoom',10,800,1,100,[100,'%']],['panx','Iso pan across',-100,100,1,0,[100,'%']],['pany','Iso pan along',-100,100,1,0,[100,'%']],
     ['dnear','Solid detail to',1,40,0.5,10,[1,' m']],['dfar','Outline detail to',2,120,1,45,[1,' m']],
     ['dpen','Depth pens',0,1,1,0],['dsplit','Depth split',2,120,1,30,[1,' m']],
     ['lod','LOD cutoff',0,60,1,4,[10,' mm']],['budg','Size budget',10,300,5,120,[1,' k points']],
@@ -3363,6 +3375,8 @@ var SPEC={
     ['cams','Camera along',0,90,1,1,[100,'%']],['camx','Camera side',-100,100,1,0,[100,'%']],
     ['camz','Camera height',0.2,10,0.05,1.6,[1,' m']],['look','Look ahead',5,300,1,20,[1,' m']],['turn','Turn',-90,90,1,0,[1,'°']],
     ['pitch','Pitch',-45,45,0.5,3,[1,'°']],['fov','Field of view',25,120,1,78,[1,'°']],
+    ['proj','Projection',0,1,1,0],['isoaz','Iso turn',-180,180,1,45,[1,'°']],['isoel','Iso tilt',10,89,1,30,[1,'°']],
+    ['zoom','Iso zoom',10,800,1,100,[100,'%']],['panx','Iso pan across',-100,100,1,0,[100,'%']],['pany','Iso pan along',-100,100,1,0,[100,'%']],
     ['dnear','Solid detail to',2,80,0.5,14,[1,' m']],['dfar','Outline detail to',10,400,1,70,[1,' m']],
     ['dpen','Depth pens',0,1,1,0],['dsplit','Depth split',5,300,1,30,[1,' m']],
     ['lod','LOD cutoff',0,60,1,4,[10,' mm']],['budg','Size budget',10,300,5,140,[1,' k points']],
@@ -3388,6 +3402,8 @@ var SPEC={
     ['cams','Camera along',0,90,1,5,[100,'%']],['camx','Camera side',-100,100,1,15,[100,'%']],
     ['camz','Camera height',0.2,80,0.1,1.2,[1,' m']],['look','Look ahead',5,300,1,50,[1,' m']],['turn','Turn',-90,90,1,0,[1,'°']],
     ['pitch','Pitch',-45,45,0.5,3,[1,'°']],['fov','Field of view',25,120,1,70,[1,'°']],
+    ['proj','Projection',0,1,1,0],['isoaz','Iso turn',-180,180,1,45,[1,'°']],['isoel','Iso tilt',10,89,1,30,[1,'°']],
+    ['zoom','Iso zoom',10,800,1,100,[100,'%']],['panx','Iso pan across',-100,100,1,0,[100,'%']],['pany','Iso pan along',-100,100,1,0,[100,'%']],
     ['dnear','Solid detail to',2,80,1,18,[1,' m']],['dfar','Outline detail to',10,400,5,90,[1,' m']],
     ['dpen','Depth pens',0,1,1,0],['dsplit','Depth split',5,300,5,60,[1,' m']],
     ['lod','LOD cutoff',0,60,1,4,[10,' mm']],['budg','Size budget',10,300,5,90,[1,' k points']],
@@ -3416,6 +3432,8 @@ var SPEC={
     ['cams','Camera along',0,90,1,6,[100,'%']],['camx','Camera side',-100,100,1,-72,[100,'%']],
     ['camz','Camera height',0.2,80,0.1,2.9,[1,' m']],['look','Look ahead',5,300,1,60,[1,' m']],['turn','Turn',-90,90,1,0,[1,'°']],
     ['pitch','Pitch',-45,45,0.5,2,[1,'°']],['fov','Field of view',25,120,1,70,[1,'°']],
+    ['proj','Projection',0,1,1,0],['isoaz','Iso turn',-180,180,1,45,[1,'°']],['isoel','Iso tilt',10,89,1,30,[1,'°']],
+    ['zoom','Iso zoom',10,800,1,100,[100,'%']],['panx','Iso pan across',-100,100,1,0,[100,'%']],['pany','Iso pan along',-100,100,1,0,[100,'%']],
     ['dnear','Solid detail to',2,80,1,18,[1,' m']],['dfar','Outline detail to',10,400,5,90,[1,' m']],
     ['dpen','Depth pens',0,1,1,0],['dsplit','Depth split',5,300,5,60,[1,' m']],
     ['lod','LOD cutoff',0,60,1,4,[10,' mm']],['budg','Size budget',10,300,5,90,[1,' k points']],
@@ -3439,6 +3457,8 @@ var SPEC={
     ['cams','Camera along',0,90,1,2,[100,'%']],['camx','Camera side',-100,100,1,-10,[100,'%']],
     ['camz','Camera height',0.2,11.5,0.1,1.6,[1,' m']],['look','Look ahead',2,100,1,15,[1,' m']],['turn','Turn',-90,90,1,0,[1,'°']],
     ['pitch','Pitch',-45,45,0.5,6,[1,'°']],['fov','Field of view',25,120,1,78,[1,'°']],
+    ['proj','Projection',0,1,1,0],['isoaz','Iso turn',-180,180,1,45,[1,'°']],['isoel','Iso tilt',10,89,1,30,[1,'°']],
+    ['zoom','Iso zoom',10,800,1,100,[100,'%']],['panx','Iso pan across',-100,100,1,0,[100,'%']],['pany','Iso pan along',-100,100,1,0,[100,'%']],
     ['dnear','Solid detail to',1,40,0.5,14,[1,' m']],['dfar','Outline detail to',2,120,1,60,[1,' m']],
     ['dpen','Depth pens',0,1,1,0],['dsplit','Depth split',2,120,1,30,[1,' m']],
     ['lod','LOD cutoff',0,60,1,4,[10,' mm']],['budg','Size budget',10,300,5,120,[1,' k points']],
@@ -3460,6 +3480,8 @@ var SPEC={
     ['cams','Camera along',0,90,1,1,[100,'%']],['camx','Camera side',-100,100,1,-63,[100,'%']],
     ['camz','Camera height',0.2,11.6,0.05,1.6,[1,' m']],['look','Look ahead',2,150,1,20,[1,' m']],['turn','Turn',-90,90,1,0,[1,'°']],
     ['pitch','Pitch',-45,45,0.5,4,[1,'°']],['fov','Field of view',25,120,1,78,[1,'°']],
+    ['proj','Projection',0,1,1,0],['isoaz','Iso turn',-180,180,1,45,[1,'°']],['isoel','Iso tilt',10,89,1,30,[1,'°']],
+    ['zoom','Iso zoom',10,800,1,100,[100,'%']],['panx','Iso pan across',-100,100,1,0,[100,'%']],['pany','Iso pan along',-100,100,1,0,[100,'%']],
     ['dnear','Solid detail to',1,60,0.5,16,[1,' m']],['dfar','Outline detail to',2,200,1,70,[1,' m']],
     ['dpen','Depth pens',0,1,1,0],['dsplit','Depth split',2,150,1,30,[1,' m']],
     ['lod','LOD cutoff',0,60,1,4,[10,' mm']],['budg','Size budget',10,300,5,120,[1,' k points']],
@@ -21597,7 +21619,7 @@ var STHEMES={
   libr:{key:'libr', label:'Library stacks', lotDepth:[0.30,0.30], alleyW:[1.5,1.5], baseN2:0, baseH:[2.13,2.13],
         midH:[2.13,2.13], edgeZ:0, slabLen:4, clear:2.0, ztop:200, mirror:'floor', minWidth:0.8, minLen:10,
         strip:0, minEnv:0.2, pudIn:0.03, pudCol:null, pudWord:'polished patches', heroWord:'a front shine', alias:{puddles:'shine'},
-        mirrorSkip:['hatch'], pudMinMM:3,
+        mirrorSkip:['hatch'], pudMinMM:3, zfit:4,
         lotGen:function(R,p,li,sd){ return libraryLotGen(R,p,li,sd); },
         fixed:{shopv:0, props:0, alley:0, cars:0, dots:0, graff:0, signs:0, cables:0, canyon:0, stepb:0, canti:0},
         content:function(K){ return libraryTheme(K); }},
@@ -21685,7 +21707,7 @@ var STHEMES={
   whse:{key:'whse', label:'Warehouse', lotDepth:[2.5,2.5], alleyW:[0,0], baseN2:0, baseH:[10.2,10.2],
         midH:[10.2,10.2], edgeZ:0, slabLen:4, clear:5.8, ztop:200, mirror:'floor', minWidth:2.6, minLen:20,
         strip:0, minEnv:2.41, pudIn:0.03, pudCol:null, pudWord:'polished patches', heroWord:'a front shine',
-        alias:{puddles:'shine'}, mirrorSkip:['hatch'], pudMinMM:3,
+        alias:{puddles:'shine'}, mirrorSkip:['hatch'], pudMinMM:3, zfit:16,
         lotGen:function(R,p,li,sd){ return warehouseLotGen(R,p,li,sd); },
         fixed:{shopv:0, props:0, alley:0, cars:0, dots:0, graff:0, signs:0, cables:0, canyon:0, stepb:0, canti:0, pave:0},
         content:function(K){ return warehouseTheme(K); }},
@@ -21695,7 +21717,7 @@ var STHEMES={
   bagh:{key:'bagh', label:'Baggage hall', lotDepth:[4.9,4.9], alleyW:[0,0], baseN2:0, baseH:[8.6,8.6],
         midH:[8.6,8.6], edgeZ:0, slabLen:4, clear:4.9, ztop:200, mirror:'floor', minWidth:5, minLen:30,
         strip:0, pudIn:0.03, pudCol:null, pudWord:'polished patches', heroWord:'a front shine',
-        alias:{puddles:'shine'}, pudMinMM:3, mirrorSkip:['hatch'],
+        alias:{puddles:'shine'}, pudMinMM:3, mirrorSkip:['hatch'], zfit:12,
         lotGen:function(R,p,li,sd){ return baggageLotGen(R,p,li,sd); },
         fixed:{shopv:0, props:0, alley:0, cars:0, dots:0, graff:0, signs:0, cables:0, canyon:0, stepb:0, canti:0},
         flags:{poles:false, roadMarks:false, bollards:false, manholes:false},
@@ -31342,10 +31364,60 @@ function corridorDraw(p,plans,THM,camera){
   /* PAGE MAPPING IS FIXED, not fitted: sx in [-1,1] spans the drawable width
      and sy takes the same scale. A camera that zoomed to its content would
      move every time a building grew. */
-  function scr(c){ return [PGW/2+FF*c[0]/c[2]*HW, PGH/2-FF*c[1]/c[2]*HW]; }
+  function scr(c){ if(ISO) return [PGW/2+ISOS*c[0], PGH/2-ISOS*c[1]]; return [PGW/2+FF*c[0]/c[2]*HW, PGH/2-FF*c[1]/c[2]*HW]; }
   function project(P){ var c=cam(P); return c[2]>1e-12?scr(c):null; }
   STRTTALLY.cam={C:CE, f:FW, r:RT, u:UP, F:FF, near:NEAR, pad:PAD, hw:HW, hh:HH};
   STRTTALLY.project=project;
+  /* ---- ROW 94: THE ISOMETRIC CAMERA, Projection 1 (corridor-city spec §3.2).
+     A PARALLEL projection: the view direction is Iso turn from the street's
+     tangent at its middle and Iso tilt below level, FW/RT/UP built from it as
+     above, and the eye at infinity -- CE stands 1e5 m back along FW, so `cam`
+     is unchanged, every depth is positive and the near plane never fires, and
+     the order's eye value is taken at infinity itself (isoEye, below).
+     THE SCALE IS FITTED TO THE PLAN, NEVER TO THE CONTENT, for the reason the
+     page mapping above is fixed: S is the largest that puts every slab and lot
+     corner, at z = 0 and at the theme's declared tallest height (zfit, default
+     30 m), inside the drawable area about the frame centre; Iso zoom multiplies
+     it, and Iso pan moves the centre (as shares of the plan's extent along and
+     across the street) after the fit, so panning never rescales.
+     EVERY DISTANCE THE DETAIL READS IS D_EFF = FF*HW/S, the depth at which this
+     lens would draw a metre the size the parallel camera draws it: the kit's
+     dist3, and the depth a theme's own size-on-the-sheet arithmetic reads from
+     K.cam. At Projection 0 none of this runs and nothing reads it. */
+  var ISO=Math.round(isFinite(p.proj)?+p.proj:0)===1, ISOS=0, D_EFF=0, ISOC=null, CEK=CE, SINEL=0, ISOZN=NEAR;
+  if(ISO){
+    var IAZ=(isFinite(p.isoaz)?+p.isoaz:45)*Math.PI/180, IEL=Math.max(10,Math.min(89,isFinite(p.isoel)?+p.isoel:30))*Math.PI/180;
+    var ZOOM=Math.max(10,Math.min(800,isFinite(p.zoom)?+p.zoom:100))/100;
+    var PANX=Math.max(-1,Math.min(1,(isFinite(p.panx)?+p.panx:0)/100)), PANY=Math.max(-1,Math.min(1,(isFinite(p.pany)?+p.pany:0)/100));
+    var Fc=frame(LEN/2), th0=Math.atan2(Fc[3],Fc[2])+IAZ;
+    fx=Math.cos(th0); fy=Math.sin(th0); SINEL=Math.sin(IEL);
+    FW=[fx*Math.cos(IEL), fy*Math.cos(IEL), -SINEL];
+    RT=[FW[1], -FW[0], 0]; rl=Math.hypot(RT[0],RT[1])||1; RT=[RT[0]/rl, RT[1]/rl, 0];
+    UP=[RT[1]*FW[2]-RT[2]*FW[1], RT[2]*FW[0]-RT[0]*FW[2], RT[0]*FW[1]-RT[1]*FW[0]];
+    ISOC=[Fc[0],Fc[1],0];
+    var ZFIT=THM.zfit||30, SFIT=1e18, tlo=1e18, thi=-1e18, nlo=1e18, nhi=-1e18;
+    plans.forEach(function(PLk){ PLk.conts.forEach(function(C){ C.poly.forEach(function(q){
+      var dx=q[0]-ISOC[0], dy=q[1]-ISOC[1], ta=dx*Fc[2]+dy*Fc[3], na=-dx*Fc[3]+dy*Fc[2], zz;
+      if(ta<tlo) tlo=ta; if(ta>thi) thi=ta; if(na<nlo) nlo=na; if(na>nhi) nhi=na;
+      for(zz=0;zz<2;zz++){
+        var z=zz?ZFIT:0, xs=Math.abs(dx*RT[0]+dy*RT[1]), ys=Math.abs(dx*UP[0]+dy*UP[1]+z*UP[2]);
+        if(xs>1e-12) SFIT=Math.min(SFIT,HW/xs); if(ys>1e-12) SFIT=Math.min(SFIT,HH/ys);
+      }
+    }); }); });
+    ISOS=SFIT*ZOOM;
+    ISOC=[ISOC[0]+Fc[2]*PANY*(thi-tlo)-Fc[3]*PANX*(nhi-nlo), ISOC[1]+Fc[3]*PANY*(thi-tlo)+Fc[2]*PANX*(nhi-nlo), 0];
+    CE=[ISOC[0]-FW[0]*1e5, ISOC[1]-FW[1]*1e5, ISOC[2]-FW[2]*1e5];
+    D_EFF=FF*HW/ISOS;
+    STRTTALLY.cam={C:CE, f:FW, r:RT, u:UP, F:FF, near:NEAR, pad:PAD, hw:HW, hh:HH,
+                   iso:true, S:ISOS, fit:SFIT, O:ISOC, deff:D_EFF, zfit:ZFIT, az:IAZ, el:IEL};
+  }
+  /* the eye's value on a separating axis whose normal has view component dn:
+     at infinity, so the side the view comes from is first; an axis square to
+     the view separates two prisms whose sheet ranges are disjoint, and returns
+     0 -- neither hides the other */
+  function isoEye(dn){ return dn>1e-12?-Infinity:dn<-1e-12?Infinity:NaN; }
+  /* a face faces the eye: at infinity, against the view direction */
+  function facing(f){ return ISO?-(f.n[0]*FW[0]+f.n[1]*FW[1]+f.n[2]*FW[2])>1e-9:f.n[0]*CE[0]+f.n[1]*CE[1]+f.n[2]*CE[2]-f.d>1e-9; }
 
   /* ---- parts: convex polytopes with their face planes and their LINES.
      A line is a 3D segment and the two faces it lies on (the same face twice
@@ -31429,7 +31501,11 @@ function corridorDraw(p,plans,THM,camera){
     for(e=0;e<Q.length;e++){ var e2=(e+1)%Q.length; loops.push([lo[e],lo[e2],hi[e2],hi[e]]); }
     return polyFromLoops(loops);
   }
-  function dist3(P){ return Math.hypot(P[0]-CE[0],P[1]-CE[1],P[2]-CE[2]); }
+  function dist3(P){ if(ISO) return D_EFF; return Math.hypot(P[0]-CE[0],P[1]-CE[1],P[2]-CE[2]); }
+  /* row 94: what a theme reads as camera depth -- its own size-on-the-sheet
+     arithmetic divides by it -- is D_EFF at Projection 1, so a 0.35 mm dot is
+     0.35 mm there too; the kit's own cam is the true one */
+  function camK(P){ var c=cam(P); if(ISO) c[2]=D_EFF; return c; }
   /* MILLIMETRES ON THE SHEET PER METRE OF SPACING between parallel lines
      running along `dl` and stacked along `dn`, at P. Distance alone is not
      the measure -- a wall seen nearly edge-on packs its lines together across
@@ -31598,7 +31674,17 @@ function corridorDraw(p,plans,THM,camera){
     var RH=sub(0,HSHAPE,SALT_HERO), uh=[]; for(j=0;j<12;j++) uh.push(RH());
     /* g0: the ray through (centre, bottom of the drawable area) to z = 0 */
     var syB=-(PGH-PAD-PGH/2)/(FF*HW), dB=[FW[0]+syB*UP[0], FW[1]+syB*UP[1], FW[2]+syB*UP[2]], g0=null, GBo=null;
-    if(dB[2]<-1e-9 && CE[2]>MZ){
+    /* row 94: at Projection 1 the ray is the PARALLEL one through the bottom
+       centre of the drawable area, and the puddle is centred where it meets
+       the plane, as a turned camera's is (there is no eye to be ahead of) */
+    if(ISO){
+      var cyB=-(PGH/2-PAD)/ISOS, OB=[ISOC[0]+UP[0]*cyB, ISOC[1]+UP[1]*cyB, ISOC[2]+UP[2]*cyB];
+      var tI=(MZ-OB[2])/FW[2], GI=[OB[0]+FW[0]*tI, OB[1]+FW[1]*tI], biI=0, bdI=1e18;
+      for(j=0;j<NS;j++){ var ddI=(SX[j]-GI[0])*(SX[j]-GI[0])+(SY[j]-GI[1])*(SY[j]-GI[1]); if(ddI<bdI){ bdI=ddI; biI=j; } }
+      var FgI=frame(biI*DS), sgI=biI*DS+(GI[0]-FgI[0])*FgI[2]+(GI[1]-FgI[1])*FgI[3];
+      if(sgI>0.5 && sgI<LEN-1){ g0=sgI; GBo=(GI[0]-FgI[0])*(-FgI[3])+(GI[1]-FgI[1])*FgI[2]; }
+    }
+    else if(dB[2]<-1e-9 && CE[2]>MZ){
       var tB=(MZ-CE[2])/dB[2], GB=[CE[0]+dB[0]*tB, CE[1]+dB[1]*tB], bi=0, bd=1e18;
       for(j=0;j<NS;j++){ var dd=(SX[j]-GB[0])*(SX[j]-GB[0])+(SY[j]-GB[1])*(SY[j]-GB[1]); if(dd<bd){ bd=dd; bi=j; } }
       var Fg=frame(bi*DS), sg0=bi*DS+(GB[0]-Fg[0])*Fg[2]+(GB[1]-Fg[1])*Fg[3];
@@ -31610,6 +31696,8 @@ function corridorDraw(p,plans,THM,camera){
     var hL=(2.5+7.5*HERO)*HSTR, hW=Math.min((0.45+0.45*HERO)*WID/HSTR, WID-0.4), room=Math.max(0,WID-0.4-hW);
     var hs0=g0+0.3, hs1=Math.min(LEN-0.2,hs0+hL);
     var camSide=CAMX<0?-1:1, oside=uh[0]<0.6?camSide:-camSide, hoc=oside*(room/2)*uh[1];
+    /* row 94: no Camera side at Projection 1 -- the side is where the ray lands */
+    if(ISO && GBo!==null) camSide=GBo<0?-1:1;
     /* row 72: turned, it is CENTRED on where the bottom of the frame meets the
        road, along and across, and kept 0.2 m inside the road's edges */
     if(GBo!==null){
@@ -31622,7 +31710,7 @@ function corridorDraw(p,plans,THM,camera){
     if(PUDON==='lot'){
       var bndH=THM.pudBand(camSide,p,HALFW,true), bwH=bndH[1]-bndH[0];
       hW=Math.max(0.1,Math.min((0.45+0.45*HERO)*bwH/HSTR, bwH-0.1));
-      if(TURN===0){ hs0=g0+0.3; hs1=Math.min(LEN-0.2,hs0+hL); }
+      if(TURN===0 && !ISO){ hs0=g0+0.3; hs1=Math.min(LEN-0.2,hs0+hL); }
       var glH=GBo!==null?GBo*camSide:Math.abs(CAMX*(HALFW+CREACH));
       hoc=camSide*Math.max(bndH[0]+hW/2,Math.min(bndH[1]-hW/2,glH));
     }
@@ -31670,6 +31758,10 @@ function corridorDraw(p,plans,THM,camera){
     return inside(A[0],B) || inside(B[0],A);
   }
   var sPud0=Math.min(LEN-4,CAMS*LEN+3), sPud1=Math.min(LEN-0.5,CAMS*LEN+63);
+  /* ROW 94: AT PROJECTION 1 THERE IS NO CAMERA TO BE AHEAD OF, and every
+     puddle is drawn at one scale, so they lie evenly along the whole street
+     (the same draws, read uniformly rather than squared toward the eye) */
+  if(ISO){ sPud0=Math.min(LEN-4,3); sPud1=LEN-0.5; }
   /* ROW 72: TURNED, THE PUDDLES ARE PLACED IN THE VIEW. Same substream, same
      numbers, same shapes. §2.2 moved only the arc (sF +- W) and that is
      REFUTED, measured: from the defaults' camera, 0.35 m off the centreline,
@@ -31681,7 +31773,7 @@ function corridorDraw(p,plans,THM,camera){
      offset, each then clamped to its slab as before. With no road in the
      frame (pitched up, or none between the two) the arc moves alone. */
   var PV=null;
-  if(TURN!==0){
+  if(TURN!==0 && !ISO){
     var Fe=frame(sC), fnE=fx*(-Fe[3])+fy*Fe[2], oE=CAMX*(HALFW+CREACH);
     var syV=-(PGH-PAD-PGH/2)/(FF*HW), dV=[FW[0]+syV*UP[0], FW[1]+syV*UP[1], FW[2]+syV*UP[2]];
     if(dV[2]<-1e-9 && Math.abs(fnE)>1e-6){
@@ -31704,7 +31796,7 @@ function corridorDraw(p,plans,THM,camera){
       var sdL=ul[1]<0.5?1:-1, bnd=THM.pudBand(sdL,p,HALFW), bwL=bnd[1]-bnd[0];
       var lenL=(0.7+3.1*PUDSZ)*(0.6+0.4*ul[2]), widL=Math.min(bwL,lenL*(0.35+0.4*ul[3]));
       if(!(widL>=0.15 && lenL+0.4<LEN)){ prej++; continue; }
-      var scL=Math.max(lenL/2+0.2,Math.min(LEN-lenL/2-0.2,sPud0+(sPud1-sPud0)*ul[0]*ul[0]));
+      var scL=Math.max(lenL/2+0.2,Math.min(LEN-lenL/2-0.2,sPud0+(ISO?(sPud1-sPud0)*ul[0]:(sPud1-sPud0)*ul[0]*ul[0])));
       var ocL=bnd[0]+widL/2+(bwL-widL)*ul[5];
       var a2L=0.18*ul[6], a3L=0.13*ul[7], a5L=0.07*ul[8], rotL=(ul[12]-0.5)*0.6, locL=[], mxL=0, myL=0, mL;
       for(mL=0;mL<PUDNP;mL++){
@@ -31738,7 +31830,7 @@ function corridorDraw(p,plans,THM,camera){
     var RPD=sub(0,i,SALT_PUD), ud=[];
     for(j=0;j<14;j++) ud.push(RPD());
     var sdP=ud[1]<0.5?1:-1, slP=slabsBySide[sdP];
-    var sPd=Math.min(LEN-0.5, sPud0+(sPud1-sPud0)*ud[0]*ud[0]), pvO=null;
+    var sPd=Math.min(LEN-0.5, sPud0+(ISO?(sPud1-sPud0)*ud[0]:(sPud1-sPud0)*ud[0]*ud[0])), pvO=null;
     if(PV){
       var dP=PV.dn+(PV.df-PV.dn)*ud[5], hP=(2*ud[0]-1)*0.8*dP/FF;
       var GX=CE[0]+fx*dP+fy*hP, GY=CE[1]+fy*dP-fx*hP, gi=0, gd=1e18;
@@ -31836,11 +31928,14 @@ function corridorDraw(p,plans,THM,camera){
     for(m=0;m<n;m++){ var qa=ring[m], qb=ring[(m+1)%n]; ar+=qa[0]*qb[1]-qa[1]*qb[0]; } ar=Math.abs(ar)/2;
     var d=Math.max(1.5,Math.hypot((bb[0]+bb[2])/2-CE[0],(bb[1]+bb[3])/2-CE[1]));
     var ux=-fy, uy=fx, H=Math.max(0.5,CE[2]-MZ);
+    /* row 94: one scale at Projection 1 -- the mark's length reads D_EFF, and
+       the swing undoes the parallel view's squash of the ground, 1/sin(tilt) */
+    if(ISO){ d=Math.max(1.5,D_EFF); H=d*SINEL; }
     var base=Math.max(0.12,Math.min(0.9,0.22*d/5));
     var nmax=Math.round(wmk*Math.min(60,Math.max(1,ar/(base*base*2.2)))), acc=[], t, K=12;
     for(t=0;t<nmax*12 && acc.length<nmax;t++){
       var x=bb[0]+(bb[2]-bb[0])*R(), y=bb[1]+(bb[3]-bb[1])*R(), ul=R(), up=R();
-      var dd=Math.max(1.5,Math.hypot(x-CE[0],y-CE[1])), sl=Math.max(0.1,Math.min(1.0,(0.16+0.16*ul)*dd/5));
+      var dd=ISO?d:Math.max(1.5,Math.hypot(x-CE[0],y-CE[1])), sl=Math.max(0.1,Math.min(1.0,(0.16+0.16*ul)*dd/5));
       var fs=Math.min(4,dd/H), amp=0.07*sl*fs, mg=0.12*sl*fs+0.05;
       if(!inR(x,y)||!inR(x-ux*sl/2,y-uy*sl/2)||!inR(x+ux*sl/2,y+uy*sl/2)||!inR(x+fx*mg,y+fy*mg)||!inR(x-fx*mg,y-fy*mg)) continue;
       var pts=[], sp=[], ok=true, ph=up<0.5?0:Math.PI;
@@ -32019,20 +32114,25 @@ function corridorDraw(p,plans,THM,camera){
      Truchet (P68) and this one is not assumed to be cheaper. */
   function depthSplit(paths,FARZ){
     var o2=[];
-    function zOf(zc){ return 1-Math.max(0,Math.min(1,(zc-NEAR)/(FARZ-NEAR))); }
+    /* row 94: at Projection 1 the split is at Depth split metres of D_EFF-relative
+       depth (the frame centre at D_EFF), depth is linear along a segment, and
+       `z` runs over the drawing's own depth range as the page clip's does */
+    var ZO=ISO?1e5-D_EFF:0, ZN=ISO?ISOZN:NEAR;
+    function zOf(zc){ return 1-Math.max(0,Math.min(1,(zc-ZN)/(FARZ-ZN))); }
     paths.forEach(function(q){
       if(q.col!==COL_K){ o2.push(q); return; }
       var segs=[], m;
       for(m=1;m<q.length;m++){
         var za=q.zc[m-1], zb=q.zc[m], A=q[m-1], B=q[m];
+        if(ZO){ za-=ZO; zb-=ZO; }
         if((za-DSPLIT)*(zb-DSPLIT)<0){
-          var t=(1/DSPLIT-1/za)/(1/zb-1/za), X=[A[0]+(B[0]-A[0])*t, A[1]+(B[1]-A[1])*t];
+          var t=ZO?(DSPLIT-za)/(zb-za):(1/DSPLIT-1/za)/(1/zb-1/za), X=[A[0]+(B[0]-A[0])*t, A[1]+(B[1]-A[1])*t];
           segs.push({a:A, b:X, za:za, zb:DSPLIT, far:za>DSPLIT});
           segs.push({a:X, b:B, za:DSPLIT, zb:zb, far:zb>DSPLIT});
         } else segs.push({a:A, b:B, za:za, zb:zb, far:(za+zb)/2>DSPLIT});
       }
       var cur=null, cz=null, far=null;
-      function emit(){ if(cur && cur.length>1){ cur.zc=cz; cur.z=cz.map(zOf); cur.pre=q.pre; cur.part=q.part;
+      function emit(){ if(cur && cur.length>1){ cur.zc=ZO?cz.map(function(z){ return z+ZO; }):cz; cur.z=cur.zc.map(zOf); cur.pre=q.pre; cur.part=q.part;
         cur.kind=q.kind; cur.col=far?COL_HATCH:COL_K; if(q.rp!==undefined){ cur.rp=q.rp; cur.pud=q.pud; cur.hero=q.hero; }
         o2.push(cur); } cur=null; }
       segs.forEach(function(sg){
@@ -32058,6 +32158,9 @@ function corridorDraw(p,plans,THM,camera){
     for(m=0;m<CV.length;m++){
       var c=CV[m];
       if(c[2]<NEAR) all[0]++;
+      /* row 94: at Projection 1 the frustum is the drawable box's prism */
+      if(ISO){ if(c[0]*ISOS-HW*M>0) all[1]++; if(-c[0]*ISOS-HW*M>0) all[2]++;
+               if(c[1]*ISOS-HH*M>0) all[3]++; if(-c[1]*ISOS-HH*M>0) all[4]++; continue; }
       if(c[0]-c[2]*TH*M>0) all[1]++;
       if(-c[0]-c[2]*TH*M>0) all[2]++;
       if(c[1]-c[2]*TV*M>0) all[3]++;
@@ -32189,8 +32292,16 @@ function corridorDraw(p,plans,THM,camera){
         }
         return P;
       };
-      if(cut(-GAP)){
-        var lo=-GAP, hi=GAP, it;
+      /* row 94: AT PROJECTION 1 NO EDGE MOVES OUT. Everything is drawn at one
+         scale there, so a thin piece seen edge-on (a guard or a wall from
+         nearly overhead) sits among parts drawn large, and an edge pushed out
+         by up to a whole gap spilled the occluder 2 x Gap past its outline,
+         trimming truly visible lines (5.6% on the baggage hall, 4.9% on the
+         station, looking down at 88-89 degrees). Never past the outline: the
+         ordinary halo, as every other part has */
+      var GLO=ISO?0:-GAP;
+      if(cut(GLO)){
+        var lo=GLO, hi=GAP, it;
         for(it=0;it<30;it++){ var md=(lo+hi)/2; if(cut(md)) lo=md; else hi=md; }
         o=cut(lo); if(o) return o;
       }
@@ -32303,9 +32414,14 @@ function corridorDraw(p,plans,THM,camera){
 
   /* ---- §3.3 the order ---------------------------------------------------- */
   var EYE=[CE[0],CE[1]];
+  /* row 94: the containers' ranges on the sheet rather than angles from an eye */
+  var ARCX=ISO;
   /* the plan angular interval a container subtends from the eye, or null
      when the eye is inside it (then it subtends everything) */
   function arcOf(Q){
+    /* row 94: at Projection 1, the container's range across the SHEET -- a
+       vertical prism's, since RT is level -- in metres along RT */
+    if(ARCX) return arcX(Q);
     var inside=true, m, cx=0, cy=0;
     for(m=0;m<Q.length;m++){
       var a=Q[m], b=Q[(m+1)%Q.length];
@@ -32327,8 +32443,14 @@ function corridorDraw(p,plans,THM,camera){
     }
     return [c0+lo, c0+hi];
   }
+  function arcX(Q){
+    var lo=1e18, hi=-1e18;
+    for(var m=0;m<Q.length;m++){ var x=Q[m][0]*RT[0]+Q[m][1]*RT[1]; if(x<lo) lo=x; if(x>hi) hi=x; }
+    return [lo,hi];
+  }
   function arcsMeet(A,B){
     if(!A||!B) return true;
+    if(ARCX) return Math.min(A[1],B[1])-Math.max(A[0],B[0])>1e-9;
     var ca=(A[0]+A[1])/2, cb=(B[0]+B[1])/2, dd=cb-ca;
     while(dd>Math.PI) dd-=TAU; while(dd<-Math.PI) dd+=TAU;
     return Math.abs(dd) < (A[1]-A[0])/2+(B[1]-B[0])/2 - 1e-12;
@@ -32352,7 +32474,7 @@ function corridorDraw(p,plans,THM,camera){
         var a0=1e18,a1=-1e18,b0=1e18,b1=-1e18;
         for(m=0;m<A.poly.length;m++){ var t=A.poly[m][0]*nx+A.poly[m][1]*ny; if(t<a0)a0=t; if(t>a1)a1=t; }
         for(m=0;m<B.poly.length;m++){ var t2=B.poly[m][0]*nx+B.poly[m][1]*ny; if(t2<b0)b0=t2; if(t2>b1)b1=t2; }
-        var r=sideRule(a0,a1,b0,b1,EYE[0]*nx+EYE[1]*ny);
+        var r=sideRule(a0,a1,b0,b1,ISO?isoEye(nx*FW[0]+ny*FW[1]):EYE[0]*nx+EYE[1]*ny);
         if(r!==null) return r;
       }
     }
@@ -32364,7 +32486,7 @@ function corridorDraw(p,plans,THM,camera){
       var n=list[fi].n, a0=1e18,a1=-1e18,b0=1e18,b1=-1e18;
       for(m=0;m<VA.length;m++){ var t=n[0]*VA[m][0]+n[1]*VA[m][1]+n[2]*VA[m][2]; if(t<a0)a0=t; if(t>a1)a1=t; }
       for(m=0;m<VB.length;m++){ var t2=n[0]*VB[m][0]+n[1]*VB[m][1]+n[2]*VB[m][2]; if(t2<b0)b0=t2; if(t2>b1)b1=t2; }
-      var r=sideRule(a0,a1,b0,b1,n[0]*CE[0]+n[1]*CE[1]+n[2]*CE[2]);
+      var r=sideRule(a0,a1,b0,b1,ISO?isoEye(n[0]*FW[0]+n[1]*FW[1]+n[2]*FW[2]):n[0]*CE[0]+n[1]*CE[1]+n[2]*CE[2]);
       if(r!==null) return r;
     }
     return null;
@@ -32582,6 +32704,28 @@ function corridorDraw(p,plans,THM,camera){
     var corder=KO.order.concat(KO.rest.sort(function(a,b){ return live[a].key-live[b].key; }));
 
     var cycles=ccycles, splits=0, unsepParts=0;
+    /* row 94: a cycle among the parts Kahn left (walked back along their
+       predecessors, which every one left has), and the first face plane of a
+       member that cuts another member properly: [victim, normal, d] or null */
+    function isoCut(PS,rest,pe){
+      var inR={}, pr={}, path=[], at={}, u, i, j, k;
+      rest.forEach(function(r){ inR[r]=1; pr[r]=[]; });
+      pe.forEach(function(e){ if(inR[e[0]] && inR[e[1]]) pr[e[1]].push(e[0]); });
+      u=rest[0];
+      while(u!==undefined && at[u]===undefined){ at[u]=path.length; path.push(u); u=pr[u][0]; }
+      if(u===undefined) return null;
+      var cyc=path.slice(at[u]);
+      for(i=0;i<cyc.length;i++) for(j=0;j<cyc.length;j++){
+        if(i===j) continue;
+        var X=PS[cyc[i]], VX=X.V||verts(X), F=PS[cyc[j]].faces;
+        for(k=0;k<F.length;k++){
+          var n=F[k].n, lo=1e18, hi=-1e18;
+          VX.forEach(function(v){ var w=n[0]*v[0]+n[1]*v[1]+n[2]*v[2]-F[k].d; if(w<lo) lo=w; if(w>hi) hi=w; });
+          if(lo<-1e-6 && hi>1e-6) return [X,n,F[k].d];
+        }
+      }
+      return null;
+    }
     function orderParts(C){
       for(var attempt=0;attempt<8;attempt++){
         var PS=C.parts, n=PS.length, pe=[], a, b;
@@ -32617,8 +32761,15 @@ function corridorDraw(p,plans,THM,camera){
         if(!K.rest.length) return K.order.map(function(ix){ return PS[ix]; });
         /* split the first part left in the cycle at the plane through its
            centroid normal to the view direction, and sort again */
-        var victim=PS[K.rest[0]], d=FW[0]*victim.ins[0]+FW[1]*victim.ins[1]+FW[2]*victim.ins[2];
-        var halves=splitPart(victim,FW,d).filter(prep);
+        var victim=PS[K.rest[0]], d=FW[0]*victim.ins[0]+FW[1]*victim.ins[1]+FW[2]*victim.ins[2], cutN=FW;
+        /* row 94: at Projection 1 a cycle is cut by a FACE PLANE of one of
+           its own members (Newell's cut), which the plane through a centroid
+           normal to the view need not break: three convex parts can overlap
+           cyclically under parallel rays (the station's footbridge deck over
+           the canopy roof, the canopy in front of the stair housing, the
+           housing in front of the deck -- eight such cuts left it whole) */
+        if(ISO){ var ic=isoCut(PS,K.rest,pe); if(ic){ victim=ic[0]; cutN=ic[1]; d=ic[2]; } }
+        var halves=splitPart(victim,cutN,d).filter(prep);
         C.parts=PS.filter(function(P){ return P!==victim; }).concat(halves);
         splits++;
       }
@@ -32758,7 +32909,7 @@ function corridorDraw(p,plans,THM,camera){
       MKO.order.concat(MKO.rest).forEach(function(ci){
         orderParts(mconts[ci]).forEach(function(P){
           var vis=P.faces.map(function(f){
-            return P.seeThru || f.n[0]*CE[0]+f.n[1]*CE[1]+f.n[2]*CE[2]-f.d>1e-9;
+            return P.seeThru || facing(f);
           });
           var pid=mcommitted.length, pp=[], meta=[];
           mcommitted.push(P);
@@ -32814,6 +32965,11 @@ function corridorDraw(p,plans,THM,camera){
        seamlessly. Its numbers are SALT_RIP's (227); at 0 the sheet wave is
        v277's byte for byte. */
     function groundAt(q){
+      /* row 94: the parallel ray through the sheet point; depth for the
+         ripple's 5 m / depth law is D_EFF, the one scale of the drawing */
+      if(ISO){ var ux=(q[0]-PGW/2)/ISOS, uy=-(q[1]-PGH/2)/ISOS;
+        var O=[ISOC[0]+RT[0]*ux+UP[0]*uy, ISOC[1]+RT[1]*ux+UP[1]*uy, ISOC[2]+RT[2]*ux+UP[2]*uy], tg=(MZ-O[2])/FW[2];
+        return [O[0]+FW[0]*tg, O[1]+FW[1]*tg, D_EFF]; }
       var sx=(q[0]-PGW/2)/(FF*HW), sy=-(q[1]-PGH/2)/(FF*HW);
       var d0=FW[0]+sx*RT[0]+sy*UP[0], d1=FW[1]+sx*RT[1]+sy*UP[1], d2=FW[2]+sx*RT[2]+sy*UP[2];
       if(!(d2<-1e-12)) return null;
@@ -32848,10 +33004,14 @@ function corridorDraw(p,plans,THM,camera){
         return [q[0]+RIPU*(RVAR>0?(1-RVAR)*ripW(q[1],pd)+RVAR*ripNew(q):ripW(q[1],pd)), q[1]]; }):src};
     }
     /* depth of the ground under a sheet point: 1/zc. RT is level, so only y counts */
-    function groundIz(q){ var sy=-(q[1]-PGH/2)/(FF*HW); return -(UP[2]*sy+FW[2])/(CE[2]-MZ); }
+    function groundIz(q){ if(ISO){ var uy=-(q[1]-PGH/2)/ISOS; return 1/(1e5+(MZ-ISOC[2]-UP[2]*uy)/FW[2]); }
+      var sy=-(q[1]-PGH/2)/(FF*HW); return -(UP[2]*sy+FW[2])/(CE[2]-MZ); }
 
     /* ---- commit: front to back, lines first, then the silhouette ----------- */
     var occl=[], preIx=[], srcOf=[], maxz=NEAR;
+    /* row 94: at Projection 1 every depth is about 1e5 m, so `z` runs over the
+       drawing's own range, its nearest drawn depth ISOZN to its farthest */
+    ISOZN=ISO?Infinity:NEAR;
     var committed=[];
     corder.forEach(function(ci){
       var C=live[ci];
@@ -32859,7 +33019,7 @@ function corridorDraw(p,plans,THM,camera){
       var cidx=STRTTALLY.conts.length-1;
       orderParts(C).forEach(function(P){
         var vis=P.faces.map(function(f){
-          return P.seeThru || f.n[0]*CE[0]+f.n[1]*CE[1]+f.n[2]*CE[2]-f.d>1e-9;
+          return P.seeThru || facing(f);
         });
         var pid=committed.length, pp=[], meta=[];
         committed.push(P);
@@ -32879,6 +33039,7 @@ function corridorDraw(p,plans,THM,camera){
           pp.push([[A[0],A[1]],[B[0],B[1]]]);
           meta.push({pre:gi, iza:1/a[2], izb:1/b[2], A:A, B:B, col:Ln.col||P.col, kind:Ln.kind||'edge'});
           if(a[2]>maxz) maxz=a[2]; if(b[2]>maxz) maxz=b[2];
+          if(ISO){ if(a[2]<ISOZN) ISOZN=a[2]; if(b[2]<ISOZN) ISOZN=b[2]; }
         });
         /* A REFLECTION RUN WITH NO LENGTH IS NOT DRAWN (row 53). The clip at a
            water polygon's edge leaves slivers ~1e-13 long, and the occluder
@@ -32927,11 +33088,13 @@ function corridorDraw(p,plans,THM,camera){
 
     /* ---- the page clip, and depth onto the expandos ------------------------ */
     var X0=PAD, Y0=PAD, X1=PGW-PAD, Y1=PGH-PAD, res=[], FARZ=Math.max(maxz,NEAR+1);
+    if(ISO && !(ISOZN<FARZ)) ISOZN=NEAR;
+    var ZNC=ISO?ISOZN:NEAR;
     out.forEach(function(run){
       var cur=null, cz=null;
       function flush(){
         if(cur && cur.length>1){
-          cur.z=cz.map(function(iz){ var zc=1/iz; return 1-Math.max(0,Math.min(1,(zc-NEAR)/(FARZ-NEAR))); });
+          cur.z=cz.map(function(iz){ var zc=1/iz; return 1-Math.max(0,Math.min(1,(zc-ZNC)/(FARZ-ZNC))); });
           cur.zc=cz.map(function(iz){ return 1/iz; });
           cur.pre=run.pre; cur.part=run.part; cur.col=run.col; cur.kind=run.kind;
           if(run.rp!==undefined){ cur.rp=run.rp; cur.pud=run.pud; cur.hero=run.hero; }
@@ -33041,7 +33204,7 @@ function corridorDraw(p,plans,THM,camera){
                   (WMHALF?', water marks halved':'')+
                   (tries>=9?', and the water left unreflected'+((CT.dots||[]).some(function(d){ return d.near; })?', the near particles drawn as dots':''):''):'');
   return res;
-  function KIT(PL){ return {slabPieces:slabPieces, bbHit:bbHit, MINSP:0.7, FW:FW, UP:UP, PAD:PAD, NS:PL.NS, THM:PL.theme||THM, P3:PL.P3, add3:add3, addCable:addCable, cam:cam, dist3:dist3, drawOn:drawOn, faceC:faceC, faceIx:faceIx, frame:PL.frame, hitsAny:hitsAny, inConv:inConv, lateral:PL.lateral, mmPerM:mmPerM, paperGap:paperGap, para:para, polyFromLoops:polyFromLoops, prism:prism, prismN:prismN, splitPart:splitPart, sub:PL.sub, surf:surf, vec:vec, verts:verts, wallOf:wallOf, wp:wp, CANTI:PL.CANTI, CANYON:PL.CANYON, CE:CE, FF:FF, FLOORS:PL.FLOORS, HALFW:PL.HALFW, HW:HW, KERB:PL.KERB, KOFF:PL.KOFF, LEN:PL.LEN, NEAR:NEAR, PBACK:PL.PBACK, RT:RT, SALT_BLD:PL.SALT_BLD, STEPB:PL.STEPB, ZUP:ZUP, cables:cables, conts:conts, lots:PL.lots, slabsBySide:PL.slabsBySide, p:p}; }
+  function KIT(PL){ return {slabPieces:slabPieces, bbHit:bbHit, MINSP:0.7, FW:FW, UP:UP, PAD:PAD, NS:PL.NS, THM:PL.theme||THM, P3:PL.P3, add3:add3, addCable:addCable, cam:camK, dist3:dist3, drawOn:drawOn, faceC:faceC, faceIx:faceIx, frame:PL.frame, hitsAny:hitsAny, inConv:inConv, lateral:PL.lateral, mmPerM:mmPerM, paperGap:paperGap, para:para, polyFromLoops:polyFromLoops, prism:prism, prismN:prismN, splitPart:splitPart, sub:PL.sub, surf:surf, vec:vec, verts:verts, wallOf:wallOf, wp:wp, CANTI:PL.CANTI, CANYON:PL.CANYON, CE:CE, FF:FF, FLOORS:PL.FLOORS, HALFW:PL.HALFW, HW:HW, KERB:PL.KERB, KOFF:PL.KOFF, LEN:PL.LEN, NEAR:NEAR, PBACK:PL.PBACK, RT:RT, SALT_BLD:PL.SALT_BLD, STEPB:PL.STEPB, ZUP:ZUP, cables:cables, conts:conts, lots:PL.lots, slabsBySide:PL.slabsBySide, p:p}; }
 }
 
 /* ---------- 14. MOIRE : swept section along a 3D spine, ONE path ----------
@@ -35552,6 +35715,22 @@ var HELP={
 'chuck.ecc':'Squash of the drawn loop. At 100% it is a circle — and a circle’s ink does not care where it started, so Precession rotates nothing visible and the whole figure comes out exactly mirror-symmetric about the horizontal. That is the symmetry trap: Mirror then adds double ink and no interference. Anything below 100 makes the loop an ellipse that Precession actually turns, which is what makes the figure chiral.',
 'chuck.dphi':'Rotation added to each successive loop’s ellipse, in radians. The precession. Only does anything when Loop ecc is below 100 — with a circle there is nothing to rotate.'
 };
+/* ROW 94: THE ISOMETRIC CAMERA'S SIX KNOBS on every corridor engine, one text
+   each, and a note on the perspective camera's six that Projection 1 does not
+   read -- written once here rather than sixty-six times above */
+(function(){
+  var T={proj:'Perspective (0) or isometric (1). Isometric draws the whole drawing at one scale with parallel rays, seen from Iso turn and Iso tilt and fitted to the plan of lots and road. Detail bands then read the distance at which the perspective lens would draw a metre that size.',
+    isoaz:'Isometric only: the turn of the view in degrees, from looking along the street at its middle. 45 looks diagonally across it, 90 faces one side square on, 180 looks back along it.',
+    isoel:'Isometric only: how steeply the view looks down, in degrees below level. 30 is the isocity angle; 89 is nearly a plan.',
+    zoom:'Isometric only: the scale. 100% fits every lot and road slab, up to the theme’s tallest built height, inside the drawable area. It is fitted to the plan, never to what stands on it, so it does not move when the buildings grow; 200% doubles everything about the centre.',
+    panx:'Isometric only: moves the view across the street, as a share of the plan’s width. Use with Iso zoom.',
+    pany:'Isometric only: moves the view along the street, as a share of the plan’s length. Use with Iso zoom.'};
+  var NR=' Not read at Projection 1 (isometric).';
+  ['strt','mkt','harb','libr','grnh','celr','tori','canal','stn','whse','bagh'].forEach(function(e){
+    for(var k in T) HELP[e+'.'+k]=T[k];
+    ['cams','camx','camz','look','turn','pitch'].forEach(function(k){ var h=HELP[e+'.'+k]; if(h) HELP[e+'.'+k]=h+NR; });
+  });
+})();
 
 /* Which engines actually consult `seed`, and under what settings. Measured against the
    real generators at seeds 41 / 613 / 204; chladni and disc are read from source since
