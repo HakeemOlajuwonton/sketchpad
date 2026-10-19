@@ -438,7 +438,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v335</a> &mdash; Isometric camera on every corridor engine</span></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v336</a> &mdash; Corridor city: a straight grid of Street corridors with junctions</span></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <section class="fold" id="fold_pick"><h2>Pick engine<span class="cnt"></span></h2>
@@ -3437,6 +3437,46 @@ var SPEC={
     ['dnear','Solid detail to',2,80,1,18,[1,' m']],['dfar','Outline detail to',10,400,5,90,[1,' m']],
     ['dpen','Depth pens',0,1,1,0],['dsplit','Depth split',5,300,5,60,[1,' m']],
     ['lod','LOD cutoff',0,60,1,4,[10,' mm']],['budg','Size budget',10,300,5,90,[1,' k points']],
+    ['occ','Gap',0,30,1,4,[10,' mm']]]],
+  /* CORRIDOR CITY, queue row 95 (docs/specs/2026-10-11-corridor-city_v2.md §4.5):
+     the Street's list less Street length and Bend (the grid sets both), the
+     grid's six first, isometric by default, a city from above with no
+     puddles, particles or graffiti; the camera reaches 600 m and looks
+     straight down at Projection 0 */
+  town:['Corridor city',[
+    ['rows','Rows',2,8,1,4],['rowsp','Block depth',30,120,1,60,[1,' m']],
+    ['xblk','Block length',40,240,5,90,[1,' m']],['nlen','City length',100,800,10,320,[1,' m']],
+    ['xwidth','Cross street',4,16,0.5,7,[1,' m']],['layout','Layout',0,99,1,0],
+    ['width','Road width',4,24,0.5,9,[1,' m']],['pave','Pavement',0,6,0.25,2.5,[1,' m']],
+    ['lotmin','Lot min',3,20,0.5,5,[1,' m']],['lotmax','Lot max',4,40,0.5,16,[1,' m']],
+    ['alley','Alley chance',0,60,1,14,[100,'%']],['floors','Storeys',1,40,1,9],
+    ['stepb','Step-back',0,60,1,18,[100,'%']],
+    ['canti','Cantilever',0,60,1,14,[100,'%']],['fire','Fire escapes',0,100,1,25,[100,'%']],
+    ['glow','Lit windows',0,100,1,22,[100,'%']],['uvar','Upper variety',0,100,1,55,[100,'%']],
+    ['shopv','Shop variety',0,100,1,60,[100,'%']],['props','Pavement clutter',0,100,1,40,[100,'%']],
+    ['signs','Signs',0,100,1,55,[100,'%']],
+    ['neon','Neon',0,100,1,60,[100,'%']],
+    ['lang','Script',0,3,1,0],
+    ['cables','Cables',0,100,1,45,[100,'%']],['sag','Cable sag',0,30,1,6,[100,'%']],
+    ['cars','Cars',0,20,1,6,[1,'/100 m']],
+    ['puddles','Puddles',0,40,1,0],['pudsz','Puddle size',5,100,1,40,[100,'%']],
+    ['ripple','Ripple',0,30,1,6,[10,' mm']],
+    ['hero','Front puddle',0,100,1,0,[100,'%']],
+    ['hstr','Front puddle stretch',-100,100,1,0,[100,'%']],['hrag','Front puddle edge',0,100,1,50,[100,'%']],['hturn','Front puddle turn',-45,45,1,0,[1,'°']],['hshape','Front puddle shape',0,99,1,0],
+    ['rvar','Ripple variety',0,100,1,60,[100,'%']],
+    ['wmk','Water marks',0,100,1,40,[100,'%']],['wglint','Glint gap',0,15,1,5,[10,' mm']],
+    ['dots','Particles',0,3000,10,0],['pnear','Particles near',0,100,1,0,[100,'%']],['graff','Graffiti',0,100,1,0,[100,'%']],
+    ['hatch','Tone hatch',0,100,1,55,[100,'%']],['hatchmode','Hatch spacing',0,1,1,0],
+    ['sun','Light from',0,359,1,300,[1,'°']],
+    ['cams','Camera along',0,100,1,0,[100,'%']],['camx','Camera side',-100,100,1,-100,[100,'%']],
+    ['camz','Camera height',0.2,600,0.1,120,[1,' m']],['look','Look ahead',5,600,1,200,[1,' m']],['turn','Turn',-90,90,1,30,[1,'°']],
+    ['pitch','Pitch',-89,45,0.5,-35,[1,'°']],['fov','Field of view',25,120,1,72,[1,'°']],
+    ['proj','Projection',0,1,1,1],['isoaz','Iso turn',-180,180,1,45,[1,'°']],['isoel','Iso tilt',10,89,1,30,[1,'°']],
+    ['zoom','Iso zoom',10,800,1,100,[100,'%']],['panx','Iso pan across',-100,100,1,0,[100,'%']],['pany','Iso pan along',-100,100,1,0,[100,'%']],
+    ['dnear','Solid detail to',2,80,1,18,[1,' m']],['dfar','Outline detail to',10,400,5,90,[1,' m']],
+    ['dpen','Depth pens',0,1,1,0],['dsplit','Depth split',5,300,5,60,[1,' m']],
+    ['mono','Colour only in reflections',0,2,1,0],
+    ['lod','LOD cutoff',0,60,1,4,[10,' mm']],['budg','Size budget',10,300,5,300,[1,' k points']],
     ['occ','Gap',0,30,1,4,[10,' mm']]]],
   /* WAREHOUSE, queue row 90 (docs/specs/2026-10-11-whse-bagh-corridor-themes.md §1):
      an aisle between selective pallet racking, under a roof on trusses */
@@ -17339,7 +17379,7 @@ function buildIsoImg(p){
 
 var ENG={record:buildRecord, flow:buildFlow, growth:buildGrowth, contour:buildContour, ridge:buildRidge,
          pack:buildPack, voronoi:buildVoronoi, truchet:buildTruchet, maze:buildMaze, hilbert:buildHilbert,
-         rows:buildRows, poin:buildPoincare, flag:buildFlag, stat:buildStation, fact:buildFactory, strt:buildStreet, mkt:buildMarket, harb:buildHarbour, libr:buildLibrary, grnh:buildGreenhouse, celr:buildCellar, tori:buildShrine, canal:buildCanal, stn:buildTrainStation, whse:buildWarehouse, bagh:buildBaggage,
+         rows:buildRows, poin:buildPoincare, flag:buildFlag, stat:buildStation, fact:buildFactory, strt:buildStreet, mkt:buildMarket, harb:buildHarbour, libr:buildLibrary, grnh:buildGreenhouse, celr:buildCellar, tori:buildShrine, canal:buildCanal, stn:buildTrainStation, town:buildTown, whse:buildWarehouse, bagh:buildBaggage,
          harmo:buildHarmo, chladni:buildChladni, moire:buildMoire, disc:buildChladniDisc, fan:buildFan,
   string:buildString, fermat:buildFermat, logsp:buildLogSpiral, chuck:buildChuck,
          apoll:buildApollonian, wave:buildWave, sform:buildSuper,
@@ -21700,6 +21740,13 @@ var STHEMES={
          return hero && oc-o0>=1.0?[o0,oc]:[o0,o1]; },
        flags:{poles:false, roadMarks:false, bollards:false, manholes:false},
        content:function(K){ return trainTheme(K); }},
+  /* row 95 (docs/specs/2026-10-11-corridor-city_v2.md §4): CORRIDOR CITY. The
+     Street's content on every corridor of a straight grid (buildTown); a city
+     seen from above has no far end, so Canyon rise is pinned off */
+  town:{key:'town', label:'Corridor city', lotDepth:[8,20], alleyW:[1.2,2.5], baseN2:0.35, baseH:[3.6,4.5],
+        midH:[2.8,3.2], edgeZ:0.15, slabLen:4, clear:4.5, ztop:200, mirror:'puddles', zfit:40, minLen:10,
+        fixed:{canyon:0},
+        content:function(K){ return streetTheme(K); }},
   /* row 90 (whse-bagh §1): a tall aisle between pallet racking, a rack bay for
      a lot, a roof on every container, floor shine. minEnv is the depth a bay
      needs for both frames' pallets (2 x 1.202 m), so a bay a bend pushes back
@@ -21736,6 +21783,144 @@ function buildCellar(p){ return buildCorridor(p,STHEMES.celr); }
 function buildShrine(p){ return buildCorridor(p,STHEMES.tori); }
 function buildCanal(p){ return buildCorridor(p,STHEMES.canal); }
 function buildTrainStation(p){ return buildCorridor(p,STHEMES.stn); }
+/* ROW 95 (docs/specs/2026-10-11-corridor-city_v2.md §4): CORRIDOR CITY `town`.
+   A STRAIGHT grid (Albert, v2: "not everything needs to be winding, just the
+   items that reach across"): `rows` streets along +u, Block depth apart, the
+   full City length; cross streets along +v every Block length, spanning the
+   outer rows. EVERY GRID LINE IS A CORRIDOR PLAN (row 93) with the Street's
+   content, row j as ix j and cross line i as ix 100+i, so each draws its own
+   numbers. Where two meet, a JUNCTION container -- the rectangle bounded by
+   both corridors' kerb strips -- owns the road: each plan's slabs are cut at
+   its edge (sGaps), nothing of a street's is placed in it, and it carries
+   only its corner kerbs; the crosswalks and stop lines stand on the approach
+   slabs just outside it. An OUTER row's outward side runs on through (a T
+   junction owns only its inner side), and so do its lots. Lots are the
+   Street's (Lot min / Lot max / Alley chance), walked along each row side
+   between the cross streets (lotGaps), their depth capped so lots facing two
+   rows meet back to back with a gap. Cross streets carry no lots: their
+   frontage is the corner lots' side walls. The order needs no change: any
+   disjoint convex prisms are ordered exactly by a plan separating line, from
+   an eye at a point or at infinity (spec §1.2). */
+function townGrid(p){
+  var ROWS=Math.max(2,Math.min(8,Math.round(isFinite(p.rows)?+p.rows:4)));
+  var RSP=Math.max(30,Math.min(120,isFinite(p.rowsp)?+p.rowsp:60));
+  var XBLK=Math.max(40,Math.min(240,isFinite(p.xblk)?+p.xblk:90));
+  var NLEN=Math.max(100,Math.min(800,isFinite(p.nlen)?+p.nlen:320));
+  var XW=Math.max(4,Math.min(16,isFinite(p.xwidth)?+p.xwidth:7));
+  var WID=Math.max(4,isFinite(p.width)?+p.width:9), PAVE=Math.max(0,isFinite(p.pave)?+p.pave:2.5);
+  var STRIP=0.3, KR=WID/2+STRIP, KX=XW/2+STRIP, PBX=XW/2+PAVE, CSET=0.5;
+  /* the cross streets from the city's start, half a block in, so a longer
+     city keeps every lot it had (L4) and only adds blocks at its far end */
+  var NX=Math.max(1,Math.floor(NLEN/XBLK)), U0=XBLK/2, UX=[], i, j;
+  for(i=0;i<NX;i++) UX.push(U0+i*XBLK);
+  var VY=[]; for(j=0;j<ROWS;j++) VY.push(j*RSP);
+  return {ROWS:ROWS, RSP:RSP, XBLK:XBLK, NLEN:NLEN, XW:XW, WID:WID, PAVE:PAVE, KR:KR, KX:KX, PBX:PBX, CSET:CSET, UX:UX, VY:VY,
+          SPAN:(ROWS-1)*RSP, DCAP:RSP/2-(WID/2+PAVE)-0.5};
+}
+function buildTown(p){
+  var THM=STHEMES.town; p=corridorKnobs(p,THM);
+  var G=townGrid(p), UX=G.UX, VY=G.VY, plans=[], i, j;
+  /* the rows: a junction cuts only the sides that face another row */
+  for(j=0;j<G.ROWS;j++){
+    var gx=UX.map(function(u){ return [u-G.KX,u+G.KX]; });
+    var lg=UX.map(function(u){ return [u-G.PBX-G.CSET,u+G.PBX+G.CSET]; });
+    var inL=j<G.ROWS-1, inR=j>0;
+    plans.push(corridorPlan(Object.assign({},p,{len:G.NLEN, bend:0}),THM,j,
+      {line:{x:0, y:VY[j], h:0}, sGaps:{'1':inL?gx:[], '-1':inR?gx:[]},
+       lotGaps:{'1':inL?lg:[], '-1':inR?lg:[]}, depthCap:G.DCAP}));
+  }
+  /* the cross streets, from the first row's centreline to the last's */
+  for(i=0;i<UX.length;i++){
+    var cg=VY.map(function(v){ return [v-G.KR,v+G.KR]; });
+    plans.push(corridorPlan(Object.assign({},p,{len:G.SPAN, bend:0, width:G.XW}),THM,100+i,
+      {line:{x:UX[i], y:0, h:Math.PI/2}, sGaps:cg, noLots:true}));
+  }
+  /* the junctions: kind 'junction', in no corridor's plan */
+  var J=[];
+  for(j=0;j<G.ROWS;j++) for(i=0;i<UX.length;i++){
+    var v0=j>0?VY[j]-G.KR:VY[j], v1=j<G.ROWS-1?VY[j]+G.KR:VY[j];
+    var Q=[[UX[i]-G.KX,v0],[UX[i]+G.KX,v0],[UX[i]+G.KX,v1],[UX[i]-G.KX,v1]];
+    J.push({kind:'junction', row:j, cross:i, poly:Q, bb:[Q[0][0],Q[0][1],Q[2][0],Q[2][1]], parts:[]});
+  }
+  var JT={key:'town', content:function(K){ return townJunctions(K,G,plans.slice(0,G.ROWS+UX.length),J); }};
+  plans.push({ix:-1, p:p, theme:JT, sGaps:[], hasGap:false, Z0:0, conts:J, lots:[], slabsBySide:{'1':[],'-1':[]},
+              dropped:0, pushed:0});
+  /* the camera: isometric about the grid's middle, turned from +u; the
+     perspective eye at Camera along (a share of City length) and Camera side
+     (-100 the first row, 100 the last), aimed along +u before Turn and Pitch */
+  var CS=(isFinite(p.cams)?+p.cams:0)/100, CXs=(isFinite(p.camx)?+p.camx:-100)/100;
+  var CZ=Math.max(0.2,isFinite(p.camz)?+p.camz:120), LK=Math.max(5,+p.look||200);
+  var ce=[CS*G.NLEN, (CXs+1)/2*G.SPAN, CZ];
+  var res=corridorDraw(p,plans,THM,{O:[G.NLEN/2,G.SPAN/2], th:0, CE:ce, TG:[ce[0]+LK,ce[1],CZ]});
+  /* for strtcheck.js L46: the grid, the junctions, and each corridor's line */
+  STRTTALLY.town={G:G, J:J.map(function(C){ return {row:C.row, cross:C.cross, poly:C.poly, n:C.parts.length}; }),
+    plans:plans.slice(0,G.ROWS+UX.length).map(function(PLk,k){ return {ix:PLk.ix, row:k<G.ROWS, HALFW:PLk.HALFW, KOFF:PLk.KOFF, PBACK:PLk.PBACK,
+      LEN:PLk.LEN, sGaps:PLk.sGaps, lots:PLk.lots.length, SX:[PLk.SX[0],PLk.SX[PLk.NS-1]], SY:[PLk.SY[0],PLk.SY[PLk.NS-1]], NS:PLk.NS,
+      line:Array.prototype.slice.call(PLk.SX,0,Math.ceil(PLk.LEN/PLk.DS)+1).map(function(x,m){ return [x,PLk.SY[m]]; })}; })};
+  return res;
+}
+/* the junctions' own dressing (row 95 §4.2): each one's corner kerb lines on
+   a road plate that hides nothing, and on each approach slab just outside it
+   a crosswalk and, on the lane that drives INTO the junction, a stop line --
+   in that slab's container, cut at its cell faces like the Street's zebra.
+   Traffic keeps left, as the Street's cars do: side 1 drives toward +s. */
+function townJunctions(K,G,plans,J){
+  var prism=K.prism, paperGap=K.paperGap, COL='#1a1a1a', ZL=3.0, STOP=0.5;
+  function plate(C){ var Pl=prism(C.poly.map(function(q){ return [q[0],q[1]]; }),-0.02,0);
+    Pl.lines=[]; Pl.hides=false; Pl.cont=C; Pl.col=COL; Pl.kind='plate'; Pl.layer='furn'; C.parts.push(Pl); return Pl; }
+  /* the lines of one approach painted on a plan's slabs over [sa,sb] on side sd */
+  function paint(PLk,sd,sa,sb,fn){
+    for(var k=Math.floor(sa/4);k*4<sb;k++){
+      var C=PLk.slabsBySide[sd][k]; if(!C) continue;
+      var a=Math.max(sa,C.s0), b=Math.min(sb,C.s1); if(b-a<1e-6) continue;
+      /* a ground plate like the Street's road plate: it lies IN the water, so
+         the mirror skips it by its kind */
+      var Pl=null; fn(a,b,function(A,B,kind){ if(!Pl) Pl=plate(C); Pl.lines.push({a:A, b:B, f0:1, f1:1, kind:kind}); });
+    }
+  }
+  /* edge: the junction's edge on this plan, dir: +1 when the approach lies at s > edge */
+  function approach(PLk,edge,dir,df){
+    var P3=PLk.P3, HW=PLk.HALFW, sa=dir>0?edge:edge-ZL, sb=dir>0?edge+ZL:edge;
+    /* a city is seen whole, so the crossing is drawn at every distance, as
+       stripes when a metre is 1.4 mm or more across the stripes on the sheet
+       and as its two edges when it is less */
+    var mid=P3((sa+sb)/2,1,0,0), F=PLk.frame((sa+sb)/2);
+    var gp=paperGap(mid,[F[2],F[3],0],[-F[3],F[2],0]);
+    [1,-1].forEach(function(sd){
+      paint(PLk,sd,sa,sb,function(a,b,ln){
+        if(gp>=1.4) for(var o=0.4;o+0.5<=HW-0.2;o+=1.0){
+          ln(P3(a,sd,o,0),P3(b,sd,o,0),'zebra'); ln(P3(a,sd,o+0.5,0),P3(b,sd,o+0.5,0),'zebra');
+          if(Math.abs(a-sa)<1e-9) ln(P3(a,sd,o,0),P3(a,sd,o+0.5,0),'zebra');
+          if(Math.abs(b-sb)<1e-9) ln(P3(b,sd,o,0),P3(b,sd,o+0.5,0),'zebra');
+        } else {
+          /* too fine to stripe on the sheet: the crossing's two edges */
+          if(Math.abs(a-sa)<1e-9) ln(P3(a,sd,0.2,0),P3(a,sd,HW-0.2,0),'zebra');
+          if(Math.abs(b-sb)<1e-9) ln(P3(b,sd,0.2,0),P3(b,sd,HW-0.2,0),'zebra');
+        }
+      });
+    });
+    /* the stop line: traffic on side 1 drives toward +s, so it meets the
+       approach that lies BELOW the edge; side -1 the one above */
+    var sdS=dir>0?-1:1, ss=dir>0?edge+ZL+STOP:edge-ZL-STOP;
+    paint(PLk,sdS,ss-0.15,ss+0.15,function(a,b,ln){ if(ss>=a-1e-9 && ss<=b+1e-9) ln(P3(ss,sdS,0.1,0),P3(ss,sdS,HW-0.1,0),'stopline'); });
+  }
+  function furnish(dn,df){
+    J.forEach(function(C){
+      var Pl=plate(C), R=plans[C.row], X=plans[G.ROWS+C.cross], u=G.UX[C.cross], v=G.VY[C.row];
+      /* the corner kerbs: where each row kerb meets its cross street's */
+      [1,-1].forEach(function(su){ [1,-1].forEach(function(sv){
+        var vk=v+sv*R.HALFW, uk=u+su*X.HALFW;
+        if(sv>0?C.poly[2][1]<v+G.KR-1e-9:C.poly[0][1]>v-G.KR+1e-9) return;
+        Pl.lines.push({a:[u+su*G.KX,vk,0], b:[uk,vk,0], f0:1, f1:1, kind:'kerb'});
+        Pl.lines.push({a:[uk,vk,0], b:[uk,v+sv*G.KR,0], f0:1, f1:1, kind:'kerb'});
+      }); });
+      approach(R,u-G.KX,-1,df); approach(R,u+G.KX,1,df);
+      if(C.row>0) approach(X,v-G.KR,-1,df);
+      if(C.row<G.ROWS-1) approach(X,v+G.KR,1,df);
+    });
+  }
+  return {dress:function(){}, signsFor:function(){}, furnish:furnish, cars:[], dots:[], poles:[]};
+}
 function buildWarehouse(p){ return buildCorridor(p,STHEMES.whse); }
 /* row 91: the eye stays under the ceiling (Camera height is 0.2 -> Ceiling - 0.4) */
 function buildBaggage(p){
@@ -29287,6 +29472,12 @@ function streetTheme(K){
   var THM=K.THM, P3=K.P3, add3=K.add3, addCable=K.addCable, cam=K.cam, dist3=K.dist3, drawOn=K.drawOn, faceC=K.faceC, faceIx=K.faceIx, frame=K.frame, hitsAny=K.hitsAny, inConv=K.inConv, lateral=K.lateral, mmPerM=K.mmPerM, paperGap=K.paperGap, para=K.para, polyFromLoops=K.polyFromLoops, prism=K.prism, prismN=K.prismN, splitPart=K.splitPart, sub=K.sub, surf=K.surf, vec=K.vec, verts=K.verts, wallOf=K.wallOf, wp=K.wp, CANTI=K.CANTI, CANYON=K.CANYON, CE=K.CE, FF=K.FF, FLOORS=K.FLOORS, HALFW=K.HALFW, HW=K.HW, KERB=K.KERB, KOFF=K.KOFF, LEN=K.LEN, NEAR=K.NEAR, PBACK=K.PBACK, RT=K.RT, SALT_BLD=K.SALT_BLD, STEPB=K.STEPB, ZUP=K.ZUP, cables=K.cables, conts=K.conts, lots=K.lots, slabsBySide=K.slabsBySide, p=K.p,
       FW=K.FW, UP=K.UP, PAD=K.PAD, SLAB=THM.slabLen;
   var i, j, k, FL=THM.flags||{}, SALT_GOODS=151, SALT_ARCH=311, SALT_LEAF=313, COL_LEAF='#1e5a32';
+  /* ROW 95: where a junction owns the road (K.sGaps, per side) nothing of
+     this street's is placed -- a car or a pole is refused WHOLE, never left
+     half-built for slabPieces to cut. Absent, never true. */
+  var GAPS=K.hasGap?(Array.isArray(K.sGaps)?{'1':K.sGaps,'-1':K.sGaps}:K.sGaps):null;
+  function inGapS(sd,a,b){ if(!GAPS) return false; var G=GAPS[sd]||[];
+    for(var g=0;g<G.length;g++) if(a<G[g][1] && b>G[g][0]) return true; return false; }
   /* ---- §2.4 the box stack. Every storey draws the SAME number of values
      whatever the knobs say, so moving Step-back or Cantilever changes which
      storeys move and never which numbers the next storey reads. */
@@ -30355,6 +30546,7 @@ function streetTheme(K){
       if(sbE-sa<1) continue;
       if(s-sa<0.3) s=sa+0.3; else if(sbE-s<0.3) s=sbE-0.3;
       if(s>LEN-1) continue;
+      if(inGapS(PSIDE,s-0.6,s+0.6)) continue;
       poles.push({s:s, side:PSIDE, h:ph, slab:Math.floor(s/4), arm:true});
     }
   }
@@ -30383,6 +30575,7 @@ function streetTheme(K){
       var len=rng(CD.len,ul), wid=rng(CD.wid,uw), s=3+6*k+(uj-0.5), mode=um<0.65?'park':'lane';
       if(!(u<CARS*0.03)) continue;
       if(s-len/2<0.5 || s+len/2>LEN-0.5) continue;
+      if(inGapS(sd,s-len/2-0.6,s+len/2+0.6)) continue;
       /* a mirror stands 0.25 m off each side, and must stay in its own slab:
          clear of the centreline by 0.05 m */
       var oc=HALFW-0.25-wid/2;
@@ -30679,8 +30872,11 @@ function streetTheme(K){
     Pt.lines.forEach(function(Ln){ Ln.kind=kind; });
     C.parts.push(Pt); return Pt;
   }
+  /* this plan's own slabs, in the order the kit laid them: in a network the
+     shared container list holds every corridor's */
+  var MYSLABS=[]; [1,-1].forEach(function(sd){ slabsBySide[sd].forEach(function(C){ MYSLABS.push(C); }); });
   function furnish(dn,df,step){
-    conts.forEach(function(C){
+    MYSLABS.forEach(function(C){
       if(C.kind!=='slab') return;
       var sd=C.side, k=Math.round(C.s0/4);
       var Q=[P3(C.s0,sd,0,0),P3(C.s1,sd,0,0),P3(C.s1,sd,HALFW,0),P3(C.s0,sd,HALFW,0)].map(function(v){ return [v[0],v[1]]; });
@@ -31156,7 +31352,13 @@ function corridorPlan(p,THM,ix,hooks){
      target always has road under it. */
   var NS=Math.ceil((LEN+LOOK+40)/DS)+1;
   var SX=new Float64Array(NS), SY=new Float64Array(NS), SH=new Float64Array(NS);
-  {
+  /* ROW 95, hooks.line {x,y,h}: a STRAIGHT centreline from (x,y) at heading h,
+     sampled every DS exactly as the spline is, so frame and P3 run unchanged
+     (a town's grid street). Absent, the spline below. */
+  if(hooks.line){
+    var LX=hooks.line.x, LY=hooks.line.y, LH=hooks.line.h, LC=Math.cos(LH), LS=Math.sin(LH);
+    for(i=0;i<NS;i++){ SX[i]=LX+LC*i*DS; SY[i]=LY+LS*i*DS; SH[i]=LH; }
+  } else {
     var rs=sub(0,0,SALT_SPLINE), kap=0, left=15+rs()*25, hd=0, kmax=BEND*Math.PI/180/100;
     SX[0]=0; SY[0]=0; SH[0]=0;
     for(i=1;i<NS;i++){
@@ -31177,6 +31379,7 @@ function corridorPlan(p,THM,ix,hooks){
      height z. Positions and headings interpolate linearly between stations,
      so two lots that share an arc position share their side line EXACTLY. */
   function frame(s){
+    if(hooks.line){ var hl=hooks.line, hc=Math.cos(hl.h), hs=Math.sin(hl.h); return [hl.x+hc*s, hl.y+hs*s, hc, hs]; }
     var u=s/DS, i0=Math.max(0,Math.min(NS-2,Math.floor(u))), f=u-i0;
     var x=SX[i0]+(SX[i0+1]-SX[i0])*f, y=SY[i0]+(SY[i0+1]-SY[i0])*f;
     var h=SH[i0]+(SH[i0+1]-SH[i0])*f;
@@ -31218,18 +31421,33 @@ function corridorPlan(p,THM,ix,hooks){
 
   /* ROW 93, hooks.sGaps: s intervals where this corridor lays no slab (a
      junction owns them). Absent, [] -- the test never runs */
+  /* ROW 95: per side, as {'1':[..],'-1':[..]} -- a T junction owns one side of
+     the outer row and not the other. A gap CUTS the slab at its edge: the piece
+     outside stays a slab, the piece inside is not laid, and slabsBySide[sd][k]
+     stays the slab of cell k (k = floor(s/SLAB)) so every theme's lookup by
+     cell still finds it -- a hole where a cell is wholly in a gap. A gap is
+     wider than a slab, so a cell is never cut in two. */
   var SGAPS=hooks.sGaps||[];
-  function inGap(a,b){ for(var g=0;g<SGAPS.length;g++) if(a<SGAPS[g][1]-1e-9 && b>SGAPS[g][0]+1e-9) return true; return false; }
+  var SGS=Array.isArray(SGAPS)?{'1':SGAPS,'-1':SGAPS}:{'1':SGAPS['1']||[],'-1':SGAPS['-1']||[]};
+  var HASGAP=SGS['1'].length+SGS['-1'].length>0;
   /* ---- §2.3 road slabs: 4 m of carriageway, kerb and the first 0.3 m of
      pavement, one per side of the centreline. */
   var conts=[], slabsBySide={'1':[],'-1':[]};
   [1,-1].forEach(function(sd){
     for(var sa=0;sa<LEN-1e-9;sa+=SLAB){
-      var sb=Math.min(LEN,sa+SLAB);
-      if(SGAPS.length && inGap(sa,sb)) continue;
-      var Q=[P3(sa,sd,0,0),P3(sb,sd,0,0),P3(sb,sd,KOFF,0),P3(sa,sd,KOFF,0)].map(function(v){return [v[0],v[1]];});
-      var C={kind:'slab', side:sd, s0:sa, s1:sb, poly:Q, bb:bbox2(Q), parts:[]};
-      conts.push(C); slabsBySide[sd].push(C);
+      var sb=Math.min(LEN,sa+SLAB), a=sa, b=sb;
+      if(HASGAP){
+        var G=SGS[sd], g;
+        for(g=0;g<G.length;g++){
+          if(G[g][0]<=a+1e-9 && G[g][1]>a) a=G[g][1];
+          if(G[g][1]>=b-1e-9 && G[g][0]<b) b=G[g][0];
+        }
+        if(b-a<0.05) continue;
+      }
+      var Q=[P3(a,sd,0,0),P3(b,sd,0,0),P3(b,sd,KOFF,0),P3(a,sd,KOFF,0)].map(function(v){return [v[0],v[1]];});
+      var C={kind:'slab', side:sd, s0:a, s1:b, poly:Q, bb:bbox2(Q), parts:[]};
+      conts.push(C);
+      if(HASGAP) slabsBySide[sd][Math.round(sa/SLAB)]=C; else slabsBySide[sd].push(C);
     }
   });
 
@@ -31237,7 +31455,14 @@ function corridorPlan(p,THM,ix,hooks){
      length. The lot's numbers come from its own substream keyed on
      (side, index), so a lot is the same lot whatever LEN is. */
   var lots=[], dropped=0, pushed=0;
-  [1,-1].forEach(function(sd){
+  /* ROW 95: hooks.noLots -- a corridor with no frontage of its own (a town's
+     cross street); hooks.lotGaps {'1':[[b0,b1],..],..} -- back-edge arc
+     lengths where no lot may stand (a cross street and its pavement): a lot
+     that would reach into one ENDS at it when Lot min still fits, else it
+     starts past it; hooks.depthCap -- the deepest a lot may be, so lots facing
+     two rows meet back to back with a gap. Each absent = as before. */
+  var LGAPS=hooks.lotGaps||null, DCAP=isFinite(hooks.depthCap)?hooks.depthCap:Infinity;
+  if(!hooks.noLots) [1,-1].forEach(function(sd){
     var cum=[0], m;
     var nb=Math.floor(LEN/DS);
     var prev=P3(0,sd,PBACK,0);
@@ -31262,6 +31487,16 @@ function corridorPlan(p,THM,ix,hooks){
       var LGX=null;
       if(THM.lotGen){ LGX=THM.lotGen(R,p,li,sd); wl=LGX.wl; depth=LGX.depth; }
       var b0=cursor, b1=cursor+wl;
+      if(depth>DCAP) depth=DCAP;
+      if(LGAPS && LGAPS[sd]){
+        var LG=LGAPS[sd], moved=true, gq;
+        while(moved){ moved=false;
+          for(gq=0;gq<LG.length;gq++) if(b0<LG[gq][1] && b1>LG[gq][0]){
+            if(LG[gq][0]-b0>=LOTMIN) b1=LG[gq][0]; else { b0=LG[gq][1]; b1=b0+wl; }
+            moved=true; break;
+          }
+        }
+      }
       /* ROW 85: a theme whose lots must reach the street's end (a platform
          has no hole in it) widens the last lot to the end, or the one before
          it when what would be left is narrower than Building min */
@@ -31281,6 +31516,7 @@ function corridorPlan(p,THM,ix,hooks){
         if(FE>=BK-(THM.minEnv!==undefined?THM.minEnv:4) || !convex(env)){ env=null; break; }
         var hit=false, eb=bbox2(env), sl=slabsBySide[sd], q;
         for(q=0;q<sl.length;q++){
+          if(!sl[q]) continue;
           if(sl[q].s1<s0-4.5||sl[q].s0>s1+4.5) continue;
           if(bbHit(eb,sl[q].bb) && polyOverlap(env,sl[q].poly)){ hit=true; break; }
         }
@@ -31314,7 +31550,7 @@ function corridorPlan(p,THM,ix,hooks){
 
   /* the knobs every plan reads from the same p ride on the plan, so the draw
      takes them from it rather than parsing p a second time */
-  return {ix:ix, p:p, theme:hooks.theme, sGaps:SGAPS, Z0:hooks.Z0||0,
+  return {ix:ix, p:p, theme:hooks.theme, sGaps:SGAPS, hasGap:HASGAP, Z0:hooks.Z0||0,
           LEN:LEN, BEND:BEND, WID:WID, PAVE:PAVE, LOTMIN:LOTMIN, LOTMAX:LOTMAX, ALLEY:ALLEY, FLOORS:FLOORS, CANYON:CANYON, STEPB:STEPB, CANTI:CANTI, CAMS:CAMS, CAMX:CAMX, CAMZ:CAMZ, LOOK:LOOK, PITCH:PITCH, TURN:TURN, FOV:FOV, LODMM:LODMM, GAP:GAP, PAD:PAD, NEAR:NEAR, KERB:KERB, DS:DS, ZTOP:ZTOP, SLAB:SLAB, HALFW:HALFW, KOFF:KOFF, PBACK:PBACK, SALT_BLD:SALT_BLD, NS:NS, SX:SX, SY:SY, SH:SH, frame:frame, P3:P3, sub:sub, lateral:lateral, polyOverlap:polyOverlap, convex:convex, bbox2:bbox2, bbHit:bbHit, conts:conts, slabsBySide:slabsBySide, lots:lots, dropped:dropped, pushed:pushed};
 }
 function corridorDraw(p,plans,THM,camera){
@@ -31335,7 +31571,12 @@ function corridorDraw(p,plans,THM,camera){
     PLk.lots.forEach(function(L){ lots.push(L); });
     dropped+=PLk.dropped; pushed+=PLk.pushed;
   });
-  var NOHOME=plans.some(function(PLk){ return PLk.sGaps.length>0; })?0:null;
+  var NOHOME=plans.some(function(PLk){ return PLk.hasGap; })?0:null;
+  /* ROW 95: which plan each container is laid along, for what the draw itself
+     builds on a lot or a slab (block stacks, kerbs, a street face's frame). One
+     plan: every lookup misses and reads the first plan's, as before. */
+  var CPL=new Map(); if(plans.length>1) plans.forEach(function(PLk){ PLk.conts.forEach(function(C){ CPL.set(C,PLk); }); });
+  function PLof(C){ return CPL.get(C)||PL; }
 
   /* ---- the camera, §3.1 --------------------------------------------------- */
   var sC=CAMS*LEN;
@@ -31344,6 +31585,9 @@ function corridorDraw(p,plans,THM,camera){
      station's eye stands on its platform); absent, HALFW+0 is HALFW exactly */
   var CREACH=THM.camReach?THM.camReach(p):0;
   var CE=P3(sC,1,CAMX*(HALFW+CREACH),CAMZ), TG=P3(sC+LOOK,1,0,CAMZ);
+  /* ROW 95: a network's camera is placed by the network (camera.CE, camera.TG
+     for the perspective eye; camera.O, camera.th for the isometric frame) */
+  if(camera && camera.CE){ CE=camera.CE; TG=camera.TG; }
   var fx=TG[0]-CE[0], fy=TG[1]-CE[1], fl=Math.hypot(fx,fy)||1;
   fx/=fl; fy/=fl;
   /* ROW 72, TURN: the plan direction rotated after it is normalised and before
@@ -31389,7 +31633,7 @@ function corridorDraw(p,plans,THM,camera){
     var IAZ=(isFinite(p.isoaz)?+p.isoaz:45)*Math.PI/180, IEL=Math.max(10,Math.min(89,isFinite(p.isoel)?+p.isoel:30))*Math.PI/180;
     var ZOOM=Math.max(10,Math.min(800,isFinite(p.zoom)?+p.zoom:100))/100;
     var PANX=Math.max(-1,Math.min(1,(isFinite(p.panx)?+p.panx:0)/100)), PANY=Math.max(-1,Math.min(1,(isFinite(p.pany)?+p.pany:0)/100));
-    var Fc=frame(LEN/2), th0=Math.atan2(Fc[3],Fc[2])+IAZ;
+    var Fc=camera&&camera.O?[camera.O[0],camera.O[1],Math.cos(camera.th),Math.sin(camera.th)]:frame(LEN/2), th0=Math.atan2(Fc[3],Fc[2])+IAZ;
     fx=Math.cos(th0); fy=Math.sin(th0); SINEL=Math.sin(IEL);
     FW=[fx*Math.cos(IEL), fy*Math.cos(IEL), -SINEL];
     RT=[FW[1], -FW[0], 0]; rl=Math.hypot(RT[0],RT[1])||1; RT=[RT[0]/rl, RT[1]/rl, 0];
@@ -31522,6 +31766,7 @@ function corridorDraw(p,plans,THM,camera){
   /* the frame of a block's street face: origin at its s0 corner on the
      ground, t along the face, n out toward the street, length W */
   function wallOf(L,B){
+    var P3=PLof(L).P3;
     var A=P3(L.s0,L.side,B.fr,0), Bq=P3(L.s1,L.side,B.fr,0);
     var tx=Bq[0]-A[0], ty=Bq[1]-A[1], W=Math.hypot(tx,ty)||1;
     var t=[tx/W,ty/W,0], n=[t[1],-t[0],0];
@@ -31840,6 +32085,8 @@ function corridorDraw(p,plans,THM,camera){
       sdP=oG>=0?1:-1; slP=slabsBySide[sdP]; pvO=Math.abs(oG);
     }
     var CP=slP[Math.max(0,Math.min(slP.length-1,Math.floor(sPd/SLAB)))];
+    /* row 95: a cell a junction owns has no slab -- the puddle is refused */
+    if(!CP){ prej++; continue; }
     var lenP=Math.min(CP.s1-CP.s0-0.3,(0.7+3.1*PUDSZ)*(0.6+0.4*ud[2]));
     var widP=Math.min(HALFW-2*PUDIN,lenP*(0.35+0.4*ud[3]));
     if(!(lenP>=0.3 && widP>=0.15)){ prej++; continue; }
@@ -32067,8 +32314,9 @@ function corridorDraw(p,plans,THM,camera){
     CTS.push(ct); OWN.push(PLk.conts.concat(conts.slice(n0)));
     PLk.lots.forEach(function(L){ LOTCT.set(L,ct); });
   });
-  /* the stat line's content counts read the first plan's (row 95 sums them) */
+  /* the stat line's content counts: one plan's, or (row 95) every plan's summed */
   var CT=CTS[0];
+  if(CTS.length>1){ CT={cars:[], dots:[]}; CTS.forEach(function(ct){ (ct.cars||[]).forEach(function(c){ CT.cars.push(c); }); (ct.dots||[]).forEach(function(d){ CT.dots.push(d); }); }); }
   /* ---- the cables' pieces, into their containers, LAST so the parts they
      must miss are all there. The drawn line is the piece; its box (2 cm
      thick, for the order) is shortened until it sits inside the container. */
@@ -32526,6 +32774,7 @@ function corridorDraw(p,plans,THM,camera){
     STRTTALLY.shops=[]; STRTTALLY.props=[];
     conts.forEach(function(C){ C.parts=[]; });
     lots.forEach(function(L){
+      var P3=PLof(L).P3;
       L.blocks.forEach(function(B){
         var Q=[P3(L.s0,L.side,B.fr,0),P3(L.s1,L.side,B.fr,0),P3(L.s1,L.side,B.bk,0),P3(L.s0,L.side,B.bk,0)];
         var P=prism(Q,B.z0,B.z1);
@@ -32547,6 +32796,7 @@ function corridorDraw(p,plans,THM,camera){
        Face 2 is the side running Q[0] -> Q[1], which is the road edge. */
     conts.forEach(function(C){
       if(C.kind!=='slab' || !(KERB>0)) return;
+      var PK=PLof(C), P3=PK.P3, HALFW=PK.HALFW, KOFF=PK.KOFF;
       var Q=[P3(C.s0,C.side,HALFW,0),P3(C.s1,C.side,HALFW,0),P3(C.s1,C.side,KOFF,0),P3(C.s0,C.side,KOFF,0)];
       var P=prism(Q,0,KERB);
       P.lines.push({a:[Q[0][0],Q[0][1],0], b:[Q[1][0],Q[1][1],0], f0:2, f1:2});
@@ -33204,7 +33454,7 @@ function corridorDraw(p,plans,THM,camera){
                   (WMHALF?', water marks halved':'')+
                   (tries>=9?', and the water left unreflected'+((CT.dots||[]).some(function(d){ return d.near; })?', the near particles drawn as dots':''):''):'');
   return res;
-  function KIT(PL){ return {slabPieces:slabPieces, bbHit:bbHit, MINSP:0.7, FW:FW, UP:UP, PAD:PAD, NS:PL.NS, THM:PL.theme||THM, P3:PL.P3, add3:add3, addCable:addCable, cam:camK, dist3:dist3, drawOn:drawOn, faceC:faceC, faceIx:faceIx, frame:PL.frame, hitsAny:hitsAny, inConv:inConv, lateral:PL.lateral, mmPerM:mmPerM, paperGap:paperGap, para:para, polyFromLoops:polyFromLoops, prism:prism, prismN:prismN, splitPart:splitPart, sub:PL.sub, surf:surf, vec:vec, verts:verts, wallOf:wallOf, wp:wp, CANTI:PL.CANTI, CANYON:PL.CANYON, CE:CE, FF:FF, FLOORS:PL.FLOORS, HALFW:PL.HALFW, HW:HW, KERB:PL.KERB, KOFF:PL.KOFF, LEN:PL.LEN, NEAR:NEAR, PBACK:PL.PBACK, RT:RT, SALT_BLD:PL.SALT_BLD, STEPB:PL.STEPB, ZUP:ZUP, cables:cables, conts:conts, lots:PL.lots, slabsBySide:PL.slabsBySide, p:p}; }
+  function KIT(PL){ return {sGaps:PL.sGaps, hasGap:PL.hasGap, slabPieces:slabPieces, bbHit:bbHit, MINSP:0.7, FW:FW, UP:UP, PAD:PAD, NS:PL.NS, THM:PL.theme||THM, P3:PL.P3, add3:add3, addCable:addCable, cam:camK, dist3:dist3, drawOn:drawOn, faceC:faceC, faceIx:faceIx, frame:PL.frame, hitsAny:hitsAny, inConv:inConv, lateral:PL.lateral, mmPerM:mmPerM, paperGap:paperGap, para:para, polyFromLoops:polyFromLoops, prism:prism, prismN:prismN, splitPart:splitPart, sub:PL.sub, surf:surf, vec:vec, verts:verts, wallOf:wallOf, wp:wp, CANTI:PL.CANTI, CANYON:PL.CANYON, CE:CE, FF:FF, FLOORS:PL.FLOORS, HALFW:PL.HALFW, HW:HW, KERB:PL.KERB, KOFF:PL.KOFF, LEN:PL.LEN, NEAR:NEAR, PBACK:PL.PBACK, RT:RT, SALT_BLD:PL.SALT_BLD, STEPB:PL.STEPB, ZUP:ZUP, cables:cables, conts:conts, lots:PL.lots, slabsBySide:PL.slabsBySide, p:p}; }
 }
 
 /* ---------- 14. MOIRE : swept section along a 3D spine, ONE path ----------
@@ -34320,6 +34570,7 @@ function paint(){
   if(mode==='stn' && STRTINFO) txt+=' \u00b7 '+STRTINFO;
   if(mode==='whse' && STRTINFO) txt+=' \u00b7 '+STRTINFO;
   if(mode==='bagh' && STRTINFO) txt+=' \u00b7 '+STRTINFO;
+  if(mode==='town' && STRTINFO) txt+=' \u00b7 '+STRTINFO;
   if(mode==='fan'){
     var fv=vals(), wnd=fv.loops+fv.prec/100;
     txt+=' \u00b7 winding '+(Math.abs(wnd-Math.round(wnd))<1e-9?wnd.toFixed(0):wnd.toFixed(2));
@@ -34581,7 +34832,7 @@ var FAMILIES=[
   ['Lattices',   ['truchet','maze','hilbert','voronoi','pack','rows','poin']],
   ['Curves',     ['harmo','sform','lsys','string','fan','chladni']],
   ['FROM PHOTO 3D', ['isoimg']],
-  ['3D',         ['hil3','harmo3','attract','ruled','knot','spack','flow3','surf','iso','stat','fact','strt','mkt','harb','libr','grnh','celr','tori','canal','stn','whse','bagh']],
+  ['3D',         ['hil3','harmo3','attract','ruled','knot','spack','flow3','surf','iso','stat','fact','strt','mkt','harb','libr','grnh','celr','tori','canal','stn','town','whse','bagh']],
   ['From photo', ['tonehatch','tonespiral']]
 ];
 function mountTabs(){
@@ -35726,10 +35977,36 @@ var HELP={
     panx:'Isometric only: moves the view across the street, as a share of the plan’s width. Use with Iso zoom.',
     pany:'Isometric only: moves the view along the street, as a share of the plan’s length. Use with Iso zoom.'};
   var NR=' Not read at Projection 1 (isometric).';
-  ['strt','mkt','harb','libr','grnh','celr','tori','canal','stn','whse','bagh'].forEach(function(e){
+  ['strt','mkt','harb','libr','grnh','celr','tori','canal','stn','town','whse','bagh'].forEach(function(e){
     for(var k in T) HELP[e+'.'+k]=T[k];
     ['cams','camx','camz','look','turn','pitch'].forEach(function(k){ var h=HELP[e+'.'+k]; if(h) HELP[e+'.'+k]=h+NR; });
   });
+})();
+/* row 95: Corridor city runs the Street's content on every corridor, so a
+   Street knob means the same thing there and reads the Street's text; the
+   grid's knobs and the network's camera have their own */
+(function(){
+  var NR=' Not read at Projection 1 (isometric).';
+  var T={rows:'How many parallel streets the city has. Each is a full Street, buildings both sides, and Cross streets join them.',
+    rowsp:'How far apart the parallel streets are, centre to centre, in metres. The lots on two neighbouring streets meet back to back in the middle with a gap; a wider block leaves more bare ground inside it.',
+    xblk:'How far apart the cross streets are, in metres along the city. Lots never cross a cross street, so this is how long a run of frontage is.',
+    nlen:'How long the city is, in metres, along its parallel streets.',
+    xwidth:'The cross streets’ carriageway, kerb to kerb, in metres. They take the parallel streets’ pavement and carry no lots of their own: the corner buildings’ side walls face them.',
+    layout:'Re-rolls where the corridors that reach across the city (rivers, railways, highways) run, and which blocks are parks. The plain grid has none yet, so it changes nothing.',
+    width:'The parallel streets’ carriageway, kerb to kerb, in metres.',
+    pave:'The pavement on each side of every street, kerb to building line, in metres.',
+    lotmax:'The widest building plot, in metres. Wide plots make long, flat frontages; seen from above a row of near-equal plots reads as a comb, so the city keeps the spread wide.',
+    cams:'Perspective only: where the camera stands along the city, as a share of City length.'+NR,
+    camx:'Perspective only: the camera across the city: -100 stands on the first street, 100 on the last.'+NR,
+    camz:'Perspective only: the camera height in metres, up to 600. 1.6 is standing in the street; 250 with Pitch -50 is a bird’s-eye view.'+NR,
+    look:'Perspective only: how far ahead along the streets the camera aims, before Turn and Pitch.'+NR,
+    turn:'Perspective only: turns the camera left (+) or right (−) from looking along the streets: 90 looks straight across them.'+NR,
+    pitch:'Perspective only: tilts the camera, in degrees. Down to -89, nearly straight down on the city.'+NR,
+    zoom:'Isometric only: the scale. 100% fits every street and lot of the whole city, up to 40 m high, inside the drawable area; it does not move when the buildings grow. 200% doubles everything about the centre.',
+    isoaz:'Isometric only: the turn of the view in degrees, from looking along the parallel streets. 45 looks diagonally across the grid, 0 straight down the streets, 90 straight down the cross streets.',
+    panx:'Isometric only: moves the view across the streets, as a share of the city’s width. Use with Iso zoom.',
+    pany:'Isometric only: moves the view along the streets, as a share of the city’s length. Use with Iso zoom.'};
+  SPEC.town[1].forEach(function(r){ var k=r[0]; HELP['town.'+k]=T[k]||HELP['town.'+k]||HELP['strt.'+k]; });
 })();
 
 /* Which engines actually consult `seed`, and under what settings. Measured against the
