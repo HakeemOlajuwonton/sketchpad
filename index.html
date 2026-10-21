@@ -438,7 +438,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v336</a> &mdash; Corridor city: a straight grid of Street corridors with junctions</span></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v337</a> &mdash; high-speed train kit hooks: edgeZOf, minWidthOf, mirrorZOf, the crease and seam rules, one-body occluders (refactor only)</span></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <section class="fold" id="fold_pick"><h2>Pick engine<span class="cnt"></span></h2>
@@ -31303,7 +31303,9 @@ function corridorKnobs(p,THM){
 function corridorPlan(p,THM,ix,hooks){
   p=corridorKnobs(p,THM); ix=ix||0; hooks=hooks||{};
   var LEN=Math.max(THM.minLen||60,+p.len||220), BEND=Math.max(0,+p.bend||0);
-  var WID=Math.max(THM.minWidth||4,+p.width||7), PAVE=Math.max(0,isFinite(p.pave)?+p.pave:2.5);
+  /* ROW 113: a theme may raise its bed's minimum from knobs of its own
+     (the station's high-speed train needs 2 x (OC + EDGE)); absent, THM.minWidth */
+  var WID=Math.max(THM.minWidthOf?THM.minWidthOf(p):(THM.minWidth||4),+p.width||7), PAVE=Math.max(0,isFinite(p.pave)?+p.pave:2.5);
   /* ROW 85: a theme may say how deep its pavement is from knobs of its own
      (the station's is a platform and a back lane, two knobs) */
   if(THM.paveOf) PAVE=THM.paveOf(p);
@@ -31321,7 +31323,8 @@ function corridorPlan(p,THM,ix,hooks){
   /* Fixed, not knobs. PAD is the drawable margin in page units (the station's);
      NEAR the near plane in metres (spec §3.2); KERB the kerb height. */
   /* the theme's (row 49): the kerb's height and the envelopes' top */
-  var PAD=0.06, NEAR=0.25, KERB=THM.edgeZ, DS=0.5, ZTOP=THM.ztop, SLAB=THM.slabLen;
+  /* ROW 113: and its kerb's height (a 1.25 m high-speed platform); absent, THM.edgeZ */
+  var PAD=0.06, NEAR=0.25, KERB=THM.edgeZOf?THM.edgeZOf(p):THM.edgeZ, DS=0.5, ZTOP=THM.ztop, SLAB=THM.slabLen;
   var HALFW=WID/2, KOFF=HALFW+(THM.strip!==undefined?THM.strip:0.3), PBACK=HALFW+PAVE;
   var i;
 
@@ -31662,6 +31665,28 @@ function corridorDraw(p,plans,THM,camera){
   function isoEye(dn){ return dn>1e-12?-Infinity:dn<-1e-12?Infinity:NaN; }
   /* a face faces the eye: at infinity, against the view direction */
   function facing(f){ return ISO?-(f.n[0]*FW[0]+f.n[1]*FW[1]+f.n[2]*FW[2])>1e-9:f.n[0]*CE[0]+f.n[1]*CE[1]+f.n[2]*CE[2]-f.d>1e-9; }
+  /* ROW 113 (docs/specs/2026-10-12-stn-high-speed-train_v4.md §1): TWO LINE
+     RULES, each OPT-IN PER PART -- a part with neither field is tested exactly
+     as before, so every engine that sets neither draws what it drew.
+     - THE CREASE (P.crease, radians): an edge between two faces that BOTH see
+       the eye and meet at under P.crease is not drawn -- a smooth body built
+       from convex pieces would otherwise plot every facet edge. A line on one
+       face (f0 === f1) and a silhouette (one face away) are never touched.
+     - THE SEAM (P.seamEdges): on a body made of rings the outline moves from
+       one meridian to the next AT A RING, which is a cut and draws nothing, so
+       the outline plotted dashed. Each {a, b, f, mate} is an edge of a cut
+       ring: drawn where this part's face f sees the eye and the neighbour's
+       face across the cut (the plane `mate`) does not. */
+  function creaseOff(P,Ln,vis){
+    if(P.crease===undefined || Ln.f0===Ln.f1 || !vis[Ln.f0] || !vis[Ln.f1]) return false;
+    var a=P.faces[Ln.f0].n, b=P.faces[Ln.f1].n;
+    return a[0]*b[0]+a[1]*b[1]+a[2]*b[2]>Math.cos(P.crease);
+  }
+  function seamOn(P,vis){
+    var o=[];
+    P.seamEdges.forEach(function(e){ if(vis[e.f] && !facing(e.mate)) o.push({a:e.a, b:e.b, f0:e.f, f1:e.f, col:e.col, kind:e.kind||'seam', seam:e}); });
+    return o;
+  }
 
   /* ---- parts: convex polytopes with their face planes and their LINES.
      A line is a 3D segment and the two faces it lies on (the same face twice
@@ -31871,7 +31896,8 @@ function corridorDraw(p,plans,THM,camera){
      refused where they meet anything standing in the lot at the mirror plane.
      The mirror reflects only what stands above the plane, clipped at it, and
      only for an eye above it. */
-  var MZ=THM.mirrorZ||0, PUDON=THM.pudOn||'road';
+  /* row 113: the mirror's height may follow the kerb's (THM.mirrorZOf) */
+  var MZ=THM.mirrorZOf?THM.mirrorZOf(p):(THM.mirrorZ||0), PUDON=THM.pudOn||'road';
   /* how far a puddle keeps from the centreline and the slab's edge, and its
      outline's ink (null: none) -- a theme's (row 52: the library's polish
      patches lie in a 0.55 m half-aisle and have no edge) */
@@ -32621,6 +32647,19 @@ function corridorDraw(p,plans,THM,camera){
         if(Ln.col!==undefined) NL.col=Ln.col; if(Ln.kind!==undefined) NL.kind=Ln.kind; if(Ln.tag!==undefined) NL.tag=Ln.tag;
         H.lines.push(NL);
       });
+      /* row 113: a crease part stays one through a cut, and its seam edges are
+         clipped like lines, their face remapped the same way */
+      if(P.crease!==undefined) H.crease=P.crease;
+      if(P.seamEdges){ H.seamEdges=[];
+        P.seamEdges.forEach(function(e){
+          var da=n[0]*e.a[0]+n[1]*e.a[1]+n[2]*e.a[2]-d, db=n[0]*e.b[0]+n[1]*e.b[1]+n[2]*e.b[2]-d;
+          if(!up){ da=-da; db=-db; }
+          if(da<0&&db<0) return;
+          var a=e.a, b=e.b;
+          if(da<0||db<0){ var t=da/(da-db), x=[a[0]+(b[0]-a[0])*t, a[1]+(b[1]-a[1])*t, a[2]+(b[2]-a[2])*t]; if(da<0) a=x; else b=x; }
+          var g=remap[e.f]; if(!(g>=0)) return;
+          H.seamEdges.push({a:a, b:b, f:g, mate:e.mate, col:e.col, kind:e.kind});
+        }); }
       var cx=0,cy=0,cz=0,nv=0;
       H.faces.forEach(function(f){ f.pts.forEach(function(q){ cx+=q[0]; cy+=q[1]; cz+=q[2]; nv++; }); });
       H.ins=[cx/nv,cy/nv,cz/nv];
@@ -32768,6 +32807,8 @@ function corridorDraw(p,plans,THM,camera){
     /* the mirror's tally too, per pass (row 59): set once per BUILD, an
        over-budget build handed the gate the reflections of every pass */
     STRTTALLY.refl=[]; STRTTALLY.rpre=[]; STRTTALLY.rparts=[]; STRTTALLY.rsil=[];
+    /* row 113: the crease and seam rules' records, real and mirror world, per pass */
+    STRTTALLY.creased=[]; STRTTALLY.seamDrawn=[]; STRTTALLY.rcreased=[]; STRTTALLY.rseamDrawn=[];
     STRTTALLY.mirrorSkip=THM.mirrorSkip||[]; STRTTALLY.pudMinMM=THM.pudMinMM||0;
     STRTTALLY.elems=[]; STRTTALLY.bld=[]; STRTTALLY.hfaces=[];
     STRTTALLY.signs=[]; STRTTALLY.graff=[]; STRTTALLY.cars=[]; STRTTALLY.upr=[]; STRTTALLY.urows=[]; STRTTALLY.unsepPairs=[];
@@ -33081,13 +33122,19 @@ function corridorDraw(p,plans,THM,camera){
     pudVis=pudVis.filter(function(P){ return !!P.scr; });
     function mirror(P){
       function mz(q){ return MZ?[q[0],q[1],2*MZ-q[2]]:[q[0],q[1],-q[2]]; }
-      return {faces:P.faces.map(function(f){ return {n:[f.n[0],f.n[1],-f.n[2]], d:MZ?f.d-2*MZ*f.n[2]:f.d, pts:f.pts.map(mz)}; }),
+      var R={faces:P.faces.map(function(f){ return {n:[f.n[0],f.n[1],-f.n[2]], d:MZ?f.d-2*MZ*f.n[2]:f.d, pts:f.pts.map(mz)}; }),
               /* a theme may name line kinds the water never shows (row 64: the
                  library's back-panel hatch) */
               lines:(THM.mirrorSkip?P.lines.filter(function(Ln){ return THM.mirrorSkip.indexOf(Ln.kind)<0; }):P.lines).map(function(Ln){ return {a:mz(Ln.a), b:mz(Ln.b), f0:Ln.f0, f1:Ln.f1,
                                                       col:Ln.col||P.col, kind:Ln.kind||'edge'}; }),
               ins:mz(P.ins), cont:P.cont, col:P.col, kind:P.kind, layer:P.layer, hides:P.hides,
               seeThru:P.seeThru, nolod:P.nolod, mirror:true};
+      /* row 113: the mirrored part keeps its crease, and its seam edges and
+         their mate planes are mirrored with it */
+      if(P.crease!==undefined) R.crease=P.crease;
+      if(P.seamEdges) R.seamEdges=P.seamEdges.map(function(e){ return {a:mz(e.a), b:mz(e.b), f:e.f, col:e.col, kind:e.kind,
+        mate:{n:[e.mate.n[0],e.mate.n[1],-e.mate.n[2]], d:MZ?e.mate.d-2*MZ*e.mate.n[2]:e.mate.d}}; });
+      return R;
     }
     /* a screen segment against one puddle outline (simple, not convex): the
        crossings split it, and a piece is kept when its midpoint is inside */
@@ -33163,8 +33210,11 @@ function corridorDraw(p,plans,THM,camera){
           });
           var pid=mcommitted.length, pp=[], meta=[];
           mcommitted.push(P);
-          P.lines.forEach(function(Ln){
+          (P.seamEdges?P.lines.concat(seamOn(P,vis)):P.lines).forEach(function(Ln){
             if(!(vis[Ln.f0] || vis[Ln.f1])) return;
+            /* row 113: the crease and seam rules, in the mirror world's own vis */
+            if(creaseOff(P,Ln,vis)){ STRTTALLY.rcreased.push({part:pid, a:Ln.a, b:Ln.b, f0:Ln.f0, f1:Ln.f1}); return; }
+            if(Ln.seam) STRTTALLY.rseamDrawn.push({part:pid, a:Ln.a, b:Ln.b, f:Ln.f0, mate:Ln.seam.mate});
             var a=cam(Ln.a), b=cam(Ln.b);
             if(a[2]<NEAR && b[2]<NEAR) return;
             var ri=STRTTALLY.rpre.length;
@@ -33189,7 +33239,7 @@ function corridorDraw(p,plans,THM,camera){
             }
           }
           STRTTALLY.rparts.push({faces:P.faces.map(function(fc){ return {n:fc.n, d:fc.d}; }), V:verts(P),
-                                 hides:P.hides!==false, kind:P.kind||'', seeThru:!!P.seeThru, split:P.split||0});
+                                 hides:P.hides!==false, kind:P.kind||'', seeThru:!!P.seeThru, split:P.split||0, crease:P.crease});
           STRTTALLY.rsil.push(P.sil);
           if(P.sil && P.hides!==false) mocc.push(P.sil);
         });
@@ -33259,6 +33309,13 @@ function corridorDraw(p,plans,THM,camera){
 
     /* ---- commit: front to back, lines first, then the silhouette ----------- */
     var occl=[], preIx=[], srcOf=[], maxz=NEAR;
+    /* row 113: ONE CONVEX BODY IN MANY PIECES (P.body, a key). No piece of a
+       convex body hides a face of another that sees the eye, so a piece's lines
+       are cut only by the OTHER bodies' occluders -- otherwise each 0.2-0.8 m
+       nose ring's halo trims the next ring's lines and the nose plots dashed.
+       occlB is the body of each occluder; absent, every part as before */
+    var occlB=[];
+    function occlFor(P){ if(P.body===undefined) return occl; var o=[], m; for(m=0;m<occl.length;m++) if(occlB[m]!==P.body) o.push(occl[m]); return o; }
     /* row 94: at Projection 1 every depth is about 1e5 m, so `z` runs over the
        drawing's own range, its nearest drawn depth ISOZN to its farthest */
     ISOZN=ISO?Infinity:NEAR;
@@ -33273,8 +33330,11 @@ function corridorDraw(p,plans,THM,camera){
         });
         var pid=committed.length, pp=[], meta=[];
         committed.push(P);
-        P.lines.forEach(function(Ln){
+        (P.seamEdges?P.lines.concat(seamOn(P,vis)):P.lines).forEach(function(Ln){
           if(!vis[Ln.f0] && !vis[Ln.f1]) return;
+          /* row 113: the crease and seam rules (creaseOff, seamOn) */
+          if(creaseOff(P,Ln,vis)){ STRTTALLY.creased.push({part:pid, a:Ln.a, b:Ln.b, f0:Ln.f0, f1:Ln.f1}); return; }
+          if(Ln.seam) STRTTALLY.seamDrawn.push({part:pid, a:Ln.a, b:Ln.b, f:Ln.f0, mate:Ln.seam.mate});
           var a=cam(Ln.a), b=cam(Ln.b);
           if(a[2]<NEAR && b[2]<NEAR) return;
           var gi=STRTTALLY.pre.length;
@@ -33310,7 +33370,9 @@ function corridorDraw(p,plans,THM,camera){
           nrefl++;
         });
         if(pp.length){
+          var occlAll=occl; if(P.body!==undefined) occl=occlFor(P);
           var frag=hlrConvex(pp,occl,GAP), f;
+          occl=occlAll;
           for(f=0;f<frag.length;f++){
             var run=frag[f]; if(run.length<2) continue;
             var M2=meta[run.src];
@@ -33330,9 +33392,10 @@ function corridorDraw(p,plans,THM,camera){
         STRTTALLY.parts.push({faces:P.faces.map(function(fc){ return {n:fc.n, d:fc.d}; }),
                               V:verts(P), cont:C.kind, split:P.split||0, hides:P.hides!==false,
                               kind:P.kind||'', seeThru:!!P.seeThru, cidx:cidx, layer:P.layer||'struct',
-                              sign:P.sign===undefined?-1:P.sign, cable:P.cable, car:P.car, trn:P.trn, tcar:P.tcar, cut:!!P.cut, cpart:P.cpart, wh:P.wh, ab:P.ab, sk:P.sk, nside:P.nside, truck:P.truck, gant:P.gant, pk:P.pk});
+                              sign:P.sign===undefined?-1:P.sign, cable:P.cable, car:P.car, trn:P.trn, tcar:P.tcar, cut:!!P.cut, cpart:P.cpart, wh:P.wh, ab:P.ab, sk:P.sk, nside:P.nside, truck:P.truck, gant:P.gant, pk:P.pk, crease:P.crease});
         STRTTALLY.sil.push(P.sil);
         if(P.sil && P.hides!==false) occl.push(P.gapless?gapIn(P.sil):P.sil);
+        if(P.sil && P.hides!==false) occlB.push(P.body);
       });
     });
 
