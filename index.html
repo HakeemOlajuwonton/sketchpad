@@ -438,7 +438,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v337</a> &mdash; high-speed train kit hooks: edgeZOf, minWidthOf, mirrorZOf, the crease and seam rules, one-body occluders (refactor only)</span></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v338</a> &mdash; Train station: a high-speed train (Train 1, and 2 with the long nose) on standard gauge at a 1.25 m platform with platform gates</span></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <section class="fold" id="fold_pick"><h2>Pick engine<span class="cnt"></span></h2>
@@ -3419,7 +3419,7 @@ var SPEC={
     ['canti','Cantilever',0,60,1,10,[100,'%']],['fire','Fire escapes',0,100,1,15,[100,'%']],
     ['glow','Lit windows',0,100,1,22,[100,'%']],['uvar','Upper variety',0,100,1,55,[100,'%']],
     ['signs','Building signs',0,100,1,45,[100,'%']],['neon','Neon',0,100,1,40,[100,'%']],['lang','Script',0,3,1,0],
-    ['trains','Trains',0,3,1,1],['ncar','Cars',1,15,1,10],['tfront','Train front',0,200,1,30,[1,' m']],
+    ['trains','Trains',0,3,1,1],['ncar','Cars',1,15,1,10],['tfront','Train front',0,200,1,30,[1,' m']],['tkind','Train',0,2,1,0],
     ['wires','Overhead wires',0,1,1,1],['sag','Wire sag',0,30,1,6,[100,'%']],
     ['canopy','Canopy',0,100,1,85,[100,'%']],['colsp','Column spacing',4,15,0.5,8,[1,' m']],['croof','Canopy roof',0,2,1,1],
     ['psign','Platform signs',0,100,1,60,[100,'%']],['fbridge','Footbridge',0,1,1,1],['shed','Train shed',0,1,1,0],
@@ -21736,8 +21736,15 @@ var STHEMES={
           the whole band it met one nearly every time and was refused. Where the
           walkway is under 1 m it takes the whole band. */
        pudBand:function(side,p,HALFW,hero){
+         /* row 113: behind the moved tactile strip (its far line 1.3 m) */
          var w=stationKnobs(p).platw, o0=HALFW+1.2, o1=HALFW+w-0.3, oc=HALFW+0.6*w-0.25;
+         if(stationKnobs(p).tk) o0=HALFW+1.4;
          return hero && oc-o0>=1.0?[o0,oc]:[o0,o1]; },
+       /* row 113 (spec §1): Train 1 and 2 stand at a 1.25 m platform on
+          standard gauge, the bed widened to two bodies on 4.23 m centres */
+       edgeZOf:function(p){ return stationKnobs(p).tk?1.45:1.30; },
+       mirrorZOf:function(p){ return stationKnobs(p).tk?1.45:1.30; },
+       minWidthOf:function(p){ var k=stationKnobs(p); return k.tk?2*(2.115+k.edge):6.4; },
        flags:{poles:false, roadMarks:false, bollards:false, manholes:false},
        content:function(K){ return trainTheme(K); }},
   /* row 95 (docs/specs/2026-10-11-corridor-city_v2.md §4): CORRIDOR CITY. The
@@ -26392,7 +26399,12 @@ function canalTheme(K){
      benches, vending machines, bins, extinguisher boxes. */
 function stationKnobs(p){
   function kn(v,d,lo,hi){ return Math.max(lo,Math.min(hi,isFinite(v)?+v:d)); }
-  return {platw:kn(p.platw,5,2.5,10), lane:kn(p.lane,3,0,10)};
+  /* row 113: Train (tk) and, at 1 and 2, the track centre's distance to the
+     platform edge -- half the body (1.68) + 0.08, plus a curve allowance of
+     1.5 x the sagitta of the 17.5 m bogie chord at the largest curvature the
+     centreline can reach (the spline's kmax, Bend in °/100 m) */
+  var tk=Math.round(kn(p.tkind,0,0,2)), kmax=Math.max(0,+p.bend||0)*Math.PI/180/100;
+  return {platw:kn(p.platw,5,2.5,10), lane:kn(p.lane,3,0,10), tk:tk, edge:1.76+1.5*17.5*17.5*kmax/8};
 }
 function trainTheme(K){
   var THM=K.THM, p=K.p, P3=K.P3, frame=K.frame, sub=K.sub, para=K.para, prism=K.prism, prismN=K.prismN,
@@ -26417,11 +26429,16 @@ function trainTheme(K){
   function lineOf(u){ var a=0, i; for(i=0;i<LINES.length;i++){ a+=LINES[i][1]; if(u*100<a) return LINES[i][0]; } return LINES[LINES.length-1][0]; }
   /* §2 the cross-section: one track a side, its centre 1.6 m from the
      platform edge; gauge between the rail heads' inner faces */
-  var OC=HALFW-1.6, GAUGE=1.067, RHW=0.065, RZ0=0.04, RZ1=0.20, SLP=0.6;
+  /* row 113: at Train 1 and 2 standard gauge, the track centre EDGE from the
+     platform edge (2.115 m from the centreline on the bed minWidthOf builds;
+     a wider Track bed moves the tracks apart, never the train off the edge) */
+  var TK=SK.tk, EDGE=SK.edge, SALT_HS=727, SALT_GATE=743;
+  var OC=TK?HALFW-EDGE:HALFW-1.6, GAUGE=1.067, RHW=0.065, RZ0=0.04, RZ1=0.20, SLP=0.6;
+  if(TK) GAUGE=1.435;
   var COL_LINE=null;
   var TAL={tracks:[], decks:[], tactile:[], walls:[], trains:[], portals:[], wires:[], drops:[], roofs:[], columns:[],
            signs:[], boards:[], clocks:[], bridge:null, housings:[], furn:[], beams:[], name:'', eye:null, oc:OC, gauge:GAUGE,
-           platb:PLATB, kerb:KERB, covered:[0,0], colO:0, sleepers:{}};
+           platb:PLATB, kerb:KERB, covered:[0,0], colO:0, sleepers:{}, tk:TK, edge:EDGE, gates:[], panels:[], leaves:[]};
   STRTTALLY.stn=TAL;
 
   /* the eye: which platform it stands on (Camera side's sign), and its arc */
@@ -26434,7 +26451,7 @@ function trainTheme(K){
      project to; on a platform that is the deck's back, so it is moved there
      BEFORE streetTheme reads it, and the deck keeps its own. */
   lots.forEach(function(L){ L.deckFe=L.fe; L.fe=Math.max(L.fe,PLATB+0.05); L.isWall=sub(L.side<0?2:1,L.idx,SALT_PLAT)()<0.3; });
-  function resetLots(){ if(TAL.shed) TAL.shed.walls=0; TAL.decks=[]; TAL.tactile=[]; TAL.walls=[]; TAL.roofs=[]; TAL.columns=[]; TAL.signs=[]; TAL.boards=[]; TAL.clocks=[]; TAL.furn=[]; }
+  function resetLots(){ if(TAL.shed) TAL.shed.walls=0; TAL.decks=[]; TAL.tactile=[]; TAL.gates=[]; TAL.panels=[]; TAL.leaves=[]; TAL.walls=[]; TAL.roofs=[]; TAL.columns=[]; TAL.signs=[]; TAL.boards=[]; TAL.clocks=[]; TAL.furn=[]; }
   var S=streetTheme(K);
   var bySide={'1':[],'-1':[]};
   lots.forEach(function(L){ bySide[L.side].push(L); });
@@ -26724,7 +26741,7 @@ function trainTheme(K){
     if(e1){ ln(D,[DQ[1][0],DQ[1][1],KERB],[DQ[2][0],DQ[2][1],KERB],1,3,'deck'); ln(D,[DQ[2][0],DQ[2][1],0],[DQ[2][0],DQ[2][1],KERB],3,4,'deck'); }
     /* the tactile strip: two yellow lines 0.3 m apart, the near one 0.8 m
        from the coping; domes as dots near, spaced on the paper floor */
-    var t0=HALFW+0.8, t1=HALFW+1.1;
+    var t0=HALFW+(TK?1.0:0.8), t1=HALFW+(TK?1.3:1.1);
     if(dl<df){
       [t0,t1].forEach(function(o){ ln(D,P3(L.s0,sd,o,KERB),P3(L.s1,sd,o,KERB),1,1,'tactile',COL_YEL); });
       if(dl<dn){
@@ -26746,6 +26763,7 @@ function trainTheme(K){
        front, neither of which draws a line */
     L.slots.forEach(function(Cs){ var Sd=prism(Cs.poly,0,KERB); tag(Sd,'deck',COL_K,'platform'); Sd.hides=false; Sd.cont=Cs; Cs.parts.push(Sd); });
     TAL.decks.push({side:sd, idx:L.idx, s0:L.s0, s1:L.s1, fe:L.deckFe, back:PLATB, top:KERB});
+    if(TK) gatesFor(L,dl,dn,df);
     /* fence or wall, on the deck's back 0.2 m (361: 30% of lots a wall) */
     if(SHED) shedWall(L,dl,dn,df); else {
     var RP=sub(sk,L.idx,SALT_PLAT), uw=RP(), np=2+Math.floor(RP()*3), upos=[RP(),RP(),RP(),RP()];
@@ -27037,6 +27055,8 @@ function trainTheme(K){
   }
 
   /* ---- §3.1 the track (slabs) -------------------------------------------- */
+  /* row 113: a standard-gauge sleeper is 2.6 m long */
+  var SLH=TK?1.3:1.0;
   function track(dn,df){
     conts.forEach(function(C){
       if(C.kind!=='slab') return;
@@ -27071,15 +27091,15 @@ function trainTheme(K){
         if(sb-sa<1e-6 || sc<0.12 || sc>LEN-0.12) continue;
         if(sc>=C.s0 && sc<C.s1) (TAL.sleepers[sd]||(TAL.sleepers[sd]=[])).push(sc);
         if(d<dn){
-          var Q=arcQuad(sd,sa,sb,OC-1.0,OC+1.0), P=prism(Q,0,RZ0);
+          var Q=arcQuad(sd,sa,sb,OC-SLH,OC+SLH), P=prism(Q,0,RZ0);
           /* the ends across the track only where they are the sleeper's own */
           if(Math.abs(sa-(sc-0.12))<1e-9) ln(P,[Q[0][0],Q[0][1],RZ0],[Q[3][0],Q[3][1],RZ0],1,5,'sleeper');
           if(Math.abs(sb-(sc+0.12))<1e-9) ln(P,[Q[1][0],Q[1][1],RZ0],[Q[2][0],Q[2][1],RZ0],1,3,'sleeper');
           ln(P,[Q[0][0],Q[0][1],RZ0],[Q[1][0],Q[1][1],RZ0],1,2,'sleeper'); ln(P,[Q[3][0],Q[3][1],RZ0],[Q[2][0],Q[2][1],RZ0],1,4,'sleeper');
           tag(P,'sleeper',COL_GREY,'track'); P.cont=C; C.parts.push(P);
         } else if(d<df && k%th===0 && sc>=C.s0 && sc<C.s1){
-          if(!lineP){ lineP=see(prism(arcQuad(sd,C.s0,C.s1,OC-1.0,OC+1.0),0,RZ0)); }
-          ln(lineP,P3(sc,sd,OC-1.0,RZ0),P3(sc,sd,OC+1.0,RZ0),1,1,'sleeper');
+          if(!lineP){ lineP=see(prism(arcQuad(sd,C.s0,C.s1,OC-SLH,OC+SLH),0,RZ0)); }
+          ln(lineP,P3(sc,sd,OC-SLH,RZ0),P3(sc,sd,OC+SLH,RZ0),1,1,'sleeper');
         }
       }
       if(lineP){ tag(lineP,'sleeper',COL_GREY,'track'); see(lineP); lineP.cont=C; C.parts.push(lineP); }
@@ -27133,6 +27153,7 @@ function trainTheme(K){
   /* ---- §3.3 the trains (slabs) ------------------------------------------- */
   function trains(dn,df){
     var sides=TRAINS===0?[]:TRAINS===1?[-EYESIDE]:TRAINS===2?[EYESIDE]:[-EYESIDE,EYESIDE];
+    if(TK){ hsTrains(sides,dn,df); return; }
     sides.forEach(function(sd,ti){
       var R=sub(sd<0?2:1,0,SALT_TRAIN), col=lineOf(R()), num=String(Math.floor(10+R()*9990)), udest=R();
       var rec={side:sd, col:col, number:num, cars:[], id:ti};
@@ -27242,6 +27263,323 @@ function trainTheme(K){
     return {rec:recC};
   }
 
+  /* ---- ROW 113 (docs/specs/2026-10-12-stn-high-speed-train_v4.md §§2-3): THE
+     HIGH-SPEED TRAIN, Train 1 (the 10.7 m nose) and 2 (the 15.0 m one).
+     - THE BODY IS ITS CROSS-SECTION EXTRUDED along the car's axis, not a side
+       profile across it: 34 vertices, a bottom-corner arc r 0.30 in 15° steps
+       and a shoulder arc r 0.90 in 10°, every step under the 20° crease, so
+       the kit's crease rule leaves only the outline.
+     - THE NOSE IS A CHAIN OF PRISMATOIDS, the convex hull of two consecutive
+       rings each: an edge of one ring with the vertex of the other extreme
+       along its outward normal (a triangle), or with a parallel edge (a
+       trapezoid). Planar and convex by construction. NEVER quads between
+       corresponding ring vertices: the rings scale y and z unequally, and
+       those quads are not planar. The rings are cut faces (seams), and each
+       piece records its seam edges so the outline is drawn across them.
+     - LINES ON THE SURFACE (livery, windows, doors, headlights, windscreen)
+       are laid out on the smooth section in (x, arc length round the
+       unscaled section) and DRAPED: each sample is the exit point of a ray
+       from the axis through the smooth point, which names the face it is on;
+       a run on one face is one chord of it, split where the face changes
+       (bisected), so no segment crosses a facet edge. */
+  var HSCR=20*Math.PI/180, HSW=1.68, HSFL=1.30;
+  /* the half-section walk, y >= 0, from the bottom centre (0, 0.55) to the
+     roof centre (0, H): arc lengths `sg`, section vertices w[1..17] */
+  function hsWalk(H){
+    var w=[[0,0.55]], j;
+    for(j=0;j<=6;j++){ var a=-Math.PI/2+j*Math.PI/12; w.push([1.38+0.30*Math.cos(a), 0.85+0.30*Math.sin(a)]); }
+    for(j=0;j<=9;j++){ var b=j*Math.PI/18; w.push([0.78+0.90*Math.cos(b), H-0.90+0.90*Math.sin(b)]); }
+    w.push([0,H]);
+    /* the corners exactly, so the flats are exactly flat and pair as trapezoids */
+    w[1]=[1.38,0.55]; w[7]=[HSW,0.85]; w[8]=[HSW,H-0.90]; w[17]=[0.78,H];
+    var sg=[0], k; for(k=1;k<w.length;k++) sg.push(sg[k-1]+Math.hypot(w[k][0]-w[k-1][0],w[k][1]-w[k-1][1]));
+    var sec=[]; for(k=1;k<=17;k++) sec.push(w[k]); for(k=17;k>=1;k--) sec.push([-w[k][0],w[k][1]]);
+    return {w:w, sg:sg, sec:sec, H:H};
+  }
+  function walkAt(W,s){
+    var k=0, n=W.w.length; s=Math.max(0,Math.min(W.sg[n-1],s));
+    while(k<n-2 && W.sg[k+1]<s) k++;
+    var f=(s-W.sg[k])/((W.sg[k+1]-W.sg[k])||1);
+    return [W.w[k][0]+(W.w[k+1][0]-W.w[k][0])*f, W.w[k][1]+(W.w[k+1][1]-W.w[k][1])*f];
+  }
+  /* the arc length at height z, up the side (z strictly rises after the bottom) */
+  function walkZ(W,z){
+    for(var k=1;k<W.w.length-1;k++){ var a=W.w[k], b=W.w[k+1];
+      if(b[1]>a[1] && z<=b[1]+1e-12) return W.sg[k]+(Math.max(z,a[1])-a[1])/(b[1]-a[1])*(W.sg[k+1]-W.sg[k]); }
+    return W.sg[W.sg.length-1];
+  }
+  /* the shoulder at angle th (deg, 0 the side, 90 the roof's edge, on past it
+     along the roof) as an arc length */
+  function walkTh(W,th){ return W.sg[8]+0.90*th*Math.PI/180; }
+  /* the section at x along a car: the nose's w(u), top(u) (§3.2), else the body */
+  function hsSec(c,x){
+    if(c.lead && x<c.NL){ var u=Math.max(0,x/c.NL);
+      return {w:0.15+1.53*(1-Math.pow(1-u,3)), top:0.95+2.55*(1-Math.pow(1-u,2))}; }
+    return {w:HSW, top:c.H};
+  }
+  function hsRing(c,x,S){
+    var sy=S.w/HSW, sz=(S.top-0.55)/(c.W.H-0.55);
+    var r2=c.W.sec.map(function(v){ return [v[0]*sy, 0.55+(v[1]-0.55)*sz]; });
+    return {r2:r2, r3:r2.map(function(v){ return c.Lc(x,v[0],RZ1+v[1]); })};
+  }
+  /* the angle of each edge's outward normal, in [-90°, 270°): the section is
+     counter-clockwise in (y, z) and starts just past the bottom flat */
+  function edgeAng(R){ return R.map(function(a,i){ var b=R[(i+1)%R.length], al=Math.atan2(-(b[0]-a[0]),b[1]-a[1]);
+    return al<=-Math.PI/2+1e-12?al+2*Math.PI:al; }); }
+  function prismatoid(A3,B3,A2,B2){
+    var n=A2.length, aa=edgeAng(A2), ab=edgeAng(B2), loops=[A3,B3], fA=[], fB=[], i=0, j=0;
+    while(i<n || j<n){
+      var ta=i<n?aa[i]:Infinity, tb=j<n?ab[j]:Infinity;
+      if(i<n && j<n && Math.abs(ta-tb)<1e-9){ loops.push([A3[i],A3[(i+1)%n],B3[(j+1)%n],B3[j]]); fA[i]=fB[j]=loops.length-1; i++; j++; }
+      else if(ta<tb){ loops.push([A3[i],A3[(i+1)%n],B3[j%n]]); fA[i]=loops.length-1; i++; }
+      else { loops.push([A3[i%n],B3[(j+1)%n],B3[j]]); fB[j]=loops.length-1; j++; }
+    }
+    var P=polyFromLoops(loops); P.fA=fA; P.fB=fB; return P;
+  }
+  function extrude(F3,B3){
+    var loops=[F3,B3], n=F3.length, e, fA=[], fB=[];
+    for(e=0;e<n;e++){ var e2=(e+1)%n; loops.push([F3[e],F3[e2],B3[e2],B3[e]]); fA[e]=fB[e]=loops.length-1; }
+    var P=polyFromLoops(loops); P.fA=fA; P.fB=fB; return P;
+  }
+  /* a cap that is a cut: no lines on it */
+  function capCut(P,fi){ P.lines=P.lines.filter(function(Ln){ return Ln.f0!==fi && Ln.f1!==fi; }); }
+  function plane(f){ return {n:f.n.slice(), d:f.d}; }
+  /* SEAM EDGES between two pieces sharing ring R3: P's face on edge e (its fX)
+     with Q's face on the same edge as the mate, and the other way round */
+  function seam(P,fP,Q,fQ,R3){
+    var n=R3.length, e;
+    for(e=0;e<n;e++){ var a=R3[e], b=R3[(e+1)%n];
+      (P.seamEdges||(P.seamEdges=[])).push({a:a, b:b, f:fP[e], mate:plane(Q.faces[fQ[e]])});
+      (Q.seamEdges||(Q.seamEdges=[])).push({a:a, b:b, f:fQ[e], mate:plane(P.faces[fP[e]])}); }
+  }
+  /* the exit point of the ray from the car's axis through the smooth surface
+     point at (x, arc length sg, side sd): its piece, its face, the point */
+  function hsAt(c,x,sg,sd){
+    var pi=0; while(pi<c.pc.length-1 && x>c.pc[pi].x1) pi++;
+    var S=hsSec(c,x), q=walkAt(c.W,sg), sy=S.w/HSW, sz=(S.top-0.55)/(c.W.H-0.55);
+    var O=c.Lc(x,0,RZ1+0.55+(S.top-0.55)/2), T=c.Lc(x,sd*q[0]*sy,RZ1+0.55+(q[1]-0.55)*sz);
+    var D=[T[0]-O[0],T[1]-O[1],T[2]-O[2]], P=c.pc[pi].P, bt=Infinity, bf=-1;
+    P.faces.forEach(function(f,fi){ var nd=f.n[0]*D[0]+f.n[1]*D[1]+f.n[2]*D[2];
+      if(nd>1e-12){ var t=(f.d-(f.n[0]*O[0]+f.n[1]*O[1]+f.n[2]*O[2]))/nd; if(t<bt){ bt=t; bf=fi; } } });
+    return {p:[O[0]+D[0]*bt, O[1]+D[1]*bt, O[2]+D[2]*bt], pi:pi, f:bf};
+  }
+  function drapeRun(c,pi,f,run,col,kind){
+    var P=c.pc[pi].P, k, a=run[0];
+    for(k=1;k<run.length;k++){
+      var b=run[k], nx=run[k+1];
+      /* drop a point the chord passes through (a straight line on a flat face) */
+      if(nx){ var u=[b[0]-a[0],b[1]-a[1],b[2]-a[2]], v=[nx[0]-a[0],nx[1]-a[1],nx[2]-a[2]];
+        var cx=u[1]*v[2]-u[2]*v[1], cy=u[2]*v[0]-u[0]*v[2], cz=u[0]*v[1]-u[1]*v[0];
+        if(Math.hypot(cx,cy,cz)<=1e-10*Math.hypot(v[0],v[1],v[2])) continue; }
+      if(Math.hypot(b[0]-a[0],b[1]-a[1],b[2]-a[2])>1e-9) P.lines.push({a:a, b:b, f0:f, f1:f, col:col, kind:kind});
+      a=b;
+    }
+  }
+  /* a polyline of [x, sg, sd] draped over the car's pieces */
+  function drape(c,pl,col,kind){
+    for(var k=1;k<pl.length;k++){
+      var p0=pl[k-1], p1=pl[k], sd=p0[2], ns=Math.max(1,Math.ceil(Math.hypot(p1[0]-p0[0],p1[1]-p0[1])/0.1));
+      var at=function(t){ return hsAt(c,p0[0]+(p1[0]-p0[0])*t,p0[1]+(p1[1]-p0[1])*t,sd); };
+      var A=at(0), tc=0, run=[A.p], m;
+      for(m=1;m<=ns;m++){
+        var t1=m/ns, B=at(t1);
+        while(B.pi!==A.pi || B.f!==A.f){
+          var lo=tc, hi=t1, it; for(it=0;it<40;it++){ var md=(lo+hi)/2, M=at(md); if(M.pi===A.pi && M.f===A.f) lo=md; else hi=md; }
+          var Ml=at(lo); run.push(Ml.p); drapeRun(c,A.pi,A.f,run,col,kind);
+          A=at(hi); tc=hi; run=[Ml.p];
+        }
+        run.push(B.p); tc=t1;
+      }
+      drapeRun(c,A.pi,A.f,run,col,kind);
+    }
+  }
+  function rectXS(x0,x1,s0,s1,sd){ return [[x0,s0,sd],[x1,s0,sd],[x1,s1,sd],[x0,s1,sd],[x0,s0,sd]]; }
+  /* the cars a train of Train TK would have on side sd: lead 27.35 m over its
+     couplers (26.85 m body), then 25.0 m (24.5 m); a car past LEN not built */
+  function hsLayout(){
+    var sn=sEye+TFRONT, o=[], i;
+    for(i=0;i<NCAR;i++){ var a=sn+(i===0?0:27.35+25*(i-1)), Lb=i===0?26.85:24.5;
+      if(a+Lb>LEN-0.3 || a<0.3) break; o.push({i:i, a:a, Lb:Lb, lead:i===0}); }
+    return o;
+  }
+  /* the car's straight frame: its axis the chord between the bogie centres'
+     track points, slid so x = 0 (the front) is the foot of the track point at a */
+  function hsFrame(sd,a,xb1,xb2){
+    var BA=P3(a+xb1,sd,OC,0), BB=P3(a+xb2,sd,OC,0), ux=BB[0]-BA[0], uy=BB[1]-BA[1], ul=Math.hypot(ux,uy); ux/=ul; uy/=ul;
+    var nx=-uy, ny=ux, Fm=frame(a+(xb1+xb2)/2), out=[-Fm[3]*sd,Fm[2]*sd];
+    if(nx*out[0]+ny*out[1]<0){ nx=-nx; ny=-ny; }
+    var Ox=(BA[0]+BB[0])/2-ux*(xb1+xb2)/2, Oy=(BA[1]+BB[1])/2-uy*(xb1+xb2)/2, PA=P3(a,sd,OC,0), xf=(PA[0]-Ox)*ux+(PA[1]-Oy)*uy;
+    Ox+=ux*xf; Oy+=uy*xf;
+    return {O:[Ox,Oy], u:[ux,uy], n:[nx,ny], Lc:function(x,y,z){ return [Ox+ux*x+nx*y, Oy+uy*x+ny*y, z]; }};
+  }
+  function hsBog(c){ return c.lead?[4.9,22.4]:[c.Lb/2-8.75,c.Lb/2+8.75]; }
+  /* the door, one a side at the rear end of every car: its centre's arc s */
+  function hsDoorS(sd,c){
+    var b=hsBog(c), F=hsFrame(sd,c.a,b[0],b[1]), D=F.Lc(c.Lb-1.0,0,0), s=c.a+c.Lb-1.0, it;
+    for(it=0;it<4;it++){ var P=P3(s,sd,OC,0), Fs=frame(s); s+=(D[0]-P[0])*Fs[2]+(D[1]-P[1])*Fs[3]; }
+    return s;
+  }
+  function hsTrains(sides,dn,df){
+    var lay=hsLayout();
+    sides.forEach(function(sd,ti){
+      var sk=sd<0?2:1, R=sub(sk,0,SALT_HS), col=lineOf(R()), num=String(Math.floor(10+R()*9990));
+      var rec={side:sd, col:col, number:num, cars:[], id:ti, tk:TK};
+      TAL.trains.push(rec);
+      for(var i=0;i<lay.length;i++){
+        var car=hsCar(sd,ti,lay[i],col,num,i===lay.length-1,i%4===2,dn,df);
+        if(!car) break;
+        rec.cars.push(car);
+      }
+    });
+  }
+  function hsCar(sd,ti,L0,col,num,last,panto,dn,df){
+    var b=hsBog(L0), F=hsFrame(sd,L0.a,b[0],b[1]), Lc=F.Lc, ux=F.u[0], uy=F.u[1], nx=F.n[0], ny=F.n[1];
+    var H=L0.lead?3.50:3.60, Lb=L0.Lb, NL=L0.lead?(TK===2?15.0:10.7):0;
+    /* ONE BODY: the car's nose rings and body prism make one convex body
+       (P.body), so the kit cuts their lines by the other bodies' occluders only
+       -- each 0.2-0.8 m ring's halo had trimmed the next ring's outline, and the
+       gangway its own */
+    var c={lead:L0.lead, NL:NL, Lb:Lb, H:H, W:hsWalk(H), Lc:Lc, pc:[]};
+    var dc=dist3(Lc(Lb/2,0,RZ1+2.0)), mid=dc<df, near=dc<dn, list=[], tagc={trn:ti, tcar:L0.i, crease:HSCR, body:'hs'+sd+':'+L0.i};
+    var rec={i:L0.i, s0:L0.a, s1:L0.a+Lb, O:F.O, u:F.u, n:F.n, len:Lb, nose:NL, H:H, lead:L0.lead, rings:0,
+             wid:2*HSW, roof:RZ1+H, bogies:b, door:hsDoorS(sd,L0), panto:null};
+    /* the nose: N rings, denser toward the tip, by the nose's own distance band */
+    var prev=null, k;
+    if(L0.lead){
+      var dN=dist3(Lc(NL/2,0,RZ1+1.5)), N=dN<dn?24:dN<df?10:4, rg=[];
+      rec.rings=N;
+      for(k=0;k<=N;k++){ var x=NL*Math.pow(k/N,1.3); rg.push({x:x, R:hsRing(c,x,hsSec(c,x))}); }
+      for(k=0;k<N;k++){
+        var P=prismatoid(rg[k].R.r3,rg[k+1].R.r3,rg[k].R.r2,rg[k+1].R.r2);
+        if(k>0){ capCut(P,0); seam(prev,prev.fB,P,P.fA,rg[k].R.r3); }
+        capCut(P,1);
+        c.pc.push({P:P, x0:rg[k].x, x1:rg[k+1].x, nose:true}); prev=P;
+      }
+    }
+    var x0=NL, R0=hsRing(c,x0,{w:HSW, top:H}), R1=hsRing(c,Lb,{w:HSW, top:H}), Bd=extrude(R0.r3,R1.r3);
+    if(prev){ capCut(Bd,0); seam(prev,prev.fB,Bd,Bd.fA,R0.r3); }
+    c.pc.push({P:Bd, x0:x0, x1:Lb, nose:false});
+    /* the side: the livery band (1.62 and 1.70 m above the rail) the whole
+       length, round the nose on its own; windows, the door, inside Outline detail to */
+    var W=c.W, sL1=walkZ(W,1.62), sL2=walkZ(W,1.70), sF=walkZ(W,HSFL);
+    [1,-1].forEach(function(s){
+      [sL1,sL2].forEach(function(sl){ drape(c,[[0,sl,s],[Lb,sl,s]],col,'livery'); });
+      if(!mid) return;
+      var sW0=walkZ(W,HSFL+0.80), sW1=walkZ(W,HSFL+1.28), xw;
+      for(xw=(L0.lead?NL+1.0:1.0); xw+0.65<=Lb-2.0; xw+=1.04) drape(c,rectXS(xw,xw+0.65,sW0,sW1,s),COL_K,'window');
+      drape(c,rectXS(Lb-1.5,Lb-0.5,sF+0.02,sF+1.85,s),COL_K,'door');
+      drape(c,rectXS(Lb-1.18,Lb-0.82,sF+0.95,sF+1.55,s),COL_K,'window');
+      if(L0.lead){
+        /* headlights, a yellow slot each side; the windscreen over the top; the
+           cab's side window (§3.2) */
+        drape(c,rectXS(0.16*NL,0.30*NL,walkZ(W,1.05),walkZ(W,1.17),s),COL_YEL,'headlight');
+        drape(c,rectXS(0.50*NL,0.74*NL,walkTh(W,25),walkTh(W,130),s),COL_K,'windscreen');
+        drape(c,rectXS(0.80*NL,0.90*NL,walkTh(W,12),walkTh(W,30),s),COL_K,'window');
+        if(near){
+          /* the train's number below the windscreen, read from outside: on a side
+             the eye looks along -s n, so the text runs along -s h in x */
+          var h=ux*ny-uy*nx>0?1:-1, dir=-s*h, T=latin(num,1.0,0.20), xc=0.62*NL, zs=walkZ(W,2.20);
+          T.lines.forEach(function(pl){ drape(c,pl.map(function(q){ return [xc+dir*(q[0]-0.5), zs+q[1], s]; }),COL_K,'number'); });
+        }
+      }
+    });
+    /* the tail lights on the last car's rear end (face 1, a real end) */
+    if(last && mid) [-1.2,0.9].forEach(function(y0){ [[y0,1.0,y0+0.3,1.0],[y0+0.3,1.0,y0+0.3,1.15],[y0+0.3,1.15,y0,1.15],[y0,1.15,y0,1.0]].forEach(function(r){
+      Bd.lines.push({a:Lc(Lb,r[0],RZ1+r[1]), b:Lc(Lb,r[2],RZ1+r[3]), f0:1, f1:1, col:COL_RED, kind:'taillight'}); }); });
+    c.pc.forEach(function(q){ list.push(onSlabs(q.P,'body',COL_K,'train',tagc)); });
+    /* the gangway to the next car: the section at 0.92 of the width and 0.90 of
+       the height, 0.24 m long in the 0.5 m gap (at Bend 20 the next car's end
+       turns 0.13 m toward this one across the width) */
+    if(!last){
+      var gs=c.W.sec.map(function(v){ return [v[0]*0.92, 0.70+(v[1]-0.55)*0.90]; });
+      var G0=gs.map(function(v){ return Lc(Lb+0.08,v[0],RZ1+v[1]); }), G1=gs.map(function(v){ return Lc(Lb+0.32,v[0],RZ1+v[1]); });
+      list.push(onSlabs(extrude(G0,G1),'gangway',COL_K,'train',{trn:ti, tcar:L0.i, crease:HSCR, body:'hs'+sd+':'+L0.i+'g'}));
+    }
+    /* bogies under the skirt: frames and wheels, the wheels cut at the skirt */
+    if(mid) b.forEach(function(xb){
+      var Fr=para(Lc(xb-1.6,-0.62,RZ1+0.25),[ux*3.2,uy*3.2,0],[nx*1.24,ny*1.24,0],[0,0,0.29]);
+      list.push(onSlabs(Fr,'bogie',COL_K,'train',{trn:ti, tcar:L0.i}));
+      var nw=near?16:8, zc=RZ1+0.43+0.001, zt=RZ1+0.54;
+      [-1.25,1.25].forEach(function(xa){ [-(GAUGE/2+RHW/2),GAUGE/2+RHW/2].forEach(function(yw){
+        var ring=[], j;
+        for(j=0;j<nw;j++){ var an=TAU*(j+0.5)/nw; ring.push([xb+xa+0.43*Math.cos(an), zc+0.43*Math.sin(an)]); }
+        var cut=[]; for(j=0;j<nw;j++){ var p0=ring[j], p1=ring[(j+1)%nw];
+          if(p0[1]<=zt) cut.push(p0);
+          if((p0[1]<=zt)!==(p1[1]<=zt)){ var t=(zt-p0[1])/(p1[1]-p0[1]); cut.push([p0[0]+(p1[0]-p0[0])*t, zt]); } }
+        var lo=cut.map(function(q){ return Lc(q[0],yw-0.06,q[1]); }), hi=cut.map(function(q){ return Lc(q[0],yw+0.06,q[1]); });
+        var lp=[lo,hi]; for(j=0;j<cut.length;j++){ var j2=(j+1)%cut.length; lp.push([lo[j],lo[j2],hi[j2],hi[j]]); }
+        list.push(onSlabs(polyFromLoops(lp),'wheel',COL_K,'train',{trn:ti, tcar:L0.i}));
+      }); });
+    });
+    /* a pantograph on cars 2, 6, 10 and 14: lines that hide nothing */
+    if(panto && mid){
+      var ZR=RZ1+H, Pg=see(para(Lc(Lb/2-1.0,-0.55,ZR),[ux*2.0,uy*2.0,0],[nx*1.1,ny*1.1,0],[0,0,CZ-ZR]));
+      Pg.lines=[];
+      var pl=[[-0.8,0,ZR+0.15],[0.25,0,ZR+0.85],[-0.3,0,CZ]];
+      for(var q=1;q<pl.length;q++) ln(Pg,Lc(Lb/2+pl[q-1][0],pl[q-1][1],pl[q-1][2]),Lc(Lb/2+pl[q][0],pl[q][1],pl[q][2]),0,0,'panto',COL_K);
+      ln(Pg,Lc(Lb/2-0.3,-0.5,CZ),Lc(Lb/2-0.3,0.5,CZ),0,0,'panto',COL_K);
+      ln(Pg,Lc(Lb/2-0.9,-0.4,ZR+0.15),Lc(Lb/2-0.9,0.4,ZR+0.15),0,0,'panto',COL_K);
+      Pg.hides=false; Pg.seeThru=true;
+      list.push(onSlabs(Pg,'panto',COL_K,'train',{trn:ti, tcar:L0.i}));
+      rec.panto=CZ;
+    }
+    if(!commitAll(list,['struct','platform','track','train'])) return null;
+    /* the whole pieces, before the slab cuts, for the gate: planarity, and the
+       outline it re-derives itself (H2, H4) */
+    rec.raw=c.pc.map(function(q){ return {P:q.P, x0:q.x0, x1:q.x1, nose:q.nose}; });
+    return rec;
+  }
+
+  /* ---- ROW 113 §3.4: PLATFORM GATES (lots), Train 1 and 2. Solid panels 1.3
+     m high and 0.08 thick, their track face 0.6 m behind the coping, one per
+     2 m of the global grid inside the lot; openings of 3.4 m centred on the
+     doors of the train that Train, Cars and Train front build at this
+     platform (built or not); each leaf folded back against the panel beside
+     its opening, drawn on the panel's track face in yellow */
+  var GO0=0.60, GO1=0.68, GH=1.3, GLEAF=0.85, GDOORS=null;
+  function gateDoors(sd){
+    if(!GDOORS) GDOORS={};
+    if(!GDOORS[sd]) GDOORS[sd]=hsLayout().map(function(c){ return hsDoorS(sd,c); });
+    return GDOORS[sd];
+  }
+  function gatesFor(L,dl,dn,df){
+    var sd=L.side, o0=HALFW+GO0, o1=HALFW+GO1, z0=KERB, z1=KERB+GH, D=gateDoors(sd), k;
+    var OP=D.map(function(s){ return [s-1.7,s+1.7]; });
+    D.forEach(function(s){ if(s>=L.s0 && s<L.s1) TAL.gates.push({side:sd, door:s, s0:s-1.7, s1:s+1.7, lot:L.idx}); });
+    /* the panel runs: the lot less the openings, cut on the 2 m grid */
+    var cuts=[L.s0];
+    for(var g=2*Math.ceil((L.s0+1e-9)/2); g<L.s1-1e-9; g+=2) cuts.push(g);
+    OP.forEach(function(o){ [o[0],o[1]].forEach(function(e){ if(e>L.s0+1e-9 && e<L.s1-1e-9) cuts.push(e); }); });
+    cuts.push(L.s1); cuts.sort(function(a,b){ return a-b; });
+    function inOpen(s){ return OP.some(function(o){ return s>o[0]+1e-9 && s<o[1]-1e-9; }); }
+    function isEdge(s){ return OP.some(function(o){ return Math.abs(s-o[0])<1e-9 || Math.abs(s-o[1])<1e-9; }) || s<1e-9 || s>LEN-1e-9; }
+    for(k=0;k+1<cuts.length;k++){
+      var sa=cuts[k], sb=cuts[k+1]; if(sb-sa<1e-6 || inOpen((sa+sb)/2)) continue;
+      var Q=arcQuad(sd,sa,sb,o0,o1), P=prism(Q,z0,z1), lo=Q.map(function(q){ return [q[0],q[1],z0]; }), hi=Q.map(function(q){ return [q[0],q[1],z1]; });
+      /* faces: 0 bottom, 1 top, 2 the track face (o0), 3 end sb, 4 back (o1), 5 end sa */
+      ln(P,hi[0],hi[1],1,2,'gate'); ln(P,hi[3],hi[2],1,4,'gate'); ln(P,lo[0],lo[1],0,2,'gate');
+      if(isEdge(sa)){ ln(P,lo[0],hi[0],2,5,'gate'); ln(P,lo[3],hi[3],4,5,'gate'); ln(P,hi[0],hi[3],1,5,'gate'); }
+      if(isEdge(sb)){ ln(P,lo[1],hi[1],2,3,'gate'); ln(P,lo[2],hi[2],3,4,'gate'); ln(P,hi[1],hi[2],1,3,'gate'); }
+      if(dl<df){
+        /* the posts every 2 m, as lines on the track face */
+        if(Math.abs(sa/2-Math.round(sa/2))<1e-9 && !isEdge(sa)) ln(P,lo[0],hi[0],2,2,'gatepost');
+        /* the leaves: each opening's two, against the panel beside it */
+        OP.forEach(function(o){
+          [[o[0]-GLEAF,o[0]-0.04],[o[1]+0.04,o[1]+GLEAF]].forEach(function(lf){
+            var a=Math.max(lf[0],sa), b=Math.min(lf[1],sb); if(b-a<1e-6) return;
+            var za=KERB+0.10, zb=KERB+1.15;
+            ln(P,onChord(sd,sa,sb,o0,a,za),onChord(sd,sa,sb,o0,b,za),2,2,'leaf',COL_YEL);
+            ln(P,onChord(sd,sa,sb,o0,a,zb),onChord(sd,sa,sb,o0,b,zb),2,2,'leaf',COL_YEL);
+            [lf[0],lf[1]].forEach(function(e){ if(e>=sa-1e-9 && e<sb-1e-9) ln(P,onChord(sd,sa,sb,o0,e,za),onChord(sd,sa,sb,o0,e,zb),2,2,'leaf',COL_YEL); });
+            TAL.leaves.push({side:sd, s0:a, s1:b, open:o});
+          });
+        });
+      }
+      tag(P,'gate',COL_K,'platform',{gapless:true}); P.cont=L;
+      if(inLot(P,L)){ L.parts.push(P); TAL.panels.push({side:sd, lot:L.idx, s0:sa, s1:sb, o0:o0, o1:o1, top:z1}); }
+    }
+  }
+
   /* ---- §3.4 portals and wires -------------------------------------------- */
   function clipSegQ(A,B,Q){
     var t0=0, t1=1, dx=B[0]-A[0], dy=B[1]-A[1], m, ar=0;
@@ -27299,7 +27637,8 @@ function trainTheme(K){
     PORT.forEach(function(q,pi){
       var s=q.s, X=laneFrame(s), d=dist3(X(s,0,7.2)), list=[], rec=TAL.portals[pi], k;
       if(q.rib){ ribDrops(q,pi,X,rec); return; }
-      var mo0=HALFW+0.40, mo1=HALFW+0.70;
+      /* row 113: behind the platform gates (0.60-0.68), in front of the roof */
+      var mo0=HALFW+(TK?0.72:0.40), mo1=HALFW+(TK?0.98:0.70);
       [1,-1].forEach(function(sd){
         var L=lotAt(sd,s,0.25); if(!L){ list.push(null); return; }
         var Mq=arcQuad(sd,s-0.15,s+0.15,mo0,mo1), Mt=prismN(Mq,KERB,7.0);
@@ -35593,6 +35932,7 @@ var HELP={
 'stn.lang':"The script on the building signs and the platform signs: 0 pseudo-kanji, 1 pseudo-hangul, 2 Latin, 3 a mix. Direction signs and the name boards always carry a Latin line as well. The station\u2019s name is an invented word, new with each seed.",
 'stn.trains':"Which tracks have a train standing at the platform: 0 none, 1 the far track (along the platform across from you), 2 the near track, 3 both. The cab faces the camera and the train runs away from it toward the far end, each train in its own line colour.",
 'stn.ncar':"How many cars each train has, each 20 m long, the first with the cab: doors, windows, a livery band, bogies, gangways between cars and a pantograph on every other one. A car that would run past the end of the platform is left off.",
+'stn.tkind':"Which train stands at the platform: 0 a commuter train, 1 a high-speed train, 2 a high-speed train with the long nose. At 1 and 2 the station is rebuilt for it: standard gauge, a 1.25 m platform, wider track centres and platform gates.",
 'stn.tfront':"How far ahead of the camera the cab\u2019s nose stands, in metres along the track. 0 puts the cab beside you; larger moves the whole train down the platform toward the far end.",
 'stn.wires':"1 hangs overhead wires over both tracks: a portal every 40\u201350 m (a mast on each platform and a truss beam across at about 7 m), a level contact wire 5 m over the rails that zig-zags slightly from portal to portal, a messenger wire above it and droppers between them. 0 leaves them all out.",
 'stn.sag':"How far the messenger wire dips between two portals: at 30 it hangs 0.7 m low at midspan, at 0 it runs straight. The contact wire under it stays level.",
