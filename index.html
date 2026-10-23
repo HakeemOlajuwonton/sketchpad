@@ -438,7 +438,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v338</a> &mdash; Train station: a high-speed train (Train 1, and 2 with the long nose) on standard gauge at a 1.25 m platform with platform gates</span></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v340</a> &mdash; Corridor city: a river winds across the grid (River, River bend, River width, Embankment) between stone quays, canal houses facing it where it cuts through the blocks, a road bridge on every street it crosses; and Market alleys, a share of the rows as night markets</span></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <section class="fold" id="fold_pick"><h2>Pick engine<span class="cnt"></span></h2>
@@ -3447,6 +3447,9 @@ var SPEC={
     ['rows','Rows',2,8,1,4],['rowsp','Block depth',30,120,1,60,[1,' m']],
     ['xblk','Block length',40,240,5,90,[1,' m']],['nlen','City length',100,800,10,320,[1,' m']],
     ['xwidth','Cross street',4,16,0.5,7,[1,' m']],['layout','Layout',0,99,1,0],
+    /* row 96 (spec §5.2-5.3): the river, the one corridor that winds, and the market rows */
+    ['river','River',0,1,1,1],['rbend','River bend',0,60,1,24,[1,'°/100 m']],['rwidth','River width',8,60,1,24,[1,' m']],
+    ['rdrop','Embankment',0.5,6,0.25,2.5,[1,' m']],['alleys','Market alleys',0,100,1,25,[100,'%']],
     ['width','Road width',4,24,0.5,9,[1,' m']],['pave','Pavement',0,6,0.25,2.5,[1,' m']],
     ['lotmin','Lot min',3,20,0.5,5,[1,' m']],['lotmax','Lot max',4,40,0.5,16,[1,' m']],
     ['alley','Alley chance',0,60,1,14,[100,'%']],['floors','Storeys',1,40,1,9],
@@ -21821,8 +21824,30 @@ function townGrid(p){
   var NX=Math.max(1,Math.floor(NLEN/XBLK)), U0=XBLK/2, UX=[], i, j;
   for(i=0;i<NX;i++) UX.push(U0+i*XBLK);
   var VY=[]; for(j=0;j<ROWS;j++) VY.push(j*RSP);
+  /* ROW 96 (spec §5.3): MARKET ALLEYS. Each row draws one number from its
+     own substream (salt 541, keyed on the row) and is a night-market alley
+     when it is under Market alleys: the Night market's own content, 4.5 m
+     wide, no pavement. Its kerb strip (KRS) and depth cap (DCAPS) follow.
+     At 0 no row is one and every number below is the grid's own. */
+  var ALLEYS=Math.max(0,Math.min(1,(isFinite(p.alleys)?+p.alleys:25)/100)), MKT=[], KRS=[], DCAPS=[], MKTW=4.5;
+  for(j=0;j<ROWS;j++){ var mk=townSub(0,j,541)()<ALLEYS; MKT.push(mk);
+    KRS.push(mk?MKTW/2+STRIP:KR); DCAPS.push(mk?RSP/2-MKTW/2-0.5:RSP/2-(WID/2+PAVE)-0.5); }
   return {ROWS:ROWS, RSP:RSP, XBLK:XBLK, NLEN:NLEN, XW:XW, WID:WID, PAVE:PAVE, KR:KR, KX:KX, PBX:PBX, CSET:CSET, UX:UX, VY:VY,
+          MKT:MKT, KRS:KRS, DCAPS:DCAPS, ALLEYS:ALLEYS, MKTW:MKTW,
           SPAN:(ROWS-1)*RSP, DCAP:RSP/2-(WID/2+PAVE)-0.5};
+}
+/* the network's own numbers (which rows are markets, where a reaching
+   corridor enters): the kit's splitmix keyed on (a, b, salt), as a plan's
+   sub is at ix 0 */
+function townSub(a,b,salt){
+  var s=(rnd(a*7919+b*104729+salt*1299709+17)*4294967296)>>>0;
+  return function(){
+    s=(s+0x9E3779B9)>>>0;
+    var t=s;
+    t=Math.imul(t^(t>>>15),0x85EBCA6B)>>>0;
+    t=Math.imul(t^(t>>>13),0xC2B2AE35)>>>0;
+    return ((t^(t>>>16))>>>0)/4294967296;
+  };
 }
 function buildTown(p){
   var THM=STHEMES.town; p=corridorKnobs(p,THM);
@@ -21831,27 +21856,33 @@ function buildTown(p){
   for(j=0;j<G.ROWS;j++){
     var gx=UX.map(function(u){ return [u-G.KX,u+G.KX]; });
     var lg=UX.map(function(u){ return [u-G.PBX-G.CSET,u+G.PBX+G.CSET]; });
-    var inL=j<G.ROWS-1, inR=j>0;
-    plans.push(corridorPlan(Object.assign({},p,{len:G.NLEN, bend:0}),THM,j,
+    var inL=j<G.ROWS-1, inR=j>0, mk=G.MKT[j];
+    /* row 96: a market row is the Night market's plan, 4.5 m wide with no
+       pavement, its content the market's own (hooks.theme) -- and its
+       shophouses the market's own (Storeys 3, plots 3-6 m, that engine's
+       defaults): at the town's 9 storeys and 5-16 m it was a lane between towers */
+    plans.push(corridorPlan(Object.assign({},p,{len:G.NLEN, bend:0},mk?{width:G.MKTW, pave:0, floors:3, lotmin:3, lotmax:6}:{}),mk?STHEMES.mkt:THM,j,
       {line:{x:0, y:VY[j], h:0}, sGaps:{'1':inL?gx:[], '-1':inR?gx:[]},
-       lotGaps:{'1':inL?lg:[], '-1':inR?lg:[]}, depthCap:G.DCAP}));
+       lotGaps:{'1':inL?lg:[], '-1':inR?lg:[]}, depthCap:mk?G.DCAPS[j]:G.DCAP, theme:mk?STHEMES.mkt:undefined}));
   }
   /* the cross streets, from the first row's centreline to the last's */
   for(i=0;i<UX.length;i++){
-    var cg=VY.map(function(v){ return [v-G.KR,v+G.KR]; });
+    var cg=VY.map(function(v,jr){ return [v-G.KRS[jr],v+G.KRS[jr]]; });
     plans.push(corridorPlan(Object.assign({},p,{len:G.SPAN, bend:0, width:G.XW}),THM,100+i,
       {line:{x:UX[i], y:0, h:Math.PI/2}, sGaps:cg, noLots:true}));
   }
   /* the junctions: kind 'junction', in no corridor's plan */
   var J=[];
   for(j=0;j<G.ROWS;j++) for(i=0;i<UX.length;i++){
-    var v0=j>0?VY[j]-G.KR:VY[j], v1=j<G.ROWS-1?VY[j]+G.KR:VY[j];
+    var v0=j>0?VY[j]-G.KRS[j]:VY[j], v1=j<G.ROWS-1?VY[j]+G.KRS[j]:VY[j];
     var Q=[[UX[i]-G.KX,v0],[UX[i]+G.KX,v0],[UX[i]+G.KX,v1],[UX[i]-G.KX,v1]];
     J.push({kind:'junction', row:j, cross:i, poly:Q, bb:[Q[0][0],Q[0][1],Q[2][0],Q[2][1]], parts:[]});
   }
   var JT={key:'town', content:function(K){ return townJunctions(K,G,plans.slice(0,G.ROWS+UX.length),J); }};
   plans.push({ix:-1, p:p, theme:JT, sGaps:[], hasGap:false, Z0:0, conts:J, lots:[], slabsBySide:{'1':[],'-1':[]},
               dropped:0, pushed:0});
+  /* row 96: the river, a reaching corridor across the grid (spec §5.1-5.2) */
+  var RIV=Math.round(isFinite(p.river)?+p.river:1)===1?townRiver(p,G,plans,J):null;
   /* the camera: isometric about the grid's middle, turned from +u; the
      perspective eye at Camera along (a share of City length) and Camera side
      (-100 the first row, 100 the last), aimed along +u before Turn and Pitch */
@@ -21864,6 +21895,14 @@ function buildTown(p){
     plans:plans.slice(0,G.ROWS+UX.length).map(function(PLk,k){ return {ix:PLk.ix, row:k<G.ROWS, HALFW:PLk.HALFW, KOFF:PLk.KOFF, PBACK:PLk.PBACK,
       LEN:PLk.LEN, sGaps:PLk.sGaps, lots:PLk.lots.length, SX:[PLk.SX[0],PLk.SX[PLk.NS-1]], SY:[PLk.SY[0],PLk.SY[PLk.NS-1]], NS:PLk.NS,
       line:Array.prototype.slice.call(PLk.SX,0,Math.ceil(PLk.LEN/PLk.DS)+1).map(function(x,m){ return [x,PLk.SY[m]]; })}; })};
+  /* row 96: which rows are markets, and the river's own record (L48) */
+  STRTTALLY.town.mkt=G.MKT.slice();
+  STRTTALLY.town.river=RIV?RIV.info:null;
+  /* the stat line names what the river carved and dropped, and the markets */
+  var nm=G.MKT.filter(function(m){ return m; }).length;
+  if(nm) STRTINFO+=' · '+nm+' market alley'+(nm>1?'s':'');
+  if(RIV){ var RI=RIV.info, nb=RI.bridges.filter(function(b){ return b.deck>0; }).length;
+    STRTINFO+=' · river: '+nb+' bridge'+(nb===1?'':'s')+', '+RI.carved+' canal house'+(RI.carved===1?'':'s')+' carved from '+RI.met+' lots ('+RI.split+' split, '+RI.dropped+' piece'+(RI.dropped===1?'':'s')+' too small dropped)'; }
   return res;
 }
 /* the junctions' own dressing (row 95 §4.2): each one's corner kerb lines on
@@ -21872,8 +21911,9 @@ function buildTown(p){
    in that slab's container, cut at its cell faces like the Street's zebra.
    Traffic keeps left, as the Street's cars do: side 1 drives toward +s. */
 function townJunctions(K,G,plans,J){
-  var prism=K.prism, paperGap=K.paperGap, COL='#1a1a1a', ZL=3.0, STOP=0.5;
-  function plate(C){ var Pl=prism(C.poly.map(function(q){ return [q[0],q[1]]; }),-0.02,0);
+  var prism=K.prism, prismN=K.prismN, paperGap=K.paperGap, COL='#1a1a1a', ZL=3.0, STOP=0.5;
+  /* row 96: a container the river cut may have 3-6 corners (prismN) */
+  function plate(C){ var Q2=C.poly.map(function(q){ return [q[0],q[1]]; }), Pl=Q2.length===4?prism(Q2,-0.02,0):prismN(Q2,-0.02,0);
     Pl.lines=[]; Pl.hides=false; Pl.cont=C; Pl.col=COL; Pl.kind='plate'; Pl.layer='furn'; C.parts.push(Pl); return Pl; }
   /* the lines of one approach painted on a plan's slabs over [sa,sb] on side sd */
   function paint(PLk,sd,sa,sb,fn){
@@ -21913,20 +21953,399 @@ function townJunctions(K,G,plans,J){
   }
   function furnish(dn,df){
     J.forEach(function(C){
-      var Pl=plate(C), R=plans[C.row], X=plans[G.ROWS+C.cross], u=G.UX[C.cross], v=G.VY[C.row];
+      /* row 96: each row's own kerb strip (a market row is narrower); a
+         junction the river cut (C.cut) still knows which corner each kerb
+         is by the grid, and the kit trims its lines to what is left */
+      var Pl=plate(C), R=plans[C.row], X=plans[G.ROWS+C.cross], u=G.UX[C.cross], v=G.VY[C.row], KRj=G.KRS[C.row];
       /* the corner kerbs: where each row kerb meets its cross street's */
       [1,-1].forEach(function(su){ [1,-1].forEach(function(sv){
         var vk=v+sv*R.HALFW, uk=u+su*X.HALFW;
-        if(sv>0?C.poly[2][1]<v+G.KR-1e-9:C.poly[0][1]>v-G.KR+1e-9) return;
+        if(!C.cut && (sv>0?C.poly[2][1]<v+KRj-1e-9:C.poly[0][1]>v-KRj+1e-9)) return;
+        if(C.cut && (sv>0?C.row===G.ROWS-1:C.row===0)) return;
         Pl.lines.push({a:[u+su*G.KX,vk,0], b:[uk,vk,0], f0:1, f1:1, kind:'kerb'});
-        Pl.lines.push({a:[uk,vk,0], b:[uk,v+sv*G.KR,0], f0:1, f1:1, kind:'kerb'});
+        Pl.lines.push({a:[uk,vk,0], b:[uk,v+sv*KRj,0], f0:1, f1:1, kind:'kerb'});
       }); });
-      approach(R,u-G.KX,-1,df); approach(R,u+G.KX,1,df);
-      if(C.row>0) approach(X,v-G.KR,-1,df);
-      if(C.row<G.ROWS-1) approach(X,v+G.KR,1,df);
+      /* a market alley is a footway: no crossing or stop line on its own
+         approaches (the cross street's still have theirs) */
+      /* the second piece of a junction the river split in two (C.dup)
+         paints no approach: the first did */
+      if(C.dup) return;
+      if(!R.theme){ approach(R,u-G.KX,-1,df); approach(R,u+G.KX,1,df); }
+      if(C.row>0) approach(X,v-KRj,-1,df);
+      if(C.row<G.ROWS-1) approach(X,v+KRj,1,df);
     });
   }
   return {dress:function(){}, signsFor:function(){}, furnish:furnish, cars:[], dots:[], poles:[]};
+}
+/* ROW 96 (docs/specs/2026-10-11-corridor-city_v2.md §5.1-5.2): THE RIVER, a
+   REACHING CORRIDOR. The only thing in a town that winds:
+   - ITS LINE is the kit's own spline (hooks.spline, salt 521 keyed on the
+     corridor's index, 200), Bend River bend, the heading held within +-70
+     degrees of its start. It enters at the bottom or top edge of the network's
+     box, how far along and 10-30 degrees off square chosen by Layout (salt
+     523), and ends where its centreline first leaves the box.
+   - ITS BAND is River width of water and a 1.5 m quay each side: the plan's
+     4 m slabs reach from the centreline to the band's edge (strip 1.5), and
+     the kit's kerb on them is the QUAY -- Embankment tall, hiding, its top
+     at street level -- because the whole plan stands Embankment low (Z0).
+     The water is canalTheme's channel, its mirror at z = -Embankment.
+   - IT CARVES. A grid container the band meets is cut by the band edge's
+     local chords -- every river slab near it on that side, the half-plane
+     away from the band -- and a piece still meeting the band is not kept. A
+     street slab or junction keeps its piece (C.cut: the kit trims what is
+     placed on it to what is left); a LOT is carved the same way and its piece
+     on each side BECOMES A LOT OF THE RIVER: the largest river-frame
+     envelope inside it -- front on the quay's back, Lot min wide or more,
+     4 m deep or more -- dressed by canalTheme as a canal house facing the
+     water, its numbers keyed on its parent lot and its side. A lot the band
+     splits keeps both pieces; a piece too small is dropped and counted.
+   - A GRID STREET IT CROSSES gets a road bridge, built by the river's own
+     content (riverTheme). Cells the band touches are gaps for the street's
+     own content, so no car or pole is placed there.
+   Every number here is the river's or Layout's: River 0 is the grid of row
+   95 exactly, and Market alleys 0 with it. */
+function townRiver(p,G,plans,J){
+  var RB=Math.max(0,Math.min(60,isFinite(p.rbend)?+p.rbend:24)), RW=Math.max(8,Math.min(60,isFinite(p.rwidth)?+p.rwidth:24));
+  var RD=Math.max(0.5,Math.min(6,isFinite(p.rdrop)?+p.rdrop:2.5)), LAY=Math.max(0,Math.min(99,Math.round(isFinite(p.layout)?+p.layout:0)));
+  var LOTMIN=Math.max(3,+p.lotmin||5), MINENV=4, QUAY=1.5, NG=G.ROWS+G.UX.length, grid=plans.slice(0,NG), i, j, k;
+  var CN=STHEMES.canal, info={rbend:RB, rwidth:RW, rdrop:RD, layout:LAY, quay:QUAY, met:0, carved:0, split:0, dropped:0, unresolved:0,
+    slabsCut:0, slabsGone:0, juncCut:0, juncGone:0, juncSplit:0, gapCells:0, crossings:[], bridges:[], lots:[]};
+  /* the theme: the canal's, its band the water and a quay each side */
+  var RTHM=Object.assign({},CN,{key:'river', label:'River', strip:QUAY, minLen:10, minWidth:8, kerbHides:true,
+    edgeZOf:function(){ return RD; }, paveOf:function(){ return QUAY; },
+    fixed:Object.assign({},CN.fixed,{bridges:0, laundry:0, cables:0, quays:100}),
+    content:function(K){ return riverTheme(K,RIV); }});
+  /* the network's box: every grid container */
+  var BX=[1e18,1e18,-1e18,-1e18];
+  function grow(Q){ Q.forEach(function(q){ if(q[0]<BX[0])BX[0]=q[0]; if(q[1]<BX[1])BX[1]=q[1]; if(q[0]>BX[2])BX[2]=q[0]; if(q[1]>BX[3])BX[3]=q[1]; }); }
+  grid.forEach(function(PL){ PL.conts.forEach(function(C){ grow(C.poly); }); });
+  J.forEach(function(C){ grow(C.poly); });
+  /* where it enters, from Layout's numbers */
+  var RL=townSub(0,LAY,523), ue=RL(), ux=RL(), ua=RL(), us=RL();
+  var bottom=ue<0.5, x0=BX[0]+(0.2+0.6*ux)*(BX[2]-BX[0]), y0=bottom?BX[1]:BX[3];
+  var h0=(bottom?Math.PI/2:-Math.PI/2)+(us<0.5?-1:1)*(10+20*ua)*Math.PI/180;
+  var pr=Object.assign({},p,{bend:RB, width:RW}), hk={spline:{x:x0, y:y0, h:h0, salt:521}, noLots:true, Z0:-RD, theme:RTHM};
+  var DIAG=Math.hypot(BX[2]-BX[0],BX[3]-BX[1]), PL0=corridorPlan(Object.assign({},pr,{len:Math.min(4000,4*DIAG)}),RTHM,200,hk);
+  /* it ends where its centreline first leaves the box */
+  var LENr=PL0.LEN;
+  for(i=1;i<PL0.NS;i++){ var xi=PL0.SX[i], yi=PL0.SY[i];
+    if(xi<BX[0]-1e-6||xi>BX[2]+1e-6||yi<BX[1]-1e-6||yi>BX[3]+1e-6){ LENr=Math.max(10,i*PL0.DS); break; } }
+  var PLR=corridorPlan(Object.assign({},pr,{len:LENr}),RTHM,200,hk), RS=PLR.conts.slice();
+  var KO=PLR.KOFF, HW=PLR.HALFW, polyOverlap=PLR.polyOverlap, bbox2=PLR.bbox2, bbHit=PLR.bbHit, convex=PLR.convex;
+  /* nothing hangs a cable across the water: a cable piece in a river
+     container would be lowered with it (corridorDraw's noCable) */
+  RS.forEach(function(C){ C.noCable=true; C.river=true; });
+  var RBB=[1e18,1e18,-1e18,-1e18]; RS.forEach(function(C){ RBB=[Math.min(RBB[0],C.bb[0]),Math.min(RBB[1],C.bb[1]),Math.max(RBB[2],C.bb[2]),Math.max(RBB[3],C.bb[3])]; });
+  var NSR=Math.min(PLR.NS,Math.ceil(PLR.LEN/PLR.DS)+1);
+  info.line=[]; for(i=0;i<NSR;i++) info.line.push([PLR.SX[i],PLR.SY[i]]);
+  info.LEN=PLR.LEN; info.KOFF=KO; info.HALFW=HW; info.box=BX; info.entry={x:x0, y:y0, h:h0, bottom:bottom};
+  info.slabs=RS.map(function(C){ return {side:C.side, s0:C.s0, s1:C.s1, poly:C.poly}; });
+  /* the river frame of a plan point: its arc s and its signed offset o */
+  function rST(X){
+    var bi=0, bd=1e18, m;
+    for(m=0;m<NSR;m++){ var dx=PLR.SX[m]-X[0], dy=PLR.SY[m]-X[1], d=dx*dx+dy*dy; if(d<bd){ bd=d; bi=m; } }
+    var F=PLR.frame(bi*PLR.DS), s=bi*PLR.DS+(X[0]-F[0])*F[2]+(X[1]-F[1])*F[3], F2=PLR.frame(s);
+    return {s:s, o:(X[0]-F2[0])*(-F2[3])+(X[1]-F2[1])*F2[2]};
+  }
+  info.rST=rST;
+  /* half-planes: keep n.x >= d */
+  function clipHP(Q,n,d){
+    var o=[], m;
+    for(m=0;m<Q.length;m++){
+      var A=Q[m], B=Q[(m+1)%Q.length], da=n[0]*A[0]+n[1]*A[1]-d, db=n[0]*B[0]+n[1]*B[1]-d;
+      if(da>=0) o.push(A);
+      if((da>=0)!==(db>=0)){ var t=da/(da-db); o.push([A[0]+(B[0]-A[0])*t, A[1]+(B[1]-A[1])*t]); }
+    }
+    return o;
+  }
+  function areaOf(Q){ var a=0; for(var m=0;m<Q.length;m++){ var qa=Q[m], qb=Q[(m+1)%Q.length]; a+=qa[0]*qb[1]-qa[1]*qb[0]; } return Math.abs(a)/2; }
+  /* a river slab's band-edge chord, its normal pointing away from the band */
+  function chord(C){
+    var A=C.poly[3], B=C.poly[2], n=[B[1]-A[1], A[0]-B[0]], L=Math.hypot(n[0],n[1])||1; n=[n[0]/L,n[1]/L];
+    if(n[0]*(C.poly[0][0]-A[0])+n[1]*(C.poly[0][1]-A[1])>0) n=[-n[0],-n[1]];
+    return {n:n, d:n[0]*A[0]+n[1]*A[1]};
+  }
+  function meetsBand(Q){ var b=bbox2(Q); if(!bbHit(b,RBB)) return false;
+    return RS.some(function(C){ return bbHit(b,C.bb) && polyOverlap(Q,C.poly); }); }
+  /* Q cut away from the band: null when Q does not meet it, else one entry
+     per bank Q reaches past -- its piece (convex), or null when the piece
+     still meets the band and so is not kept */
+  function cutAway(Q){
+    if(!meetsBand(Q)) return null;
+    var b=bbox2(Q), bx=[b[0]-4,b[1]-4,b[2]+4,b[3]+4], near=RS.filter(function(C){ return bbHit(bx,C.bb); }), out=[];
+    [1,-1].forEach(function(sd){
+      var mine=near.filter(function(C){ return C.side===sd; }), P=Q, m;
+      if(!mine.length) return;
+      for(m=0;m<mine.length && P.length>=3;m++){ var h=chord(mine[m]); P=clipHP(P,h.n,h.d); }
+      if(P.length<3 || areaOf(P)<0.05) return;
+      out.push({side:sd, poly:meetsBand(P)?null:P});
+    });
+    return out;
+  }
+  /* ---- the grid's streets and junctions, cut at the band ---- */
+  grid.forEach(function(PL,gk){
+    var gapAdd={'1':[],'-1':[]};
+    PL.conts=PL.conts.filter(function(C){
+      if(C.kind!=='slab') return true;
+      var r=cutAway(C.poly); if(r===null) return true;
+      gapAdd[C.side].push([C.s0,C.s1]); info.gapCells++;
+      var keep=r.filter(function(e){ return e.poly; });
+      if(r.some(function(e){ return !e.poly; })) info.unresolved++;
+      var cell=PL.slabsBySide[C.side].indexOf(C);
+      /* a hole, as a junction's cell is: forEach skips it */
+      if(!keep.length){ if(cell>=0) delete PL.slabsBySide[C.side][cell]; info.slabsGone++; return false; }
+      keep.sort(function(a,b){ return areaOf(b.poly)-areaOf(a.poly); });
+      C.poly=keep[0].poly; C.bb=bbox2(C.poly); C.cut=true; info.slabsCut++;
+      return true;
+    });
+    /* the band's cells are gaps for the street's own content (inGapS) */
+    if(gapAdd['1'].length || gapAdd['-1'].length){
+      var SG=Array.isArray(PL.sGaps)?{'1':PL.sGaps.slice(),'-1':PL.sGaps.slice()}:{'1':(PL.sGaps['1']||[]).slice(),'-1':(PL.sGaps['-1']||[]).slice()};
+      SG['1']=SG['1'].concat(gapAdd['1']); SG['-1']=SG['-1'].concat(gapAdd['-1']);
+      PL.sGaps=SG; PL.hasGap=true;
+    }
+  });
+  for(k=J.length-1;k>=0;k--){
+    var Cj=J[k], rj=cutAway(Cj.poly); if(rj===null) continue;
+    var kj=rj.filter(function(e){ return e.poly; });
+    if(rj.some(function(e){ return !e.poly; })) info.unresolved++;
+    if(!kj.length){ J.splice(k,1); info.juncGone++; continue; }
+    Cj.poly=kj[0].poly; Cj.bb=bbox2(Cj.poly); Cj.cut=true; info.juncCut++;
+    for(var e2=1;e2<kj.length;e2++){
+      J.push({kind:'junction', row:Cj.row, cross:Cj.cross, poly:kj[e2].poly, bb:bbox2(kj[e2].poly), parts:[], cut:true, dup:true});
+      info.juncSplit++;
+    }
+  }
+  /* ---- the lots: carved, and each piece a canal house of the river ---- */
+  /* the largest river-frame envelope inside the convex piece Q on bank sd */
+  function riverLot(Q,sd){
+    var V=Q.map(rST), smin=1e18, smax=-1e18, omax=-1e18;
+    V.forEach(function(v){ if(v.s<smin) smin=v.s; if(v.s>smax) smax=v.s; if(v.o*sd>omax) omax=v.o*sd; });
+    var DEP1=Math.min(RTHM.lotDepth[1],omax-KO); if(DEP1<MINENV) return null;
+    var memo={};
+    /* the signed distance to each edge, in metres; an edge under 1 um (a cut
+       through a corner leaves two corners a hair apart) has no direction */
+    function inQ(X){ var sg=0; for(var m=0;m<Q.length;m++){ var a=Q[m], b=Q[(m+1)%Q.length], L=Math.hypot(b[0]-a[0],b[1]-a[1]); if(L<1e-6) continue;
+      var c=((b[0]-a[0])*(X[1]-a[1])-(b[1]-a[1])*(X[0]-a[0]))/L;
+      if(c>1e-9) sg|=1; else if(c<-1e-9) sg|=2; } return sg!==3; }
+    /* the longest run of s at offset o whose point is inside Q, every 0.1 m */
+    function run(o){
+      var key=o.toFixed(4); if(memo[key]!==undefined) return memo[key];
+      var a=null, b=null, ba=null, bb=null, n=Math.ceil((smax-smin+2)/0.1), m;
+      for(m=0;m<=n;m++){ var s=smin-1+m*0.1, X=PLR.P3(s,sd,o,0);
+        if(inQ(X)){ if(a===null) a=s; b=s; }
+        else if(a!==null){ if(ba===null||b-a>bb-ba){ ba=a; bb=b; } a=null; } }
+      if(a!==null && (ba===null||b-a>bb-ba)){ ba=a; bb=b; }
+      return (memo[key]=ba===null?null:[ba,bb]);
+    }
+    for(var t=0;t<40;t++){
+      var fe=KO+0.05*t, r0=run(fe), best=null;
+      if(!r0) continue;
+      for(var dep=DEP1;dep>=MINENV-1e-9;dep-=0.5){
+        var r1=run(fe+dep); if(!r1) continue;
+        var a=Math.max(r0[0],r1[0]), b=Math.min(r0[1],r1[1]); if(b-a<0.5) continue;
+        var A=PLR.P3(a,sd,fe,0), B=PLR.P3(b,sd,fe,0), w=Math.hypot(B[0]-A[0],B[1]-A[1]);
+        if(w<LOTMIN) continue;
+        if(!best || w*dep>best.w*best.dep) best={a:a, b:b, fe:fe, dep:dep, w:w};
+      }
+      if(!best) continue;
+      var env=[PLR.P3(best.a,sd,best.fe,0),PLR.P3(best.b,sd,best.fe,0),PLR.P3(best.b,sd,best.fe+best.dep,0),PLR.P3(best.a,sd,best.fe+best.dep,0)].map(function(v){ return [v[0],v[1]]; });
+      if(!convex(env)) continue;
+      if(meetsBand(env)) continue;
+      best.env=env; return best;
+    }
+    return null;
+  }
+  var rlots=[];
+  for(k=0;k<G.ROWS;k++){
+    var PLk=grid[k], gone=[];
+    PLk.lots.forEach(function(L){
+      var r=cutAway(L.poly); if(r===null) return;
+      gone.push(L); info.met++;
+      var got=0;
+      r.forEach(function(e){
+        var R=e.poly?riverLot(e.poly,e.side):null;
+        if(!R){ info.dropped++; return; }
+        var key=(k*2+(L.side<0?1:0))*1000+L.idx;
+        var LOT={kind:'lot', side:e.side, idx:key, s0:R.a, s1:R.b, poly:R.env, bb:bbox2(R.env), parts:[],
+                 fe:R.fe, back:R.fe+R.dep, depth:R.dep, blocks:[], gen:null, carved:{row:k, side:L.side, idx:L.idx}};
+        rlots.push(LOT); got++; info.carved++;
+        info.lots.push({side:e.side, idx:key, row:k, pside:L.side, pidx:L.idx, poly:R.env, piece:e.poly, w:R.w, dep:R.dep});
+      });
+      if(got===2) info.split++;
+    });
+    if(gone.length){
+      PLk.lots=PLk.lots.filter(function(L){ return gone.indexOf(L)<0; });
+      PLk.conts=PLk.conts.filter(function(C){ return gone.indexOf(C)<0; });
+    }
+  }
+  rlots.sort(function(a,b){ return a.side-b.side || a.s0-b.s0; });
+  rlots.forEach(function(L){ PLR.lots.push(L); PLR.conts.push(L); });
+  /* ---- the crossings: every grid street whose strip meets the water ---- */
+  grid.forEach(function(PL,gk){
+    var hl={x:PL.SX[0], y:PL.SY[0], c:Math.cos(PL.SH[0]), s:Math.sin(PL.SH[0])};
+    /* where its centreline crosses the river's */
+    var xs=[], m;
+    for(m=0;m+1<NSR;m++){
+      var ax=PLR.SX[m], ay=PLR.SY[m], bx=PLR.SX[m+1], by=PLR.SY[m+1], ex=bx-ax, ey=by-ay;
+      var den=hl.c*ey-hl.s*ex; if(Math.abs(den)<1e-12) continue;
+      var t=((ax-hl.x)*ey-(ay-hl.y)*ex)/den, u=((ax-hl.x)*hl.s-(ay-hl.y)*hl.c)/den;
+      if(u>=0 && u<1 && t>=0 && t<=PL.LEN) xs.push({sS:t, sR:(m+u)*PLR.DS, ang:Math.acos(Math.min(1,Math.abs(hl.c*ex+hl.s*ey)/Math.hypot(ex,ey)))});
+    }
+    info.crossings.push({k:gk, row:gk<G.ROWS, mkt:gk<G.ROWS && !!G.MKT[gk], ix:PL.ix, x:hl.x, y:hl.y, c:hl.c, s:hl.s, LEN:PL.LEN, KOFF:PL.KOFF, HALFW:PL.HALFW, at:xs});
+  });
+  var RIV={plan:PLR, info:info, G:G, grid:grid};
+  plans.push(PLR);
+  return RIV;
+}
+/* THE RIVER'S CONTENT: canalTheme's (water, quay, waves, boats, mooring
+   posts, its canal houses) and a ROAD BRIDGE for every grid street whose
+   strip meets the water (spec §5.2): a deck 0.6 m thick over the water at
+   street level, its top Embankment above it; where Embankment is under
+   1.6 m the deck rises in a shallow arch to keep 1.0 m under it at the
+   centreline. A parapet 1 m tall and 0.25 m thick along each edge of the
+   street over the whole band. 1-3 piers in the water when River width is
+   20 m or more (salt 547). EVERY PIECE IS CUT AT EVERY RIVER CONTAINER FACE
+   IT CROSSES -- the river's slabs meet the street at an angle -- with no line
+   at a cut; a cross street's deck and both its parapets stop at a row
+   street's strip, and a row street's parapets at a cross street's, so a
+   bridge at a junction is one deck. Built in the river's own frame (the
+   water at 0), so its Z0 lowers it with the river. Bridges are placed first,
+   so the canal's posts and boats keep clear of them. */
+function riverTheme(K,RIV){
+  var CT=canalTheme(K), splitPart=K.splitPart, verts=K.verts, polyFromLoops=K.polyFromLoops, P3=K.P3, slabsBySide=K.slabsBySide,
+      KERB=K.KERB, HALFW=K.HALFW, sub=K.sub, bbHit=K.bbHit;
+  var info=RIV.info, G=RIV.G, COL='#1a1a1a', SALT_RBR=547;
+  var MINE=[]; [1,-1].forEach(function(sd){ slabsBySide[sd].forEach(function(C){ if(C) MINE.push(C); }); });
+  var H=Math.max(0,1.6-KERB);
+  /* P clipped to container C's four faces, and to the water (the quay face)
+     when water is true; null when nothing is left */
+  function clipTo(P,C,water){
+    var Q=C.poly, cx=0, cy=0, e, piece=P;
+    Q.forEach(function(q){ cx+=q[0]/Q.length; cy+=q[1]/Q.length; });
+    var planes=[];
+    for(e=0;e<Q.length;e++){ var a=Q[e], c=Q[(e+1)%Q.length], nx=-(c[1]-a[1]), ny=c[0]-a[0], L=Math.hypot(nx,ny); nx/=L; ny/=L;
+      if(nx*(cx-a[0])+ny*(cy-a[1])<0){ nx=-nx; ny=-ny; } planes.push([nx,ny,nx*a[0]+ny*a[1]]); }
+    if(water){ var A=P3(C.s0,C.side,HALFW,0), B=P3(C.s1,C.side,HALFW,0), wx=-(B[1]-A[1]), wy=B[0]-A[0], wl=Math.hypot(wx,wy); wx/=wl; wy/=wl;
+      if(wx*(Q[0][0]-A[0])+wy*(Q[0][1]-A[1])<0){ wx=-wx; wy=-wy; } planes.push([wx,wy,wx*A[0]+wy*A[1]]); }
+    for(e=0;e<planes.length && piece;e++){
+      var pl=planes[e], V=verts(piece), lo=1e18, hi=-1e18;
+      V.forEach(function(v){ var w=pl[0]*v[0]+pl[1]*v[1]-pl[2]; if(w<lo) lo=w; if(w>hi) hi=w; });
+      if(hi<=1e-9){ piece=null; break; }
+      if(lo<-1e-9){ piece=splitPart(piece,[pl[0],pl[1],0],pl[2])[0]; if(!piece.faces.length || verts(piece).length<4) piece=null; }
+    }
+    return piece;
+  }
+  function pieces(P,water){
+    var V=verts(P), b=[1e18,1e18,-1e18,-1e18], out=[];
+    V.forEach(function(v){ if(v[0]<b[0])b[0]=v[0]; if(v[1]<b[1])b[1]=v[1]; if(v[0]>b[2])b[2]=v[0]; if(v[1]>b[3])b[3]=v[1]; });
+    MINE.forEach(function(C){ if(!bbHit(b,C.bb)) return; var q=clipTo(P,C,water); if(q){ q.cont=C; out.push(q); } });
+    return out;
+  }
+  /* a box in a street's frame: t along it, l across it, z linear in t */
+  function box(S,t0,t1,l0,l1,zb0,zb1,zt0,zt1){
+    function X(t,l,z){ return [S.x+S.c*t-S.s*l, S.y+S.s*t+S.c*l, z]; }
+    var lo=[X(t0,l0,zb0),X(t1,l0,zb1),X(t1,l1,zb1),X(t0,l1,zb0)], hi=[X(t0,l0,zt0),X(t1,l0,zt1),X(t1,l1,zt1),X(t0,l1,zt0)], lp=[lo,hi], e;
+    for(e=0;e<4;e++){ var e2=(e+1)%4; lp.push([lo[e],lo[e2],hi[e2],hi[e]]); }
+    return polyFromLoops(lp);
+  }
+  function tOf(S,v){ return (v[0]-S.x)*S.c+(v[1]-S.y)*S.s; }
+  /* P less a strip (another street's, half-width w about its line): the
+     pieces either side of it */
+  function minus(list,T,w){
+    var out=[];
+    list.forEach(function(P){
+      var nv=[-T.s,T.c], d0=nv[0]*T.x+nv[1]*T.y, V=verts(P), lo=1e18, hi=-1e18;
+      V.forEach(function(v){ var l=nv[0]*v[0]+nv[1]*v[1]-d0; if(l<lo) lo=l; if(l>hi) hi=l; });
+      if(hi<=-w+1e-9 || lo>=w-1e-9){ out.push(P); return; }
+      if(hi>w+1e-9){ var A=splitPart(P,[nv[0],nv[1],0],d0+w)[0]; if(A.faces.length && verts(A).length>=4) out.push(A); }
+      if(lo<-w-1e-9){ var B=splitPart(P,[-nv[0],-nv[1],0],-(d0-w))[0]; if(B.faces.length && verts(B).length>=4) out.push(B); }
+    });
+    return out;
+  }
+  /* the arch's rise g.H is set so the underside is 1.0 m over the water
+     where the river's CENTRELINE passes under it, which is off the middle of
+     the crossing when the street meets the river at an angle */
+  function topAt(g,t){ if(!(g.H>0) || t<=g.ta || t>=g.tb) return KERB; var u=(2*t-g.ta-g.tb)/(g.tb-g.ta); return KERB+g.H*(1-u*u); }
+  /* the boxes a run [t0,t1] of street is built from: one, or eight per arch */
+  function runs(S,groups,t0,t1){
+    var cuts=[t0,t1];
+    /* and a break where the river's centreline passes under it, so the deck
+       is the arch exactly there (between breaks it is the chord) */
+    if(H>0) groups.forEach(function(g){ for(var m=0;m<=8;m++){ var t=g.ta+(g.tb-g.ta)*m/8; if(t>t0 && t<t1) cuts.push(t); }
+      if(g.sc!==undefined && g.sc>t0 && g.sc<t1) cuts.push(g.sc); });
+    cuts.sort(function(a,b){ return a-b; });
+    var o=[]; for(var m=0;m+1<cuts.length;m++) if(cuts[m+1]-cuts[m]>1e-6) o.push([cuts[m],cuts[m+1]]); return o;
+  }
+  function topIn(groups,t){ for(var m=0;m<groups.length;m++) if(t>groups[m].ta && t<groups[m].tb) return topAt(groups[m],t); return KERB; }
+  /* no line at a joint between two of the boxes */
+  function dropJoints(P,S,ts){ P.lines=P.lines.filter(function(Ln){ var a=tOf(S,Ln.a), b=tOf(S,Ln.b);
+    return !ts.some(function(t){ return Math.abs(a-t)<1e-7 && Math.abs(b-t)<1e-7; }); }); return P; }
+  function tag(list,kind,bi){ list.forEach(function(Q){ Q.kind=kind; Q.layer='bridge'; Q.col=COL; Q.bridge=bi;
+    Q.lines.forEach(function(Ln){ if(Ln.col===undefined) Ln.col=COL; if(!Ln.kind) Ln.kind=kind; }); }); return list; }
+  function bridges(){
+    info.bridges=[];
+    info.crossings.forEach(function(S,bi){
+      var rows=info.crossings.filter(function(T){ return T.row; }), xs=info.crossings.filter(function(T){ return !T.row; });
+      var others=S.row?xs:rows, w=S.KOFF;
+      /* the water under the whole street, flat, to find where it crosses */
+      var flat=pieces(box(S,0,S.LEN,-w,w,KERB-0.6,KERB-0.6,KERB,KERB),true);
+      if(!S.row) others.forEach(function(T){ flat=[].concat.apply([],flat.map(function(P){ return minus([P],T,T.KOFF); })); });
+      var rec={k:S.k, row:S.row, groups:[], deck:0, parapet:0, pier:0, under:[]};
+      if(!flat.length){ info.bridges.push(rec); return; }
+      /* its crossings: the t ranges the deck's pieces cover, merged */
+      var iv=flat.map(function(P){ var lo=1e18, hi=-1e18; verts(P).forEach(function(v){ var t=tOf(S,v); if(t<lo) lo=t; if(t>hi) hi=t; }); return [lo,hi]; })
+                 .sort(function(a,b){ return a[0]-b[0]; }), groups=[];
+      iv.forEach(function(r){ var g=groups[groups.length-1]; if(g && r[0]<=g.tb+0.5) g.tb=Math.max(g.tb,r[1]); else groups.push({ta:r[0], tb:r[1]}); });
+      groups.forEach(function(g){
+        var uc=0; S.at.forEach(function(a){ if(a.sS>=g.ta && a.sS<=g.tb){ uc=(2*a.sS-g.ta-g.tb)/(g.tb-g.ta); g.sc=a.sS; } });
+        g.uc=uc; g.H=H>0?H/(1-Math.min(0.64,uc*uc)):0;
+      });
+      rec.groups=groups;
+      var deck=flat;
+      if(H>0){
+        deck=[];
+        groups.forEach(function(g){
+          var R=runs(S,[g],g.ta,g.tb), ts=R.map(function(r){ return r[0]; }).slice(1);
+          R.forEach(function(r){ var za=topAt(g,r[0]), zb=topAt(g,r[1]);
+            var Bx=dropJoints(box(S,r[0],r[1],-w,w,za-0.6,zb-0.6,za,zb),S,ts), list=[Bx];
+            if(!S.row) others.forEach(function(T){ list=minus(list,T,T.KOFF); });
+            list.forEach(function(P){ deck=deck.concat(pieces(P,true)); });
+          });
+        });
+      }
+      tag(deck,'deck',bi); rec.deck=deck.length;
+      /* the parapets, the whole band long, on the deck or the quay */
+      var par=[], R2=runs(S,groups,0,S.LEN), ts2=R2.map(function(r){ return r[0]; }).slice(1);
+      [[w-0.25,w],[-w,-w+0.25]].forEach(function(lr){
+        R2.forEach(function(r){ var za=topIn(groups,r[0]+1e-9), zb=topIn(groups,r[1]-1e-9);
+          if(H>0){ za=groups.reduce(function(z,g){ return Math.max(z,topAt(g,r[0])); },KERB); zb=groups.reduce(function(z,g){ return Math.max(z,topAt(g,r[1])); },KERB); }
+          var list=[dropJoints(box(S,r[0],r[1],lr[0],lr[1],za,zb,za+1.0,zb+1.0),S,ts2)];
+          others.forEach(function(T){ list=minus(list,T,T.KOFF); });
+          list.forEach(function(P){ par=par.concat(pieces(P,false)); });
+        });
+      });
+      tag(par,'parapet',bi); rec.parapet=par.length;
+      /* piers, 1-3 a crossing, in the water */
+      var pier=[];
+      if(info.rwidth>=20) groups.forEach(function(g,gi){
+        var Rp=sub(S.k,gi,SALT_RBR), np=1+Math.floor(Rp()*3), m;
+        for(m=0;m<np;m++){ var tp=g.ta+(g.tb-g.ta)*(m+1)/(np+1), zt=Math.min(topAt(g,tp-0.6),topAt(g,tp+0.6))-0.6;
+          var list=[box(S,tp-0.6,tp+0.6,-(w-0.6),w-0.6,0,0,zt,zt)];
+          if(!S.row) others.forEach(function(T){ list=minus(list,T,T.KOFF); });
+          list.forEach(function(P){ pier=pier.concat(pieces(P,true)); });
+        }
+      });
+      tag(pier,'pier',bi); rec.pier=pier.length;
+      deck.concat(par,pier).forEach(function(Q){ Q.cont.parts.push(Q); });
+      info.bridges.push(rec);
+    });
+  }
+  return {
+    dress:CT.dress, signsFor:CT.signsFor,
+    furnish:function(dn,df,step){ bridges(); CT.furnish(dn,df,step); },
+    cars:[], dots:[], info:CT.info
+  };
 }
 function buildWarehouse(p){ return buildCorridor(p,STHEMES.whse); }
 /* row 91: the eye stays under the ceiling (Camera height is 0.2 -> Ceiling - 0.4) */
@@ -23432,6 +23851,8 @@ function marketTheme(K){
   var CANC=['#d42a2a','#ec7a1c','#2156c7','#22a7b4','#f2c230'], PRODC=['#ec7a1c','#2f9a44','#d42a2a','#f2c230'];
   var TAL={stalls:[], lanterns:[], strings:[], steam:[], banners:[], refused:0};
   STRTTALLY.mkt=TAL;
+  /* row 96: a town may have several market rows, each its own record */
+  (STRTTALLY.mkts||(STRTTALLY.mkts=[])).push(TAL);
   /* ---- the stall plan: world, not camera. Every slot draws its 12 numbers
      whatever the knobs say. A slot is 2 m and a slab is 4, so a stall never
      crosses a slab face along the lane. */
@@ -31700,6 +32121,26 @@ function corridorPlan(p,THM,ix,hooks){
   if(hooks.line){
     var LX=hooks.line.x, LY=hooks.line.y, LH=hooks.line.h, LC=Math.cos(LH), LS=Math.sin(LH);
     for(i=0;i<NS;i++){ SX[i]=LX+LC*i*DS; SY[i]=LY+LS*i*DS; SH[i]=LH; }
+  } else if(hooks.spline){
+    /* ROW 96, hooks.spline {x,y,h,salt}: a REACHING corridor (a town's river).
+       The same spline -- a straight run, then arcs of Bend x [0.35,1] with a
+       random sign, the heading held within +-70 degrees of its START -- from
+       (x,y) at heading h, from its own salt. Absent, the street's below. */
+    var HS=hooks.spline, H0=HS.h, rq=sub(0,0,HS.salt), kq=0, lq=15+rq()*25, hq=0, kmq=BEND*Math.PI/180/100;
+    SX[0]=HS.x; SY[0]=HS.y; SH[0]=H0;
+    for(i=1;i<NS;i++){
+      lq-=DS;
+      if(lq<=0){
+        var sq=rq()<0.5?-1:1;
+        if(hq>40*Math.PI/180) sq=-1; else if(hq<-40*Math.PI/180) sq=1;
+        kq=sq*(0.35+0.65*rq())*kmq; lq=25+rq()*45;
+      }
+      var hq1=hq+kq*DS;
+      if(Math.abs(hq1)>70*Math.PI/180){ kq=0; hq1=hq; }
+      var hqm=H0+(hq+hq1)/2;
+      SX[i]=SX[i-1]+Math.cos(hqm)*DS; SY[i]=SY[i-1]+Math.sin(hqm)*DS;
+      SH[i]=H0+hq1; hq=hq1;
+    }
   } else {
     var rs=sub(0,0,SALT_SPLINE), kap=0, left=15+rs()*25, hd=0, kmax=BEND*Math.PI/180/100;
     SX[0]=0; SY[0]=0; SH[0]=0;
@@ -31726,6 +32167,9 @@ function corridorPlan(p,THM,ix,hooks){
     var x=SX[i0]+(SX[i0+1]-SX[i0])*f, y=SY[i0]+(SY[i0+1]-SY[i0])*f;
     var h=SH[i0]+(SH[i0+1]-SH[i0])*f;
     if(u<0){ x=SX[0]+Math.cos(SH[0])*s; y=SY[0]+Math.sin(SH[0])*s; h=SH[0]; }
+    /* row 96: a reaching corridor ends at the network's edge, so past its
+       last station it runs on straight (its slabs never reach there) */
+    if(hooks.spline && u>NS-1){ x=SX[NS-1]+Math.cos(SH[NS-1])*(s-(NS-1)*DS); y=SY[NS-1]+Math.sin(SH[NS-1])*(s-(NS-1)*DS); h=SH[NS-1]; }
     return [x,y,Math.cos(h),Math.sin(h)];
   }
   function P3(s,sd,o,z){ var F=frame(s); return [F[0]-F[3]*sd*o, F[1]+F[2]*sd*o, z]; }
@@ -31914,6 +32358,10 @@ function corridorDraw(p,plans,THM,camera){
     dropped+=PLk.dropped; pushed+=PLk.pushed;
   });
   var NOHOME=plans.some(function(PLk){ return PLk.hasGap; })?0:null;
+  /* row 96: does any container stand cut short by a town's river */
+  var HASCUT=conts.some(function(C){ return !!C.cut; });
+  /* row 96: the eye-on-a-line tie in the container order (sideRule) */
+  var EYETIE=plans.some(function(PLk){ return !!(PLk.theme && PLk.theme.channel); });
   /* ROW 95: which plan each container is laid along, for what the draw itself
      builds on a lot or a slab (block stacks, kerbs, a street face's frame). One
      plan: every lookup misses and reads the first plan's, as before. */
@@ -32511,6 +32959,21 @@ function corridorDraw(p,plans,THM,camera){
                ring:Qw.map(function(v){ return [v[0],v[1],0]; }), hull:hull2(Qw.map(function(v){ return [v[0],v[1]]; })),
                ph:0, rid:2000, outline:[]});
   });
+  /* ROW 96: A PLAN WHOSE WHOLE ROAD IS WATER (a town's river) does the same
+     with its own slabs, at ITS OWN PLANE: z = its Z0, the water lowered
+     Embankment below the street. `mz` rides on the puddle; the mirror below
+     runs once per plane. Absent (no such plan), nothing here runs. */
+  plans.forEach(function(PLk){
+    if(!PLk.theme || !PLk.theme.channel) return;
+    var mzk=PLk.Z0||0, P3k=PLk.P3, HWk=PLk.HALFW;
+    PLk.conts.forEach(function(C){
+      if(C.kind!=='slab') return;
+      var Qw=[P3k(C.s0,C.side,0,0),P3k(C.s1,C.side,0,0),P3k(C.s1,C.side,HWk,0),P3k(C.s0,C.side,HWk,0)];
+      puds.push({id:2000+puds.length, channel:true, mz:mzk, C:C, side:C.side, s:(C.s0+C.s1)/2, o:HWk/2, len:C.s1-C.s0, wid:HWk,
+                 ring:Qw.map(function(v){ return [v[0],v[1],mzk]; }), hull:hull2(Qw.map(function(v){ return [v[0],v[1]]; })),
+                 ph:0, rid:2500+PLk.ix, outline:[]});
+    });
+  });
   STRTTALLY.puds=STRTTALLY.pudsPlaced=puds.map(function(pd){ return {id:pd.id, side:pd.side, s0:pd.C.s0, s1:pd.C.s1, poly:pd.C.poly,
     s:pd.s, o:pd.o, len:pd.len, wid:pd.wid, ring:pd.ring, hero:!!pd.hero, outline:pd.outline, grp:pd.grp, cont:pd.C.kind}; });
   STRTTALLY.mirrorZ=MZ; STRTTALLY.pudOn=PUDON;
@@ -32632,8 +33095,12 @@ function corridorDraw(p,plans,THM,camera){
     return [t0,t1];
   }
   var cables=[];
-  function addCable(kind,A,B,ends){
-    var dx=B[0]-A[0], dy=B[1]-A[1], Lp=Math.hypot(dx,dy), k;
+  /* ROW 96: `clr` is the clearance of the plan the cable belongs to (a town's
+     market row hangs its strings at 2.6 m); absent, the drawing's THM.clear.
+     A cable that would cross a container marked noCable (a town's river,
+     lowered by its Z0 under the parts of other plans) is not hung. */
+  function addCable(kind,A,B,ends,clr){
+    var dx=B[0]-A[0], dy=B[1]-A[1], Lp=Math.hypot(dx,dy), k, CLR=clr!==undefined?clr:THM.clear;
     if(Lp<1 || Math.abs(B[2]-A[2])/Lp>0.6) return;
     for(k=0;k<ends.length;k++){
       var e=ends[k], o=e.P===A?B:A, vx=o[0]-e.P[0], vy=o[1]-e.P[1], vl=Math.hypot(vx,vy);
@@ -32641,6 +33108,7 @@ function corridorDraw(p,plans,THM,camera){
     }
     var ivs=[];
     conts.forEach(function(C){ var r=clipSeg(A,B,C.poly); if(r && r[1]-r[0]>1e-9) ivs.push({C:C, t0:r[0], t1:r[1]}); });
+    if(ivs.some(function(iv){ return iv.C.noCable; })) return;
     function aOf(S){
       if(!(S>1e-9)) return Infinity;
       var lo=Lp*1e-3, hi=Lp*Lp/(8*S)*4+Lp, it;
@@ -32655,13 +33123,13 @@ function corridorDraw(p,plans,THM,camera){
         for(var j=0;j<=24;j++) m=Math.min(m,zAt(iv.t0+(iv.t1-iv.t0)*j/24,a)); });
       return m; }
     var S0=SAG*Lp, S=S0, clamped=false;
-    if(S>0 && low(S)<THM.clear){
+    if(S>0 && low(S)<CLR){
       var lo2=0, hi2=S;
-      for(k=0;k<60;k++){ var md2=(lo2+hi2)/2; if(low(md2)>=THM.clear) lo2=md2; else hi2=md2; }
+      for(k=0;k<60;k++){ var md2=(lo2+hi2)/2; if(low(md2)>=CLR) lo2=md2; else hi2=md2; }
       S=lo2; clamped=true;
       if(SAG>0 && S<1e-6) return;
     }
-    if(low(S)<THM.clear-1e-9) return;
+    if(low(S)<CLR-1e-9) return;
     var a=aOf(S);
     cables.push({id:cables.length, kind:kind, A:A, B:B, L:Lp, S0:S0, S:S, a:a, clamped:clamped, ivs:ivs,
                  at:function(t){ return [A[0]+dx*t, A[1]+dy*t, zAt(t,a)]; }, pieces:0, dropped:0});
@@ -32674,6 +33142,16 @@ function corridorDraw(p,plans,THM,camera){
      content adds belongs to the plan whose content added it (OWN, for Z0).
      One plan: one call, exactly as before. */
   var CTS=[], OWN=[], LOTCT=new Map();
+  /* ROW 96: a plan with a theme of its own (a town's river, its market rows)
+     reads its own knobs (PLk.p, the theme's fixed ones applied), hangs its
+     cables at its own theme's clearance, and sees only the cables it hung --
+     a market's lanterns go on its own strings. Absent, as before. */
+  plans.forEach(function(PLk){
+    if(!PLk.theme) return;
+    var clr=PLk.theme.clear!==undefined?PLk.theme.clear:THM.clear;
+    PLk.cables=[];
+    PLk.addCable=function(kind,A,B,ends){ var n0=cables.length; addCable(kind,A,B,ends,clr); for(var q=n0;q<cables.length;q++) PLk.cables.push(cables[q]); };
+  });
   plans.forEach(function(PLk){
     var n0=conts.length, ct=(PLk.theme||THM).content(KIT(PLk));
     CTS.push(ct); OWN.push(PLk.conts.concat(conts.slice(n0)));
@@ -32700,6 +33178,8 @@ function corridorDraw(p,plans,THM,camera){
   /* what a cable piece may not pass through: structure and furniture, and
      whatever a theme adds -- a market's lanterns hang under other strings */
   var CAVOID=['struct','furn'].concat(THM.cableAvoid||[]);
+  /* row 96: and what every plan's own theme adds (a town's market rows) */
+  plans.forEach(function(PLk){ if(PLk.theme) (PLk.theme.cableAvoid||[]).forEach(function(l){ if(CAVOID.indexOf(l)<0) CAVOID.push(l); }); });
   function cablesInto(){
     cables.forEach(function(cb){
       cb.pieces=0; cb.dropped=0;
@@ -33084,10 +33564,18 @@ function corridorDraw(p,plans,THM,camera){
   /* The eye-side rule on one axis: A's extent [a0,a1], B's [b0,b1], eye e.
      Returns 1 (A first), -1 (B first), 0 (separated with the eye between,
      so neither can hide the other), or null (not separated on this axis). */
-  function sideRule(a0,a1,b0,b1,e){
+  /* row 96, `tie`: two containers that TOUCH along a line the eye stands ON
+     -- a town's street-level eye on a row's centreline, between its two
+     sides' slabs -- cannot hide each other, so neither goes first. Without it
+     the tie went to A, an arbitrary edge between every slab on one side and
+     every slab on the other; with nothing crossing the line that stayed
+     acyclic, and a river crossing it closed a cycle of 539 containers. Only
+     a perspective drawing with a river passes it (EYETIE), so every other
+     drawing is ordered exactly as before. */
+  function sideRule(a0,a1,b0,b1,e,tie){
     var tol=1e-9;
-    if(a1<=b0+tol){ if(e<=a1+tol) return 1; if(e>=b0-tol) return -1; return 0; }
-    if(b1<=a0+tol){ if(e<=b1+tol) return -1; if(e>=a0-tol) return 1; return 0; }
+    if(a1<=b0+tol){ if(tie && b0-a1<=tol && Math.abs(e-a1)<=tol) return 0; if(e<=a1+tol) return 1; if(e>=b0-tol) return -1; return 0; }
+    if(b1<=a0+tol){ if(tie && a0-b1<=tol && Math.abs(e-b1)<=tol) return 0; if(e<=b1+tol) return -1; if(e>=a0-tol) return 1; return 0; }
     return null;
   }
   function planSep(A,B){
@@ -33100,7 +33588,7 @@ function corridorDraw(p,plans,THM,camera){
         var a0=1e18,a1=-1e18,b0=1e18,b1=-1e18;
         for(m=0;m<A.poly.length;m++){ var t=A.poly[m][0]*nx+A.poly[m][1]*ny; if(t<a0)a0=t; if(t>a1)a1=t; }
         for(m=0;m<B.poly.length;m++){ var t2=B.poly[m][0]*nx+B.poly[m][1]*ny; if(t2<b0)b0=t2; if(t2>b1)b1=t2; }
-        var r=sideRule(a0,a1,b0,b1,ISO?isoEye(nx*FW[0]+ny*FW[1]):EYE[0]*nx+EYE[1]*ny);
+        var r=sideRule(a0,a1,b0,b1,ISO?isoEye(nx*FW[0]+ny*FW[1]):EYE[0]*nx+EYE[1]*ny,EYETIE);
         if(r!==null) return r;
       }
     }
@@ -33175,12 +33663,17 @@ function corridorDraw(p,plans,THM,camera){
        its road-facing face carries lines -- the kerb's foot and its top edge.
        Face 2 is the side running Q[0] -> Q[1], which is the road edge. */
     conts.forEach(function(C){
-      if(C.kind!=='slab' || !(KERB>0)) return;
-      var PK=PLof(C), P3=PK.P3, HALFW=PK.HALFW, KOFF=PK.KOFF;
+      if(C.kind!=='slab') return;
+      /* ROW 96: a plan with a theme of its own (a town's river, its market
+         rows) has its own kerb -- the river's is its quay, Embankment tall and
+         hiding, as a platform's does. Absent, the drawing's, as before */
+      var PK=PLof(C), KT=PK.theme||THM, KZ=PK.theme?PK.KERB:KERB;
+      if(!(KZ>0)) return;
+      var P3=PK.P3, HALFW=PK.HALFW, KOFF=PK.KOFF;
       var Q=[P3(C.s0,C.side,HALFW,0),P3(C.s1,C.side,HALFW,0),P3(C.s1,C.side,KOFF,0),P3(C.s0,C.side,KOFF,0)];
-      var P=prism(Q,0,KERB);
+      var P=prism(Q,0,KZ);
       P.lines.push({a:[Q[0][0],Q[0][1],0], b:[Q[1][0],Q[1][1],0], f0:2, f1:2});
-      P.lines.push({a:[Q[0][0],Q[0][1],KERB], b:[Q[1][0],Q[1][1],KERB], f0:2, f1:1});
+      P.lines.push({a:[Q[0][0],Q[0][1],KZ], b:[Q[1][0],Q[1][1],KZ], f0:2, f1:1});
       /* THE KERB HIDES NOTHING (spec §3.3's class of cables and dots). Measured:
          as an occluder, each 4 m kerb piece's silhouette plus the gap trimmed the
          start of the next piece's kerb line, and the kerb read as a dashed line
@@ -33190,10 +33683,41 @@ function corridorDraw(p,plans,THM,camera){
          NO GAP: its occluder is its exact outline, so the next piece's coping
          line is not trimmed at every seam -- the dashed line this note
          describes. `gapless` below is how. */
-      if(THM.kerbHides){ P.hides=true; P.gapless=true; }
-      P.cont=C; P.col='#1a1a1a'; P.kind=THM.kerbKind||'kerb'; C.parts.push(P);
+      if(KT.kerbHides){ P.hides=true; P.gapless=true; }
+      P.cont=C; P.col='#1a1a1a'; P.kind=KT.kerbKind||'kerb'; C.parts.push(P);
     });
     CTS.forEach(function(ct){ ct.furnish(dn,df,tries); });
+    /* ROW 96: A CONTAINER A TOWN'S RIVER CUT SHORT (C.cut) keeps only what is
+       inside it. A part that hides nothing -- a plate, its paint, a kerb -- is
+       cut back at the container's faces (no line at the cut); a part that
+       hides is not kept if any of it is outside, and is counted. No container
+       is cut on any other engine, and then nothing here runs. */
+    if(HASCUT){
+      STRTTALLY.cutDrop=0;
+      conts.forEach(function(C){
+        if(!C.cut) return;
+        var Q=C.poly, cx=0, cy=0, pl=[], e;
+        Q.forEach(function(q){ cx+=q[0]/Q.length; cy+=q[1]/Q.length; });
+        for(e=0;e<Q.length;e++){ var a=Q[e], c=Q[(e+1)%Q.length], nx=-(c[1]-a[1]), ny=c[0]-a[0], L=Math.hypot(nx,ny); if(L<1e-12) continue; nx/=L; ny/=L;
+          if(nx*(cx-a[0])+ny*(cy-a[1])<0){ nx=-nx; ny=-ny; } pl.push([nx,ny,nx*a[0]+ny*a[1]]); }
+        var keep=[];
+        C.parts.forEach(function(P){
+          if(verts(P).every(function(v){ return inConv(Q,v); })){ keep.push(P); return; }
+          if(P.hides!==false){ STRTTALLY.cutDrop++; return; }
+          var R=P, k2;
+          for(k2=0;k2<pl.length && R;k2++){
+            var lo=1e18; verts(R).forEach(function(v){ var w=pl[k2][0]*v[0]+pl[k2][1]*v[1]-pl[k2][2]; if(w<lo) lo=w; });
+            if(!(lo<-1e-9)) continue;
+            var Hh=splitPart(R,[pl[k2][0],pl[k2][1],0],pl[k2][2])[0];
+            if(!Hh.faces.length || verts(Hh).length<4){ R=null; break; }
+            for(var key in R) if(!(key in Hh) && key!=='bb3') Hh[key]=R[key];
+            R=Hh;
+          }
+          if(R) keep.push(R);
+        });
+        C.parts=keep;
+      });
+    }
     cablesInto();
     /* the puddles: a plate 4 mm thin under the road's surface, its outline
        on the top face. It hides nothing; it carries the reflection (below). */
@@ -33221,7 +33745,7 @@ function corridorDraw(p,plans,THM,camera){
       if(PUDON==='lot' && pudFoot[pudKey(pd)]) return;
       /* row 87: above the ground the plate stands ON the plane, its outline on
        its bottom face, so the deck under it separates from it by its own top */
-      var Pq=MZ?prismN(pd.hull,MZ,MZ+0.004):prismN(pd.hull,-0.004,0), m;
+      var Pq=pd.mz!==undefined?prismN(pd.hull,pd.mz-0.004,pd.mz):MZ?prismN(pd.hull,MZ,MZ+0.004):prismN(pd.hull,-0.004,0), m;
       Pq.lines=[];
       if(PUDCOL && pd.outline) pd.outline.forEach(function(sg){ Pq.lines.push({a:sg[0], b:sg[1], f0:1, f1:1, kind:'puddle', col:PUDCOL}); });
       else if(PUDCOL) for(m=0;m<pd.ring.length;m++)
@@ -33248,6 +33772,8 @@ function corridorDraw(p,plans,THM,camera){
       var memo=new Map();
       function lp(v){ var w=memo.get(v); if(!w){ w=v.slice(); w[2]+=dz; memo.set(v,w); } return w; }
       OWN[ki].forEach(function(C){ C.parts=C.parts.map(function(P){
+        /* row 96: a channel puddle already lies at its own plane (pd.mz) */
+        if(P.pud && P.pud.mz!==undefined) return P;
         var Q=Object.assign({},P);
         Q.faces=P.faces.map(function(f){ return Object.assign({},f,{d:f.d+f.n[2]*dz, pts:f.pts.map(lp)}); });
         Q.lines=P.lines.map(function(Ln){ return Object.assign({},Ln,{a:lp(Ln.a), b:lp(Ln.b)}); });
@@ -33459,7 +33985,8 @@ function corridorDraw(p,plans,THM,camera){
       if(poly.length>=3){ P.scr=poly; P.scb=bbox2(poly); P.parc=arcOf(P.pud.hull); }
     });
     pudVis=pudVis.filter(function(P){ return !!P.scr; });
-    function mirror(P){
+    /* row 96: the plane is an argument -- a town with a river has two */
+    function mirror(P,MZ){
       function mz(q){ return MZ?[q[0],q[1],2*MZ-q[2]]:[q[0],q[1],-q[2]]; }
       var R={faces:P.faces.map(function(f){ return {n:[f.n[0],f.n[1],-f.n[2]], d:MZ?f.d-2*MZ*f.n[2]:f.d, pts:f.pts.map(mz)}; }),
               /* a theme may name line kinds the water never shows (row 64: the
@@ -33503,18 +34030,29 @@ function corridorDraw(p,plans,THM,camera){
       }
       return o.map(function(r){ return [[A[0]+dx*r[1],A[1]+dy*r[1]],[A[0]+dx*r[2],A[1]+dy*r[2]]]; });
     }
-    if(pudVis.length && tries<9 && CE[2]>MZ){
+    /* ROW 96: ONE MIRROR WORLD PER WATER PLANE. A town's river lies
+       Embankment below its streets, so its water reflects the city in its own
+       plane and the street puddles in z = 0: each plane's puddles get the
+       pass below on their own, the scene clipped at that plane. With one
+       plane -- every engine but a town with a river -- it is the one pass, as
+       before. */
+    var MPLANES=[], MCLIP=false;
+    pudVis.forEach(function(P){ var z=P.pud.mz!==undefined?P.pud.mz:MZ; if(P.pud.mz!==undefined) MCLIP=true; if(MPLANES.indexOf(z)<0) MPLANES.push(z); });
+    MPLANES.forEach(function(MZ){
+    var pudVisZ=pudVis.filter(function(P){ return (P.pud.mz!==undefined?P.pud.mz:MZ)===MZ; });
+    if(pudVisZ.length && tries<9 && CE[2]>MZ){
       var mconts=[];
       conts.forEach(function(C){
         var ca=arcOf(C.poly);
-        if(!pudVis.some(function(P){ return arcsMeet(ca,P.parc); })) return;
+        if(!pudVisZ.some(function(P){ return arcsMeet(ca,P.parc); })) return;
         var ms=[];
         (C.all||[]).forEach(function(P){
           if(P.kind==='plate' || P.kind==='puddle') return;
           /* row 87: a mirror plane above the ground reflects only what stands
              above it -- a part wholly at or below it is skipped, one through it
-             clipped there (the cut is a seam) */
-          if(MZ){
+             clipped there (the cut is a seam). Row 96: and so does z = 0 when
+             a river's water lies below it */
+          if(MZ || MCLIP){
             var zlo=1e18, zhi=-1e18; verts(P).forEach(function(v){ if(v[2]<zlo) zlo=v[2]; if(v[2]>zhi) zhi=v[2]; });
             if(zhi<=MZ+1e-9) return;
             if(zlo<MZ-1e-9){
@@ -33524,9 +34062,9 @@ function corridorDraw(p,plans,THM,camera){
               P=Hc;
             }
           }
-          var M=mirror(P);
+          var M=mirror(P,MZ);
           if(!prep(M)) return;
-          if(!pudVis.some(function(Q){ return bbHit(Q.scb,M.sbb); })) return;
+          if(!pudVisZ.some(function(Q){ return bbHit(Q.scb,M.sbb); })) return;
           ms.push(M);
         });
         if(!ms.length) return;
@@ -33564,7 +34102,7 @@ function corridorDraw(p,plans,THM,camera){
               if(a[2]<NEAR) a=x; else b=x;
             }
             var A=scr(a), B=scr(b), sb=[Math.min(A[0],B[0]),Math.min(A[1],B[1]),Math.max(A[0],B[0]),Math.max(A[1],B[1])];
-            pudVis.forEach(function(Q){
+            pudVisZ.forEach(function(Q){
               if(!bbHit(Q.scb,sb)) return;
               clipRing(A,B,Q.scr).forEach(function(sg){ pp.push(sg); meta.push({rp:ri, col:Ln.col, pud:Q}); });
             });
@@ -33584,6 +34122,7 @@ function corridorDraw(p,plans,THM,camera){
         });
       });
     }
+    });
     /* THE RIPPLE: every reflected line is resampled every 0.3 mm of sheet
        height and pushed sideways by Ripple x w(y), w = 0.6 sin(2 pi y / 2.4 mm
        + phase) + 0.4 (value noise at 0.9 mm), so |w| <= 1 and the shift is a
@@ -33603,19 +34142,21 @@ function corridorDraw(p,plans,THM,camera){
        ONE field for the drawing, never per puddle, so a hero's pieces ripple
        seamlessly. Its numbers are SALT_RIP's (227); at 0 the sheet wave is
        v277's byte for byte. */
-    function groundAt(q){
+    /* row 96: Z is the puddle's own plane (pd.mz, a town's river); absent, MZ */
+    function groundAt(q,Z){
+      var ZW=Z===undefined?MZ:Z;
       /* row 94: the parallel ray through the sheet point; depth for the
          ripple's 5 m / depth law is D_EFF, the one scale of the drawing */
       if(ISO){ var ux=(q[0]-PGW/2)/ISOS, uy=-(q[1]-PGH/2)/ISOS;
-        var O=[ISOC[0]+RT[0]*ux+UP[0]*uy, ISOC[1]+RT[1]*ux+UP[1]*uy, ISOC[2]+RT[2]*ux+UP[2]*uy], tg=(MZ-O[2])/FW[2];
+        var O=[ISOC[0]+RT[0]*ux+UP[0]*uy, ISOC[1]+RT[1]*ux+UP[1]*uy, ISOC[2]+RT[2]*ux+UP[2]*uy], tg=(ZW-O[2])/FW[2];
         return [O[0]+FW[0]*tg, O[1]+FW[1]*tg, D_EFF]; }
       var sx=(q[0]-PGW/2)/(FF*HW), sy=-(q[1]-PGH/2)/(FF*HW);
       var d0=FW[0]+sx*RT[0]+sy*UP[0], d1=FW[1]+sx*RT[1]+sy*UP[1], d2=FW[2]+sx*RT[2]+sy*UP[2];
       if(!(d2<-1e-12)) return null;
-      var t=(MZ-CE[2])/d2; return [CE[0]+d0*t, CE[1]+d1*t, t];
+      var t=(ZW-CE[2])/d2; return [CE[0]+d0*t, CE[1]+d1*t, t];
     }
-    function ripNew(q){
-      var G=groundAt(q); if(!G) return 0;
+    function ripNew(q,Z){
+      var G=groundAt(q,Z); if(!G) return 0;
       var x=G[0], y=G[1];
       var wA=Math.sin(TAU*(x*Math.cos(RF.aA)+y*Math.sin(RF.aA))/RF.lA+RF.pA);
       var wB=Math.sin(TAU*(x*Math.cos(RF.aB)+y*Math.sin(RF.aB))/RF.lB+RF.pB);
@@ -33640,11 +34181,11 @@ function corridorDraw(p,plans,THM,camera){
         src.push([pts[m][0],pts[m][1]]);
       }
       return {src:src, dsp:RIPU>0?src.map(function(q){
-        return [q[0]+RIPU*(RVAR>0?(1-RVAR)*ripW(q[1],pd)+RVAR*ripNew(q):ripW(q[1],pd)), q[1]]; }):src};
+        return [q[0]+RIPU*(RVAR>0?(1-RVAR)*ripW(q[1],pd)+RVAR*ripNew(q,pd.mz):ripW(q[1],pd)), q[1]]; }):src};
     }
     /* depth of the ground under a sheet point: 1/zc. RT is level, so only y counts */
-    function groundIz(q){ if(ISO){ var uy=-(q[1]-PGH/2)/ISOS; return 1/(1e5+(MZ-ISOC[2]-UP[2]*uy)/FW[2]); }
-      var sy=-(q[1]-PGH/2)/(FF*HW); return -(UP[2]*sy+FW[2])/(CE[2]-MZ); }
+    function groundIz(q,Z){ var ZW=Z===undefined?MZ:Z; if(ISO){ var uy=-(q[1]-PGH/2)/ISOS; return 1/(1e5+(ZW-ISOC[2]-UP[2]*uy)/FW[2]); }
+      var sy=-(q[1]-PGH/2)/(FF*HW); return -(UP[2]*sy+FW[2])/(CE[2]-ZW); }
 
     /* ---- commit: front to back, lines first, then the silhouette ----------- */
     var occl=[], preIx=[], srcOf=[], maxz=NEAR;
@@ -33704,7 +34245,7 @@ function corridorDraw(p,plans,THM,camera){
              reflection, and only its reflection */
           (P.pud.wmB && P.pud.wmB.length?wmCut(RR.dsp,P.pud.wmB):[RR.dsp]).forEach(function(pc){
             pp.push(pc);
-            meta.push({pre:-1, rp:R.rp, pud:P.pud.id, hero:!!P.pud.hero, ground:true, col:R.col, kind:'refl'});
+            meta.push({pre:-1, rp:R.rp, pud:P.pud.id, hero:!!P.pud.hero, ground:true, col:R.col, kind:'refl', mz:P.pud.mz});
           });
           nrefl++;
         });
@@ -33716,7 +34257,7 @@ function corridorDraw(p,plans,THM,camera){
             var run=frag[f]; if(run.length<2) continue;
             var M2=meta[run.src];
             if(M2.ground){
-              run.pre=-1; run.rp=M2.rp; run.pud=M2.pud; run.hero=M2.hero; run.part=pid; run.izs=run.map(groundIz);
+              run.pre=-1; run.rp=M2.rp; run.pud=M2.pud; run.hero=M2.hero; run.part=pid; run.izs=run.map(function(q){ return groundIz(q,M2.mz); });
               run.col=M2.col; run.kind='refl'; out.push(run); continue;
             }
             var dx=M2.B[0]-M2.A[0], dy=M2.B[1]-M2.A[1], L2=dx*dx+dy*dy;
@@ -33856,7 +34397,10 @@ function corridorDraw(p,plans,THM,camera){
                   (WMHALF?', water marks halved':'')+
                   (tries>=9?', and the water left unreflected'+((CT.dots||[]).some(function(d){ return d.near; })?', the near particles drawn as dots':''):''):'');
   return res;
-  function KIT(PL){ return {sGaps:PL.sGaps, hasGap:PL.hasGap, slabPieces:slabPieces, bbHit:bbHit, MINSP:0.7, FW:FW, UP:UP, PAD:PAD, NS:PL.NS, THM:PL.theme||THM, P3:PL.P3, add3:add3, addCable:addCable, cam:camK, dist3:dist3, drawOn:drawOn, faceC:faceC, faceIx:faceIx, frame:PL.frame, hitsAny:hitsAny, inConv:inConv, lateral:PL.lateral, mmPerM:mmPerM, paperGap:paperGap, para:para, polyFromLoops:polyFromLoops, prism:prism, prismN:prismN, splitPart:splitPart, sub:PL.sub, surf:surf, vec:vec, verts:verts, wallOf:wallOf, wp:wp, CANTI:PL.CANTI, CANYON:PL.CANYON, CE:CE, FF:FF, FLOORS:PL.FLOORS, HALFW:PL.HALFW, HW:HW, KERB:PL.KERB, KOFF:PL.KOFF, LEN:PL.LEN, NEAR:NEAR, PBACK:PL.PBACK, RT:RT, SALT_BLD:PL.SALT_BLD, STEPB:PL.STEPB, ZUP:ZUP, cables:cables, conts:conts, lots:PL.lots, slabsBySide:PL.slabsBySide, p:p}; }
+  function KIT(PL){ var K={sGaps:PL.sGaps, hasGap:PL.hasGap, slabPieces:slabPieces, bbHit:bbHit, MINSP:0.7, FW:FW, UP:UP, PAD:PAD, NS:PL.NS, THM:PL.theme||THM, P3:PL.P3, add3:add3, addCable:addCable, cam:camK, dist3:dist3, drawOn:drawOn, faceC:faceC, faceIx:faceIx, frame:PL.frame, hitsAny:hitsAny, inConv:inConv, lateral:PL.lateral, mmPerM:mmPerM, paperGap:paperGap, para:para, polyFromLoops:polyFromLoops, prism:prism, prismN:prismN, splitPart:splitPart, sub:PL.sub, surf:surf, vec:vec, verts:verts, wallOf:wallOf, wp:wp, CANTI:PL.CANTI, CANYON:PL.CANYON, CE:CE, FF:FF, FLOORS:PL.FLOORS, HALFW:PL.HALFW, HW:HW, KERB:PL.KERB, KOFF:PL.KOFF, LEN:PL.LEN, NEAR:NEAR, PBACK:PL.PBACK, RT:RT, SALT_BLD:PL.SALT_BLD, STEPB:PL.STEPB, ZUP:ZUP, cables:cables, conts:conts, lots:PL.lots, slabsBySide:PL.slabsBySide, p:p};
+    /* row 96: a plan with a theme of its own reads its own knobs and cables */
+    if(PL.theme){ K.p=PL.p; K.addCable=PL.addCable||addCable; K.cables=PL.cables||cables; }
+    return K; }
 }
 
 /* ---------- 14. MOIRE : swept section along a 3D spine, ONE path ----------
@@ -36395,7 +36939,12 @@ var HELP={
     xblk:'How far apart the cross streets are, in metres along the city. Lots never cross a cross street, so this is how long a run of frontage is.',
     nlen:'How long the city is, in metres, along its parallel streets.',
     xwidth:'The cross streets’ carriageway, kerb to kerb, in metres. They take the parallel streets’ pavement and carry no lots of their own: the corner buildings’ side walls face them.',
-    layout:'Re-rolls where the corridors that reach across the city (rivers, railways, highways) run, and which blocks are parks. The plain grid has none yet, so it changes nothing.',
+    layout:'Re-rolls where the river enters the city: from the bottom or the top edge, how far along it, and the heading it starts on. Nothing else in the city moves.',
+    river:'A river winds across the grid: water between stone quays, canal houses facing it where it cuts through the blocks, a road bridge wherever a street crosses it, boats and mooring posts. 0 is the plain grid.',
+    rbend:'How much the river winds, in degrees of turn per 100 m. 0 is a straight channel across the city at an angle.',
+    rwidth:'The river’s water, quay face to quay face, in metres. A quay 1.5 m wide runs along each side. At 20 m or more each bridge stands on piers.',
+    rdrop:'How far below the streets the water lies, in metres: the height of the quay wall. Its reflection is in that plane. Under 1.6 m the bridges rise in a shallow arch to keep 1 m under them.',
+    alleys:'The share of the parallel streets that are night-market alleys instead: 4.5 m wide, no pavement, stalls along both edges, lantern strings and steam. Each street rolls its own number.',
     width:'The parallel streets’ carriageway, kerb to kerb, in metres.',
     pave:'The pavement on each side of every street, kerb to building line, in metres.',
     lotmax:'The widest building plot, in metres. Wide plots make long, flat frontages; seen from above a row of near-equal plots reads as a comb, so the city keeps the spread wide.',
