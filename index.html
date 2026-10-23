@@ -438,7 +438,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v341</a> &mdash; Data hall -- a cold aisle between rows of 42U racks on a raised floor: units on whole-U lines, perforated doors and tiles, containment doors and a glazed roof, trays, a fibre trough and busway overhead, cooling units across the far end</span></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v342</a> &mdash; REFACTOR ONLY -- the data hall's theme entry and script line reworded so no existing sabotage target appears twice (mkt-clear-4.5 was BROKEN by v341); dhal joins the isometric sabotages, workercheck and DH8's full engine list</span></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <section class="fold" id="fold_pick"><h2>Pick engine<span class="cnt"></span></h2>
@@ -21736,9 +21736,9 @@ var STHEMES={
      abutting in rows. `minEnv` 0.2 is the library's and the cellar's: the kit
      refuses a lot under 4 m deep without it. */
   dhal:{key:'dhal', label:'Data hall', lotDepth:[1.8,1.8], alleyW:[0,0], baseN2:0, baseH:[2.0,2.0],
-        midH:[2.0,2.0], edgeZ:0, slabLen:4, clear:2.6, ztop:200, mirror:'floor', minWidth:0.9, minLen:8,
+        midH:[2.0,2.0], edgeZ:0, slabLen:4, ztop:200, clear:2.6, mirror:'floor', minWidth:0.9, minLen:8,
         strip:0, minEnv:0.2, pudIn:0.03, pudCol:null, pudWord:'polished tiles', heroWord:'a front shine', alias:{puddles:'shine'},
-        mirrorSkip:['hatch'], pudMinMM:3, zfit:4,
+        pudMinMM:3, mirrorSkip:['hatch'], zfit:4,
         lotGen:function(R,p,li,sd){ return dataHallLotGen(R,p,li,sd); },
         fixed:{shopv:0, props:0, alley:0, cars:0, dots:0, graff:0, signs:0, cables:0, canyon:0, stepb:0, canti:0, pave:0},
         content:function(K){ return dataHallTheme(K); }},
@@ -26938,7 +26938,7 @@ function dataHallTheme(K){
   function label(L,P,sd,sA,sB,RF,mm,band){
     if(!P || band!=='near') return;
     var R=sub(L.side<0?2:1,L.idx,SALT_LABEL), z0=RH-TOPB+0.004, z1=RH-0.004;
-    var script=LANG===0?'kanji':LANG===1?'hangul':LANG===2?'latin':(R()<0.5?'latin':'kanji');
+    var script=LANG<1?'kanji':LANG===1?'hangul':LANG===2?'latin':(R()<0.5?'latin':'kanji');
     if((z1-z0)*mm>=MINSP){
       var a=sA+0.18+0.1*R(), b=a+0.16, w=0.06+0.06*R();
       poly(P,[PS(sd,a,RF,z0),PS(sd,b,RF,z0),PS(sd,b,RF,z1),PS(sd,a,RF,z1)],'label',COL_GREY,true,2);
