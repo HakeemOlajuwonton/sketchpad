@@ -438,7 +438,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v344</a> &mdash; Parking garage: a basement level -- a drive aisle between bays of parked cars (Bay width, Bays per column, Soffit, Occupancy, Moving cars, EV chargers, Jet fans, Walkway, Ramp at the end): columns with hazard bands, downstand beams wall to wall, sprinklers and drains under them, jet fans, exit signs, painted bays and arrows, a ramp up at 1:8 with a barrier</span></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v346</a> &mdash; Corridor city: Iso buildings -- a share of the plots take one of the Iso city engine's 87 buildings, drawn as the corridor's own parts (Iso buildings, Iso lot min), and Districts makes each block one of the iso city's five districts</span></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <section class="fold" id="fold_pick"><h2>Pick engine<span class="cnt"></span></h2>
@@ -3499,6 +3499,7 @@ var SPEC={
     ['width','Road width',4,24,0.5,9,[1,' m']],['pave','Pavement',0,6,0.25,2.5,[1,' m']],
     ['lotmin','Lot min',3,20,0.5,5,[1,' m']],['lotmax','Lot max',4,40,0.5,16,[1,' m']],
     ['alley','Alley chance',0,60,1,14,[100,'%']],['floors','Storeys',1,40,1,9],
+    ['archlots','Iso buildings',0,100,1,0,[1,'%']],['archmin','Iso lot min',4,40,0.5,10,[1,' m']],['zones','Districts',0,1,1,0],
     ['stepb','Step-back',0,60,1,18,[100,'%']],
     ['canti','Cantilever',0,60,1,14,[100,'%']],['fire','Fire escapes',0,100,1,25,[100,'%']],
     ['glow','Lit windows',0,100,1,22,[100,'%']],['uvar','Upper variety',0,100,1,55,[100,'%']],
@@ -14953,9 +14954,13 @@ function buildIso(p){
   }
 
   function proj(x,y,z){ return [(x-y)*COS30, (x+y)*0.5-z]; }
+  /* FACE MODE (queue row 117): `town` draws these archetypes as kit parts, seen
+     from any side, so every face and every line on it is emitted and the kit
+     decides what shows. Off, nothing below moves. */
+  var FACE=!!(p.__cells && p.__face);
   /* A face is visible when its outward normal points at the camera, which for
      this fixed view is the (1,1,1) direction. */
-  function vis(nx,ny,nz){ return (nx+ny+nz)>1e-9; }
+  function vis(nx,ny,nz){ return FACE || (nx+ny+nz)>1e-9; }
 
   /* Monotone-chain hull of the projected vertices. Convexity is what lets the
      occluder stay a list rather than a union. */
@@ -15009,8 +15014,10 @@ function buildIso(p){
     s.h=c;
     /* only the three faces that face the camera are drawn */
     var faces=[[c[4],c[5],c[6],c[7]],[c[1],c[2],c[6],c[5]],[c[3],c[2],c[6],c[7]]];
+    /* face mode: the three faces the iso camera never sees, and the bands on them */
+    if(FACE){ faces.push([c[0],c[1],c[2],c[3]],[c[0],c[1],c[5],c[4]],[c[0],c[3],c[7],c[4]]); s.F=faces; }
     var seen={}, i, k;
-    for(i=0;i<3;i++) for(k=0;k<4;k++){
+    for(i=0;i<faces.length;i++) for(k=0;k<4;k++){
       var a=faces[i][k], b=faces[i][(k+1)%4];
       var t=[a,b].sort(function(u,v){return u[0]-v[0]||u[1]-v[1]||u[2]-v[2];});
       var tag=t[0].join(',')+'|'+t[1].join(',');
@@ -15018,12 +15025,13 @@ function buildIso(p){
     }
     if(det>=1){
       var z=z0+fh;
-      while(z<z1-fh*0.4){ addE(s,[[x1,y0,z],[x1,y1,z]]); addE(s,[[x0,y1,z],[x1,y1,z]]); z+=fh; }
+      while(z<z1-fh*0.4){ addE(s,[[x1,y0,z],[x1,y1,z]]); addE(s,[[x0,y1,z],[x1,y1,z]]);
+        if(FACE){ addE(s,[[x0,y0,z],[x0,y1,z]]); addE(s,[[x0,y0,z],[x1,y0,z]]); } z+=fh; }
       if(det>=2){
         var y=y0+mull;
-        while(y<y1-mull*0.4){ addE(s,[[x1,y,z0],[x1,y,z1]]); y+=mull; }
+        while(y<y1-mull*0.4){ addE(s,[[x1,y,z0],[x1,y,z1]]); if(FACE) addE(s,[[x0,y,z0],[x0,y,z1]]); y+=mull; }
         var x=x0+mull;
-        while(x<x1-mull*0.4){ addE(s,[[x,y1,z0],[x,y1,z1]]); x+=mull; }
+        while(x<x1-mull*0.4){ addE(s,[[x,y1,z0],[x,y1,z1]]); if(FACE) addE(s,[[x,y0,z0],[x,y0,z1]]); x+=mull; }
       }
     }
     solids.push(s); return s;
@@ -15037,6 +15045,7 @@ function buildIso(p){
       bot.push([cx+r*Math.cos(ang[i]), cy+r*Math.sin(ang[i]), z0]);
     }
     s.h=top.concat(bot);
+    if(FACE){ s.F=[top,bot]; for(i=0;i<n;i++) s.F.push([bot[i],bot[(i+1)%n],top[(i+1)%n],top[i]]); }
     for(i=0;i<n;i++){
       var am=(i===n-1)?((ang[i]+ang[0]+TAU)/2):((ang[i]+ang[(i+1)%n])/2);
       v.push(vis(Math.cos(am),Math.sin(am),0));
@@ -15092,6 +15101,17 @@ function buildIso(p){
       var ph=Math.PI/2*j/(npar+1), pts2=[];
       for(i=0;i<=nseg;i++) pts2.push(surf(TAU*i/nseg, ph));
       hp=hp.concat(pts2); emit(pts2);
+    }
+    /* face mode: the hemisphere as a convex polyhedron inscribed in it, nseg
+       meridians by a quarter as many bands, triangles at the pole; the curves
+       above stay its lines */
+    if(FACE){
+      var Lg=Math.max(8,nseg), Mt=Math.max(3,Math.ceil(nseg/4)), V=[], F=[], kk, jj;
+      for(jj=0;jj<=Mt;jj++){ V.push([]); for(kk=0;kk<Lg;kk++) V[jj].push(jj===Mt?[cx,cy,z0+r]:surf(TAU*kk/Lg,Math.PI/2*jj/Mt)); }
+      F.push(V[0].slice());
+      for(jj=0;jj<Mt;jj++) for(kk=0;kk<Lg;kk++){ var k2=(kk+1)%Lg;
+        F.push(jj===Mt-1?[V[jj][kk],V[jj][k2],V[Mt][0]]:[V[jj][kk],V[jj][k2],V[jj+1][k2],V[jj+1][kk]]); }
+      s.F=F; s.sph=[cx,cy,z0,r,Math.hypot(TAU/Lg,Math.PI/2/Mt)];   /* a facet's angular diagonal: no point's normal is further from its facet's */
     }
     s.h=hp; solids.push(s); return s;
   }
@@ -15163,6 +15183,7 @@ function buildIso(p){
     cx/=pts.length; cy/=pts.length; cz/=pts.length;
     var s=Solid(key,top);
     s.h=pts;
+    if(FACE) s.F=faces;           /* face mode (row 117): the faces themselves */
     var seen={};
     for(i=0;i<faces.length;i++){
       f=faces[i];
@@ -16951,6 +16972,28 @@ function buildIso(p){
   /* 86 builders registered here + A_agridome from the selector = 87 */
 
 /* >>> ISOARCH INLINE END <<< */
+
+  /* CELLS ONLY (queue row 117). `town` hands in cells it built itself, CONTRACT.md
+     section 1's fields from its own lots and substreams, and gets back each one's
+     solids -- in face mode for its kit (`__face`), or as this engine draws them
+     for the gate that compares the two. No city, no height field, no R(): nothing
+     below this line runs. A cell whose row's builder is listed in `__skip` is
+     not built (a primitive face mode cannot capture), and says so. */
+  if(p.__cells){
+    var CELLOUT=[];
+    p.__cells.forEach(function(c){
+      solids.length=0; LAY='structure';
+      c.fh=fh; c.mull=mull; c.facets=facets; c.acc=acc; c.solids=solids;
+      c.landmark=false; c.lmbox=null;
+      /* a district (row 117's Districts) offers only its own rows: the same
+         pool rule over the rows it names, never a different selector */
+      selectTally(true); _pick(c.rows?ARCH.filter(function(r){ return c.rows[r[0]]===true; }):ARCH,c);
+      var row=Object.keys(PICKS)[0]||null, skip=!!(p.__skip && p.__skip[row]);
+      CELLOUT.push({row:row, skipped:skip, solids:skip?[]:solids.slice()});
+    });
+    selectTally(false); LAY='structure';
+    return CELLOUT;
+  }
 
   /* THE WINDOW, and why there is one.
      `grid` means cells across the PAGE, not the size of the whole city -- the
@@ -21826,7 +21869,7 @@ var STHEMES={
   town:{key:'town', label:'Corridor city', lotDepth:[8,20], alleyW:[1.2,2.5], baseN2:0.35, baseH:[3.6,4.5],
         midH:[2.8,3.2], edgeZ:0.15, slabLen:4, clear:4.5, ztop:200, mirror:'puddles', zfit:40, minLen:10,
         fixed:{canyon:0},
-        content:function(K){ return streetTheme(K); }},
+        content:function(K){ return archTheme(K,streetTheme); }},
   /* row 90 (whse-bagh §1): a tall aisle between pallet racking, a rack bay for
      a lot, a roof on every container, floor shine. minEnv is the depth a bay
      needs for both frames' pallets (2 x 1.202 m), so a bay a bend pushes back
@@ -22418,6 +22461,235 @@ function riverTheme(K,RIV){
     furnish:function(dn,df,step){ bridges(); CT.furnish(dn,df,step); },
     cars:[], dots:[], info:CT.info
   };
+}
+/* ---- ROW 117 (lane SA): ISO ARCHETYPES ON TOWN LOTS -------------------------
+   docs/specs/2026-10-12-town-power_v3.md §4. Iso Buildings % of the eligible
+   lots draw one of the iso engine's 87 archetypes instead of a Street building.
+   - THE ARCHETYPE IS THE ISO ENGINE'S OWN. buildIso runs the lot as one cell
+     (CONTRACT.md §1's fields, from the lot's own substream, salt 683) through
+     its selector unchanged, in FACE MODE: every primitive emits all its faces
+     and every line on them, and records the faces, so each solid is ONE KIT
+     PART -- seen from wherever the camera is, hidden by the kit's own order.
+   - CELL UNITS TO METRES with one scale, storey for storey: a cell storey
+     (c.fh, 0.16) is the town's mid storey height. x runs along the lot's
+     frontage, y from its pavement edge back, z up -- turned so the map keeps
+     its handedness, or every face would face inward.
+   - ELIGIBLE: a rectangle (four right angles to 1e-6) at least Iso lot min wide
+     along the street. A lot the archetype would leave (a part outside the lot)
+     at any detail stays a Street building.
+   - PARTS THAT INTERPENETRATE ARE CUT. A podium and the tower standing in it are
+     two convex solids sharing volume, and no face plane separates them, so the
+     kit could only guess their order. Each solid is cut clear of the earlier
+     ones it overlaps (the convex difference: split by each of their face planes,
+     keep what is outside, drop what is left inside) -- isocity.py's row 128 rule.
+   - ARCHLOTS 0 DRAWS NOTHING from salt 683 and hands the Street theme every lot:
+     the drawing is the build before, byte for byte. */
+var SALT_ARCHLOT=683, SALT_ZONE=691;
+/* the iso engine's two pens: structure, and accent in its orange */
+var ARCHCOL_K='#1a1a1a', ARCHCOL_ACC='#d9541f';
+/* THE DISTRICTS, ported from isocity.py as constants (that file is not touched):
+   its five district names and the rows each one names, the floor range of the
+   four that set one, and the core its archetypes are asked about -- cbd high,
+   oldtown and civic the middle, industrial and port low. A block draws one of
+   the five from SALT_ZONE keyed on Layout, and its archetype lots choose only
+   among that district's rows. */
+var ARCHZONES=['cbd','oldtown','industrial','port','civic'];
+var ARCHZONEROWS={
+  cbd:['setback tower','podium + tower','tapered spire','crown cage','twin + bridge','chamfered','twisted stack','cruciform',
+       'inverted zig','courtyard tower','balconied slab'],
+  oldtown:['gable block','hip roof','rowhouses','courtyard block','campanile','market hall','clock tower','cemetery','barrel vault'],
+  industrial:['warehouse','sawtooth shed','silo / tank','gasometer','chimney','tank farm','refinery stack','cooling tower',
+              'grain elevator','blast furnace','kiln','chimney bank','silo + conveyor','conveyor gallery','substation'],
+  port:['dry dock','gantry crane','container stacks','crane','floating dock','canal locks','lighthouse','rail shed','spherical tank'],
+  civic:['park','colonnade','amphitheatre','cathedral','buttressed nave','clerestory hall','temple + stair','observatory',
+         'velodrome','stadium','market hall']};
+var ARCHZONEFLOORS={oldtown:[2,7], civic:[2,9], industrial:[1,5], port:[1,4]};
+var ARCHZONECORE={cbd:[0.75,1.0], oldtown:[0.35,0.65], civic:[0.35,0.65], industrial:[0.05,0.36], port:[0.02,0.26]};
+/* a block's district: (row gap, cross-street gap) of the town grid the lot's
+   centre lies in, its number from SALT_ZONE keyed on Layout -- not on any plan,
+   so the two rows' lots that meet back to back in one block agree */
+function archZoneOf(p,x,y){
+  var G=townGrid(p), bx=0, by=0, k;
+  for(k=0;k<G.UX.length;k++) if(x>G.UX[k]) bx=k+1;
+  for(k=0;k<G.VY.length;k++) if(y>G.VY[k]) by=k+1;
+  var lay=Math.round(isFinite(p.layout)?+p.layout:0);
+  var u=rnd(lay*7919+bx*104729+by*1299709+SALT_ZONE*15485863+29);
+  return {z:ARCHZONES[Math.min(4,Math.floor(u*5))], bx:bx, by:by};
+}
+var ARCHISO={grid:8, detail:1, lift:30, minf:2, maxf:26, floor:16, mull:19, inset:11, facets:12, accent:28, plaza:0, occ:5};
+function archCells(cells,face,skip){
+  return buildIso(Object.assign({},ARCHISO,{__cells:cells, __face:!!face, __skip:skip||null}));
+}
+/* a solid's faces and lines in metres, as one kit part (null: nothing convex left) */
+function archPart(S,M,K){
+  var loops=[];
+  (S.F||[]).forEach(function(f){
+    var q=[], k;
+    for(k=0;k<f.length;k++){ var w=M(f[k]), l=q[q.length-1];
+      if(!l || Math.hypot(w[0]-l[0],w[1]-l[1],w[2]-l[2])>1e-9) q.push(w); }
+    if(q.length>1 && Math.hypot(q[0][0]-q[q.length-1][0],q[0][1]-q[q.length-1][1],q[0][2]-q[q.length-1][2])<1e-9) q.pop();
+    if(q.length<3) return;
+    /* a face with no area (a cone's apex ring) is not a face */
+    var n=[0,0,0];
+    for(k=0;k<q.length;k++){ var a=q[k], b=q[(k+1)%q.length];
+      n[0]+=(a[1]-b[1])*(a[2]+b[2]); n[1]+=(a[2]-b[2])*(a[0]+b[0]); n[2]+=(a[0]-b[0])*(a[1]+b[1]); }
+    if(Math.hypot(n[0],n[1],n[2])<1e-10) return;
+    loops.push(q);
+  });
+  if(loops.length<4) return null;
+  var P=K.polyFromLoops(loops), lines=[];
+  /* each drawn line names the faces whose planes hold it: two for an edge, one
+     for a line on a face; a curve on a dome (on no plane) the face it stands over */
+  var ins=P.ins;
+  function on(fi,q){ var f=P.faces[fi]; return Math.abs(f.n[0]*q[0]+f.n[1]*q[1]+f.n[2]*q[2]-f.d)<1e-6; }
+  S.e.forEach(function(pl){
+    for(var i=1;i<pl.length;i++){
+      var a=M(pl[i-1]), b=M(pl[i]), hit=[], fi;
+      if(Math.hypot(b[0]-a[0],b[1]-a[1],b[2]-a[2])<1e-9) continue;
+      for(fi=0;fi<P.faces.length && hit.length<2;fi++) if(on(fi,a) && on(fi,b)) hit.push(fi);
+      if(!hit.length){
+        var m=[(a[0]+b[0])/2-ins[0],(a[1]+b[1])/2-ins[1],(a[2]+b[2])/2-ins[2]], bd=-1e18, bi=0;
+        P.faces.forEach(function(f,k){ var dd=f.n[0]*m[0]+f.n[1]*m[1]+f.n[2]*m[2]; if(dd>bd){ bd=dd; bi=k; } });
+        hit=[bi];
+      }
+      lines.push({a:a, b:b, f0:hit[0], f1:hit.length>1?hit[1]:hit[0]});
+    }
+  });
+  P.lines=lines;
+  return P;
+}
+/* B minus A for convex parts: the pieces of B outside A -- B itself when a face
+   plane of either separates them, nothing when B is wholly inside A */
+function archSide(P,f,K){ var lo=1e18, hi=-1e18;
+  K.verts(P).forEach(function(v){ var w=f.n[0]*v[0]+f.n[1]*v[1]+f.n[2]*v[2]-f.d; if(w<lo) lo=w; if(w>hi) hi=w; }); return [lo,hi]; }
+function archApart(A,B,K){
+  var a=A.bb||(A.bb=archBB(A,K)), b=B.bb||(B.bb=archBB(B,K)), i;
+  for(i=0;i<3;i++) if(a[i+3]<=b[i]+1e-7 || b[i+3]<=a[i]+1e-7) return true;
+  for(i=0;i<A.faces.length;i++) if(archSide(B,A.faces[i],K)[0]>=-1e-7) return true;
+  for(i=0;i<B.faces.length;i++) if(archSide(A,B.faces[i],K)[0]>=-1e-7) return true;
+  return false;
+}
+function archBB(P,K){ var b=[1e18,1e18,1e18,-1e18,-1e18,-1e18];
+  K.verts(P).forEach(function(v){ for(var k=0;k<3;k++){ if(v[k]<b[k]) b[k]=v[k]; if(v[k]>b[k+3]) b[k+3]=v[k]; } }); return b; }
+function archMinus(B,A,K){
+  var keep=[], rem=B, i;
+  for(i=0;i<A.faces.length && rem;i++){
+    var s=archSide(rem,A.faces[i],K);
+    if(s[0]>=-1e-7){ keep.push(rem); rem=null; break; }
+    if(s[1]<=1e-7) continue;
+    var h=K.splitPart(rem,A.faces[i].n,A.faces[i].d);
+    if(h[0].faces.length>=4) keep.push(h[0]);
+    rem=h[1].faces.length>=4?h[1]:null;
+  }
+  return keep;
+}
+/* THE ARCHETYPE AS PAIRWISE DISJOINT CONVEX PARTS, its union unchanged. Each
+   overlapping pair is cut ONE way: whichever leaves fewer pieces (A u B is both
+   A u (B\A) and (A\B) u B), so a trunk standing up into a drum loses its top
+   rather than carving the drum into a ring of slivers -- slivers are what lock
+   the kit's order into a cycle. Two uncut dome crowns split at their RADICAL
+   PLANE, where the two spheres meet: each keeps its own side, exact for the
+   spheres, and two pieces instead of dozens. */
+function archDisjoint(L,K){
+  var i=0, j, guard=0;
+  while(i<L.length && guard<4000){
+    var hit=-1;
+    for(j=i+1;j<L.length;j++) if(!archApart(L[i],L[j],K)){ hit=j; break; }
+    if(hit<0){ i++; continue; }
+    guard++;
+    var A=L[i], B=L[hit];
+    if(A.sph && B.sph){
+      var c1=A.sph[0], c2=B.sph[0], r1=A.sph[1], r2=B.sph[1];
+      var dv=[c2[0]-c1[0],c2[1]-c1[1],c2[2]-c1[2]], D=Math.hypot(dv[0],dv[1],dv[2]);
+      if(D>1e-9 && D>Math.abs(r1-r2)){
+        var n=[dv[0]/D,dv[1]/D,dv[2]/D], d=(c2[0]*c2[0]+c2[1]*c2[1]+c2[2]*c2[2]-c1[0]*c1[0]-c1[1]*c1[1]-c1[2]*c1[2]+r1*r1-r2*r2)/(2*D);
+        var ha=K.splitPart(A,n,d)[1], hb=K.splitPart(B,n,d)[0], rep=[];
+        L.splice(hit,1); if(hb.faces.length>=4) L.splice(hit,0,hb);
+        L.splice(i,1); if(ha.faces.length>=4) L.splice(i,0,ha);
+        continue;
+      }
+    }
+    var ba=archMinus(B,A,K), ab=archMinus(A,B,K);
+    if(ba.length<=ab.length){ L.splice.apply(L,[hit,1].concat(ba)); }
+    else { L.splice.apply(L,[i,1].concat(ab)); }
+  }
+  return L;
+}
+/* ELIGIBLE PLAN: a rectangle, its four corners at right angles to 1e-6. A lot a
+   band cuts at an angle is not one, and the archetype's cell has nowhere to go */
+function archRect(Q){
+  if(!Q || Q.length!==4) return false;
+  for(var k=0;k<4;k++){ var a=Q[(k+3)%4], b=Q[k], c=Q[(k+1)%4];
+    var u=[a[0]-b[0],a[1]-b[1]], v=[c[0]-b[0],c[1]-b[1]], lu=Math.hypot(u[0],u[1]), lv=Math.hypot(v[0],v[1]);
+    if(lu<1e-9||lv<1e-9||Math.abs((u[0]*v[0]+u[1]*v[1])/(lu*lv))>1e-6) return false; }
+  return true;
+}
+function archTheme(K,base){
+  var p=K.p, AL=Math.max(0,Math.min(1,(isFinite(p.archlots)?+p.archlots:0)/100));
+  if(!(AL>0)) return base(K);
+  var AMIN=Math.max(0,isFinite(p.archmin)?+p.archmin:10), ZON=Math.round(p.zones||0)>0;
+  var THM=K.THM, FH=0.16, STOREY=(THM.midH[0]+THM.midH[1])/2, CELLM=STOREY/FH;
+  var picked=[];
+  K.lots.forEach(function(L){
+    var F0=Math.max(K.PBACK,L.fe);
+    var A=K.P3(L.s0,L.side,F0,0), B=K.P3(L.s1,L.side,F0,0), C=K.P3(L.s1,L.side,L.back,0);
+    var W=Math.hypot(B[0]-A[0],B[1]-A[1]), D=Math.hypot(C[0]-B[0],C[1]-B[1]);
+    if(!archRect(L.poly) || W<AMIN || D<2) return;
+    var R=K.sub(L.side<0?2:1,L.idx,SALT_ARCHLOT);
+    var uPick=R(), uFl=R(), uCore=R(), uRoll=R();
+    if(!(uPick<AL)) return;
+    /* x along the frontage, y away from the street, handed so x cross y is up */
+    var ex=[(B[0]-A[0])/W,(B[1]-A[1])/W], ey=[(C[0]-B[0])/D,(C[1]-B[1])/D], O=A, X0=0;
+    if(ex[0]*ey[1]-ex[1]*ey[0]<0){ ex=[-ex[0],-ex[1]]; O=B; }
+    var floors=Math.max(2,Math.round(K.FLOORS*(0.45+0.55*uFl))+1), core=0.15+0.7*uCore, zone=null, rows=null;
+    if(ZON){
+      var cz=[(A[0]+C[0])/2,(A[1]+C[1])/2]; zone=archZoneOf(p,cz[0],cz[1]);
+      var fr=ARCHZONEFLOORS[zone.z], cb=ARCHZONECORE[zone.z];
+      if(fr) floors=fr[0]+Math.min(fr[1]-fr[0],Math.floor(uFl*(fr[1]-fr[0]+1)));
+      core=cb[0]+uCore*(cb[1]-cb[0]);
+      rows={}; ARCHZONEROWS[zone.z].forEach(function(n){ rows[n]=true; });
+    }
+    var x1=W/CELLM, y1=D/CELLM;
+    function M(q){ return [O[0]+(ex[0]*q[0]+ey[0]*q[1])*CELLM, O[1]+(ex[1]*q[0]+ey[1]*q[1])*CELLM, q[2]*CELLM]; }
+    function cell(det){
+      var cr=K.sub(L.side<0?2:1,L.idx,SALT_ARCHLOT); for(var k=0;k<4;k++) cr();
+      return {gx:0, gy:0, x0:0, y0:0, x1:x1, y1:y1, h:floors*FH, floors:floors, core:core, key:0, roll:uRoll,
+              cr:cr, CU:function(a,b){ return a+(b-a)*cr(); }, detail:det, rows:rows};
+    }
+    /* the archetype at each detail, as parts; refused if any part leaves the lot */
+    var byDet=[], fits=true, row=null;
+    [0,1,2].forEach(function(det){
+      var r=archCells([cell(det)],true)[0], parts=[];
+      row=r.row;
+      r.solids.forEach(function(S){
+        var P=archPart(S,M,K); if(!P) return;
+        P.col=S.lay==='accent'?ARCHCOL_ACC:ARCHCOL_K;
+        if(S.sph) P.sph=[M([S.sph[0],S.sph[1],S.sph[2]]),S.sph[3]*CELLM];
+        parts.push(P);
+      });
+      parts=archDisjoint(parts,K);
+      parts.forEach(function(P){ K.verts(P).forEach(function(v){ if(!K.inConv(L.poly,v) || v[2]<-1e-6 || v[2]>THM.ztop) fits=false; }); });
+      byDet.push(parts);
+    });
+    if(!fits || !byDet[0].length) return;
+    L.arch={row:row, byDet:byDet, floors:floors, core:core, W:W, D:D, zone:zone};
+    picked.push(L);
+  });
+  var T=base(Object.assign({},K,{lots:K.lots.filter(function(L){ return !L.arch; })}));
+  function dressArch(L,dn,df){
+    var c=[0,0,0]; L.poly.forEach(function(q){ c[0]+=q[0]/4; c[1]+=q[1]/4; });
+    var d=K.dist3([c[0],c[1],STOREY]), det=d<dn?2:d<df?1:0;
+    L.arch.byDet[det].forEach(function(P0){
+      var P={faces:P0.faces, lines:P0.lines, ins:P0.ins, cont:L, col:P0.col, kind:'arch'};
+      L.parts.push(P);
+    });
+    L.arch.det=det; L.arch.nparts=L.arch.byDet[det].length;   /* the last pass's, for the gate */
+  }
+  var W2=Object.assign({},T);
+  W2.dress=function(L,dn,df){ return L.arch?dressArch(L,dn,df):T.dress(L,dn,df); };
+  W2.signsFor=function(L,dn,df){ return L.arch?undefined:T.signsFor(L,dn,df); };
+  STRTTALLY.archPicked=(STRTTALLY.archPicked||[]).concat(picked.map(function(L){ return {side:L.side, idx:L.idx, poly:L.poly, rec:L.arch}; }));
+  return W2;
 }
 function buildWarehouse(p){ return buildCorridor(p,STHEMES.whse); }
 /* row 91: the eye stays under the ceiling (Camera height is 0.2 -> Ceiling - 0.4) */
@@ -38594,6 +38866,9 @@ var HELP={
     rwidth:'The river’s water, quay face to quay face, in metres. A quay 1.5 m wide runs along each side. At 20 m or more each bridge stands on piers.',
     rdrop:'How far below the streets the water lies, in metres: the height of the quay wall. Its reflection is in that plane. Under 1.6 m the bridges rise in a shallow arch to keep 1 m under them.',
     alleys:'The share of the parallel streets that are night-market alleys instead: 4.5 m wide, no pavement, stalls along both edges, lantern strings and steam. Each street rolls its own number.',
+    archlots:'The share of plots that take one of the Iso city engine’s 87 buildings instead of a Street building: towers, gables, sheds, silos, churches, parks. Only square-cornered plots at least Iso lot min wide can, and each plot rolls its own number, so raising it only adds iso buildings.',
+    archmin:'The narrowest plot, along the street, that can take an iso building. Narrower plots keep their Street building.',
+    zones:'Each block becomes one of the iso city’s five districts (downtown, old town, industrial, port, civic), and its iso buildings come only from that district’s own kinds and heights. Needs Iso buildings above 0.',
     width:'The parallel streets’ carriageway, kerb to kerb, in metres.',
     pave:'The pavement on each side of every street, kerb to building line, in metres.',
     lotmax:'The widest building plot, in metres. Wide plots make long, flat frontages; seen from above a row of near-equal plots reads as a comb, so the city keeps the spread wide.',
