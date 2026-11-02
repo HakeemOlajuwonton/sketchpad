@@ -438,7 +438,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v349</a> &mdash; Corridor city: the elevated railway and highway -- a rail viaduct carrying the station's track, wires and trains, and a highway deck with lanes, barriers, sign gantries and cars, each winding across the grid on piers while the streets run on beneath (Railway, Highway)</span></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v353</a> &mdash; Corridor city: a harbour -- Site 2 gives a share of the city to water below a stone quay: a wooden pier with a dinghy on its painter, a marina of pontoons and boats in their slips, a fishing harbour with a breakwater and a lighthouse, or container ships at their berths under gantry cranes; everything reflected</span></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <section class="fold" id="fold_pick"><h2>Pick engine<span class="cnt"></span></h2>
@@ -3204,7 +3204,9 @@ var SPEC={
     ['fitem','Items',0,100,1,60,[100,'%']],
     ['farms','Arms per cell',0,4,1,2],['fpose','Pose',0,99,1,0],
     ['fspir','Spirals',0,2,1,1],['flift','Lifts',0,4,1,2],['ftube','Vacuum tubes',0,100,1,60,[100,'%']],
-    ['lod','LOD cutoff',0,60,1,5,[10,' mm']],
+    ['fcrane','Crane',0,1,1,1],['fveh','Vehicles',0,20,1,6],['fpipe','Services',0,100,1,50,[100,'%']],
+    ['fcut','Roof',0,2,1,1],['fwall','Back walls',0,1,1,1],
+    ['lod','LOD cutoff',0,60,1,5,[10,' mm']],['budg','Size budget',10,300,5,200,[1,' k points']],
     ['occ','Occlusion gap',0,80,1,5,[10,' mm']]]],
   /* STREET, queue rows 30-33. ONLY THE KNOBS A BUILT ROW READS ARE DECLARED --
      the spec's §7 lists forty, and row 33 added the last three (puddles, pudsz,
@@ -3512,8 +3514,8 @@ var SPEC={
      puddles, particles or graffiti; the camera reaches 600 m and looks
      straight down at Projection 0 */
   town:['Corridor city',[
-    ['rows','Rows',2,8,1,4],['rowsp','Block depth',30,120,1,60,[1,' m']],
-    ['xblk','Block length',40,240,5,90,[1,' m']],['nlen','City length',100,800,10,320,[1,' m']],
+    ['rows','Rows',2,8,1,4],['rowsp','Block depth',30,240,1,60,[1,' m']],
+    ['xblk','Block length',40,240,5,90,[1,' m']],['nlen','City length',30,8000,10,320,[1,' m']],
     ['xwidth','Cross street',4,16,0.5,7,[1,' m']],['layout','Layout',0,99,1,0],
     /* row 96 (spec §5.2-5.3): the river, the one corridor that winds, and the market rows */
     ['river','River',0,1,1,1],['rbend','River bend',0,60,1,24,[1,'°/100 m']],['rwidth','River width',8,60,1,24,[1,' m']],
@@ -3523,6 +3525,14 @@ var SPEC={
     ['trains','Trains',0,3,1,1],['ncar','Train cars',1,15,1,10],
     ['hwy','Highway',0,1,1,0],['hwybend','Highway bend',0,20,1,6,[1,'°/100 m']],['hwyz','Highway height',6,20,0.5,10,[1,' m']],
     ['hlanes','Lanes',1,4,1,2],
+    /* row 98 (spec §7): parks and a powerline */
+    ['parks','Parks',0,40,1,10,[100,'%']],['pline','Powerline',0,1,1,0],
+    /* row 99 (spec §2.1): a site, and the airfield */
+    ['site','Site',0,2,1,0],['sitepct','Site share',10,90,1,50,[1,'%']],['tier','Scale',0,4,1,2],['sscale','Site scale',50,200,1,100,[1,'%']],
+    ['rwys','Runways',1,8,1,2],['rwyhdg','Runway heading',0,179,1,70,[1,'°']],['stands','Stands',0,100,1,60,[1,'%']],
+    ['acmix','Aircraft size',0,100,1,40,[1,'%']],['tower','Tower',0,1,1,1],['hangars','Hangars',0,12,1,2],['gse','Ground vehicles',0,100,1,50,[1,'%']],
+    /* row 100 (spec §3): the harbour */
+    ['berths','Berths',1,40,1,6],['vessels','Vessels',0,100,1,70,[1,'%']],['pierlen','Pier length',0,400,1,0,[1,' m']],['slips','Slip width',0,100,1,50],
     ['width','Road width',4,24,0.5,9,[1,' m']],['pave','Pavement',0,6,0.25,2.5,[1,' m']],
     ['lotmin','Lot min',3,20,0.5,5,[1,' m']],['lotmax','Lot max',4,40,0.5,16,[1,' m']],
     ['alley','Alley chance',0,60,1,14,[100,'%']],['floors','Storeys',1,40,1,9],
@@ -18419,7 +18429,9 @@ function ISOKIT(p,T){
       var mk=opt.marks[i];
       if(mk[2]===undefined || mk[2]<0 || P[mk[2]].vis) M.push([mk[0],mk[1]]);
     }
-    return {V:V, P:P, AE:AE, E:E.concat(M), col:opt.col, lay:opt.lay||K.lay,
+    /* `nE`: the first nE of E are edges, the rest are MARKS, so a piece can
+       count the marks it draws (row 106's budget drops marks by class) */
+    return {V:V, P:P, AE:AE, E:E.concat(M), nE:E.length, col:opt.col, lay:opt.lay||K.lay,
             kind:opt.kind||'', hides:opt.hides!==false, top:opt.top, id:opt.id};
   }
   /* Liang-Barsky against a cell, with ONE OWNER for a segment lying in a cell
@@ -18483,7 +18495,10 @@ function ISOKIT(p,T){
       if(S.col!==undefined) s.col=S.col;
       for(m=0;m<S.E.length;m++){
         r=clipSegCell(S.E[m][0],S.E[m][1],c,lo,hi);
-        if(r && r[1]-r[0]>1e-12) addE(s,[lerp3(S.E[m][0],S.E[m][1],r[0]), lerp3(S.E[m][0],S.E[m][1],r[1])]);
+        if(r && r[1]-r[0]>1e-12){
+          addE(s,[lerp3(S.E[m][0],S.E[m][1],r[0]), lerp3(S.E[m][0],S.E[m][1],r[1])]);
+          if(m>=S.nE) s.nm=(s.nm||0)+1;
+        }
       }
       /* THE CUT PLANES OF THIS PIECE: the cell faces the original crosses, plus
          the original's own seam faces. The occluder treats its hull edges on
@@ -19398,7 +19413,33 @@ var FACTINFO='';
 var FACTSTATS={lines:0,stations:0,belts:0,solids:0,paths:0,points:0};
 var FACTTALLY={cells:[],boxes:[],order:[],tubes:[],polys:[],stations:[],belts:[],flow:null,
                aisles:[],cols:[],decks:[],walls:[],marks:[],hall:null};
+/* TWO PASSES, ONLY WHEN OVER BUDGET. The first build counts every class's
+   points exactly (a whole solid's ink, or the marks a piece draws); if the
+   drawing fits, it is the drawing. If not, the shortest prefix of FACTDROPS
+   that brings it under is dropped and the factory is built again with those
+   classes left out. Nothing random depends on a dropped class, so the second
+   build is the first less them. */
 function buildFactory(p){
+  var bp=Math.round((p.budg===undefined?200:+p.budg)*1000);
+  var B=Math.min(Math.max(1,bp), Math.max(2000,GEOCAPFULL||GEOCAP||560000));
+  var r=buildFactoryOnce(p,{budget:B});
+  if(r && r.over){
+    var drop={}, left=r.pts, i;
+    for(i=0;i<FACTDROPS.length && left>B;i++){ drop[FACTDROPS[i]]=1; left-=r.cls[FACTDROPS[i]]||0; }
+    r=buildFactoryOnce(p,{budget:B, final:true, drop:drop, cls:r.cls, pts0:r.pts});
+  }
+  return r;
+}
+/* THE BUDGET'S DROP ORDER (row 106, §7): when the drawing has more points than
+   `budg` allows, whole CLASSES of fine detail go, in this order, until it fits:
+   fence mesh, roller tubes, the cartons on the shipping racks, belt-edge lines,
+   arm dress packs, duct flanges, lane paint, sawtooth glazing bars. Structure,
+   belts, arms, lifts and tubes are in no class and never drop. A class is
+   dropped whole or not at all, so what is left is byte-identical to the
+   unbudgeted drawing less those classes (F11). Declared BETWEEN the two
+   functions so extract.js's slice of buildFactory carries it. */
+var FACTDROPS=['mesh','rollers','rackcartons','beltedge','dress','flange','lane','sawglaze'];
+function buildFactoryOnce(p,DROP){
   /* THE SALTS. One per feature, so a feature's knob at 0 cannot move any other
      feature's stream (§6). statRng(SEED,salt,a,b): `a`/`b` index the line or the
      station, so a line's numbers depend on the line and nothing else. */
@@ -19411,6 +19452,12 @@ function buildFactory(p){
      stands (indexed by `fpose`); TUBES which candidate links are built and in
      what order, TUBEPOSE the capsules in the hoppers (indexed by `fpose`). */
   var FACT_SALT_LIFT=739, FACT_SALT_LIFTPOSE=743, FACT_SALT_TUBES=751, FACT_SALT_TUBEPOSE=757;
+  /* Row 106. CRANE is where the crane's bay is (layout), CRANEPOSE where its
+     bridge, trolley and hook are and what hangs on it (by `fpose`); VEH is the
+     vehicles, all of them pose (§6: "vehicles ... never the layout"); PIPE
+     which service runs are built; RACK the shipping racks' loads. */
+  var FACT_SALT_CRANE=773, FACT_SALT_CRANEPOSE=787, FACT_SALT_VEH=797, FACT_SALT_PIPE=809, FACT_SALT_RACK=811;
+  var DROPS=(DROP&&DROP.drop)||{};
   /* §5's ink roles, by INKS name. No grey anywhere: Albert has no grey pen. */
   var FACTCOL={black:'#1a1a1a', yellow:'#f2c230', orange:'#ec7a1c', blue:'#2156c7',
                lblue:'#5aa9e6', brown:'#8b5a2b', red:'#d42a2a', green:'#2f9a44'};
@@ -19428,7 +19475,12 @@ function buildFactory(p){
                 liftsteel:'yellow', cabinet:'blue', diverter:'blue', vtube:'lblue',
                 estop:'red', walk:'green',
                 zpaint:'yellow', rack:'orange', tote:'blue', cage:'black', bench:'black', toolcab:'red',
-                charger:'black', bin:'green', skid:'black', tank:'black', glass:'lblue', pod:'black', sill:'black'};
+                charger:'black', bin:'green', skid:'black', tank:'black', glass:'lblue', pod:'black', sill:'black',
+                /* row 106 */
+                runway:'yellow', crane:'yellow', rope:'black', hook:'black', load:'black',
+                vbody:'yellow', vframe:'black', wheel:'black', agv:'blue', agvtote:'brown',
+                upright:'blue', duct:'black', sprinkler:'red', tray:'black', airdrop:'black', filter:'black',
+                extinguisher:'red', bollard:'yellow', hazard:'yellow', lamp:'black', purlin:'black', roof:'black'};
   /* Station footprints: length along the line in whole metres. Depth is 3 m for
      every type, which is what lets a row be one 3-cell strip. */
   var FACTLEN={receive:3, cnc:3, press:4, moulder:6, furnace:3, vat:3, assembly:3, qa:1, pack:2, ship:3};
@@ -19445,6 +19497,11 @@ function buildFactory(p){
   var FSPIR=Math.max(0,Math.min(2,Math.round(p.fspir===undefined?1:p.fspir)));
   var FLIFT=Math.max(0,Math.min(4,Math.round(p.flift===undefined?2:p.flift)));
   var FTUBE=Math.max(0,Math.min(1,(p.ftube===undefined?60:p.ftube)/100));
+  var FCRANE=Math.max(0,Math.min(1,Math.round(p.fcrane===undefined?1:p.fcrane)));
+  var FVEH=Math.max(0,Math.min(20,Math.round(p.fveh===undefined?6:p.fveh)));
+  var FPIPE=Math.max(0,Math.min(1,(p.fpipe===undefined?50:p.fpipe)/100));
+  var FCUT=Math.max(0,Math.min(2,Math.round(p.fcut===undefined?1:p.fcut)));
+  var FWALL=Math.max(0,Math.min(1,Math.round(p.fwall===undefined?1:p.fwall)));
   var SEED=Math.round(rnd(0)*1e6);
   var H=NLEV===3?13.5:9.0;                         /* eaves */
   var out=[];
@@ -19473,7 +19530,13 @@ function buildFactory(p){
   function solid(V,F,o){
     o=o||{};
     if(o.col===undefined) o.col=col(o.kind||'hall');
-    return K.cutAtLattice(K.polySolid(V,F,o));
+    var pcs=K.cutAtLattice(K.polySolid(V,F,o));
+    /* a budget class (§7): `dropc` is a whole solid, `dropM` only its marks */
+    if(o.dropc||o.dropM) pcs.forEach(function(s){
+      s.dc=o.dropc; s.dm=o.dropM;
+      if(s.pi!==undefined){ var E=T.polys[s.pi]; E.dc=o.dropc; E.dm=o.dropM; E.nm=s.nm||0; }
+    });
+    return pcs;
   }
   function box(x0,y0,z0,x1,y1,z1,o){
     if(!(x1-x0>1e-9 && y1-y0>1e-9 && z1-z0>1e-9)) return [];
@@ -19548,6 +19611,7 @@ function buildFactory(p){
      is in a cell with a larger key and is drawn before it, which is "hidden by
      anything above them" (§2) by the painter theorem rather than by a rule. */
   function floorLine(a,b,kind){
+    if(kind==='lane' && DROPS.lane) return;
     var ts=[0,1], ax2, g, m;
     for(ax2=0;ax2<2;ax2++){
       var A=a[ax2], B=b[ax2];
@@ -19563,6 +19627,7 @@ function buildFactory(p){
       var c=[Math.floor((q0[0]+q1[0])/2), Math.floor((q0[1]+q1[1])/2), -1];
       var s=K.Solid(K.depth3(c), 1e6, 0);
       s.cell=c; s.lay='ground'; s.col=col(kind); s.kind=kind;
+      if(kind==='lane') s.dc='lane';
       K.addE(s,[q0,q1]); K.push(s);
       T.marks.push({a:q0, b:q1, kind:kind, cell:c});
     }
@@ -19639,11 +19704,11 @@ function buildFactory(p){
     }
     /* the dress pack: a cable chain from the turret's back, over the shoulder,
        along the top of the upper arm to the forearm */
-    if(near(0.06)){
+    if(near(0.06) && !DROPS.dress){
       var D=[vadd(vadd(B,Z,0.75),u,-0.25), vadd(P.S,n2,ARMUP+0.04),
              vadd(vadd(P.E,n2,ARMUP+0.04),a,-0.15), vadd(vadd(P.E,nf,ARMFORE+0.04),f,0.2)], k;
       for(k=0;k+1<D.length;k++)
-        prism(D[k],D[k+1],0.03,0.03,6,{kind:'dress', id:aid+'.d', seam0:k>0, seam1:k+2<D.length});
+        prism(D[k],D[k+1],0.03,0.03,6,{kind:'dress', id:aid+'.d', seam0:k>0, seam1:k+2<D.length, dropc:'dress'});
     }
   }
 
@@ -20192,6 +20257,30 @@ function buildFactory(p){
     }
     return best;
   }
+  /* SHIPPING RACKS (row 106, §4.7): selective pallet racking beside every
+     shipping dock, BEFORE the zones, in the largest open rectangle within 16 m
+     of the docks' wall and 10 m of the dock along it (never under the deck: a
+     rack is 4.4 m). A run is 1.1 m deep in two metres of floor and has a bay
+     for every three stations of its line, one to four, as many as the room
+     holds. It is a zone like any other (the zone rule, P2), typed `racking`. */
+  var NRACK=0;
+  STN.forEach(function(st){
+    if(st.type!=='ship') return;
+    var A=availGrid(), M=[], x, y, ya=Math.max(0,Math.floor(st.yc-10)), yb=Math.min(D,Math.ceil(st.yc+10));
+    for(x=0;x<W;x++){ M.push([]); for(y=0;y<D;y++) M[x].push(A[x][y] && x<16 && y>=ya && y<yb && !cellUnderDeck(x,y)); }
+    var R=maxRect(M,W,D);
+    if(!R) return;
+    var w=R.x1-R.x0, h=R.y1-R.y0, L=Math.max(w,h);
+    if(Math.min(w,h)<2 || L<4) return;
+    var nl=LINES[st.line]?LINES[st.line].stations.length:NST;
+    var nb=Math.min(Math.min(4,1+Math.floor(nl/3)), Math.floor((L-0.2)/2.85));
+    if(nb<1) return;
+    var along=w>=h, len=Math.ceil(nb*2.85+0.2);
+    var Z={id:'rk'+NRACK, type:'racking', x0:R.x0, y0:R.y0, x1:along?R.x0+len:R.x0+2, y1:along?R.y0+2:R.y0+len,
+           z:0, bays:nb, along:along, rng:statRng(SEED,FACT_SALT_RACK,NRACK,0)};
+    ZONES.push(Z); NRACK++;
+    markRect(Z.x0,Z.y0,Z.x1,Z.y1,ZONE);
+  });
   (function(){
     var guard=0;
     for(;guard<200;guard++){
@@ -20201,8 +20290,8 @@ function buildFactory(p){
       if(w*h<6 || Math.max(w,h)<3) break;
       var nx=Math.ceil((w+1)/13), ny=Math.ceil((h+1)/13);
       var zw=Math.floor((w-(nx-1))/nx), zh=Math.floor((h-(ny-1))/ny);
-      var Z={id:'z'+ZONES.length, x0:R.x0, y0:R.y0, x1:R.x0+zw, y1:R.y0+zh, z:0};
-      var rz=statRng(SEED,FACT_SALT_ZONES,ZONES.length,0), sw=Math.min(zw,zh), lw=Math.max(zw,zh);
+      var Z={id:'z'+(ZONES.length-NRACK), x0:R.x0, y0:R.y0, x1:R.x0+zw, y1:R.y0+zh, z:0};
+      var rz=statRng(SEED,FACT_SALT_ZONES,ZONES.length-NRACK,0), sw=Math.min(zw,zh), lw=Math.max(zw,zh);
       var fit=ZTYPES.filter(function(t){ return sw>=t[2] && lw>=t[3]; }), tot=0, pick=null;
       fit.forEach(function(t){ tot+=t[1]; });
       var u=rz()*tot;
@@ -20342,7 +20431,7 @@ function buildFactory(p){
   function wall(axis,lo,hi,holes){
     /* axis 'x': the plane x=0 wall, running along y from lo to hi */
     function wb(a0,z0,a1,z1,marks){
-      var o={kind:'wall'};
+      var o={kind:'wall', id:'wall'};
       if(marks) o.marks=marks;
       T.walls.push({axis:axis, a0:a0, a1:a1, z0:z0, z1:z1});
       if(axis==='x') return box(-0.3,a0,z0,0,a1,z1,o);
@@ -20372,12 +20461,13 @@ function buildFactory(p){
       var inDoor=false;
       holes.forEach(function(hh){ if(g>hh[0]-0.5 && g<hh[1]+0.5) inDoor=true; });
       if(inDoor) continue;
-      if(axis==='x') bar(-0.17,g-0.02,3.0,-0.13,g+0.02,5.0,{kind:'glazing'});
-      else bar(g-0.02,-0.17,3.0,g+0.02,-0.13,5.0,{kind:'glazing'});
+      if(axis==='x') bar(-0.17,g-0.02,3.0,-0.13,g+0.02,5.0,{kind:'glazing', id:'wall'});
+      else bar(g-0.02,-0.17,3.0,g+0.02,-0.13,5.0,{kind:'glazing', id:'wall'});
     }
   }
-  wall('x',-0.3,D,DOORS);
-  wall('y',0,W,[]);
+  /* `fwall` 0 leaves both back walls out, ribbon glazing and cladding with
+     them (row 106); the dock doors' frames are their stations' */
+  if(FWALL){ wall('x',-0.3,D,DOORS); wall('y',0,W,[]); }
 
   /* ---- columns ----------------------------------------------------------- */
   COLS.forEach(function(c){ box(c[0],c[1],0,c[2],c[3],CT,{kind:'column'}); });
@@ -20387,7 +20477,9 @@ function buildFactory(p){
      else; the two halves meet flush at the ridge, a seam, so a span's rafter
      is one outline. Haunch gussets under each end, near. */
   var PITCH=Math.tan(5*Math.PI/180), RDV=0.45/Math.cos(5*Math.PI/180);
-  FXL.forEach(function(fx,k){
+  /* `fcut` 2 is NO ROOF AT ALL (row 106, composition spec §1.1): the rafters,
+     their gussets and the eaves beams go with it, and the columns stand bare */
+  if(FCUT<2) FXL.forEach(function(fx,k){
     var j;
     for(j=0;j+1<FYL.length;j++){
       var ya=FYL[j], yb=FYL[j+1], ym=(ya+yb)/2;
@@ -20410,7 +20502,7 @@ function buildFactory(p){
   });
   /* EAVES BEAMS tie the column heads along every span line, column face to
      column face, their tops at the heads */
-  FYL.forEach(function(cy,j){
+  if(FCUT<2) FYL.forEach(function(cy,j){
     var k;
     for(k=0;k+1<FXL.length;k++){
       var xa=FXL[k]+0.2, xb=FXL[k+1]-0.2;
@@ -20419,6 +20511,61 @@ function buildFactory(p){
       T.frame.beams.push({id:'bm'+j+'.'+k, y:cy, x0:xa, x1:xb, z0:CT-0.3, z1:CT});
     }
   });
+
+  /* ---- the roof (row 106, §4.7) ------------------------------------------ */
+  /* PURLINS every 3 m across each span, the length of the hall, each one box
+     ON the rafters: its underside at the highest rafter top under its 0.15 m
+     (the ridge, where a purlin straddles it), so it touches the rafters and
+     cuts none. Where they stand is GEOMETRY, worked out whatever the Roof --
+     a hanger that runs up under a purlin stops at it (roofUnder), and so the
+     hangers are the same at every `fcut`. The sawtooth's base is worked out
+     the same way: the highest rafter or purlin top over the far half. */
+  var PURL=[], ZSAW=0;
+  (function(){
+    var j, y;
+    function rtop(yy,ya,yb){ return CT+RDV+PITCH*Math.max(0,Math.min(yy-ya,yb-yy)); }
+    for(j=0;j+1<FYL.length;j++){
+      var ya=FYL[j], yb=FYL[j+1], ym=(ya+yb)/2;
+      ZSAW=Math.max(ZSAW, ya<D/2+1e-9?rtop(ym,ya,yb):0);
+      for(y=ya+1.5;y<yb-1.0;y+=3){
+        var zb=Math.max(rtop(y-0.075,ya,yb),rtop(y+0.075,ya,yb));
+        if(ym>y-0.075 && ym<y+0.075) zb=rtop(ym,ya,yb);
+        PURL.push({y:y, zb:zb});
+        if(y<D/2+1e-9) ZSAW=Math.max(ZSAW,zb+0.2);
+      }
+    }
+  })();
+  if(FCUT<2) PURL.forEach(function(q,i){
+    /* a bar: under the LOD cutoff a purlin is its centre line and hides nothing
+       (a 0.15 m member is 0.4 mm on the default sheet) */
+    bar(FXL[0]-0.12,q.y-0.075,q.zb,FXL[FXL.length-1]+0.12,q.y+0.075,q.zb+0.2,{kind:'purlin', id:'pur'+i});
+  });
+  /* THE SAWTOOTH (`fcut` 0) over the FAR half only, y <= D/2: teeth 3 m deep,
+     their ridges along x, each a triangular prism the width of the hall on
+     the purlins. THE GLAZED FACE LOOKS INTO THE HALL (+y), not at the back
+     wall: §4.7's "north lights toward the back walls" is read as where the
+     sawtooth stands -- a glazed face turned away from this camera is never
+     drawn, and §7 drops its glazing bars as something that is. The near half
+     is open, so the hall is seen through its trusses as at `fcut` 1. */
+  T.roof={mode:FCUT, half:D/2, z:ZSAW, teeth:[], glaze:[]};
+  if(FCUT===0){
+    var TP=3.0, TG=0.7, THT=1.2, ti;
+    for(ti=0;(ti+1)*TP<=D/2+1e-9;ti++){
+      var ya2=ti*TP, yb2=ya2+TP, x0r=0, x1r=W;
+      var V=[[x0r,ya2,ZSAW],[x0r,yb2,ZSAW],[x0r,yb2-TG,ZSAW+THT],[x1r,ya2,ZSAW],[x1r,yb2,ZSAW],[x1r,yb2-TG,ZSAW+THT]];
+      var F=[[0,2,1],[3,4,5],[0,1,4,3],[1,2,5,4],[2,0,3,5]];
+      var ro={kind:'roof', id:'saw'+ti};
+      /* bars 1 m apart, drawn while 1 m comes out over the 0.7 mm paper
+         floor (the cladding's rule) */
+      if(0.8660254*K.mmest>=0.7 && !DROPS.sawglaze){
+        ro.marks=[]; ro.dropM='sawglaze';
+        var gx;
+        for(gx=1;gx<W-0.5;gx++){ ro.marks.push([[gx,yb2,ZSAW],[gx,yb2-TG,ZSAW+THT],3]); T.roof.glaze.push({x:gx, y0:yb2-TG, y1:yb2}); }
+      }
+      solid(V,F,ro);
+      T.roof.teeth.push({y0:ya2, y1:yb2, z0:ZSAW, z1:ZSAW+THT});
+    }
+  }
 
   /* ---- mezzanine decks, columns, handrails, stairs ----------------------- */
   function handrail(x0,y0,x1,y1,z){
@@ -20457,7 +20604,12 @@ function buildFactory(p){
     levs.forEach(function(zd,lv){
       var dx1=lv===0?MZ.x1:DXU, dy1=lv===0?MZ.y1:MZ.yu1;
       var zb=lv===0?0:4.5;
-      box(MZ.x0,MZ.y0,zd-0.25,dx1,dy1,zd,{kind:'deck'});
+      /* HAZARD EDGING (row 106): the open edge's last 0.12 m is its own
+         yellow strip, striped near; the deck's own outline is unchanged */
+      box(MZ.x0,MZ.y0,zd-0.25,dx1,dy1-0.12,zd,{kind:'deck'});
+      var hz={kind:'hazard'}, hx;
+      if(near(0.05)){ hz.marks=[]; for(hx=MZ.x0+0.15;hx+0.12<dx1-0.05;hx+=0.3) hz.marks.push([[hx,dy1-0.11,zd],[hx+0.1,dy1-0.01,zd],1]); }
+      box(MZ.x0,dy1-0.12,zd-0.25,dx1,dy1,zd,hz);
       T.decks.push({x0:MZ.x0, x1:dx1, y0:MZ.y0, y1:dy1, z:zd});
       /* the deck's own columns stand at its two ends and on every frame line
          between them, under the open edge */
@@ -20496,9 +20648,10 @@ function buildFactory(p){
     var sLo=(alongX?a[0]<b[0]:a[1]<b[1])?seamA:seamB, sHi=(alongX?a[0]<b[0]:a[1]<b[1])?seamB:seamA;
     if(alongX){ sm[5]=sLo; sm[3]=sHi; } else { sm[2]=sLo; sm[4]=sHi; }
     o.seam=sm;
-    /* near: the belt surface's two edges, inset from the frame */
-    if(near(0.05)){
-      o.marks=[];
+    /* near: the belt surface's two edges, inset from the frame (a budget
+       class, row 106) */
+    if(near(0.05) && !DROPS.beltedge){
+      o.marks=[]; o.dropM='beltedge';
       [-0.25,0.25].forEach(function(t){
         if(alongX) o.marks.push([[lo,a[1]+t,z+BZ1],[hi,a[1]+t,z+BZ1],1]);
         else o.marks.push([[a[0]+t,lo,z+BZ1],[a[0]+t,hi,z+BZ1],1]);
@@ -20757,6 +20910,7 @@ function buildFactory(p){
       lbar(0.35,1.31,0,0.43,1.39,1.1,{kind:'guard'});
       lbar(3.57,1.31,0,3.65,1.39,1.1,{kind:'guard'});
       lbar(0.43,1.31,1.0,3.57,1.39,1.06,{kind:'guard'});
+      estop(2.6,1.25,1.5);                     /* row 106: on the +t upright, inside its guard rail */
     } else if(t==='moulder'){
       stub(0,0.5); stub(5.5,6.0);
       lb(0.5,-0.7,0,5.5,0.7,1.6,{kind:'machine'});
@@ -20764,6 +20918,7 @@ function buildFactory(p){
       prism([wx(0.8),st.yc,1.78],[wx(3.8),st.yc,1.78],0.18,0.18,10,{kind:'machine'});
       lcyl(1.4,0,1.96,2.6,0.15,0.45,10,{kind:'machine'});
       lb(0.6,-1.4,0,1.6,-0.8,1.8,{kind:'machine'});
+      estop(3.0,0.7,1.2);
     } else if(t==='furnace'){
       stub(0,0.3); stub(2.7,3.0);
       lb(0.3,-1.1,0,2.7,1.1,2.6,{kind:'machine'});
@@ -20774,6 +20929,7 @@ function buildFactory(p){
       st.flue=[wx(1.5),st.yc-0.5];
       lcyl(1.5,-0.5,CT-0.6,CT-0.4,0.4,0.4,10,{kind:'machine'});
       if(near(0.04)){ lb(1.3,1.2,1.15,1.7,1.26,1.21,{kind:'detail'}); lb(2.3,0.3,2.6,2.55,0.6,2.8,{kind:'detail'}); }
+      estop(2.5,1.1,1.5);
     } else if(t==='vat'){
       stub(0,0.35); stub(2.65,3.0);
       lcyl(1.5,0,0,2.4,1.1,1.1,16,{kind:'vat'});
@@ -20795,8 +20951,8 @@ function buildFactory(p){
         var n=Math.max(1,Math.round((f[2]-f[0])/2)), i;
         for(i=0;i<=n;i++){ var ps=f[0]+(f[2]-f[0])*i/n; lbar(ps-0.03,f[1]-0.03,0,ps+0.03,f[1]+0.03,2.0,{kind:'fence'}); }
         lbar(f[0]+0.03,f[1]-0.02,1.96,f[2]-0.03,f[1]+0.02,2.0,{kind:'fence'});
-        if(near(0.2)){
-          var mo={kind:'fence', hides:false, marks:[]}, ms;
+        if(near(0.2) && !DROPS.mesh){
+          var mo={kind:'fence', hides:false, marks:[], dropc:'mesh'}, ms;
           for(ms=f[0]+0.2;ms<f[2]-0.1;ms+=0.2) mo.marks.push([[wx(ms),st.yc+f[1],0.1],[wx(ms),st.yc+f[1],1.9],-1]);
           lb(f[0]+0.03,f[1]-0.005,0.1,f[2]-0.03,f[1]+0.005,1.9,mo);
         }
@@ -20809,6 +20965,8 @@ function buildFactory(p){
       [[0.05,-0.42],[0.05,0.42],[2.95,-0.42],[2.95,0.42]].forEach(function(f){
         lbar(f[0]-0.03,f[1]-0.03,0,f[0]+0.03,f[1]+0.03,1.5,{kind:'guard'});
       });
+      /* the fence gate's e-stop, on the +t light-curtain post at the in-face (row 106) */
+      estop(0.05,0.45,1.2);
       cellRobots();
     } else if(t==='qa'){
       var qs=stub(0,1.0);
@@ -20817,6 +20975,7 @@ function buildFactory(p){
       lb(0.3,-0.75,2.0,0.7,0.75,2.25,{kind:'frame'});
       lb(0.35,-0.3,2.25,0.65,0.3,2.5,{kind:'machine'});
       if(near(0.06)){ lb(0.42,-0.7,2.25,0.58,-0.55,2.4,{kind:'detail'}); lb(0.42,0.55,2.25,0.58,0.7,2.4,{kind:'detail'}); }
+      estop(0.5,0.75,1.4);
       /* the reject chute: a wedge falling away from the belt's +t edge */
       /* after the arch (s 0.72-0.98), not under it: under it the chute ran
          through the +t portal post */
@@ -20831,6 +20990,7 @@ function buildFactory(p){
       /* the carton erector stops at t -0.5: to -0.4 the -t flap folder
          (|t| 0.31-0.46) stood 6 cm inside it */
       lb(0.2,-1.3,0,1.0,-0.5,1.6,{kind:'machine'});
+      estop(0.3,-0.5,1.4);
       lbar(1.2,-0.47,0,1.26,-0.41,1.25,{kind:'frame'});
       lbar(1.2,0.41,0,1.26,0.47,1.25,{kind:'frame'});
       lb(1.15,-0.47,1.25,1.6,0.47,1.55,{kind:'machine'});
@@ -20928,6 +21088,38 @@ function buildFactory(p){
         if(near(0.15)){ var mz=z+0.15+lh*0.5; lo.marks=[[[px+0.05,py+0.95,mz],[px+1.15,py+0.95,mz],4],[[px+1.15,py+0.05,mz],[px+1.15,py+0.95,mz],3]]; }
         box(px+0.05,py+0.05,z+0.15,px+1.15,py+0.95,z+0.15+lh,lo);
       }
+    } else if(Z.type==='racking'){
+      /* uprights (blue) every 2.85 m, front and back, 4.4 m; beams (orange) at
+         1.6 and 3.2; on the floor and each beam pair a bay holds two pallets,
+         each with one to three layers of cartons -- the cartons are a budget
+         class (§7). A pallet sits ON its beams and between its uprights. */
+      var RS=function(s0,t0,s1,t1){ return along?[x0+s0,y0+t0,x0+s1,y0+t1]:[x0+t0,y0+s0,x0+t1,y0+s1]; };
+      var rb=function(s0,t0,s1,t1,z0,z1,o){ var q=RS(s0,t0,s1,t1); return box(q[0],q[1],z+z0,q[2],q[3],z+z1,o); };
+      var rbar=function(s0,t0,s1,t1,z0,z1,o){ var q=RS(s0,t0,s1,t1); return bar(q[0],q[1],z+z0,q[2],q[3],z+z1,o); };
+      var nbays=Z.bays, k6, lv6, q6;
+      for(k6=0;k6<=nbays;k6++){
+        var us=0.1+k6*2.85;
+        rbar(us,0.45,us+0.1,0.55,0,4.4,{kind:'upright', id:id+'.u'});
+        rbar(us,1.45,us+0.1,1.55,0,4.4,{kind:'upright', id:id+'.u'});
+      }
+      for(k6=0;k6<nbays;k6++){
+        var b0=0.2+k6*2.85, b1=b0+2.75;
+        [1.6,3.2].forEach(function(zl){
+          rbar(b0,0.45,b1,0.52,zl-0.12,zl,{kind:'rack', id:id+'.b'});
+          rbar(b0,1.48,b1,1.55,zl-0.12,zl,{kind:'rack', id:id+'.b'});
+        });
+        for(lv6=0;lv6<3;lv6++){
+          var zl6=lv6*1.6;
+          for(q6=0;q6<2;q6++){
+            var full=r()<0.8, nlay=1+Math.floor(r()*3), ps=b0+0.15+q6*1.3;
+            if(!full) continue;
+            rb(ps,0.5,ps+1.2,1.5,zl6,zl6+0.15,{kind:'pallet', id:id+'.p'});
+            if(!DROPS.rackcartons) for(i=0;i<2;i++) for(j=0;j<2;j++){ var l6;
+              for(l6=0;l6<nlay;l6++) rb(ps+0.03+i*0.58,0.53+j*0.48,ps+0.03+i*0.58+0.55,0.53+j*0.48+0.45,
+                                       zl6+0.15+l6*0.35,zl6+0.15+l6*0.35+0.35,{kind:'carton', id:id+'.c', dropc:'rackcartons'}); }
+          }
+        }
+      }
     } else if(Z.type==='shelving'){
       racks(id,x0,y0,x1,y1,z,r);
     } else if(Z.type==='crib'){
@@ -20946,8 +21138,8 @@ function buildFactory(p){
         }
         if(Math.abs(ux)>0.5) bar(Math.min(sd[0],sd[2])+0.03,sd[1]-0.02,z+2.36,Math.max(sd[0],sd[2])-0.03,sd[1]+0.02,z+2.4,{kind:'cage', id:id+'.m'});
         else bar(sd[0]-0.02,Math.min(sd[1],sd[3])+0.03,z+2.36,sd[0]+0.02,Math.max(sd[1],sd[3])-0.03,z+2.4,{kind:'cage', id:id+'.m'});
-        if(near(0.25)){
-          var mo={kind:'cage', id:id+'.m', hides:false, marks:[]}, ms;
+        if(near(0.25) && !DROPS.mesh){
+          var mo={kind:'cage', id:id+'.m', hides:false, marks:[], dropc:'mesh'}, ms;
           for(ms=0.25;ms<L-0.1;ms+=0.25) mo.marks.push([[sd[0]+ux*ms,sd[1]+uy*ms,z+0.1],[sd[0]+ux*ms,sd[1]+uy*ms,z+2.3],-1]);
           if(Math.abs(ux)>0.5) box(Math.min(sd[0],sd[2])+0.03,sd[1]-0.005,z+0.1,Math.max(sd[0],sd[2])-0.03,sd[1]+0.005,z+2.3,mo);
           else box(sd[0]-0.005,Math.min(sd[1],sd[3])+0.03,z+0.1,sd[0]+0.005,Math.max(sd[1],sd[3])-0.03,z+2.3,mo);
@@ -21149,7 +21341,9 @@ function buildFactory(p){
      upper deck, or else the eaves line. A hanger rod ends there, so it never
      runs up through the frame (row 124). */
   function roofUnder(x,y){
-    var z=upperAt(x,y)?8.75:H, k, j;
+    var z=upperAt(x,y)?8.75:Math.min(H,ZSAW), k, j;
+    /* under a purlin (row 106): its underside, whatever the Roof */
+    for(k=0;k<PURL.length;k++) if(Math.abs(y-PURL[k].y)<=0.075+0.011) z=Math.min(z,PURL[k].zb);
     for(k=0;k<FXL.length;k++) if(Math.abs(x-FXL[k])<=0.13)
       for(j=0;j+1<FYL.length;j++) if(y>=FYL[j]-1e-9 && y<=FYL[j+1]+1e-9)
         z=Math.min(z,CT+PITCH*Math.min(Math.abs(y-FYL[j]),Math.abs(FYL[j+1]-y)));
@@ -21303,6 +21497,85 @@ function buildFactory(p){
     for(x=0;x<ring.length;x++) if(gget(ring[x][0],ring[x][1])===FREE && !cellUnderDeck(ring[x][0],ring[x][1])){ G[ring[x][0]][ring[x][1]]=CAB; return ring[x]; }
     return null;
   }
+  /* ---- ROW 106: room, asked of what no knob moves, and the crane's bay ---- */
+  function knobDep(E){
+    var id=E.id||'';
+    return /^(arm|gan|sp|lift|vt)\d+\./.test(id) || /^cab/.test(id) || id==='item' || id==='cap' ||
+           E.kind==='vtube' || E.kind==='diverter' || E.kind==='capsule';
+  }
+  var PIX={}, pixN=0;
+  function pindex(){
+    for(;pixN<T.polys.length;pixN++){
+      var E=T.polys[pixN];
+      if(knobDep(E) || !E.h.length) continue;
+      var bb=[1e18,1e18,1e18,-1e18,-1e18,-1e18], q, ax;
+      for(q=0;q<E.h.length;q++) for(ax=0;ax<3;ax++){
+        if(E.h[q][ax]<bb[ax]) bb[ax]=E.h[q][ax]; if(E.h[q][ax]>bb[ax+3]) bb[ax+3]=E.h[q][ax];
+      }
+      var key=E.cell.join(',');
+      (PIX[key]=PIX[key]||[]).push(bb);
+    }
+  }
+  /* is the open box (x0..x1) x (y0..y1) x (z0..z1) clear of every indexed piece? */
+  function clearBox(x0,y0,z0,x1,y1,z1){
+    var a, b, c, k, ax0=Math.floor(x0-1e-9), ax1=Math.floor(x1+1e-9), by0=Math.floor(y0-1e-9), by1=Math.floor(y1+1e-9),
+        cz0=Math.floor(z0-1e-9), cz1=Math.floor(z1+1e-9);
+    for(a=ax0;a<=ax1;a++) for(b=by0;b<=by1;b++) for(c=cz0;c<=cz1;c++){
+      var L=PIX[a+','+b+','+c]; if(!L) continue;
+      for(k=0;k<L.length;k++){
+        var bb=L[k];
+        if(bb[0]<x1-1e-6 && bb[3]>x0+1e-6 && bb[1]<y1-1e-6 && bb[4]>y0+1e-6 && bb[2]<z1-1e-6 && bb[5]>z0+1e-6) return false;
+      }
+    }
+    return true;
+  }
+  /* the riser SITES, built or not, from the floor up: what a spiral, a lift or
+     their belts and rods could occupy */
+  var KEEP=[];
+  RSITES.forEach(function(S){
+    if(S.kind==='spiral') KEEP.push([S.O[0]-1.7,S.O[1]-1.7,S.O[0]+1.7,S.O[1]+1.7]);
+    else KEEP.push([S.c[0]-1.2,S.c[1]-1.2,S.c[0]+1.2,S.c[1]+1.2]);
+    var xa=S.side==='W'?(S.kind==='spiral'?S.O[0]:S.c[0]):MZ.x1, xb=S.side==='W'?MZ.x0:(S.kind==='spiral'?S.O[0]:S.c[0]);
+    KEEP.push([Math.min(xa,xb)-0.3,S.lane-0.6,Math.max(xa,xb)+0.3,S.lane+0.6]);
+  });
+  function keepClear(x0,y0,x1,y1){
+    var i;
+    for(i=0;i<KEEP.length;i++){ var r=KEEP[i]; if(r[0]<x1 && r[2]>x0 && r[1]<y1 && r[3]>y0) return false; }
+    return true;
+  }
+  function roomFor(x0,y0,z0,x1,y1,z1){ return keepClear(x0,y0,x1,y1) && clearBox(x0,y0,z0,x1,y1,z1); }
+  pindex();
+  /* THE CRANE'S BAY is LAYOUT, chosen here before the tube cabinets so that
+     no cabinet stands under a runway (its riser would rise through it). */
+  var CRANEC=10;
+  var CRANE=null, CRANESTAT='';
+  var GT=TUBZ-TR-0.32, GB=GT-0.6, RZ=GB-0.35, HB=GB-0.6;
+  (function(){
+    var bays=[], j;
+    for(j=0;j+1<FYL.length;j++){
+      var ya=FYL[j], yb=FYL[j+1];
+      if(MZ && ya<MZ.y1+0.5) continue;
+      if(yb-ya<6) continue;
+      var ok=true;
+      [[ya+0.25,ya+0.55],[yb-0.55,yb-0.25]].forEach(function(st){
+        if(ok && !roomFor(0.4,st[0],RZ-0.45,W-0.4,st[1],RZ)) ok=false;
+      });
+      [ya,yb].forEach(function(yl,si){
+        FXL.forEach(function(cx){
+          var b0=si?yl-0.55:yl+0.2, b1=si?yl-0.2:yl+0.55;
+          if(ok && !roomFor(cx-0.2,b0,RZ-0.75,cx+0.2,b1,RZ-0.45)) ok=false;
+        });
+      });
+      if(ok) bays.push(j);
+    }
+    if(!bays.length){ CRANESTAT='no bay'; return; }
+    var rC=statRng(SEED,FACT_SALT_CRANE,0,0), jb=bays[Math.floor(rC()*bays.length)];
+    CRANE={bay:jb, ya:FYL[jb], yb:FYL[jb+1], RZ:RZ, GB:GB, GT:GT, HB:HB};
+    /* no tube cabinet under a runway: a riser would rise through it */
+    var x, y;
+    for(x=0;x<W;x++) for(y=0;y<D;y++)
+      if(G[x][y]===FREE && ((y+1>CRANE.ya+0.15 && y<CRANE.ya+0.6) || (y+1>CRANE.yb-0.6 && y<CRANE.yb-0.15))) G[x][y]=CRANEC;
+  })();
   var cabOf={}, LAB=null;
   STN.forEach(function(st){
     if(st.type==='qa'||st.type==='cnc'||st.type==='press'||st.type==='moulder'||st.type==='furnace'||st.type==='vat'){
@@ -21338,16 +21611,52 @@ function buildFactory(p){
   CABS0.forEach(function(cb){ tblock(cb.cell[0],cb.cell[1]); });
   /* the office pod and the vats on a deck stand above the tube level */
   DECKITEMS.forEach(function(R){ if(R.type==='pod'||R.type==='vats') tblockRect(R.x0,R.y0,R.x1,R.y1); });
+  /* row 106: the high-bay lamps hang through the tube level at their places
+     (every inner frame line, a quarter span in from each span line, on a whole
+     metre of y), and the ducts run along the two back walls at about its
+     height. Both are kept out of the tube grid WHATEVER the Roof or Services,
+     so neither knob can move a tube. */
+  var LAMPC=[];
+  (function(){
+    var k, j;
+    for(k=1;k+1<FXL.length;k++) for(j=0;j+1<FYL.length;j++) [0.25,0.75].forEach(function(q){
+      var ya=FYL[j], yb=FYL[j+1], y=Math.round(ya+(yb-ya)*q);
+      if(y<ya+1.2 || y>yb-1.2) return;
+      LAMPC.push([FXL[k],y]);
+      tblockRect(FXL[k]-0.45,y-0.45,FXL[k]+0.45,y+0.45);
+    });
+  })();
+  tblockRect(0,0,1,D); tblockRect(0,0,W,1);
   /* A*, with the turn rule: `run` counts the straight cells since the last
      bend, and a turn needs two (a 0.6 m bend each side of a corner). */
+  /* NEVER BACK THROUGH ITS OWN CELLS (row 106): a state is (cell, heading,
+     run), so a path could cross itself at the tube level -- row 106's keep-outs
+     made one do it, and L2 found the two pieces through each other. Walking
+     the path back at every step costs seconds on a big hall, and a crossing is
+     rare, so the route is found freely and searched again with the walk only
+     when the one found crosses itself. */
   function tubeRoute(A,B){
+    var r=tubeRoute1(A,B,false);
+    if(r && new Set(r.map(function(q){ return q[0]+','+q[1]; })).size!==r.length) r=tubeRoute1(A,B,true);
+    return r;
+  }
+  function tubeRoute1(A,B,strict){
     var key=function(x,y,d,r){ return ((x*D+y)*4+d)*3+r; };
     var open=[], best={}, from={}, i, tx=B.cell[0], ty=B.cell[1], guard=0;
     function free(x,y){ return x>=0&&y>=0&&x<W&&y<D && (!TB[x+','+y] || (x===tx&&y===ty)); }
+    /* the path is only walked for a cell inside its own bounding box, which
+       each state carries (a step forward almost always leaves it) */
+    var pbox={};
+    function onPath(kk,x,y){
+      if(x===A.cell[0] && y===A.cell[1]) return true;
+      for(;kk!==-1 && kk!==undefined;kk=from[kk]){ var cl=Math.floor(Math.floor(kk/3)/4); if(Math.floor(cl/D)===x && cl%D===y) return true; }
+      return false;
+    }
     for(i=0;i<4;i++){
       var nx=A.cell[0]+DIRS[i][0], ny=A.cell[1]+DIRS[i][1];
       if(!free(nx,ny)) continue;
-      var k0=key(nx,ny,i,1); best[k0]=1; from[k0]=-1; open.push([1+Math.abs(nx-tx)+Math.abs(ny-ty),1,nx,ny,i,1]);
+      var k0=key(nx,ny,i,1); best[k0]=1; from[k0]=-1;
+      pbox[k0]=[Math.min(nx,A.cell[0]),Math.min(ny,A.cell[1]),Math.max(nx,A.cell[0]),Math.max(ny,A.cell[1])]; open.push([1+Math.abs(nx-tx)+Math.abs(ny-ty),1,nx,ny,i,1]);
     }
     while(open.length && guard++<400000){
       var bi=0; for(i=1;i<open.length;i++) if(open[i][0]<open[bi][0]) bi=i;
@@ -21367,8 +21676,11 @@ function buildFactory(p){
         var mx=cx+DIRS[i][0], my=cy+DIRS[i][1];
         if(!free(mx,my)) continue;
         if(i!==cd && mx===tx && my===ty) continue;
+        var pb=pbox[ck];
+        if(strict && mx>=pb[0] && mx<=pb[2] && my>=pb[1] && my<=pb[3] && onPath(ck,mx,my)) continue;
         var nr=i===cd?Math.min(2,cr+1):1, ng=cg+1+(i!==cd?3:0), nk=key(mx,my,i,nr);
-        if(best[nk]===undefined || ng<best[nk]){ best[nk]=ng; from[nk]=ck; open.push([ng+Math.abs(mx-tx)+Math.abs(my-ty),ng,mx,my,i,nr]); }
+        if(best[nk]===undefined || ng<best[nk]){ best[nk]=ng; from[nk]=ck;
+          pbox[nk]=[Math.min(pb[0],mx),Math.min(pb[1],my),Math.max(pb[2],mx),Math.max(pb[3],my)]; open.push([ng+Math.abs(mx-tx)+Math.abs(my-ty),ng,mx,my,i,nr]); }
       }
     }
     return null;
@@ -21465,6 +21777,417 @@ function buildFactory(p){
     }
     CABS.push({id:cb.id, cell:cb.cell, z:z, routes:cb.routes.slice(), capsules:ncap, top:[x+0.5,y+0.5,z+1.4], diverter:div});
   });
+
+  /* ================= ROW 106: EVERYTHING ELSE (§4.7) ======================== */
+  /* Safety, lamps, vehicles, services and the crane. Each is built INTO room
+     the drawing already has, and room is asked of the parts no knob moves:
+     every piece so far, less the robots, the risers, the vacuum tubes and the
+     belt items, whose knobs (`farms`, `fspir`, `flift`, `ftube`, `fitem`,
+     `fpose`) must not move anything but their own parts (F9). What those parts
+     COULD occupy is kept by rule instead: the riser sites' columns (whether a
+     riser stands there or not), the candidate cabinets' columns up to the tube
+     level, and an allowance over the aisles, stations and belts below the
+     crane's hook. The new features never ask each other for room, and are
+     placed apart by construction -- vehicles below 3 m in the aisles, trays at
+     3.4 m over the passes, the crane under the tube level, lamps, sprinklers
+     and ducts above it on lines the tubes are kept off -- so `fveh`, `fpipe`,
+     `fcrane` at 0 remove their own parts and nothing else. */
+  pindex();
+
+  /* ---- safety: extinguishers on the columns, bollards at the aisle ends -- */
+  /* A red extinguisher on the camera side (+x) of every hall column, its flat
+     facet on the column's face; a yellow bollard 0.4 m in from both corners of
+     each aisle end. Layout, so the vehicles find them in the way. */
+  var CR15=Math.cos(Math.PI/12);
+  if(near(0.1)) COLS.forEach(function(c){
+    var cx=c[2]+0.08*CR15, cy=(c[1]+c[3])/2;
+    /* body and handle meet on the z = 1 lattice plane (see the lamps) */
+    if(!roomFor(c[2],cy-0.1,0.4,c[2]+0.17,cy+0.1,1.07)) return;
+    prism([cx,cy,0.4],[cx,cy,1.0],0.08,0.08,12,{kind:'extinguisher', id:'safe'});
+    box(cx-0.03,cy-0.02,1.0,cx+0.03,cy+0.02,1.06,{kind:'extinguisher', id:'safe'});
+  });
+  var BOLL=[];
+  AISLES.forEach(function(A){
+    var pts=A.ax==='x'?[[A.a+0.4,A.y0+0.3],[A.a+0.4,A.y1-0.3],[A.b-0.4,A.y0+0.3],[A.b-0.4,A.y1-0.3]]
+                       :[[A.x0+0.3,A.a+0.4],[A.x1-0.3,A.a+0.4],[A.x0+0.3,A.b-0.4],[A.x1-0.3,A.b-0.4]];
+    pts.forEach(function(q){
+      if(!roomFor(q[0]-0.11,q[1]-0.11,0,q[0]+0.11,q[1]+0.11,1.0)) return;
+      prism([q[0],q[1],0],[q[0],q[1],1.0],0.1,0.1,12,{kind:'bollard', id:'safe'});
+      BOLL.push(q);
+    });
+  });
+  pindex();
+
+  /* ---- high-bay lamps (`fcut` 0-1) ---------------------------------------- */
+  /* From the rafter on every inner frame line, a quarter span in from each
+     span line on a whole metre of y (LAMPC, kept off the tube grid): a rod
+     down to a WHOLE METRE of z, ZL = floor(CT - 0.5), and a frustum shade 0.4 m
+     under it, over the crane's girder and under the eaves beams' bottom. The
+     rod and the shade meet ON a lattice plane, so they are in different cells
+     and the key orders them: touching inside one cell, the shade's cap (its
+     normal a few ulp off vertical) and the rod's bottom share no exactly
+     separating plane, and L2 found the rod drawn behind the shade it stands on. */
+  var LAMPS=[];
+  if(FCUT<2) LAMPC.forEach(function(q){
+    var x=q[0], y=q[1], zt=roofUnder(x,y);
+    /* not up to the rafter: a sloped rafter's piece is a whole metre of slope */
+    var ZL=Math.floor(CT-0.5);
+    if(!roomFor(x-0.34,y-0.34,ZL-0.42,x+0.34,y+0.34,zt-0.12)) return;
+    bar(x-0.015,y-0.015,ZL,x+0.015,y+0.015,zt,{kind:'lamp', id:'lamp'});
+    prism([x,y,ZL],[x,y,ZL-0.4],0.12,0.32,12,{kind:'lamp', id:'lamp'});
+    LAMPS.push({x:x, y:y, z:ZL-0.4});
+  });
+
+  /* ---- vehicles (`fveh`), all of them pose ------------------------------- */
+  /* Counterbalance forklifts, reach trucks, pallet jacks, AGVs with a tote and
+     a lidar puck, tugger trains of 2-3 carts: ONLY IN AN AISLE, the whole
+     footprint inside it, wheels on the floor, clear of the columns, bollards
+     and extinguishers that stand in the aisles and of each other by 0.5 m.
+     A wheel is a 12-gon on a lateral axis whose bottom FACET lies on z = 0,
+     so it stands on the floor rather than on a vertex. Where and which from
+     `fpose`'s stream: another moment of the same factory. */
+  var VEHS=[];
+  var VTYPES=[['forklift',30],['reach',20],['jack',15],['agv',20],['tugger',15]];
+  function vehParts(type,rv){
+    var P=[];
+    function B(s0,s1,t0,t1,z0,z1,kind){ P.push({k:'b', s0:s0, s1:s1, t0:t0, t1:t1, z0:z0, z1:z1, kind:kind}); }
+    function Wh(s,t0,t1,r){ P.push({k:'w', s:s, t0:t0, t1:t1, r:r}); }
+    function Cy(s,t,z0,z1,r){ P.push({k:'c', s:s, t:t, z0:z0, z1:z1, r:r}); }
+    function load(s0,s1,t0,t1,z){
+      B(s0,s1,t0,t1,z,z+0.15,'pallet');
+      var n=1+Math.floor(rv()*2), l;
+      for(l=0;l<n;l++) B(s0+0.05,s1-0.05,t0+0.05,t1-0.05,z+0.15+l*0.4,z+0.15+(l+1)*0.4,'carton');
+    }
+    if(type==='forklift'){
+      B(0,1.9,-0.55,0.55,0.15,1.1,'vbody');
+      B(0.7,1.2,-0.25,0.25,1.1,1.5,'vframe');
+      [[0.5,-0.5],[0.5,0.45],[1.4,-0.5],[1.4,0.45]].forEach(function(q){ B(q[0],q[0]+0.05,q[1],q[1]+0.05,1.1,2.15,'vframe'); });
+      B(0.45,1.45,-0.55,0.55,2.15,2.2,'vframe');
+      B(1.9,2.0,-0.45,-0.35,0.1,2.3,'vframe'); B(1.9,2.0,0.35,0.45,0.1,2.3,'vframe');
+      B(2.0,2.06,-0.45,0.45,0.1,0.6,'vframe');
+      B(2.06,3.1,-0.3,-0.2,0.1,0.15,'vframe'); B(2.06,3.1,0.2,0.3,0.1,0.15,'vframe');
+      Wh(0.35,-0.73,-0.55,0.2); Wh(0.35,0.55,0.73,0.2); Wh(1.5,-0.75,-0.55,0.25); Wh(1.5,0.55,0.75,0.25);
+      if(rv()<0.6) load(2.1,3.1,-0.5,0.5,0.15);
+      return {P:P, L:3.1, Wd:0.76};
+    }
+    if(type==='reach'){
+      B(0,1.2,-0.5,0.5,0.1,1.3,'vbody');
+      B(1.2,2.4,-0.5,-0.35,0.05,0.25,'vframe'); B(1.2,2.4,0.35,0.5,0.05,0.25,'vframe');
+      B(1.2,1.3,-0.4,-0.3,0.25,2.9,'vframe'); B(1.2,1.3,0.3,0.4,0.25,2.9,'vframe');
+      B(1.3,1.36,-0.3,0.3,0.25,0.8,'vframe');
+      B(1.36,2.3,-0.28,-0.18,0.25,0.3,'vframe'); B(1.36,2.3,0.18,0.28,0.25,0.3,'vframe');
+      [[0.1,-0.5],[0.1,0.45],[0.85,-0.5],[0.85,0.45]].forEach(function(q){ B(q[0],q[0]+0.05,q[1],q[1]+0.05,1.3,2.2,'vframe'); });
+      B(0.1,0.9,-0.5,0.5,2.2,2.25,'vframe');
+      Wh(0.3,-0.62,-0.5,0.18); Wh(0.3,0.5,0.62,0.18); Wh(2.25,-0.6,-0.5,0.1); Wh(2.25,0.5,0.6,0.1);
+      if(rv()<0.5) load(1.4,2.3,-0.34,0.34,0.3);
+      return {P:P, L:2.4, Wd:0.62};
+    }
+    if(type==='jack'){
+      B(0,0.35,-0.3,0.3,0.08,0.5,'vbody');
+      B(0.12,0.18,-0.03,0.03,0.5,1.2,'vframe');
+      B(0.35,1.5,-0.34,-0.18,0.03,0.08,'vbody'); B(0.35,1.5,0.18,0.34,0.03,0.08,'vbody');
+      Wh(0.18,-0.38,-0.3,0.08); Wh(0.18,0.3,0.38,0.08);
+      Wh(1.4,-0.4,-0.34,0.035); Wh(1.4,0.34,0.4,0.035);
+      if(rv()<0.6) load(0.4,1.6,-0.5,0.5,0.08);
+      return {P:P, L:1.6, Wd:0.5};
+    }
+    if(type==='agv'){
+      B(0,1.2,-0.4,0.4,0.08,0.38,'agv');
+      Wh(0.2,-0.46,-0.4,0.08); Wh(0.2,0.4,0.46,0.08); Wh(1.0,-0.46,-0.4,0.08); Wh(1.0,0.4,0.46,0.08);
+      if(rv()<0.8) B(0.3,0.9,-0.25,0.25,0.38,0.68,'agvtote');
+      Cy(1.05,0,0.38,0.46,0.06);
+      return {P:P, L:1.2, Wd:0.46};
+    }
+    /* tugger: a tractor and 2-3 carts behind it on drawbars */
+    B(0,1.4,-0.45,0.45,0.12,1.0,'vbody');
+    B(0.3,0.8,-0.25,0.25,1.0,1.35,'vframe');
+    Wh(0.3,-0.57,-0.45,0.2); Wh(0.3,0.45,0.57,0.2); Wh(1.1,-0.57,-0.45,0.2); Wh(1.1,0.45,0.57,0.2);
+    var nc=2+Math.floor(rv()*2), k, s1=0;
+    for(k=0;k<nc;k++){
+      var c1=s1-0.3, c0=c1-1.8;
+      B(c1,s1,-0.02,0.02,0.28,0.32,'vframe');
+      B(c0,c1,-0.45,0.45,0.3,0.36,'vframe');
+      Wh(c0+0.25,-0.53,-0.45,0.12); Wh(c0+0.25,0.45,0.53,0.12); Wh(c1-0.25,-0.53,-0.45,0.12); Wh(c1-0.25,0.45,0.53,0.12);
+      if(rv()<0.8) B(c0+0.1,c1-0.1,-0.4,0.4,0.36,0.36+0.3+0.4*rv(),'carton');
+      s1=c0;
+    }
+    /* the train's rear is s1: shift so it starts at 0 */
+    P.forEach(function(q){ if(q.k==='b'){ q.s0-=s1; q.s1-=s1; } else q.s-=s1; });
+    return {P:P, L:1.4-s1, Wd:0.57};
+  }
+  var VWANT=FVEH, VPLACED=0;
+  (function(){
+    if(!FVEH || !AISLES.length) return;
+    var tot=0, i, k;
+    AISLES.forEach(function(A){ tot+=A.b-A.a; });
+    for(i=0;i<FVEH;i++){
+      var rv=statRng(SEED,FACT_SALT_VEH,i,FPOSE), u0=rv()*100, type=null;
+      VTYPES.forEach(function(t){ if(type===null){ if(u0<t[1]) type=t[0]; else u0-=t[1]; } });
+      var spec=vehParts(type||'agv',rv), placed=false;
+      for(k=0;k<40 && !placed;k++){
+        var u1=rv()*tot, A=null;
+        AISLES.forEach(function(B2){ if(A===null){ if(u1<B2.b-B2.a) A=B2; else u1-=B2.b-B2.a; } });
+        if(!A) A=AISLES[AISLES.length-1];
+        var sg=rv()<0.5?1:-1, room=(A.b-A.a)-spec.L-0.4;
+        if(room<0) continue;
+        var s0=A.a+0.2+rv()*room, tmax=1.5-spec.Wd-0.1, tc=A.c+(rv()*2-1)*Math.max(0,tmax);
+        /* the rear-centre O and the heading u, the left v */
+        var u=A.ax==='x'?[sg,0]:[0,sg], v=[-u[1],u[0]];
+        var O=A.ax==='x'?[sg>0?s0:s0+spec.L, tc]:[tc, sg>0?s0:s0+spec.L];
+        var W2=function(s,t){ return [O[0]+u[0]*s+v[0]*t, O[1]+u[1]*s+v[1]*t]; };
+        var bxs=spec.P.map(function(q){
+          var a=q.k==='b'?W2(q.s0,q.t0):(q.k==='w'?W2(q.s-q.r,q.t0):W2(q.s-q.r,q.t-q.r));
+          var b=q.k==='b'?W2(q.s1,q.t1):(q.k==='w'?W2(q.s+q.r,q.t1):W2(q.s+q.r,q.t+q.r));
+          var z1=q.k==='b'?q.z1:(q.k==='w'?2*q.r:q.z1);
+          return [Math.min(a[0],b[0]),Math.min(a[1],b[1]),q.k==='b'?q.z0:0,Math.max(a[0],b[0]),Math.max(a[1],b[1]),z1];
+        });
+        var fp=[1e18,1e18,-1e18,-1e18];
+        bxs.forEach(function(q){ fp[0]=Math.min(fp[0],q[0]); fp[1]=Math.min(fp[1],q[1]); fp[2]=Math.max(fp[2],q[3]); fp[3]=Math.max(fp[3],q[4]); });
+        if(fp[0]<A.x0+0.05 || fp[1]<A.y0+0.05 || fp[2]>A.x1-0.05 || fp[3]>A.y1-0.05) continue;
+        if(VEHS.some(function(V2){ return V2.foot[0]<fp[2]+0.5 && V2.foot[2]>fp[0]-0.5 && V2.foot[1]<fp[3]+0.5 && V2.foot[3]>fp[1]-0.5; })) continue;
+        if(!bxs.every(function(q){ return clearBox(q[0]-0.05,q[1]-0.05,Math.max(q[2],1e-3),q[3]+0.05,q[4]+0.05,q[5]+0.05); })) continue;
+        placed=true;
+        var vid='veh'+VEHS.length, wheels=[];
+        spec.P.forEach(function(q){
+          if(q.k==='b'){
+            var a=W2(q.s0,q.t0), b=W2(q.s1,q.t1);
+            box(Math.min(a[0],b[0]),Math.min(a[1],b[1]),q.z0,Math.max(a[0],b[0]),Math.max(a[1],b[1]),q.z1,{kind:q.kind, id:vid+'.x'});
+          } else if(q.k==='w'){
+            var c=q.r*CR15, p0=W2(q.s,q.t0), p1=W2(q.s,q.t1);
+            prism([p0[0],p0[1],c],[p1[0],p1[1],c],q.r,q.r,12,{kind:'wheel', id:vid+'.w'});
+            wheels.push({c:[(p0[0]+p1[0])/2,(p0[1]+p1[1])/2,c], r:q.r});
+          } else {
+            var cc=W2(q.s,q.t);
+            prism([cc[0],cc[1],q.z0],[cc[0],cc[1],q.z1],q.r,q.r,10,{kind:'vframe', id:vid+'.x'});
+          }
+        });
+        VEHS.push({id:vid, type:type, foot:fp, aisle:AISLES.indexOf(A), wheels:wheels});
+      }
+    }
+    VPLACED=VEHS.length;
+  })();
+
+  /* ---- services (`fpipe`) -------------------------------------------------- */
+  /* The CANDIDATES are the layout's: a duct along each back wall under the
+     eaves, a sprinkler main and its branches in every span, a cable tray over
+     every pass of every line (its compressed-air drops with it). `fpipe` is
+     the share built, in an order from their own stream. Each runs where the
+     room is, in whole metres, and stops short of anything in its way.
+       DUCTS 0.5 x 0.5 m, 0.45 m off the wall, their top 0.55 under the column
+     heads (under the haunch gussets); flanges every 1.5 m are marks, and a
+     budget class (§7).
+       SPRINKLERS 0.15 under the column heads, a main along x on a WHOLE metre
+     of y at mid-span and branches along y on a whole metre of x at mid-bay:
+     a vacuum tube's hanger always stands at least 0.25 m off a whole metre
+     (its run is on a cell's centre line, its hangers 1.5 m apart from a bend's
+     end 0.6 m off a centre, or a diverter's 0.25), so they never meet one.
+       TRAYS at 3.4 m, an open channel of three thin boxes, along the middle of
+     a pass; an air DROP from the tray to each machine of the pass, on its +y
+     side: a branch under the tray, a pipe down to a filter at 1.45-1.75 m. */
+  var SVC=[], SVCN=0;
+  var ZD0=CT-1.05, ZD1=CT-0.55, ZSP=CT-0.15, TRZ=3.4;
+  function clearRuns(a0,a1,test){ /* the clear runs of whole metres in [a0,a1], each >= 2 m */
+    var out=[], cur=null, a;
+    for(a=a0;a+1<=a1+1e-9;a+=1){
+      if(test(a,a+1)){ if(cur&&Math.abs(cur[1]-a)<1e-9) cur[1]=a+1; else { cur=[a,a+1]; out.push(cur); } }
+    }
+    return out.filter(function(r){ return r[1]-r[0]>=2-1e-9; });
+  }
+  var SCAND=[];
+  SCAND.push({k:'duct', ax:'y'}); SCAND.push({k:'duct', ax:'x'});
+  (function(){ var j; for(j=0;j+1<FYL.length;j++) SCAND.push({k:'spr', j:j}); })();
+  LINES.forEach(function(Ln){
+    var rows={};
+    Ln.stations.forEach(function(st){ if(st.z!==0) return; var key=st.yc.toFixed(3); (rows[key]=rows[key]||[]).push(st); });
+    Object.keys(rows).sort(function(a,b){ return +a-+b; }).forEach(function(key){ SCAND.push({k:'tray', yc:+key, st:rows[key]}); });
+  });
+  (function(){
+    var rS=statRng(SEED,FACT_SALT_PIPE,0,0);
+    var ord=SCAND.map(function(c,i){ return [rS(),i]; }).sort(function(a,b){ return a[0]-b[0]||a[1]-b[1]; });
+    var nb=Math.round(FPIPE*SCAND.length);
+    ord.slice(0,nb).sort(function(a,b){ return a[1]-b[1]; }).forEach(function(o){ buildSvc(SCAND[o[1]]); });
+  })();
+  function buildSvc(c){
+    var sid='svc'+(SVCN++), rec={id:sid, k:c.k, parts:[]};
+    if(c.k==='duct'){
+      var y0=0.45, y1=0.95;
+      if(c.ax==='y'){
+        clearRuns(0.45,D-0.6,function(a,b){ return roomFor(0.45,a,ZD0,0.95,b,ZD1); }).forEach(function(r){
+          var o={kind:'duct', id:sid+'.d'}, m;
+          if(near(0.05) && !DROPS.flange){ o.marks=[]; o.dropM='flange';
+            for(m=r[0]+1.5;m<r[1]-0.2;m+=1.5){ o.marks.push([[0.45,m,ZD1],[0.95,m,ZD1],1]); o.marks.push([[0.95,m,ZD0],[0.95,m,ZD1],3]); } }
+          box(0.45,r[0],ZD0,0.95,r[1],ZD1,o); rec.parts.push([0.45,r[0],ZD0,0.95,r[1],ZD1]);
+        });
+      } else {
+        clearRuns(1.0,W-0.6,function(a,b){ return roomFor(a,y0,ZD0,b,y1,ZD1); }).forEach(function(r){
+          var o={kind:'duct', id:sid+'.d'}, m;
+          if(near(0.05) && !DROPS.flange){ o.marks=[]; o.dropM='flange';
+            for(m=r[0]+1.5;m<r[1]-0.2;m+=1.5){ o.marks.push([[m,y0,ZD1],[m,y1,ZD1],1]); o.marks.push([[m,y1,ZD0],[m,y1,ZD1],4]); } }
+          box(r[0],y0,ZD0,r[1],y1,ZD1,o); rec.parts.push([r[0],y0,ZD0,r[1],y1,ZD1]);
+        });
+      }
+    } else if(c.k==='spr'){
+      var ya=FYL[c.j], yb=FYL[c.j+1], ym=Math.round((ya+yb)/2);
+      if(ym-ya<1.5 || yb-ym<1.5) return;
+      var mains=clearRuns(2,W-1,function(a,b){ return roomFor(a,ym-0.07,ZSP-0.07,b,ym+0.07,ZSP+0.07); });
+      mains.forEach(function(r){
+        if(near(0.1)) prism([r[0],ym,ZSP],[r[1],ym,ZSP],0.05,0.05,10,{kind:'sprinkler', id:sid+'.m'});
+        else bar(r[0],ym-0.05,ZSP-0.05,r[1],ym+0.05,ZSP+0.05,{kind:'sprinkler', id:sid+'.m'});
+        rec.parts.push([r[0],ym-0.05,ZSP-0.05,r[1],ym+0.05,ZSP+0.05]);
+      });
+      var k;
+      for(k=0;k+1<FXL.length;k++){
+        var xb=Math.round((FXL[k]+FXL[k+1])/2);
+        if(xb-FXL[k]<1.5 || FXL[k+1]-xb<1.5) continue;
+        if(!mains.some(function(r){ return xb>r[0]+0.2 && xb<r[1]-0.2; })) continue;
+        [[ym+0.05,yb-0.6],[ym-0.05,ya+0.6]].forEach(function(q){
+          var sg=q[1]>q[0]?1:-1, y=q[0], e=q[0];
+          while(sg*(q[1]-e)>=1-1e-9){
+            var na=e, nb2=e+sg;
+            if(!roomFor(xb-0.05,Math.min(na,nb2),ZSP-0.05,xb+0.05,Math.max(na,nb2),ZSP+0.05)) break;
+            e=nb2;
+          }
+          if(Math.abs(e-y)<1-1e-9) return;
+          if(near(0.06)) prism([xb,y,ZSP],[xb,e,ZSP],0.03,0.03,8,{kind:'sprinkler', id:sid+'.b'});
+          else bar(xb-0.03,Math.min(y,e),ZSP-0.03,xb+0.03,Math.max(y,e),ZSP+0.03,{kind:'sprinkler', id:sid+'.b'});
+          rec.parts.push([xb-0.03,Math.min(y,e),ZSP-0.03,xb+0.03,Math.max(y,e),ZSP+0.03]);
+        });
+      }
+    } else {
+      var yc=c.yc, xa=1e18, xe=-1e18;
+      c.st.forEach(function(st){ xa=Math.min(xa,st.x0); xe=Math.max(xe,st.x1); });
+      var tr=clearRuns(Math.ceil(xa+0.2),Math.floor(xe-0.2),function(a,b){ return roomFor(a,yc-0.21,TRZ-0.01,b,yc+0.21,TRZ+0.12); });
+      tr.forEach(function(r){
+        bar(r[0],yc-0.2,TRZ,r[1],yc+0.2,TRZ+0.02,{kind:'tray', id:sid+'.t'});
+        bar(r[0],yc-0.2,TRZ+0.02,r[1],yc-0.18,TRZ+0.1,{kind:'tray', id:sid+'.t'});
+        bar(r[0],yc+0.18,TRZ+0.02,r[1],yc+0.2,TRZ+0.1,{kind:'tray', id:sid+'.t'});
+        rec.parts.push([r[0],yc-0.2,TRZ,r[1],yc+0.2,TRZ+0.1]);
+      });
+      c.st.forEach(function(st){
+        if(!/^(cnc|press|moulder|furnace|qa|pack)$/.test(st.type)) return;
+        var yd=yc+1.3, q, tries=[0.5,0.25,0.75,0.12,0.88];
+        for(q=0;q<tries.length;q++){
+          var xd=st.x0+0.3+(st.x1-st.x0-0.6)*tries[q];
+          if(!tr.some(function(r){ return xd>r[0]+0.1 && xd<r[1]-0.1; })) continue;
+          if(!roomFor(xd-0.05,yc+0.21,TRZ-0.08,xd+0.05,yd+0.05,TRZ-0.001)) continue;
+          if(!roomFor(xd-0.08,yd-0.08,1.2,xd+0.08,yd+0.08,TRZ-0.001)) continue;
+          if(near(0.06)){
+            prism([xd,yc+0.1,TRZ-0.04],[xd,yd-0.03,TRZ-0.04],0.03,0.03,8,{kind:'airdrop', id:sid+'.a'});
+            prism([xd,yd,TRZ-0.01],[xd,yd,1.75],0.03,0.03,8,{kind:'airdrop', id:sid+'.a'});
+            prism([xd,yd,1.45],[xd,yd,1.25],0.02,0.02,8,{kind:'airdrop', id:sid+'.a'});
+          } else {
+            bar(xd-0.03,yc+0.1,TRZ-0.07,xd+0.03,yd-0.03,TRZ-0.01,{kind:'airdrop', id:sid+'.a'});
+            bar(xd-0.03,yd-0.03,1.75,xd+0.03,yd+0.03,TRZ-0.01,{kind:'airdrop', id:sid+'.a'});
+            bar(xd-0.02,yd-0.02,1.25,xd+0.02,yd+0.02,1.45,{kind:'airdrop', id:sid+'.a'});
+          }
+          bar(xd-0.06,yd-0.06,1.45,xd+0.06,yd+0.06,1.75,{kind:'filter', id:sid+'.a'});
+          rec.parts.push([xd-0.06,yd-0.06,1.25,xd+0.06,yd+0.06,TRZ]);
+          break;
+        }
+      });
+    }
+    SVC.push(rec);
+  }
+
+  /* ---- the overhead crane (`fcrane`) -------------------------------------- */
+  /* ITS BAY is the layout's: one span with no deck in it, its runways clear
+     the length of the hall, chosen from its own stream. THE CRANE RUNS UNDER
+     THE TUBE LEVEL -- the tubes hang at 6.6 m (§4.6), so the girder's top is
+     0.3 m under their underside and everything else hangs from that:
+       runway beams 0.3 x 0.45 on brackets off the columns of the bay's two
+     span lines, 0.25 m in from them; end trucks on the runways; the box girder
+     across the bay on the end trucks; an underhung trolley and hoist; the rope
+     straight down from the trolley's CENTRE to a hook block, and the load (a
+     die block, a coil, or nothing) touching it. §4.7 sets the runway "on the
+     column line tops", which would put the bridge through the tubes; this is
+     the deviation, and it is the tube level's.
+     WHERE the bridge and trolley stand, how low the hook hangs and what is on
+     it are pose. The hook clears everything below by 0.5 m: everything built
+     that no knob moves, plus what could stand there -- 3.0 m over an aisle (a
+     reach truck's mast), 3.5 m over a station (its cable tray, air drops and
+     arms), 1.1 m over a belt (its cartons) -- and never a candidate cabinet's
+     column (a tube riser could rise there). */
+  function underCab(x0,y0,x1,y1){
+    return CABS0.some(function(cb){ var x=cb.cell[0], y=cb.cell[1]; return x<x1+0.3 && x+1>x0-0.3 && y<y1+0.3 && y+1>y0-0.3; });
+  }
+  function maxBelow(x0,y0,x1,y1){
+    var m=0, a, b, c, k;
+    for(a=Math.floor(x0);a<=Math.floor(x1);a++) for(b=Math.floor(y0);b<=Math.floor(y1);b++) for(c=-1;c<=Math.floor(HB);c++){
+      var L=PIX[a+','+b+','+c]; if(!L) continue;
+      for(k=0;k<L.length;k++){ var bb=L[k];
+        if(bb[0]<x1 && bb[3]>x0 && bb[1]<y1 && bb[4]>y0 && bb[2]<HB) m=Math.max(m,bb[5]); }
+    }
+    AISLES.forEach(function(A){ if(A.x0<x1 && A.x1>x0 && A.y0<y1 && A.y1>y0) m=Math.max(m,3.0); });
+    STN.forEach(function(st){ if(st.x0<x1 && st.x1>x0 && st.y0<y1 && st.y1>y0) m=Math.max(m,st.z+3.5); });
+    BELTS.forEach(function(bt){ bt.cells.forEach(function(q){ if(q[0]<x1 && q[0]+1>x0 && q[1]<y1 && q[1]+1>y0) m=Math.max(m,1.1); }); });
+    /* a tray candidate runs the length of its pass, over the belts between
+       the stations too */
+    SCAND.forEach(function(c){
+      if(c.k!=='tray') return;
+      var xa=1e18, xe=-1e18; c.st.forEach(function(st){ xa=Math.min(xa,st.x0); xe=Math.max(xe,st.x1); });
+      if(xa<x1 && xe>x0 && c.yc-0.25<y1 && c.yc+0.25>y0) m=Math.max(m,TRZ+0.1);
+    });
+    return m;
+  }
+  if(CRANE && FCRANE) (function(){
+    var CR=CRANE, ya=CR.ya, yb=CR.yb, rP=statRng(SEED,FACT_SALT_CRANEPOSE,0,FPOSE);
+    /* the runways and their brackets: layout */
+    [[ya+0.25,ya+0.55],[yb-0.55,yb-0.25]].forEach(function(st){ box(0.4,st[0],RZ-0.45,W-0.4,st[1],RZ,{kind:'runway', id:'crn.r'}); });
+    [ya,yb].forEach(function(yl,si){
+      FXL.forEach(function(cx){
+        var b0=si?yl-0.55:yl+0.2, b1=si?yl-0.2:yl+0.55;
+        box(cx-0.2,b0,RZ-0.75,cx+0.2,b1,RZ-0.45,{kind:'runway', id:'crn.b'});
+      });
+    });
+    CR.runways=[[0.4,ya+0.25,RZ-0.45,W-0.4,ya+0.55,RZ],[0.4,yb-0.55,RZ-0.45,W-0.4,yb-0.25,RZ]];
+    var tries, got=null;
+    for(tries=0;tries<60 && !got;tries++){
+      var bx=2.8+rP()*(W-5.6), ty=ya+1.3+rP()*(yb-ya-2.6), lsel=rP(), lf=rP();
+      var sweep=[[bx-0.3,ya+0.2,GB,bx+0.3,yb-0.2,GT],[bx-1.5,ya+0.2,RZ,bx+1.5,ya+0.6,GB],[bx-1.5,yb-0.6,RZ,bx+1.5,yb-0.2,GB],
+                 [bx-0.45,ty-0.35,GB-0.25,bx+0.45,ty+0.35,GB],[bx-0.3,ty-0.3,HB,bx+0.3,ty+0.3,GB-0.25]];
+      if(!sweep.every(function(q){ return clearBox(q[0],q[1],q[2],q[3],q[4],q[5]) && !underCab(q[0],q[1],q[3],q[4]); })) continue;
+      var ltype=lsel<0.2?'none':(lsel<0.6?'die':'coil');
+      /* a coil hangs 1 cm under the hook block: touching, its top facet and the
+         block's bottom share no exactly separating plane (see the lamps) */
+      var LD={die:{hx:0.5, hy:0.35, h:0.5}, coil:{hx:0.45, hy:0.35, h:2*0.35*CR15+0.01}, none:{hx:0.13, hy:0.13, h:0}};
+      for(;;){
+        var ld=LD[ltype], fx0=bx-ld.hx-0.05, fy0=ty-ld.hy-0.05, fx1=bx+ld.hx+0.05, fy1=ty+ld.hy+0.05;
+        var zmin=maxBelow(fx0,fy0,fx1,fy1)+0.5, avail=HB-0.3-0.3-ld.h-zmin;
+        if(avail>=0 && !underCab(fx0,fy0,fx1,fy1)){
+          var kb=zmin+ld.h+lf*avail;
+          got={bx:bx, ty:ty, load:ltype, kb:kb, kt:kb+0.3, lb:kb-ld.h, ld:ld}; break;
+        }
+        if(ltype==='none') break;
+        ltype='none';
+      }
+    }
+    if(got){
+      var g=got;
+      box(g.bx-0.3,ya+0.2,GB,g.bx+0.3,yb-0.2,GT,{kind:'crane', id:'crane.g'});
+      box(g.bx-1.5,ya+0.2,RZ,g.bx+1.5,ya+0.6,GB,{kind:'crane', id:'crane.t'});
+      box(g.bx-1.5,yb-0.6,RZ,g.bx+1.5,yb-0.2,GB,{kind:'crane', id:'crane.t'});
+      box(g.bx-0.45,g.ty-0.35,GB-0.25,g.bx+0.45,g.ty+0.35,GB,{kind:'crane', id:'crane.c'});
+      box(g.bx-0.3,g.ty-0.3,HB,g.bx+0.3,g.ty+0.3,GB-0.25,{kind:'crane', id:'crane.h'});
+      var RP0=[g.bx,g.ty,HB], RP1=[g.bx,g.ty,g.kt];
+      /* a square section, so it meets the hoist and the hook block on exact
+         planes (a prism's cap is a few ulp off level) */
+      if(Math.abs(RP0[0]-RP1[0])+Math.abs(RP0[1]-RP1[1])<1e-12) bar(RP0[0]-0.03,RP0[1]-0.03,RP1[2],RP0[0]+0.03,RP0[1]+0.03,RP0[2],{kind:'rope', id:'crane.r'});
+      else prism(RP0,RP1,0.03,0.03,8,{kind:'rope', id:'crane.r'});
+      box(g.bx-0.13,g.ty-0.13,g.kb,g.bx+0.13,g.ty+0.13,g.kt,{kind:'hook', id:'crane.k'});
+      if(g.load==='die') box(g.bx-0.5,g.ty-0.35,g.lb,g.bx+0.5,g.ty+0.35,g.kb,{kind:'load', id:'crane.l'});
+      else if(g.load==='coil'){ var cz=(g.lb+g.kb-0.01)/2; prism([g.bx-0.45,g.ty,cz],[g.bx+0.45,g.ty,cz],0.35,0.35,12,{kind:'load', id:'crane.l'}); }
+      CR.bridge={x:g.bx, y0:ya+0.2, y1:yb-0.2, z0:GB, z1:GT};
+      CR.trucks=[[g.bx-1.5,ya+0.2,RZ,g.bx+1.5,ya+0.6,GB],[g.bx-1.5,yb-0.6,RZ,g.bx+1.5,yb-0.2,GB]];
+      CR.trolley={c:[g.bx,g.ty], z0:GB-0.25, z1:GB};
+      CR.rope={p0:RP0, p1:RP1, r:0.03};
+      CR.hook=[g.bx-0.13,g.ty-0.13,g.kb,g.bx+0.13,g.ty+0.13,g.kt];
+      CR.load=g.load==='none'?null:{type:g.load, box:[g.bx-g.ld.hx,g.ty-g.ld.hy,g.lb,g.bx+g.ld.hx,g.ty+g.ld.hy,g.kb]};
+      CRANESTAT=g.load==='none'?'hook empty':g.load;
+    } else CRANESTAT='bridge found no clear place';
+  })();
+  T.crane=FCRANE&&CRANE?CRANE:null;
+  T.vehicles=VEHS; T.lamps=LAMPS; T.services=SVC; T.bollards=BOLL;
+  T.hall.fcut=FCUT; T.hall.fwall=FWALL;
 
   /* ---- floor marks: aisle edges and the walkway ------------------------- */
   /* TWO EDGE LINES AN AISLE (§2.1), broken where another aisle crosses or
@@ -21661,6 +22384,15 @@ function buildFactory(p){
     return st;
   }
 
+  /* ---- the budget (§7): count each class, and stop here if over ---------- */
+  var CLS={}, si9;
+  for(si9=0;si9<solids.length;si9++){
+    var S9=solids[si9], n9=0, m9;
+    if(S9.dc){ for(m9=0;m9<S9.e.length;m9++) n9+=S9.e[m9].length; CLS[S9.dc]=(CLS[S9.dc]||0)+n9; }
+    if(S9.dm && S9.nm) CLS[S9.dm]=(CLS[S9.dm]||0)+2*S9.nm;
+  }
+  if(DROP && !DROP.final && K.points()>DROP.budget) return {over:true, pts:K.points(), cls:CLS};
+
   /* ---- order, render, tally -------------------------------------------- */
   var cellsSeen={}, i;
   for(i=0;i<solids.length;i++) if(solids[i].cell) cellsSeen[statKey(solids[i].cell)]=solids[i].cell;
@@ -21680,7 +22412,11 @@ function buildFactory(p){
              gantries:ARMS.filter(function(A){ return A.type==='gantry'; }).length,
              spirals:RISERS.filter(function(R){ return R.kind==='spiral'; }).length, spiralsWanted:FSPIR,
              lifts:RISERS.filter(function(R){ return R.kind==='lift'; }).length, liftsWanted:FLIFT,
-             tubes:TUBESTAT.built, tubesWanted:TUBESTAT.want, tubesDropped:TUBESTAT.dropped, tubeLinks:TUBESTAT.cand};
+             tubes:TUBESTAT.built, tubesWanted:TUBESTAT.want, tubesDropped:TUBESTAT.dropped, tubeLinks:TUBESTAT.cand,
+             crane:FCRANE?(CRANE?CRANESTAT:'no bay'):'off', vehicles:VPLACED, vehiclesWanted:VWANT,
+             services:SVC.length, serviceCands:SCAND.length, lamps:LAMPS.length, roof:FCUT, walls:FWALL,
+             budget:DROP.budget, drops:FACTDROPS.filter(function(c){ return DROPS[c]; }),
+             cls:DROP.cls||CLS, pts0:DROP.pts0||K.points(), over:K.points()>DROP.budget};
   if(!fs){ FACTINFO='nothing to draw'; return out; }
   FACTSTATS.mm=fs*PAGEMM;
   out.layers=['ground','structure','detail','accent'];
@@ -21691,6 +22427,10 @@ function buildFactory(p){
            (FACTSTATS.spirals||FSPIR&&MZ?FACTSTATS.spirals+(FACTSTATS.spirals<FSPIR?' of '+FSPIR:'')+' spiral'+(FSPIR===1?'':'s')+' · ':'')+
            (FACTSTATS.lifts||FLIFT&&MZ?FACTSTATS.lifts+(FACTSTATS.lifts<FLIFT?' of '+FLIFT:'')+' lift'+(FLIFT===1?'':'s')+' · ':'')+
            (TUBESTAT.want?TUBESTAT.built+' tube'+(TUBESTAT.built===1?'':'s')+(TUBESTAT.dropped?' ('+TUBESTAT.dropped+' found no room)':'')+' · ':'')+
+           (FCRANE?'crane '+FACTSTATS.crane+' · ':'')+
+           (VWANT?VPLACED+(VPLACED<VWANT?' of '+VWANT:'')+' vehicle'+(VWANT===1?'':'s')+' · ':'')+
+           (SVC.length?SVC.length+' service run'+(SVC.length===1?'':'s')+' · ':'')+
+           (FACTSTATS.drops.length?'over budget: dropped '+FACTSTATS.drops.join(', ')+(FACTSTATS.over?' (still over)':'')+' · ':'')+
            solids.length.toLocaleString()+' solids · '+out.length.toLocaleString()+' paths · '+
            (fs*PAGEMM).toFixed(1)+' mm/m';
   return out;
@@ -21968,9 +22708,9 @@ function buildTrainStation(p){ return buildCorridor(p,STHEMES.stn); }
    an eye at a point or at infinity (spec §1.2). */
 function townGrid(p){
   var ROWS=Math.max(2,Math.min(8,Math.round(isFinite(p.rows)?+p.rows:4)));
-  var RSP=Math.max(30,Math.min(120,isFinite(p.rowsp)?+p.rowsp:60));
+  var RSP=Math.max(30,Math.min(240,isFinite(p.rowsp)?+p.rowsp:60));
   var XBLK=Math.max(40,Math.min(240,isFinite(p.xblk)?+p.xblk:90));
-  var NLEN=Math.max(100,Math.min(800,isFinite(p.nlen)?+p.nlen:320));
+  var NLEN=Math.max(30,Math.min(8000,isFinite(p.nlen)?+p.nlen:320));
   var XW=Math.max(4,Math.min(16,isFinite(p.xwidth)?+p.xwidth:7));
   var WID=Math.max(4,isFinite(p.width)?+p.width:9), PAVE=Math.max(0,isFinite(p.pave)?+p.pave:2.5);
   var STRIP=0.3, KR=WID/2+STRIP, KX=XW/2+STRIP, PBX=XW/2+PAVE, CSET=0.5;
@@ -22006,6 +22746,10 @@ function townSub(a,b,salt){
 }
 function buildTown(p){
   var THM=STHEMES.town; p=corridorKnobs(p,THM);
+  /* row 99: with a site, its Scale sets the city's length and block depth */
+  var SK=townSiteKind(p);
+  if(SK){ var STI=SITE_TIERS[townSiteTier(p,SK)], SSC=Math.max(50,Math.min(200,isFinite(p.sscale)?+p.sscale:100))/100;
+    p=Object.assign({},p,{nlen:Math.round(STI.nlen*SSC), rowsp:Math.min(240,STI.rowsp*SSC)}); }
   var G=townGrid(p), UX=G.UX, VY=G.VY, plans=[], i, j;
   /* the rows: a junction cuts only the sides that face another row */
   for(j=0;j<G.ROWS;j++){
@@ -22034,14 +22778,20 @@ function buildTown(p){
     J.push({kind:'junction', row:j, cross:i, poly:Q, bb:[Q[0][0],Q[0][1],Q[2][0],Q[2][1]], parts:[]});
   }
   var JT={key:'town', content:function(K){ return townJunctions(K,G,plans.slice(0,G.ROWS+UX.length),J); }};
+  /* row 98: the blocks, read before anything carves the grid */
+  var BLK=townBlocks(G,plans);
   plans.push({ix:-1, p:p, theme:JT, sGaps:[], hasGap:false, Z0:0, conts:J, lots:[], slabsBySide:{'1':[],'-1':[]},
               dropped:0, pushed:0});
+  /* row 99: the site, carved before anything else reaches across the grid;
+     with one there is no river, viaduct or powerline (each crosses it all) */
+  var SITE=SK?townSite(p,G,plans,J,BLK,SK):null;
+  if(SITE) SITE.plans.forEach(function(P){ plans.push(P); });
   /* row 96: the river, a reaching corridor across the grid (spec §5.1-5.2) */
-  var RIV=Math.round(isFinite(p.river)?+p.river:1)===1?townRiver(p,G,plans,J):null;
+  var RIV=!SITE && Math.round(isFinite(p.river)?+p.river:1)===1?townRiver(p,G,plans,J):null;
   /* row 97: the railway and the highway, two more reaching corridors, high
      over everything; where they cross, the higher deck clears the lower */
-  var VR=Math.round(isFinite(p.rail)?+p.rail:1)===1?townViaduct(p,G,plans,J,RIV,'rail',null):null;
-  var VH=Math.round(isFinite(p.hwy)?+p.hwy:0)===1?townViaduct(p,G,plans,J,RIV,'hwy',VR):null, VX=null;
+  var VR=!SITE && Math.round(isFinite(p.rail)?+p.rail:1)===1?townViaduct(p,G,plans,J,RIV,'rail',null):null;
+  var VH=!SITE && Math.round(isFinite(p.hwy)?+p.hwy:0)===1?townViaduct(p,G,plans,J,RIV,'hwy',VR):null, VX=null;
   if(VR && VH && viaductsCross(VR,VH)){
     var VLO=VR.z<=VH.z?VR:VH, VHI=VLO===VR?VH:VR, need=viaductTop(VLO)+1.5;
     if(VHI.z<need-1e-9){ VHI.info.raised=need-VHI.z; VHI.z=need; VHI.info.z=need; }
@@ -22049,6 +22799,13 @@ function buildTown(p){
     VX={lower:VLO.cls, higher:VHI.cls, top:viaductTop(VLO), under:VHI.z, raised:VHI.info.raised};
   }
   if(VR) VR.mark(); if(VH) VH.mark();
+  /* row 98: the powerline's pylon plots, then the parks -- last, so a park is
+     cut round everything already there, and their content is built after
+     every other plan's, so the pylons can be raised clear of it */
+  var PWL=!SITE && Math.round(isFinite(p.pline)?+p.pline:0)===1?townPowerline(p,G,plans,J,RIV,[VR,VH]):null;
+  var PKS=townParks(p,G,plans,J,RIV,[VR,VH],PWL,SITE?SITE.blocksOut:BLK);
+  if(PKS) plans.push(PKS.plan);
+  if(PWL) plans.push(PWL.plan);
   /* the camera: isometric about the grid's middle, turned from +u; the
      perspective eye at Camera along (a share of City length) and Camera side
      (-100 the first row, 100 the last), aimed along +u before Turn and Pitch */
@@ -22065,6 +22822,8 @@ function buildTown(p){
   STRTTALLY.town.mkt=G.MKT.slice();
   STRTTALLY.town.river=RIV?RIV.info:null;
   STRTTALLY.town.rail=VR?VR.info:null; STRTTALLY.town.hwy=VH?VH.info:null; STRTTALLY.town.vcross=VX;
+  STRTTALLY.town.blocks=BLK; STRTTALLY.town.parks=PKS?PKS.info:null; STRTTALLY.town.pline=PWL?PWL.info:null;
+  STRTTALLY.town.site=SITE?SITE.info:null;
   /* the stat line names what the river carved and dropped, and the markets */
   var nm=G.MKT.filter(function(m){ return m; }).length;
   if(nm) STRTINFO+=' · '+nm+' market alley'+(nm>1?'s':'');
@@ -22073,6 +22832,16 @@ function buildTown(p){
   [VR,VH].forEach(function(V){ if(!V) return; var I=V.info;
     STRTINFO+=' · '+(V.RAIL?'railway':'highway')+': '+I.piers.length+' piers ('+I.pierMoved+' moved, '+I.pierDropped+' dropped), '+I.met+' lots carved ('+I.split+' split, '+I.dropped+' too small dropped'+(I.riverLots?', '+I.riverLots+' canal house'+(I.riverLots===1?'':'s')+' dropped':'')+')';
     if(I.raised>0) STRTINFO+=', raised '+I.raised.toFixed(1)+' m to '+V.z.toFixed(1)+' m to clear the '+(V.RAIL?'highway':'railway'); });
+  if(PKS){ var PKI=PKS.info; STRTINFO+=' · '+PKI.parks.length+' park'+(PKI.parks.length===1?'':'s')+' ('+PKI.pieces+' piece'+(PKI.pieces===1?'':'s')+', '+PKI.trees.length+' trees, '+PKI.lots+' lots'+(PKI.riverLots?' and '+PKI.riverLots+' canal house'+(PKI.riverLots===1?'':'s'):'')+' cleared)'; }
+  if(SITE && SITE.harbour){ var HI=SITE.info;
+    STRTINFO+=' · harbour, Scale '+HI.tier+': water '+Math.round(100*HI.water/HI.netArea)+'% of the city, '+HI.boats.length+' boat'+(HI.boats.length===1?'':'s')+', '+HI.ships.length+' ship'+(HI.ships.length===1?'':'s')+(HI.lighthouse?', a lighthouse':'')+'; '+HI.inside+' lots inside removed, '+HI.met+' cut back ('+HI.split+' split, '+HI.dropped+' too small dropped)'+(HI.left.length?'; left out: '+HI.left.join(', '):''); }
+  else if(SITE){ var SI=SITE.info, nr=SI.runways.length;
+    STRTINFO+=' · airfield, Scale '+SI.tier+': '+Math.round(100*SI.area/SI.netArea)+'% of the city, '+(nr?nr+' runway'+(nr>1?'s':'')+' '+Math.round(SI.runways[0].L)+' m':'no runway')+', '+
+      SI.aircraft.length+' aircraft, '+SI.hangars+' hangar'+(SI.hangars===1?'':'s')+(SI.tower?', a tower':'')+'; '+SI.inside+' lots inside removed, '+SI.met+' cut back ('+SI.split+' split, '+SI.dropped+' too small dropped), '+
+      SI.capped+' held under the 7:1 surface, '+SI.low+' too close for a storey dropped'+(SI.left.length?'; left out: '+SI.left.join(', '):''); }
+  if(PWL){ var WI=PWL.info, hz=WI.heights.length?Math.max.apply(null,WI.heights):0;
+    STRTINFO+=' · powerline: '+WI.plots.length+' pylons ('+WI.pylMoved+' moved, '+WI.pylDropped+' dropped), '+WI.met+' lots carved ('+WI.split+' split, '+WI.dropped+' too small dropped'+(WI.riverLots?', '+WI.riverLots+' canal house'+(WI.riverLots===1?'':'s')+' dropped':'')+')'+
+      (WI.raised?', '+WI.raised+' raised to clear what is under it (lowest crossarm up to '+hz.toFixed(1)+' m)':''); }
   return res;
 }
 /* the junctions' own dressing (row 95 §4.2): each one's corner kerb lines on
@@ -23202,6 +23971,1546 @@ function viaductTheme(K,VD){
     },
     cars:[], dots:[], poles:[]
   };
+}
+/* ---- ROW 98 (docs/specs/2026-10-11-corridor-city_v2.md §7): PARKS AND A
+   POWERLINE, the "larger objects" --------------------------------------------
+   THE BLOCKS are read off the grid before the river or a viaduct carves
+   anything: between two neighbouring rows and two neighbouring cross streets
+   (or a city end), the bounding rectangle of both rows' lots facing into it --
+   the block less its pavements and its cross streets' lot gaps. A function of
+   the grid alone, so reading it changes nothing.
+   A PARK (Parks, a share of the blocks chosen from Layout's own substream,
+   salt 569) has no lots: every lot of a row, and every canal house of the
+   river, whose middle is in it goes, and its container is the rectangle less
+   every container already there -- a river slab or quay, a canal house it
+   only meets, a viaduct's strip, a pylon plot -- cut into convex pieces as a
+   viaduct's strip is cut.
+   THE POWERLINE (Powerline) is one straight line across the network, 25-65
+   deg to the rows and 20 deg or more from each viaduct's mean heading, from
+   Layout's own substream (salt 593). A pylon every 120-180 m stands on a 10 m
+   square plot turned along the line; a plot that would come within 0.3 m of a
+   street, a junction, the river or a viaduct's band is moved along the line
+   to the nearest legal spot, or dropped; and the lots it meets are carved as a
+   viaduct carves them, in their own street's frame. Parks 0 and Powerline 0
+   leave the town as it was. */
+var SALT_PARK=569, SALT_PLINE=593;
+function townMid(Q){ var x=0, y=0; Q.forEach(function(q){ x+=q[0]; y+=q[1]; }); return [x/Q.length, y/Q.length]; }
+function townBlocks(G,plans){
+  var res=[], j, i, bnd=[0].concat(G.UX,[G.NLEN]);
+  for(j=0;j+1<G.ROWS;j++) for(i=0;i+1<bnd.length;i++){
+    var b=[1e18,1e18,-1e18,-1e18], n=0;
+    [j,j+1].forEach(function(r){ plans[r].lots.forEach(function(L){
+      var c=townMid(L.poly); if(c[1]<=G.VY[j] || c[1]>=G.VY[j+1] || c[0]<=bnd[i] || c[0]>=bnd[i+1]) return;
+      L.poly.forEach(function(q){ if(q[0]<b[0])b[0]=q[0]; if(q[1]<b[1])b[1]=q[1]; if(q[0]>b[2])b[2]=q[0]; if(q[1]>b[3])b[3]=q[1]; }); n++; }); });
+    if(n) res.push({j:j, i:i, key:j*64+i, rect:b, lots:n});
+  }
+  return res;
+}
+/* convex polygons: keep n.x >= d; area; the pieces of P outside K (a
+   viaduct's own rules, at the top level) */
+function townClip(Q,n,d){
+  var o=[], m;
+  for(m=0;m<Q.length;m++){
+    var A=Q[m], B=Q[(m+1)%Q.length], da=n[0]*A[0]+n[1]*A[1]-d, db=n[0]*B[0]+n[1]*B[1]-d;
+    if(da>=0) o.push(A);
+    if((da>=0)!==(db>=0)){ var t=da/(da-db); o.push([A[0]+(B[0]-A[0])*t, A[1]+(B[1]-A[1])*t]); }
+  }
+  return o;
+}
+function townArea(Q){ var a=0; for(var m=0;m<Q.length;m++){ var qa=Q[m], qb=Q[(m+1)%Q.length]; a+=qa[0]*qb[1]-qa[1]*qb[0]; } return Math.abs(a)/2; }
+function townMinus(P,K){
+  var ar=0, m; for(m=0;m<K.length;m++){ var qa=K[m], qb=K[(m+1)%K.length]; ar+=qa[0]*qb[1]-qa[1]*qb[0]; }
+  var sg=ar>0?1:-1, res=[], rest=P;
+  for(m=0;m<K.length && rest.length>=3;m++){
+    var a=K[m], b=K[(m+1)%K.length], nx=-(b[1]-a[1])*sg, ny=(b[0]-a[0])*sg, L=Math.hypot(nx,ny); if(L<1e-12) continue; nx/=L; ny/=L;
+    var d=nx*a[0]+ny*a[1], o=townClip(rest,[-nx,-ny],-d);
+    if(o.length>=3 && townArea(o)>1e-9) res.push(o);
+    rest=townClip(rest,[nx,ny],d);
+  }
+  return res;
+}
+/* convex P with the half-planes of convex Q applied: P inside Q */
+function townIntersect(P,Q){
+  var ar=0, m; for(m=0;m<Q.length;m++){ var qa=Q[m], qb=Q[(m+1)%Q.length]; ar+=qa[0]*qb[1]-qa[1]*qb[0]; }
+  var sg=ar>0?1:-1, R=P;
+  for(m=0;m<Q.length && R.length>=3;m++){
+    var a=Q[m], b=Q[(m+1)%Q.length], nx=-(b[1]-a[1])*sg, ny=(b[0]-a[0])*sg, L=Math.hypot(nx,ny); if(L<1e-12) continue; nx/=L; ny/=L;
+    R=townClip(R,[nx,ny],nx*a[0]+ny*a[1]);
+  }
+  return R.length>=3?R:[];
+}
+/* THE LOTS a convex region meets, carved in their own street's frame -- the
+   viaduct's rule: the largest one or two rectangles s x [front, back'] clear of
+   it, 0.25 m columns, back' stepped 0.5 m down to the 4 m minimum, Lot min wide
+   or more; each keyed BASE + 2 x parent + side. A lot with none is dropped. */
+function townCarve(G,grid,meets,info,cls,BASE,LOTMIN,bbox2){
+  var MINENV=4, k;
+  for(k=0;k<G.ROWS;k++){
+    var PLk=grid[k], add=[], gone=[];
+    PLk.lots.forEach(function(L){
+      if(!meets(L.poly)) return;
+      info.met++;
+      var P3k=PLk.P3, sd=L.side, fe=L.fe, n=Math.max(1,Math.round((L.s1-L.s0)/0.25)), cw=(L.s1-L.s0)/n, cand=[], d, c;
+      function rq(a,b,bk){ return [P3k(a,sd,fe,0),P3k(b,sd,fe,0),P3k(b,sd,bk,0),P3k(a,sd,bk,0)].map(function(v){ return [v[0],v[1]]; }); }
+      for(d=L.back; d>=fe+MINENV-1e-9; d-=0.5){
+        var run=-1;
+        for(c=0;c<=n;c++){
+          var free=c<n && !meets(rq(L.s0+c*cw,L.s0+(c+1)*cw,d));
+          if(free && run<0) run=c;
+          if(!free && run>=0){ var a=L.s0+run*cw, b=L.s0+c*cw, A=P3k(a,sd,fe,0), B=P3k(b,sd,fe,0);
+            if(Math.hypot(B[0]-A[0],B[1]-A[1])>=LOTMIN-1e-9) cand.push({a:a, b:b, back:d, area:(b-a)*(d-fe)});
+            run=-1; }
+        }
+      }
+      cand.sort(function(x,y){ return y.area-x.area || x.a-y.a; });
+      var pick=[];
+      cand.forEach(function(q){ if(pick.length<2 && pick.every(function(r){ return q.b<=r.a+1e-9 || q.a>=r.b-1e-9; })) pick.push(q); });
+      pick.sort(function(x,y){ return x.a-y.a; });
+      if(!pick.length){ gone.push(L); info.dropped++; return; }
+      if(pick.length===2) info.split++;
+      pick.forEach(function(q,m){
+        var env=rq(q.a,q.b,q.back), Lq=m===0?L:{kind:'lot', side:sd, parts:[], blocks:[], gen:L.gen};
+        Lq.idx=BASE+L.idx*2+(pick.length===2?m:(q.a>L.s0+1e-9?1:0));
+        Lq.s0=q.a; Lq.s1=q.b; Lq.back=q.back; Lq.depth=L.depth-(L.back-q.back); Lq.fe=fe; Lq.poly=env; Lq.bb=bbox2(env);
+        Lq.carved={row:k, side:sd, idx:L.idx, cls:cls};
+        if(m>0) add.push({after:L, lot:Lq});
+        info.kept++;
+      });
+    });
+    if(gone.length){
+      PLk.lots=PLk.lots.filter(function(L){ return gone.indexOf(L)<0; });
+      PLk.conts=PLk.conts.filter(function(C){ return gone.indexOf(C)<0; });
+    }
+    add.forEach(function(e){
+      PLk.lots.splice(PLk.lots.indexOf(e.after)+1,0,e.lot);
+      PLk.conts.splice(PLk.conts.indexOf(e.after)+1,0,e.lot);
+    });
+  }
+}
+/* A BAND from its slabs (a copy of each one's side, polygon and box): does Q
+   meet it, and Q cut away from it by the band edge's local chords -- the
+   viaduct's own rule, for the river's band too */
+function townBand(SL,polyOverlap,bbox2,bbHit){
+  SL=SL.map(function(C){ return {side:C.side, poly:C.poly, bb:C.bb}; });
+  var BB=[1e18,1e18,-1e18,-1e18];
+  SL.forEach(function(C){ BB=[Math.min(BB[0],C.bb[0]),Math.min(BB[1],C.bb[1]),Math.max(BB[2],C.bb[2]),Math.max(BB[3],C.bb[3])]; });
+  function chord(C){
+    var A=C.poly[3], B=C.poly[2], n=[B[1]-A[1], A[0]-B[0]], L=Math.hypot(n[0],n[1])||1; n=[n[0]/L,n[1]/L];
+    if(n[0]*(C.poly[0][0]-A[0])+n[1]*(C.poly[0][1]-A[1])>0) n=[-n[0],-n[1]];
+    return {n:n, d:n[0]*A[0]+n[1]*A[1]};
+  }
+  function meets(Q){ var b=bbox2(Q); if(!bbHit(b,BB)) return false;
+    return SL.some(function(C){ return bbHit(b,C.bb) && polyOverlap(Q,C.poly); }); }
+  function cutAway(Q){
+    if(!meets(Q)) return null;
+    var b=bbox2(Q), bx=[b[0]-4,b[1]-4,b[2]+4,b[3]+4], near=SL.filter(function(C){ return bbHit(bx,C.bb); }), out=[];
+    [1,-1].forEach(function(sd){
+      var mine=near.filter(function(C){ return C.side===sd; }), P=Q, m;
+      if(!mine.length) return;
+      for(m=0;m<mine.length && P.length>=3;m++){ var h=chord(mine[m]); P=townClip(P,h.n,h.d); }
+      if(P.length<3 || townArea(P)<0.05) return;
+      out.push({side:sd, poly:meets(P)?null:P});
+    });
+    return out;
+  }
+  return {meets:meets, cutAway:cutAway};
+}
+/* THE NETWORK'S BOX: every grid container and junction */
+function townBox(grid,J){
+  var BX=[1e18,1e18,-1e18,-1e18];
+  function grow(Q){ Q.forEach(function(q){ if(q[0]<BX[0])BX[0]=q[0]; if(q[1]<BX[1])BX[1]=q[1]; if(q[0]>BX[2])BX[2]=q[0]; if(q[1]>BX[3])BX[3]=q[1]; }); }
+  grid.forEach(function(PL){ PL.conts.forEach(function(C){ grow(C.poly); }); });
+  J.forEach(function(C){ grow(C.poly); });
+  return BX;
+}
+function townPowerline(p,G,plans,J,RIV,VS){
+  var LAY=Math.max(0,Math.min(99,Math.round(isFinite(p.layout)?+p.layout:0))), LOTMIN=Math.max(3,+p.lotmin||5);
+  var NG=G.ROWS+G.UX.length, grid=plans.slice(0,NG), P0=grid[0], polyOverlap=P0.polyOverlap, bbox2=P0.bbox2, bbHit=P0.bbHit;
+  var BX=townBox(grid,J), bw=BX[2]-BX[0], bh=BX[3]-BX[1], HALF=5, CLR=0.3, k;
+  var info={met:0, kept:0, split:0, dropped:0, riverLots:0, plots:[], pylDropped:0, pylMoved:0, recs:[], spans:[], heights:[], raised:0, tries:0};
+  var heads=[];
+  VS.forEach(function(V){ if(!V) return; var L=V.info.line; heads.push(Math.atan2(L[L.length-1][1]-L[0][1],L[L.length-1][0]-L[0][0])); });
+  function und(a){ a=((a%Math.PI)+Math.PI)%Math.PI; return Math.min(a,Math.PI-a); }
+  /* what a plot may not come near: the streets and junctions, the river's slabs
+     and quays, each viaduct's strip and band, and the plots before it */
+  var OCC=[], bands=[];
+  grid.forEach(function(PL){ PL.conts.forEach(function(C){ if(C.kind!=='lot') OCC.push(C); }); });
+  J.forEach(function(C){ OCC.push(C); });
+  if(RIV) RIV.plan.conts.forEach(function(C){ if(C.kind!=='lot') OCC.push(C); });
+  VS.forEach(function(V){ if(!V) return; V.plan.conts.forEach(function(C){ OCC.push(C); }); bands.push(V.band); });
+  /* ONE LINE: through C0 at heading h, its pylons' places from 18-30 m in, every
+     120-180 m (the numbers drawn from S whatever is decided), each moved along
+     the line to the nearest legal spot within 40 m or dropped; fewer than two
+     left, the first and last legal places 60 m apart or more stand instead */
+  function lineOf(h,C0,S){
+    var d=[Math.cos(h),Math.sin(h)], nn=[-d[1],d[0]], tA=-1e18, tB=1e18, i;
+    [0,1].forEach(function(ax){ if(Math.abs(d[ax])<1e-12) return; var a=(BX[ax]-C0[ax])/d[ax], b=(BX[ax+2]-C0[ax])/d[ax]; tA=Math.max(tA,Math.min(a,b)); tB=Math.min(tB,Math.max(a,b)); });
+    var A0=[C0[0]+d[0]*tA, C0[1]+d[1]*tA], LEN=tB-tA, ss=[], s=18+12*S[0];
+    for(i=1;s<=LEN-18;i++){ ss.push(s); s+=120+60*S[Math.min(i,S.length-1)]; }
+    if(ss.length<2 && LEN>60) ss=[18,LEN-18];
+    function sq(c,r){ return [[c[0]-d[0]*r-nn[0]*r, c[1]-d[1]*r-nn[1]*r],[c[0]+d[0]*r-nn[0]*r, c[1]+d[1]*r-nn[1]*r],
+                              [c[0]+d[0]*r+nn[0]*r, c[1]+d[1]*r+nn[1]*r],[c[0]-d[0]*r+nn[0]*r, c[1]-d[1]*r+nn[1]*r]]; }
+    var plots=[], moved=0, dropped=0;
+    function legal(c){
+      var Q=sq(c,HALF), Qc=sq(c,HALF+CLR), b=bbox2(Qc);
+      if(!Q.every(function(q){ return q[0]>=BX[0] && q[0]<=BX[2] && q[1]>=BX[1] && q[1]<=BX[3]; })) return false;
+      if(OCC.some(function(C){ return bbHit(b,C.bb) && polyOverlap(Qc,C.poly); })) return false;
+      if(bands.some(function(B){ return B.meets(Qc); })) return false;
+      return !plots.some(function(P){ return bbHit(b,P.bb) && polyOverlap(Qc,P.poly); });
+    }
+    function plotAt(g,s0){ var Q=sq(g.c,HALF); return {kind:'plot', poly:Q, bb:bbox2(Q), parts:[], pyl:0, s:g.s, c:g.c, s0:s0}; }
+    ss.forEach(function(s0){
+      var got=null, off;
+      for(off=0;off<=40 && !got;off+=0.5){
+        [off,-off].forEach(function(o){ if(got || (o===-off && off===0)) return; var sx=s0+o;
+          if(sx<HALF || sx>LEN-HALF) return; var c=[A0[0]+d[0]*sx, A0[1]+d[1]*sx]; if(legal(c)) got={s:sx, c:c, moved:o!==0}; });
+      }
+      if(!got){ dropped++; return; }
+      if(got.moved) moved++;
+      plots.push(plotAt(got,s0));
+    });
+    if(plots.length<2){
+      var keep=plots; plots=[];
+      var scan=function(a,b,st){ for(var sx=a;st>0?sx<=b:sx>=b;sx+=st){ var c=[A0[0]+d[0]*sx, A0[1]+d[1]*sx]; if(legal(c)) return {s:sx, c:c, moved:true}; } return null; };
+      var g0=scan(HALF,LEN-HALF,0.5), g1=null;
+      if(g0){ plots=[plotAt(g0,ss[0])]; g1=scan(LEN-HALF,g0.s+60,-0.5); }
+      if(g0 && g1){ plots.push(plotAt(g1,ss[ss.length-1])); moved=2; dropped=Math.max(0,ss.length-2); }
+      else { plots=keep; }
+    }
+    plots.forEach(function(P,j){ P.pyl=j; });
+    return {h:h, d:d, nn:nn, A0:A0, LEN:LEN, plots:plots, moved:moved, dropped:dropped, nominal:ss.length};
+  }
+  /* THE LINE: the first of up to 16 draws -- a heading 25-65 deg off the rows
+     either way, a point in the middle 40 % of the box, the pylons' numbers --
+     that is 20 deg or more from each viaduct's mean heading (its first point to
+     its last) and stands two pylons or more; else the best of them, clearance
+     first, then pylons */
+  var R=townSub(3,LAY,SALT_PLINE), best=null;
+  function score(x){ return (x.ok?1000:0)+Math.min(x.plots.length,3); }
+  for(k=0;k<16;k++){
+    var ang=(25+40*R())*Math.PI/180, h=R()<0.5?ang:-ang, fu=R(), fv=R(), S=[], m=Infinity, j;
+    for(j=0;j<6;j++) S.push(R());
+    heads.forEach(function(hv){ m=Math.min(m,und(h-hv)); });
+    var ok=m>=20*Math.PI/180-1e-12, Ln=lineOf(h,[BX[0]+(0.3+0.4*fu)*bw, BX[1]+(0.3+0.4*fv)*bh],S);
+    Ln.clear=m; Ln.ok=ok; info.tries=k+1;
+    if(!best || score(Ln)>score(best)) best=Ln;
+    if(ok && Ln.plots.length>=2) break;
+  }
+  var d=best.d, nn=best.nn, plots=best.plots;
+  info.heading=best.h; info.clear=best.clear; info.heads=heads; info.A0=best.A0; info.dir=d; info.LEN=best.LEN; info.box=BX;
+  info.pylMoved=best.moved; info.pylDropped=best.dropped; info.nominal=best.nominal;
+  /* the lots they meet, carved; a canal house of the river's they meet, dropped */
+  function meets(Q){ var b=bbox2(Q); return plots.some(function(P){ return bbHit(b,P.bb) && polyOverlap(Q,P.poly); }); }
+  townCarve(G,grid,meets,info,'pline',400000,LOTMIN,bbox2);
+  if(RIV){
+    var PR=RIV.plan, rg=PR.lots.filter(function(L){ return meets(L.poly); });
+    if(rg.length){ info.riverLots=rg.length;
+      PR.lots=PR.lots.filter(function(L){ return rg.indexOf(L)<0; });
+      PR.conts=PR.conts.filter(function(C){ return rg.indexOf(C)<0; }); }
+  }
+  info.plots=plots.map(function(P){ return {poly:P.poly, c:P.c, s:P.s, s0:P.s0}; });
+  /* the sag: one share of the span for the whole line, 2-4 % */
+  var SAG=0.02+0.02*townSub(4,LAY,SALT_PLINE)();
+  info.sag=SAG;
+  var PW={plots:plots, info:info, dir:d, nn:nn, sag:SAG, LAY:LAY};
+  PW.plan={ix:-1, p:p, theme:{key:'town', content:function(K){ return plineTheme(K,PW); }}, sGaps:[], hasGap:false, Z0:0,
+           conts:plots, lots:[], slabsBySide:{'1':[],'-1':[]}, dropped:0, pushed:0};
+  return PW;
+}
+function townParks(p,G,plans,J,RIV,VS,PW,BLK){
+  var SH=Math.max(0,Math.min(40,isFinite(p.parks)?+p.parks:10))/100, LAY=Math.max(0,Math.min(99,Math.round(isFinite(p.layout)?+p.layout:0)));
+  var n=Math.round(SH*BLK.length); if(!n) return null;
+  var NG=G.ROWS+G.UX.length, grid=plans.slice(0,NG), P0=grid[0], polyOverlap=P0.polyOverlap, bbox2=P0.bbox2, bbHit=P0.bbHit;
+  var info={share:SH, blocks:BLK.length, parks:[], lots:0, riverLots:0, pieces:0, recs:[], trees:[]};
+  /* which blocks: the n with the lowest number from Layout's own substream */
+  var pick=BLK.map(function(b){ return {b:b, r:townSub(b.key,LAY,SALT_PARK)()}; })
+              .sort(function(x,y){ return x.r-y.r || x.b.key-y.b.key; }).slice(0,n).map(function(e){ return e.b; })
+              .sort(function(x,y){ return x.key-y.key; });
+  function inR(Rc,c){ return c[0]>Rc[0] && c[0]<Rc[2] && c[1]>Rc[1] && c[1]<Rc[3]; }
+  /* a park has no lots */
+  pick.forEach(function(B){
+    for(var k=0;k<G.ROWS;k++){ var PL=grid[k], go=PL.lots.filter(function(L){ return inR(B.rect,townMid(L.poly)); });
+      if(!go.length) continue; info.lots+=go.length;
+      PL.lots=PL.lots.filter(function(L){ return go.indexOf(L)<0; });
+      PL.conts=PL.conts.filter(function(C){ return go.indexOf(C)<0; }); }
+    if(RIV){ var PR=RIV.plan, rg=PR.lots.filter(function(L){ return inR(B.rect,townMid(L.poly)); });
+      if(rg.length){ info.riverLots+=rg.length;
+        PR.lots=PR.lots.filter(function(L){ return rg.indexOf(L)<0; });
+        PR.conts=PR.conts.filter(function(C){ return rg.indexOf(C)<0; }); } }
+  });
+  /* what stands there already, every container of every plan before it */
+  var OCC=[];
+  grid.forEach(function(PL){ PL.conts.forEach(function(C){ OCC.push(C); }); });
+  J.forEach(function(C){ OCC.push(C); });
+  if(RIV) RIV.plan.conts.forEach(function(C){ OCC.push(C); });
+  VS.forEach(function(V){ if(V) V.plan.conts.forEach(function(C){ OCC.push(C); }); });
+  if(PW) PW.plots.forEach(function(C){ OCC.push(C); });
+  var BANDS=[];
+  if(RIV) BANDS.push(townBand(RIV.plan.conts.filter(function(C){ return C.kind==='slab'; }),polyOverlap,bbox2,bbHit));
+  VS.forEach(function(V){ if(V) BANDS.push(V.band); });
+  var parks=[], all=[];
+  pick.forEach(function(B){
+    var Rc=B.rect, Q=[[Rc[0],Rc[1]],[Rc[2],Rc[1]],[Rc[2],Rc[3]],[Rc[0],Rc[3]]], got=[Q];
+    /* a band that crosses it first, by its banks' chords: one convex piece each
+       side, where a band's 4 m slabs taken one by one would slice it to strips */
+    BANDS.forEach(function(BD){ var nx=[]; got.forEach(function(P){ var r=BD.cutAway(P); if(r===null){ nx.push(P); return; }
+      r.forEach(function(e){ if(e.poly) nx.push(e.poly); }); }); got=nx; });
+    /* a container that only touches the rectangle -- a street slab along its
+       front -- cuts nothing: only one that overlaps it by an area */
+    OCC.forEach(function(K){ if(!got.length || !bbHit(Rc,K.bb)) return;
+      var nx=[]; got.forEach(function(P){ var X=townIntersect(P,K.poly); if(!X.length || townArea(X)<1e-6){ nx.push(P); return; } townMinus(P,K.poly).forEach(function(q){ nx.push(q); }); });
+      got=nx; });
+    got=got.filter(function(P){ return townArea(P)>=1; });
+    if(!got.length) return;
+    var PK={idx:parks.length, key:B.key, j:B.j, i:B.i, rect:Rc, conts:[]};
+    got.forEach(function(P,q){ var C={kind:'park', poly:P, bb:bbox2(P), parts:[], park:PK.idx, piece:q}; PK.conts.push(C); all.push(C); });
+    info.pieces+=got.length;
+    info.parks.push({key:B.key, j:B.j, i:B.i, rect:Rc, pieces:got});
+    parks.push(PK);
+  });
+  if(!parks.length) return null;
+  var PKS={parks:parks, info:info, LAY:LAY};
+  PKS.plan={ix:-1, p:p, theme:{key:'town', content:function(K){ return parkTheme(K,PKS); }}, sGaps:[], hasGap:false, Z0:0,
+            conts:all, lots:[], slabsBySide:{'1':[],'-1':[]}, dropped:0, pushed:0};
+  return PKS;
+}
+/* A PARK'S CONTENT (§7.1), in the block's own rectangle and drawn into the
+   pieces it was cut into: a hedge or a fence round the block's edge (open where
+   the paths come in), two paths crossing it (ground lines), a pond (an ellipse
+   with the canal's wave dashes) on 40 % of parks, a swing frame on 30 %,
+   benches beside the paths, and trees -- a trunk and a lofted crown, 0.8-1.4
+   in scale, 6 m or more apart and never crown into crown. Everything from the
+   park's own substreams (salt 569, keyed on its block). Every solid stands in
+   one piece; what does not fit is not built. */
+function parkTheme(K,PKS){
+  var prismN=K.prismN, polyFromLoops=K.polyFromLoops, verts=K.verts, inConv=K.inConv, splitPart=K.splitPart, mmPerM=K.mmPerM;
+  var COLG='#2f9a44', COLB='#8b5a2b', COLK='#1a1a1a', COLW='#5aa9e6', COLR='#d42a2a', COLY='#8a8a8a', PH=1.2;
+  var info=PKS.info;
+  function own(P,C,kind,col,layer){ P.cont=C; P.kind=kind; P.col=col; P.layer=layer||'struct';
+    P.lines.forEach(function(Ln){ if(!Ln.col) Ln.col=col; if(!Ln.kind) Ln.kind=kind; });
+    C.parts.push(P); info.recs.push({kind:kind, V:verts(P), F:P.faces.map(function(f){ return {n:f.n, d:f.d}; }), cont:{kind:C.kind, poly:C.poly}, park:C.park, hides:P.hides!==false});
+    return P; }
+  function inside(C,V){ return V.every(function(v){ return inConv(C.poly,v); }); }
+  function pieceOf(PK,V){ for(var m=0;m<PK.conts.length;m++) if(inside(PK.conts[m],V)) return PK.conts[m]; return null; }
+  /* the part of segment AB inside convex Q, as [t0,t1] */
+  function segIn(A,B,Q){
+    var t0=0, t1=1, dx=B[0]-A[0], dy=B[1]-A[1], m, ar=0;
+    for(m=0;m<Q.length;m++){ var a0=Q[m], b0=Q[(m+1)%Q.length]; ar+=a0[0]*b0[1]-a0[1]*b0[0]; }
+    var sg=ar>0?1:-1;
+    for(m=0;m<Q.length;m++){
+      var a=Q[m], b=Q[(m+1)%Q.length], nx=-(b[1]-a[1])*sg, ny=(b[0]-a[0])*sg;
+      var num=nx*(A[0]-a[0])+ny*(A[1]-a[1]), den=nx*dx+ny*dy;
+      if(Math.abs(den)<1e-15){ if(num<0) return null; continue; }
+      var t=-num/den;
+      if(den>0){ if(t>t0) t0=t; } else { if(t<t1) t1=t; }
+      if(t0>t1) return null;
+    }
+    return [t0,t1];
+  }
+  /* each piece's ground plate, which hides nothing: a ground line drawn on it */
+  function ground(PK,A,B,col,kind){
+    PK.conts.forEach(function(C){ var r=segIn(A,B,C.poly); if(!r || r[1]-r[0]<1e-6) return;
+      var a=[A[0]+(B[0]-A[0])*r[0], A[1]+(B[1]-A[1])*r[0], 0], b=[A[0]+(B[0]-A[0])*r[1], A[1]+(B[1]-A[1])*r[1], 0];
+      C.plate.lines.push({a:a, b:b, f0:1, f1:1, col:col, kind:kind}); });
+  }
+  function ngon(c,r,n,z,ph){ var o=[]; for(var k=0;k<n;k++){ var a=ph+2*Math.PI*k/n; o.push([c[0]+r*Math.cos(a), c[1]+r*Math.sin(a), z]); } return o; }
+  function loft(rings){
+    var loops=[rings[0], rings[rings.length-1]], k, e, n=rings[0].length;
+    for(k=0;k+1<rings.length;k++) for(e=0;e<n;e++){ var e2=(e+1)%n; loops.push([rings[k][e],rings[k][e2],rings[k+1][e2],rings[k+1][e]]); }
+    return polyFromLoops(loops);
+  }
+  function box(x0,y0,x1,y1,z0,z1){ return prismN([[x0,y0],[x1,y0],[x1,y1],[x0,y1]],z0,z1); }
+  function furnish(dn,df){
+    info.recs=[]; info.trees=[];
+    PKS.parks.forEach(function(PK){
+      var Rc=PK.rect, W=Rc[2]-Rc[0], H=Rc[3]-Rc[1], cx=(Rc[0]+Rc[2])/2, cy=(Rc[1]+Rc[3])/2;
+      var S=townSub(PK.key,7,SALT_PARK), uHedge=S(), uPx=S(), uPy=S(), uPond=S(), uPlay=S(), uQ=S(), uQ2=S(), ua=S(), ub=S();
+      var XB=cx+(uPx-0.5)*0.3*W, YA=cy+(uPy-0.5)*0.3*H, HEDGE=uHedge<0.5;
+      /* the plates, and the block's edge where a piece meets it */
+      PK.conts.forEach(function(C){
+        var Pl=prismN(C.poly.map(function(q){ return [q[0],q[1]]; }),-0.02,0); Pl.lines=[]; Pl.hides=false;
+        C.plate=own(Pl,C,'parkplate',COLY,'furn');
+        var Q=C.poly;
+        for(var e=0;e<Q.length;e++){ var a=Q[e], b=Q[(e+1)%Q.length];
+          var onX=[Rc[1],Rc[3]].some(function(y){ return Math.abs(a[1]-y)<1e-6 && Math.abs(b[1]-y)<1e-6; }),
+              onY=[Rc[0],Rc[2]].some(function(x){ return Math.abs(a[0]-x)<1e-6 && Math.abs(b[0]-x)<1e-6; });
+          if(onX || onY) Pl.lines.push({a:[a[0],a[1],0], b:[b[0],b[1],0], f0:1, f1:1, col:COLK, kind:'parkedge'}); }
+      });
+      /* the paths, each a pair of ground lines, open where the other crosses */
+      [[[Rc[0],YA],[XB-PH,YA]],[[XB+PH,YA],[Rc[2],YA]]].forEach(function(sg){ [-PH,PH].forEach(function(o){
+        ground(PK,[sg[0][0],sg[0][1]+o],[sg[1][0],sg[1][1]+o],COLK,'path'); }); });
+      [[[XB,Rc[1]],[XB,YA-PH]],[[XB,YA+PH],[XB,Rc[3]]]].forEach(function(sg){ [-PH,PH].forEach(function(o){
+        ground(PK,[sg[0][0]+o,sg[0][1]],[sg[1][0]+o,sg[1][1]],COLK,'path'); }); });
+      /* the four quarters the paths leave */
+      var QS=[[Rc[0]+1.5,Rc[1]+1.5,XB-PH-1,YA-PH-1],[XB+PH+1,Rc[1]+1.5,Rc[2]-1.5,YA-PH-1],
+              [Rc[0]+1.5,YA+PH+1,XB-PH-1,Rc[3]-1.5],[XB+PH+1,YA+PH+1,Rc[2]-1.5,Rc[3]-1.5]];
+      /* the pond: an ellipse on the ground and the canal's dashes on it */
+      var pond=null, qp=Math.floor(uQ*4);
+      if(uPond<0.4){ var q=QS[qp], qa=(q[2]-q[0])/2-2, qb=(q[3]-q[1])/2-2;
+        var pa=Math.min(12,qa)*(0.7+0.3*ua), pb=Math.min(8,qb)*(0.7+0.3*ub);
+        if(pa>=3 && pb>=2){ pond={c:[(q[0]+q[2])/2,(q[1]+q[3])/2], a:pa, b:pb};
+          var m, NP=40;
+          for(m=0;m<NP;m++){ var a0=2*Math.PI*m/NP, a1=2*Math.PI*(m+1)/NP;
+            ground(PK,[pond.c[0]+pa*Math.cos(a0),pond.c[1]+pb*Math.sin(a0)],[pond.c[0]+pa*Math.cos(a1),pond.c[1]+pb*Math.sin(a1)],COLW,'pond'); }
+          var WV=townSub(PK.key,8,SALT_PARK);
+          for(m=0;m<12;m++){ var wr=Math.sqrt(WV())*0.7, wa=2*Math.PI*WV(), wl=0.6+0.6*WV();
+            var wx=pond.c[0]+pa*wr*Math.cos(wa), wy=pond.c[1]+pb*wr*Math.sin(wa);
+            ground(PK,[wx-wl/2,wy],[wx+wl/2,wy],COLW,'wave'); } } }
+      /* the swing frame: two posts, a beam on them, two seats on their chains */
+      var play=null;
+      if(uPlay<0.3){ var q2=QS[(qp+1+Math.floor(uQ2*3))%4], pc=[(q2[0]+q2[2])/2,(q2[1]+q2[3])/2];
+        if(q2[2]-q2[0]>=5 && q2[3]-q2[1]>=3){
+          var L=[box(pc[0]-1.5,pc[1]-0.06,pc[0]-1.38,pc[1]+0.06,0,2.3), box(pc[0]+1.38,pc[1]-0.06,pc[0]+1.5,pc[1]+0.06,0,2.3),
+                 box(pc[0]-1.6,pc[1]-0.06,pc[0]+1.6,pc[1]+0.06,2.3,2.42)], C=pieceOf(PK,[].concat.apply([],L.map(verts)));
+          if(C){ play={c:pc, r:1.7};
+            L.forEach(function(P){ own(P,C,'swing',COLR); });
+            [-0.6,0.6].forEach(function(x){
+              own(box(pc[0]+x-0.22,pc[1]-0.1,pc[0]+x+0.22,pc[1]+0.1,0.45,0.5),C,'swingseat',COLR);
+              [-0.18,0.18].forEach(function(dx){ var Ch=box(pc[0]+x+dx-0.01,pc[1]-0.01,pc[0]+x+dx+0.01,pc[1]+0.01,0.5,2.3);
+                Ch.lines=[{a:[pc[0]+x+dx,pc[1],0.5], b:[pc[0]+x+dx,pc[1],2.3], f0:0, f1:0}]; Ch.hides=false; Ch.seeThru=true; own(Ch,C,'swingchain',COLK,'furn'); }); }); } } }
+      /* the hedge or the fence along the block's edge, open where a path comes in */
+      var T=HEDGE?0.6:0.06, Z=HEDGE?1.0:1.1, G0=0.3, GAP=PH+0.4, runs=[];
+      [[Rc[1]+G0],[Rc[3]-G0-T]].forEach(function(y){ y=y[0];
+        runs.push([Rc[0]+G0,y,XB-GAP,y+T]); runs.push([XB+GAP,y,Rc[2]-G0,y+T]); });
+      [[Rc[0]+G0],[Rc[2]-G0-T]].forEach(function(x){ x=x[0];
+        runs.push([x,Rc[1]+G0+T,x+T,YA-GAP]); runs.push([x,YA+GAP,x+T,Rc[3]-G0-T]); });
+      runs.forEach(function(rn){
+        if(rn[2]-rn[0]<0.05 || rn[3]-rn[1]<0.05) return;
+        var Q=[[rn[0],rn[1]],[rn[2],rn[1]],[rn[2],rn[3]],[rn[0],rn[3]]];
+        PK.conts.forEach(function(C){
+          var R2=townIntersect(Q,C.poly); if(!R2.length || townArea(R2)<0.03) return;
+          var P=prismN(R2,0,Z);
+          if(HEDGE){ own(P,C,'hedge',COLG); return; }
+          /* a fence: a see-through box carrying its two rails and its posts */
+          var lx=rn[2]-rn[0]>rn[3]-rn[1], b=townBbox(R2), mid=lx?(b[1]+b[3])/2:(b[0]+b[2])/2, a0=lx?b[0]:b[1], a1=lx?b[2]:b[3];
+          function pt(s,z){ return lx?[s,mid,z]:[mid,s,z]; }
+          P.lines=[{a:pt(a0,Z), b:pt(a1,Z), f0:0, f1:0},{a:pt(a0,0.5), b:pt(a1,0.5), f0:0, f1:0}];
+          for(var s2=Math.ceil(a0/2.5)*2.5;s2<=a1+1e-9;s2+=2.5) P.lines.push({a:pt(s2,0), b:pt(s2,Z), f0:0, f1:0});
+          P.hides=false; P.seeThru=true; own(P,C,'fence',COLK,'furn');
+        });
+      });
+      /* benches beside the paths */
+      var BS=townSub(PK.key,9,SALT_PARK), bn=[];
+      for(var k=0;k<4;k++){ var along=BS(), sd=BS()<0.5?-1:1, vert=k>=2, bx, P2;
+        if(!vert){ bx=Rc[0]+W*(0.15+0.7*along); if(Math.abs(bx-XB)<PH+2) continue;
+          var y0=YA+sd*(PH+0.3), y1=y0+sd*0.45; P2=box(bx-0.8,Math.min(y0,y1),bx+0.8,Math.max(y0,y1),0,0.45); }
+        else { var by=Rc[1]+H*(0.15+0.7*along); if(Math.abs(by-YA)<PH+2) continue;
+          var x0=XB+sd*(PH+0.3), x1=x0+sd*0.45; P2=box(Math.min(x0,x1),by-0.8,Math.max(x0,x1),by+0.8,0,0.45); }
+        var Vb=verts(P2), Cb=pieceOf(PK,Vb), cb=townMid(Vb.map(function(v){ return [v[0],v[1]]; }));
+        if(!Cb || bn.some(function(c){ return Math.hypot(cb[0]-c[0],cb[1]-c[1])<2.2; })) continue;
+        if(pond && Math.pow((cb[0]-pond.c[0])/(pond.a+1),2)+Math.pow((cb[1]-pond.c[1])/(pond.b+1),2)<1) continue;
+        if(play && Math.hypot(cb[0]-play.c[0],cb[1]-play.c[1])<play.r+1.5) continue;
+        own(P2,Cb,'bench',COLB,'furn'); bn.push(cb); }
+      /* the trees: one try draws three numbers whatever it decides, so a tree
+         that cannot stand moves no other */
+      var TS=townSub(PK.key,11,SALT_PARK), area=0, trees=[];
+      PK.conts.forEach(function(C){ area+=townArea(C.poly); });
+      var want=Math.round(area/70), tries=40*want;
+      for(var t=0;t<tries && trees.length<want;t++){
+        var x=Rc[0]+W*TS(), y=Rc[1]+H*TS(), sc=0.8+0.6*TS(), RC=2.4*sc;
+        if(Math.abs(y-YA)<PH+0.6 || Math.abs(x-XB)<PH+0.6) continue;
+        if(pond && Math.pow((x-pond.c[0])/(pond.a+1),2)+Math.pow((y-pond.c[1])/(pond.b+1),2)<1) continue;
+        if(play && Math.hypot(x-play.c[0],y-play.c[1])<play.r+RC+0.3) continue;
+        if(bn.some(function(c){ return Math.hypot(x-c[0],y-c[1])<1.4; })) continue;
+        if(trees.some(function(o){ return Math.hypot(x-o.x,y-o.y)<Math.max(6,o.R+RC+0.3); })) continue;
+        var Ct=null;
+        for(var m2=0;m2<PK.conts.length && !Ct;m2++){ var Cq=PK.conts[m2];
+          if(ngon([x,y],RC+0.2,16,0,0).every(function(v){ return inConv(Cq.poly,v); })) Ct=Cq; }
+        if(!Ct) continue;
+        trees.push({x:x, y:y, R:RC, s:sc, C:Ct});
+      }
+      /* THE CROWN IS A CLUSTER OF LOBES, so its outline is a cloud and not a
+         circle: a middle lobe on the trunk and 2-4 round it, each a lofted
+         convex blob whose rings are one jittered polygon scaled (so every face
+         stays planar and the blob convex), every lobe inside the crown's
+         radius. Two lobes that overlap are cut apart at their radical plane --
+         the iso engine's rule for two domes -- each keeping its own side; the
+         cut is a seam with no line, so the lobe in front hides the one behind
+         and the union's scalloped edge is what is drawn. Where a crown is 2.5
+         mm or more across on the sheet, short leaf strokes lie on its lobes'
+         faces, drawn where the face is seen. From the tree's own substream. */
+      trees.forEach(function(tr,ti){
+        var sc=tr.s, RC=tr.R, zt=2.0*sc, c=[tr.x,tr.y];
+        var Tk=prismN(ngon(c,0.16*sc,6,0,0).map(function(q){ return [q[0],q[1]]; }),0,zt); Tk.crease=1.1;
+        own(Tk,tr.C,'parktrunk',COLB);
+        var LS=townSub(PK.key*4096+ti,13,SALT_PARK), nl=3+Math.floor(LS()*3), lobes=[], k, e, NG=8;
+        var r0=RC*(0.6+0.08*LS()), h0=1.15*r0, a0=2*Math.PI*LS();
+        lobes.push({c:[c[0],c[1],zt+0.85*h0], r:r0, h:h0});
+        for(k=1;k<nl;k++){
+          var a=a0+2*Math.PI*k/(nl-1)+0.6*(LS()-0.5), o=RC*(0.36+0.12*LS()), r=RC-o-0.05, h=1.05*r*(0.9+0.2*LS()), dz=(LS()-0.35)*0.6*h0;
+          lobes.push({c:[c[0]+o*Math.cos(a),c[1]+o*Math.sin(a),Math.max(zt+0.85*h+0.02,lobes[0].c[2]+dz)], r:r, h:h});
+        }
+        var mm=mmPerM([c[0],c[1],zt+h0],[1,0,0])*2*RC, leaves=mm>=2.5?Math.min(4,1+Math.floor(mm/3)):0;
+        var PS=lobes.map(function(L){
+          var jit=[]; for(e=0;e<NG;e++) jit.push(0.94+0.06*LS());
+          var ph=2*Math.PI*LS()/NG;
+          var rings=[-0.85,-0.45,0,0.45,0.85].map(function(f){ var rr=L.r*Math.sqrt(1-f*f), z=L.c[2]+f*L.h;
+            return ngon(L.c,rr,NG,z,ph).map(function(q,m){ return [L.c[0]+(q[0]-L.c[0])*jit[m], L.c[1]+(q[1]-L.c[1])*jit[m], z]; }); });
+          var P=loft(rings);
+          /* the leaf strokes: a small arc inside one side face, on the two
+             middle bands (a face's own bilinear points lie in its plane) */
+          for(var q=0;q<leaves;q++){
+            var bk=1+Math.floor(LS()*2), be=Math.floor(LS()*NG), fl=LS(), fi=2+bk*NG+be;
+            var Q0=rings[bk][be], Q1=rings[bk][(be+1)%NG], Q2=rings[bk+1][(be+1)%NG], Q3=rings[bk+1][be], prev=null;
+            for(var m=0;m<=4;m++){ var u=0.2+0.6*m/4, v=0.3+0.25*fl+0.25*Math.sin(Math.PI*m/4);
+              var pt=[0,1,2].map(function(x){ return (1-v)*((1-u)*Q0[x]+u*Q1[x])+v*((1-u)*Q3[x]+u*Q2[x]); });
+              if(prev) P.lines.push({a:prev, b:pt, f0:fi, f1:fi, col:COLG, kind:'leaf'});
+              prev=pt; }
+          }
+          return P;
+        });
+        for(var i=0;i<PS.length;i++) for(var j=i+1;j<PS.length;j++){
+          var A=lobes[i], B=lobes[j], dv=[B.c[0]-A.c[0],B.c[1]-A.c[1],B.c[2]-A.c[2]], D=Math.hypot(dv[0],dv[1],dv[2]);
+          if(!PS[i] || !PS[j] || !(D<A.r+B.r) || D<1e-9) continue;
+          var n=[dv[0]/D,dv[1]/D,dv[2]/D], d=(B.c[0]*B.c[0]+B.c[1]*B.c[1]+B.c[2]*B.c[2]-A.c[0]*A.c[0]-A.c[1]*A.c[1]-A.c[2]*A.c[2]+A.r*A.r-B.r*B.r)/(2*D);
+          var ha=splitPart(PS[i],n,d)[1], hb=splitPart(PS[j],n,d)[0];
+          PS[i]=ha.faces.length>=4?ha:null; PS[j]=hb.faces.length>=4?hb:null;
+        }
+        PS.forEach(function(P){ if(!P) return;
+          var V=verts(P), ins=[0,0,0]; V.forEach(function(v){ ins[0]+=v[0]/V.length; ins[1]+=v[1]/V.length; ins[2]+=v[2]/V.length; });
+          P.ins=ins; P.crease=1.0; own(P,tr.C,'parkcrown',COLG); });
+        info.trees.push({x:tr.x, y:tr.y, R:RC, s:sc, park:PK.idx, key:PK.key, lobes:nl});
+      });
+    });
+  }
+  return {dress:function(){}, signsFor:function(){}, furnish:furnish, cars:[], dots:[], poles:[]};
+}
+function townBbox(Q){ var b=[1e18,1e18,-1e18,-1e18]; Q.forEach(function(q){ if(q[0]<b[0])b[0]=q[0]; if(q[1]<b[1])b[1]=q[1]; if(q[0]>b[2])b[2]=q[0]; if(q[1]>b[3])b[3]=q[1]; }); return b; }
+/* THE POWERLINE'S CONTENT (§7.2): on each plot a lattice pylon -- a tapering
+   square tower, its four legs as lines and its bracing inside Near detail,
+   three crossarms across the line each side and an insulator hanging from
+   every tip -- in ONE see-through part, the tower's convex envelope, which
+   hides nothing; and between pylons six conductors and an earth wire on the
+   kit's catenary (the same curve and the same solved sag as addCable), cut
+   into every container they pass over as cablesInto cuts a cable: lines that
+   hide nothing in 2 cm boxes, so the order is unaffected. They are hung here
+   rather than through addCable, which refuses any cable over a container
+   marked noCable -- the river, and everything under a viaduct -- where a
+   powerline must pass. Every piece carries P.via, so a deck's trim and the
+   river's drop leave it at its real height.
+   THE HEIGHT is set here, after every other plan's content is built: the
+   lowest conductor must be 12 m or more over anything under it, sampled every
+   1 m along each wire's plan line against the top of every part whose plan
+   hull holds the point or lies within 0.5 m of it, and every cable within
+   0.6 m; each span's need lifts
+   both its pylons, never below 24 m to the lowest crossarm, and the stat line
+   names what was raised. */
+function plineTheme(K,PW){
+  var polyFromLoops=K.polyFromLoops, prismN=K.prismN, para=K.para, verts=K.verts, inConv=K.inConv, dist3=K.dist3, bbHit=K.bbHit, conts=K.conts, cables=K.cables;
+  var COLT='#8a8a8a', COLK='#1a1a1a', info=PW.info, d=PW.dir, nn=PW.nn, Z1B=24, ARM=4.5, INS=1.2, AW0=3.0, AWP=0.6, HB=4.6, DZ=4, PK=3;
+  /* the wires: (offset across the line, height over the lowest crossarm) */
+  var WIRES=[]; [-1,1].forEach(function(sg){ [0,1,2].forEach(function(k){ WIRES.push({o:sg*ARM, dz:k*DZ-INS, earth:false}); }); });
+  WIRES.push({o:0, dz:2*DZ+PK, earth:true});
+  function at(P,s,o,z){ return [P.c[0]+d[0]*s+nn[0]*o, P.c[1]+d[1]*s+nn[1]*o, z]; }
+  function aOf(S,Lp){
+    if(!(S>1e-9)) return Infinity;
+    var lo=Lp*1e-3, hi=Lp*Lp/(8*S)*4+Lp, it;
+    for(it=0;it<200;it++){ var md=Math.sqrt(lo*hi), sh=Math.sinh(Lp/(4*md)); if(2*md*sh*sh>S) lo=md; else hi=md; }
+    return Math.sqrt(lo*hi);
+  }
+  function dip(t,a,Lp){ return isFinite(a)?-2*a*Math.sinh(t*Lp/(2*a))*Math.sinh((t-1)*Lp/(2*a)):0; }
+  /* the obstacles, bucketed in 4 m cells: every part's plan hull and top, and
+     every cable's points */
+  function hull2(V){ var pts=V.map(function(v){ return [v[0],v[1]]; }).sort(function(a,b){ return a[0]-b[0] || a[1]-b[1]; });
+    function cr(o,a,b){ return (a[0]-o[0])*(b[1]-o[1])-(a[1]-o[1])*(b[0]-o[0]); }
+    var lo=[], up=[], i;
+    for(i=0;i<pts.length;i++){ while(lo.length>=2 && cr(lo[lo.length-2],lo[lo.length-1],pts[i])<=1e-12) lo.pop(); lo.push(pts[i]); }
+    for(i=pts.length-1;i>=0;i--){ while(up.length>=2 && cr(up[up.length-2],up[up.length-1],pts[i])<=1e-12) up.pop(); up.push(pts[i]); }
+    up.pop(); lo.pop(); return lo.concat(up); }
+  /* inside the hull, or within half a sample (0.5 m) of it: a pole or a sign
+     narrower than the 1 m step cannot slip between two samples */
+  function near(H,x,y){
+    if(inConv(H,[x,y])) return true;
+    for(var e=0;e<H.length;e++){ var a=H[e], b=H[(e+1)%H.length], dx=b[0]-a[0], dy=b[1]-a[1], L2=dx*dx+dy*dy, t=L2?((x-a[0])*dx+(y-a[1])*dy)/L2:0;
+      t=Math.max(0,Math.min(1,t)); if(Math.hypot(x-a[0]-dx*t,y-a[1]-dy*t)<=0.5) return true; }
+    return false;
+  }
+  function obstacles(){
+    var B={}, CS=4, LB=PW.plots.length?townBbox([].concat.apply([],PW.plots.map(function(P){ return P.poly; }))):[0,0,0,0];
+    LB=[LB[0]-12,LB[1]-12,LB[2]+12,LB[3]+12];
+    function put(b,o){ for(var i=Math.floor(b[0]/CS);i<=Math.floor(b[2]/CS);i++) for(var j=Math.floor(b[1]/CS);j<=Math.floor(b[3]/CS);j++){ var k=i+','+j; (B[k]||(B[k]=[])).push(o); } }
+    conts.forEach(function(C){ if(!bbHit(LB,C.bb)) return;
+      C.parts.forEach(function(P){ if(P.via==='pline') return; var V=verts(P); if(V.length<3) return;
+        var H=hull2(V), b=townBbox(H), z=-1e18; V.forEach(function(v){ if(v[2]>z) z=v[2]; });
+        if(!bbHit(LB,b) || H.length<3) return; put([b[0]-0.5,b[1]-0.5,b[2]+0.5,b[3]+0.5],{H:H, z:z}); }); });
+    cables.forEach(function(cb){ var n=Math.max(1,Math.ceil(cb.L/0.5)); for(var m=0;m<=n;m++){ var q=cb.at(m/n), b=[q[0]-0.6,q[1]-0.6,q[0]+0.6,q[1]+0.6];
+      if(bbHit(LB,b)) put(b,{q:q, z:q[2]}); } });
+    return function(x,y){ var L=B[Math.floor(x/CS)+','+Math.floor(y/CS)]||[], top=-1e18;
+      L.forEach(function(o){ if(o.z<=top) return; if(o.q){ if(Math.hypot(o.q[0]-x,o.q[1]-y)<=0.6) top=o.z; } else if(near(o.H,x,y)) top=o.z; });
+      return top; };
+  }
+  function segIn(A,B,Q){
+    var t0=0, t1=1, dx=B[0]-A[0], dy=B[1]-A[1], m, ar=0;
+    for(m=0;m<Q.length;m++){ var a0=Q[m], b0=Q[(m+1)%Q.length]; ar+=a0[0]*b0[1]-a0[1]*b0[0]; }
+    var sg=ar>0?1:-1;
+    for(m=0;m<Q.length;m++){
+      var a=Q[m], b=Q[(m+1)%Q.length], nx=-(b[1]-a[1])*sg, ny=(b[0]-a[0])*sg;
+      var num=nx*(A[0]-a[0])+ny*(A[1]-a[1]), den=nx*dx+ny*dy;
+      if(Math.abs(den)<1e-15){ if(num<0) return null; continue; }
+      var t=-num/den;
+      if(den>0){ if(t>t0) t0=t; } else { if(t<t1) t1=t; }
+      if(t0>t1) return null;
+    }
+    return [t0,t1];
+  }
+  function cross3(a,b){ return [a[1]*b[2]-a[2]*b[1], a[2]*b[0]-a[0]*b[2], a[0]*b[1]-a[1]*b[0]]; }
+  function nrm3(a){ var L=Math.hypot(a[0],a[1],a[2])||1; return [a[0]/L,a[1]/L,a[2]/L]; }
+  /* the kit's stickIn: a 2 cm box round the piece, shortened until it is inside */
+  function stick(Pa,Pb,Q){
+    var dv=[Pb[0]-Pa[0],Pb[1]-Pa[1],Pb[2]-Pa[2]], L=Math.hypot(dv[0],dv[1],dv[2]), th=0.02, k;
+    var hz=nrm3([-dv[1],dv[0],0]), up=nrm3(cross3(dv,hz)), u=[dv[0]/L,dv[1]/L,dv[2]/L], cut=[0,0.012,0.03,0.06,0.12,0.25];
+    for(k=0;k<cut.length;k++){
+      var c=Math.min(cut[k],L*0.45), A=[Pa[0]+u[0]*c,Pa[1]+u[1]*c,Pa[2]+u[2]*c], ea=[u[0]*(L-2*c),u[1]*(L-2*c),u[2]*(L-2*c)];
+      var o=[A[0]-hz[0]*th/2-up[0]*th/2, A[1]-hz[1]*th/2-up[1]*th/2, A[2]-hz[2]*th/2-up[2]*th/2];
+      var Pq=para(o,ea,[hz[0]*th,hz[1]*th,hz[2]*th],[up[0]*th,up[1]*th,up[2]*th]);
+      if(verts(Pq).every(function(v){ return inConv(Q,v); })) return Pq;
+    }
+    return null;
+  }
+  function rec(P,C){ info.recs.push({kind:P.kind, V:verts(P), F:P.faces.map(function(f){ return {n:f.n, d:f.d}; }), cont:{kind:C.kind, poly:C.poly}, hides:P.hides!==false}); }
+  function furnish(dn,df){
+    info.recs=[]; info.spans=[]; info.heights=[]; info.raised=0; info.dropPieces=0;
+    var PL=PW.plots, i, w;
+    /* each plot's plate and its edge */
+    PL.forEach(function(C){ var Pl=prismN(C.poly,-0.02,0); Pl.hides=false;
+      Pl.lines=C.poly.map(function(q,e){ var r=C.poly[(e+1)%4]; return {a:[q[0],q[1],0], b:[r[0],r[1],0], f0:1, f1:1, col:COLT, kind:'plotedge'}; });
+      Pl.cont=C; Pl.col=COLT; Pl.kind='plotplate'; Pl.layer='furn'; Pl.via='pline'; C.parts.push(Pl); rec(Pl,C); });
+    /* the heights: each span's need, then each pylon the higher of its two */
+    var top=obstacles(), need=[], Z1=PL.map(function(){ return Z1B; });
+    for(i=0;i+1<PL.length;i++){
+      var A=PL[i], B=PL[i+1], Lp=Math.hypot(B.c[0]-A.c[0],B.c[1]-A.c[1]), S=PW.sag*Lp, a=aOf(S,Lp), n=Math.max(1,Math.ceil(Lp)), nd=-1e18;
+      WIRES.forEach(function(wr){ for(var m=0;m<=n;m++){ var t=m/n, x=A.c[0]+(B.c[0]-A.c[0])*t+nn[0]*wr.o, y=A.c[1]+(B.c[1]-A.c[1])*t+nn[1]*wr.o;
+        var tp=top(x,y); if(tp<-1e17) continue; var q=tp+12+dip(t,a,Lp)-wr.dz; if(q>nd) nd=q; } });
+      need.push(nd);
+      if(nd>Z1[i]) Z1[i]=nd; if(nd>Z1[i+1]) Z1[i+1]=nd;
+    }
+    Z1.forEach(function(z){ if(z>Z1B+1e-9) info.raised++; info.heights.push(z); });
+    /* the towers */
+    PL.forEach(function(C,ip){
+      var z1=Z1[ip], zP=z1+2*DZ+PK, zl=z1-INS-0.05, zu=z1+2*DZ;
+      function aw(z){ return AW0+(AWP-AW0)*z/zP; }
+      function rect(z,a,c){ return [at(C,-a,-c,z),at(C,a,-c,z),at(C,a,c,z),at(C,-a,c,z)]; }
+      var rs=[rect(0,AW0,AW0), rect(zl,aw(zl),HB), rect(zu,aw(zu),HB), rect(zP,AWP,AWP)], loops=[rs[0],rs[3]], k, e;
+      for(k=0;k<3;k++) for(e=0;e<4;e++){ var e2=(e+1)%4; loops.push([rs[k][e],rs[k][e2],rs[k+1][e2],rs[k+1][e]]); }
+      var T=polyFromLoops(loops), Ls=[];
+      function ln(a,b){ Ls.push({a:a, b:b, f0:0, f1:0}); }
+      /* the legs */
+      [[-1,-1],[1,-1],[1,1],[-1,1]].forEach(function(q){ ln(at(C,q[0]*AW0,q[1]*AW0,0),at(C,q[0]*AWP,q[1]*AWP,zP)); });
+      /* the crossarms: a lower and an upper chord from each tip to the tower,
+         and the insulator hanging from the tip */
+      for(k=0;k<3;k++){ var za=z1+k*DZ;
+        [-1,1].forEach(function(sg){ var tip=at(C,0,sg*ARM,za);
+          ln(tip,at(C,0,sg*aw(za),za)); ln(tip,at(C,0,sg*aw(za+0.8),za+0.8)); ln(tip,at(C,0,sg*ARM,za-INS)); }); }
+      /* the bracing, inside Near detail: an X on each face every panel */
+      if(dist3(at(C,0,0,zP/2))<dn){
+        var NPN=Math.max(2,Math.round(zP/4));
+        for(k=0;k<NPN;k++){ var za0=zP*k/NPN, za1=zP*(k+1)/NPN, a0=aw(za0), a1=aw(za1);
+          [[1,0],[0,1],[-1,0],[0,-1]].forEach(function(f){
+            if(f[0]){ ln(at(C,f[0]*a0,-a0,za0),at(C,f[0]*a1,a1,za1)); ln(at(C,f[0]*a0,a0,za0),at(C,f[0]*a1,-a1,za1)); }
+            else { ln(at(C,-a0,f[1]*a0,za0),at(C,a1,f[1]*a1,za1)); ln(at(C,a0,f[1]*a0,za0),at(C,-a1,f[1]*a1,za1)); } }); } }
+      T.lines=Ls; T.hides=false; T.seeThru=true; T.cont=C; T.col=COLT; T.kind='pylon'; T.layer='struct'; T.via='pline';
+      T.lines.forEach(function(Ln){ Ln.col=COLT; Ln.kind='pylon'; });
+      C.parts.push(T); rec(T,C);
+    });
+    /* the wires, span by span, cut into every container they pass over */
+    for(i=0;i+1<PL.length;i++){
+      var PA=PL[i], PB=PL[i+1], Lq=Math.hypot(PB.c[0]-PA.c[0],PB.c[1]-PA.c[1]), Sq=PW.sag*Lq, aq=aOf(Sq,Lq), sp={i:i, L:Lq, S:Sq, a:aq, wires:[]};
+      WIRES.forEach(function(wr,wi){
+        var A3=at(PA,0,wr.o,Z1[i]+wr.dz), B3=at(PB,0,wr.o,Z1[i+1]+wr.dz), col=COLK, kind=wr.earth?'earthwire':'conductor';
+        function zAt(t){ return A3[2]+(B3[2]-A3[2])*t-dip(t,aq,Lq); }
+        function P3(t){ return [A3[0]+(B3[0]-A3[0])*t, A3[1]+(B3[1]-A3[1])*t, zAt(t)]; }
+        var bb=townBbox([A3,B3]), np=0, nd=0;
+        conts.forEach(function(C){ if(!bbHit(bb,C.bb)) return; var r=segIn(A3,B3,C.poly); if(!r || r[1]-r[0]<1e-9) return;
+          var n=Math.max(1,Math.ceil(Lq*(r[1]-r[0])/1.0));
+          for(var m=0;m<n;m++){ var ta=r[0]+(r[1]-r[0])*m/n, tb=r[0]+(r[1]-r[0])*(m+1)/n, Pa=P3(ta), Pb=P3(tb), Pq=stick(Pa,Pb,C.poly);
+            if(!Pq){ nd++; continue; }
+            Pq.lines=[{a:Pa, b:Pb, f0:0, f1:0, kind:kind, col:col}];
+            Pq.cont=C; Pq.col=col; Pq.kind=kind; Pq.layer='cable'; Pq.via='pline'; Pq.hides=false; Pq.seeThru=true; Pq.wire=i*8+wi;
+            C.parts.push(Pq); np++; } });
+        info.dropPieces+=nd;
+        sp.wires.push({A:A3, B:B3, earth:wr.earth, pieces:np});
+      });
+      info.spans.push(sp);
+    }
+  }
+  return {dress:function(){}, signsFor:function(){}, furnish:furnish, cars:[], dots:[], poles:[]};
+}
+/* ROW 99 (docs/specs/2026-10-12-town-airfield-harbour.md §§1-2): A SITE, AND
+   THE AIRFIELD. Site 1 takes a share of the city for an airfield:
+   - THE SCALE LADDER (SITE_TIERS, §1.3): Scale picks an airstrip (2) or a
+     regional airport (3), and with it the city's length and block depth --
+     with a site the two sliders are not read. Site scale multiplies both.
+     The hub (4) is drawn as tier 3 until row 101 builds it, the harbour (site
+     2) not at all until row 100: there the city is drawn without a site.
+   - THE REGION (§2.2) is an axis-aligned rectangle against the network's
+     bottom or top edge -- the whole length, or one corner -- its area Site
+     share of the network's box. Its landward edges lie on the 4 m slab
+     lattice, so a grid slab is dropped or kept whole, and never on a street:
+     an edge that would land in a parallel street's strip moves into the city
+     to the first free lattice line and the length gives the area back; the
+     other edge keeps clear of the cross streets the same way. Placement is
+     Layout's (salt 607). With a site the river, the viaducts and the
+     powerline are not built: each crosses the whole network.
+   - IT CARVES: grid slabs and junctions inside it are dropped, a lot it meets
+     is cut by townCarve (the viaducts' rule), and a lot within 400 m of a
+     runway strip keeps under d/7 (a 7:1 transitional surface): its storeys
+     stop under it (L.zcap) and the kit drops anything still above (C.under).
+     A lot too close for one storey is dropped and counted.
+   - A PERIMETER ROAD (a cross street's width) runs inside each landward edge
+     with a fence inside it; every grid street that ends on it ends at a
+     junction of its own.
+   - THE AIRFIELD (§2.3) lies inside the fence in bands, airside first, its
+     runways along the city: the graded strip (the runway is paint on it, so a
+     wing over the pavement edge stays inside its container), the taxiway,
+     one container per stand, the terminal. Each container convex, each part
+     in exactly one. Runway heading names the bearing of the runways' +x end.
+   Every number is the site's own (salts 607, 617, 631, 641): Site 0 is the
+   city of row 98 exactly. */
+var SALT_SITE=607, SALT_RWY=617, SALT_AC=631, SALT_AFD=641;
+var SITE_TIERS=[
+  {nlen:60, rowsp:30},
+  {nlen:220, rowsp:60},
+  {nlen:1200, rowsp:120, rwyL:900, rwyW:20, strip:30, margin:40, twyW:20, twyPave:7.5, slots:4, codes:['A'], sw:17, standD:16, termD:0},
+  {nlen:3000, rowsp:200, rwyL:2400, rwyW:45, strip:75, margin:60, twyW:44, twyPave:15, slots:8, codes:['Cp','C'], sw:45, standD:52, termD:42},
+  {nlen:6000, rowsp:240}
+];
+/* the catalogue, by ICAO code (spec §2.3): length x span x height, wingtip
+   clearance, fuselage radius, wing and engines */
+var SITE_AC={
+  A:{L:8.3, span:11.0, H:2.7, clr:3.0, R:0.62, zc:1.15, wing:'high', eng:'nose', cls:'light single'},
+  Cp:{L:32.8, span:28.4, H:8.3, clr:4.5, R:1.35, zc:2.15, wing:'high', eng:'prop', cls:'turboprop regional'},
+  C:{L:37.6, span:35.8, H:11.8, clr:4.5, R:1.98, zc:3.40, wing:'low', eng:'jet', cls:'narrow-body jet'},
+  E:{L:73.9, span:64.8, H:18.5, clr:7.5, R:3.1, zc:5.0, wing:'low', eng:'jet', cls:'wide-body twin'},
+  F:{L:72.7, span:79.8, H:24.1, clr:7.5, R:3.25, zc:5.2, wing:'low', eng:'jet4', cls:'wide-body quad'}
+};
+function townSiteKind(p){ var s=Math.round(isFinite(p.site)?+p.site:0); return s===1||s===2?s:0; }
+/* an airfield is Scale 2-3, a harbour 0-3 (Scale 4, the hub, is row 101's) */
+function townSiteTier(p,kind){ return Math.max(kind===2?0:2,Math.min(3,Math.round(isFinite(p.tier)?+p.tier:2))); }
+/* a runway's two designators: the +x end lands on the heading, the far end +18 */
+function siteDesig(h){ var n=Math.round(h/10); if(n<=0) n=36; var f=n+18; if(f>36) f-=36; return [n,f]; }
+function townSite(p,G,plans,J,BLK,KIND){
+  KIND=KIND||1;
+  var TI=townSiteTier(p,KIND), T=SITE_TIERS[TI], LAY=Math.max(0,Math.min(99,Math.round(isFinite(p.layout)?+p.layout:0)));
+  var PCT=Math.max(10,Math.min(90,isFinite(p.sitepct)?+p.sitepct:50))/100, LOTMIN=Math.max(3,+p.lotmin||5);
+  var NG=G.ROWS+G.UX.length, grid=plans.slice(0,NG), P0=grid[0], polyOverlap=P0.polyOverlap, bbox2=P0.bbox2, bbHit=P0.bbHit;
+  var BX=townBox(grid,J), W=BX[2]-BX[0], H=BX[3]-BX[1], A=W*H, LAT=4, KP=G.XW/2+0.3, RD=2*KP, FW=1.0;
+  /* row 100: a harbour has no perimeter road or fence, and at Scale 3 an
+     apron (D0) landward of its water, which Site share does not count */
+  if(KIND===2){ RD=0; FW=0; }
+  var D0=KIND===2&&TI>=3?HARB_APRON:0;
+  var HDG=Math.max(0,Math.min(179,isFinite(p.rwyhdg)?+p.rwyhdg:70));
+  var info={tier:TI, pct:PCT, box:BX, netArea:A, met:0, kept:0, split:0, dropped:0, low:0, capped:0, slabsGone:0, slabsCut:0, juncGone:0,
+            runways:[], aircraft:[], bridges:[], recs:[], strips:[], conts:[], hangars:0, tower:null, windsock:0, left:[], hdg:HDG};
+  var RWN=TI===2?1:Math.max(1,Math.min(2,Math.round(isFinite(p.rwys)?+p.rwys:2)));
+  function bandsOf(nr){
+    var b=[{k:'rwy', w:2*T.strip}, {k:'twy', w:T.twyW}];
+    if(nr===2) b=b.concat([{k:'rwy', w:2*T.strip}, {k:'twy', w:T.twyW}]);
+    b.push({k:'stand', w:T.standD}); if(T.termD) b.push({k:'term', w:T.termD});
+    return b;
+  }
+  function sum(b){ return b.reduce(function(s,e){ return s+e.w; },0); }
+  var NEEDA=KIND===2?HARB_NEED[TI][0]:T.rwyL+2*T.margin, NEEDB=KIND===2?HARB_NEED[TI][1]+D0:sum(bandsOf(RWN))+RD+FW+10;
+  /* ---- the rectangle ---- */
+  var RS=townSub(0,LAY,SALT_SITE), uE=RS(), uC=RS(), uS=RS();
+  /* a harbour takes the edge an airfield would not, so Layout 0's water lies
+     in front of the city from the default camera, not behind its towers */
+  var top=KIND===2?uE>=0.5:uE<0.5, mode=uC<1/3?0:uC<2/3?-1:1;
+  var w=mode===0?W:Math.min(W,Math.max(NEEDA+RD+FW,W*Math.sqrt(PCT))), h=PCT*A/w+D0;
+  if(h<NEEDB && w<W){ w=W; h=PCT*A/W+D0; mode=0; }
+  function inRow(y){ for(var j=0;j<G.ROWS;j++) if(Math.abs(y-G.VY[j])<G.KRS[j]+0.5) return true; return false; }
+  function inCross(x){ for(var i=0;i<G.UX.length;i++) if(Math.abs(x-G.UX[i])<G.KX+0.5) return true; return false; }
+  var yT=top?BX[3]-h:BX[1]+h, yE=Math.round(yT/LAT)*LAT, dIn=top?-1:1, k;
+  /* an edge in a street's strip moves to the nearest free lattice line. A
+     corner site's length gives the area back, so it takes the nearest line
+     that still leaves the length its runway needs past the perimeter road */
+  var NEEDW=NEEDA+RD+FW, cands=[];
+  for(k=0;k<200;k++) [yE+dIn*LAT*k, yE-dIn*LAT*k].forEach(function(y){ if(!inRow(y) && cands.indexOf(y)<0) cands.push(y); });
+  cands.sort(function(a,b){ return Math.abs(a-yT)-Math.abs(b-yT) || (b-a)*dIn; });
+  var pick=cands[0];
+  if(mode!==0) for(k=0;k<cands.length;k++){ var hk=top?BX[3]-cands[k]:cands[k]-BX[1]; if(hk>D0 && PCT*A/(hk-D0)>=Math.min(W,NEEDW)-1e-9){ pick=cands[k]; break; } }
+  yE=pick;
+  h=top?BX[3]-yE:yE-BX[1];
+  w=mode===0?W:Math.min(W,PCT*A/(h-D0));
+  var xE=null;
+  if(w<W-1e-6){
+    /* the nearest free lattice line clear of the cross streets that keeps
+       the runway's length (a shorter field would shorten it) */
+    var xT=mode<0?BX[0]+w:BX[2]-w, x0=Math.round(xT/LAT)*LAT, xc=[];
+    for(k=0;k<200;k++) [x0+LAT*k, x0-LAT*k].forEach(function(x){ if(!inCross(x) && xc.indexOf(x)<0) xc.push(x); });
+    xc.sort(function(a,b){ return Math.abs(a-xT)-Math.abs(b-xT) || a-b; });
+    xE=xc[0];
+    for(k=0;k<xc.length;k++){ var wk=mode<0?xc[k]-BX[0]:BX[2]-xc[k]; if(wk>=Math.min(W,NEEDW)-1e-9 && wk<W){ xE=xc[k]; break; } }
+  } else mode=0;
+  var R=[mode>0?xE:BX[0], top?yE:BX[1], mode<0?xE:BX[2], top?BX[3]:yE];
+  var RQ=[[R[0],R[1]],[R[2],R[1]],[R[2],R[3]],[R[0],R[3]]];
+  info.rect=R; info.area=(R[2]-R[0])*(R[3]-R[1]); info.top=top; info.mode=mode; info.xE=xE; info.yE=yE;
+  function meets(Q){ var b=bbox2(Q); return bbHit(b,R) && polyOverlap(Q,RQ); }
+  /* ---- the grid's streets and junctions inside it: dropped, or cut short ---- */
+  grid.forEach(function(PL){
+    var gapAdd={'1':[],'-1':[]};
+    PL.conts=PL.conts.filter(function(C){
+      if(C.kind!=='slab' || !meets(C.poly)) return true;
+      gapAdd[C.side].push([C.s0,C.s1]);
+      var keep=townMinus(C.poly,RQ).filter(function(Q){ return townArea(Q)>0.05; });
+      var cell=PL.slabsBySide[C.side].indexOf(C);
+      if(!keep.length){ if(cell>=0) delete PL.slabsBySide[C.side][cell]; info.slabsGone++; return false; }
+      keep.sort(function(a,b){ return townArea(b)-townArea(a); });
+      C.poly=keep[0]; C.bb=bbox2(C.poly); C.cut=true; info.slabsCut++;
+      return true;
+    });
+    if(gapAdd['1'].length || gapAdd['-1'].length){
+      var SG=Array.isArray(PL.sGaps)?{'1':PL.sGaps.slice(),'-1':PL.sGaps.slice()}:{'1':(PL.sGaps['1']||[]).slice(),'-1':(PL.sGaps['-1']||[]).slice()};
+      SG['1']=SG['1'].concat(gapAdd['1']); SG['-1']=SG['-1'].concat(gapAdd['-1']);
+      PL.sGaps=SG; PL.hasGap=true;
+    }
+  });
+  for(k=J.length-1;k>=0;k--) if(meets(J[k].poly)){ J.splice(k,1); info.juncGone++; }
+  /* a lot wholly inside is removed outright; townCarve cuts the rest back */
+  info.inside=0;
+  for(k=0;k<G.ROWS;k++){ var PLi=grid[k], ins=PLi.lots.filter(function(L){ return L.poly.every(function(q){ return q[0]>=R[0]-1e-9 && q[0]<=R[2]+1e-9 && q[1]>=R[1]-1e-9 && q[1]<=R[3]+1e-9; }); });
+    if(!ins.length) continue; info.inside+=ins.length;
+    PLi.lots=PLi.lots.filter(function(L){ return ins.indexOf(L)<0; }); PLi.conts=PLi.conts.filter(function(C){ return ins.indexOf(C)<0; }); }
+  townCarve(G,grid,meets,info,'site',500000,LOTMIN,bbox2);
+  if(KIND===2) return townHarbour({p:p, G:G, R:R, top:top, mode:mode, xE:xE, yE:yE, TI:TI, info:info, bbox2:bbox2, LAY:LAY, D0:D0,
+    blocksOut:BLK.filter(function(b){ return !(b.rect[0]<R[2] && b.rect[2]>R[0] && b.rect[1]<R[3] && b.rect[3]>R[1]); })});
+  /* ---- the perimeter road, its junctions and the fence ---- */
+  var conts=[], pplans=[];
+  var yR=top?[yE,yE+RD]:[yE-RD,yE], yF=top?[yE+RD,yE+RD+FW]:[yE-RD-FW,yE-RD];
+  var xR=xE===null?null:mode<0?[xE-RD,xE]:[xE,xE+RD], xF=xE===null?null:mode<0?[xE-RD-FW,xE-RD]:[xE+RD,xE+RD+FW];
+  var hx=xE===null?[BX[0],BX[2]]:mode<0?[BX[0],xE-RD]:[xE+RD,BX[2]];
+  var vy=top?[yE+RD,BX[3]]:[BX[1],yE-RD];
+  function rect(x0,y0,x1,y1){ return [[x0,y0],[x1,y0],[x1,y1],[x0,y1]]; }
+  function cont(kind,Q,extra){ var C=Object.assign({kind:kind, poly:Q, bb:bbox2(Q), parts:[]},extra||{}); conts.push(C); return C; }
+  /* along the horizontal road: every cross street that reaches the edge */
+  var hg=[], vg=[], i, j;
+  for(i=0;i<G.UX.length;i++){ var u=G.UX[i];
+    if(u-G.KX<hx[0]+1e-6 || u+G.KX>hx[1]-1e-6) continue;
+    if(!(yE>G.VY[0]+1e-6 && yE<G.VY[G.ROWS-1]-1e-6)) continue;
+    hg.push([u-G.KX-hx[0], u+G.KX-hx[0]]);
+    cont('pjunction',rect(u-G.KX,yR[0],u+G.KX,yR[1]),{road:0, inner:top?yR[1]:yR[0], along:'x'}); }
+  pplans.push(corridorPlan(Object.assign({},p,{len:hx[1]-hx[0], bend:0, width:G.XW}),STHEMES.town,400,
+    {line:{x:hx[0], y:(yR[0]+yR[1])/2, h:0}, sGaps:hg, noLots:true}));
+  cont('fence',rect(hx[0],yF[0],hx[1],yF[1]),{along:'x'});
+  if(xE!==null){
+    for(j=0;j<G.ROWS;j++){ var v=G.VY[j];
+      if(v-G.KRS[j]<vy[0]+1e-6 || v+G.KRS[j]>vy[1]-1e-6) continue;
+      vg.push([v-G.KRS[j]-vy[0], v+G.KRS[j]-vy[0]]);
+      cont('pjunction',rect(xR[0],v-G.KRS[j],xR[1],v+G.KRS[j]),{road:1, inner:mode<0?xR[0]:xR[1], along:'y'}); }
+    pplans.push(corridorPlan(Object.assign({},p,{len:vy[1]-vy[0], bend:0, width:G.XW}),STHEMES.town,401,
+      {line:{x:(xR[0]+xR[1])/2, y:vy[0], h:Math.PI/2}, sGaps:vg, noLots:true}));
+    cont('pjunction',rect(xR[0],yR[0],xR[1],yR[1]),{road:2, corner:true});
+    cont('fence',rect(xF[0],top?yE+RD+FW:BX[1],xF[1],top?BX[3]:yE-RD-FW),{along:'y'});
+  }
+  /* ---- the field inside the fence: a along the city, b from the airside ---- */
+  var U=[xE!==null && mode>0?xE+RD+FW:BX[0], top?yE+RD+FW:BX[1], xE!==null && mode<0?xE-RD-FW:BX[2], top?BX[3]:yE-RD-FW];
+  var LA=U[2]-U[0], LB=U[3]-U[1];
+  function M2(a,b){ return [U[0]+a, top?U[3]-b:U[1]+b]; }
+  function lrect(a0,a1,b0,b1){ return [M2(a0,b0),M2(a1,b0),M2(a1,b1),M2(a0,b1)]; }
+  info.field=U; info.LA=LA; info.LB=LB;
+  var nr=RWN, bands;
+  for(;;){ bands=bandsOf(nr); if(sum(bands)<=LB || nr===1) break; nr--; }
+  while(sum(bands)>LB && bands.length>1){ info.left.push(bands.pop().k); }
+  var half=T.strip;
+  if(bands[0].w>LB){ half=LB/2; bands[0].w=LB; }
+  var rL=Math.min(T.rwyL,LA-2*T.margin), aC=LA/2;
+  if(half<T.rwyW/2+5 || rL<200){ info.left=['runway']; bands=[]; }
+  if(rL<T.rwyL-1e-6 && bands.length) info.left.push('runway shortened to '+Math.round(rL)+' m');
+  var b0=0, BS={rwy:[], twy:[]};
+  bands.forEach(function(e){ e.b0=b0; e.b1=b0+e.w; b0+=e.w; if(e.k==='rwy'||e.k==='twy') BS[e.k].push(e); else BS[e.k]=e; });
+  var DES=siteDesig(HDG), SA=Math.max(0,aC-rL/2-T.margin), SB=Math.min(LA,aC+rL/2+T.margin);
+  BS.rwy.forEach(function(e,m){
+    var C=cont('rwy',lrect(SA,SB,e.b0,e.b1),{lr:[SA,SB,e.b0,e.b1]});
+    /* R is the right-hand runway landing on the +x heading (right of +x is -y) */
+    var lr=BS.rwy.length===2?((m===0)===!top?'R':'L'):'';
+    C.rwy={a0:aC-rL/2, a1:aC+rL/2, bc:(e.b0+e.b1)/2, W:T.rwyW, half:(e.b1-e.b0)/2, L:rL, des:DES, side:lr};
+    info.strips.push(C.poly);
+    info.runways.push({L:rL, W:T.rwyW, half:C.rwy.half, hdg:HDG, des:DES, side:lr, strip:C.poly, a0:C.rwy.a0, a1:C.rwy.a1, bc:C.rwy.bc});
+  });
+  var NS=T.slots, SW=T.sw, aS=aC, s0=aS-NS*SW/2;
+  if(TI===2){
+    /* the airstrip: a connector across the taxiway band to the tie-downs */
+    var tb=BS.twy[0];
+    if(tb) cont('twy',lrect(aS-8,aS+8,tb.b0,tb.b1),{lr:[aS-8,aS+8,tb.b0,tb.b1], conn:true, pave:T.twyPave});
+  } else BS.twy.forEach(function(e){ cont('twy',lrect(SA+20,SB-20,e.b0,e.b1),{lr:[SA+20,SB-20,e.b0,e.b1], pave:T.twyPave}); });
+  var stands=[];
+  if(BS.stand) for(i=0;i<NS;i++){ var C=cont('stand',lrect(s0+i*SW,s0+(i+1)*SW,BS.stand.b0,BS.stand.b1),{lr:[s0+i*SW,s0+(i+1)*SW,BS.stand.b0,BS.stand.b1], slot:i}); stands.push(C); }
+  if(BS.term) cont('term',lrect(s0,s0+NS*SW,BS.term.b0,BS.term.b1),{lr:[s0,s0+NS*SW,BS.term.b0,BS.term.b1]});
+  /* hangars beyond the stands, the tower beyond the terminal, a windsock by the first threshold */
+  var NH=Math.max(0,Math.min(12,Math.round(isFinite(p.hangars)?+p.hangars:2)));
+  if(TI===2) NH=Math.max(1,Math.min(4,NH));
+  if(BS.stand){
+    var HW2=TI===2?20:60;
+    for(i=0;i<NH;i++){ var ha=s0+NS*SW+(TI===2?6:20)+i*(HW2+4); if(ha+HW2>SB-2) break;
+      cont('hangar',lrect(ha,ha+HW2,BS.stand.b0,BS.stand.b1),{lr:[ha,ha+HW2,BS.stand.b0,BS.stand.b1]}); info.hangars++; }
+  }
+  /* the tower: beside the terminal, 14 m square; never on an airstrip (VFR) */
+  var TB=BS.term||BS.stand;
+  if(TB && TI>=3 && Math.round(isFinite(p.tower)?+p.tower:1)===1){
+    var ta=s0-40-14, tb0=TB.b0+(TB.w-14)/2; if(ta>SA) cont('tower',lrect(ta,ta+14,tb0,tb0+14),{lr:[ta,ta+14,tb0,tb0+14]});
+  }
+  if(BS.twy[0]){ var wa=aC-rL/2+150, wb=BS.twy[BS.twy.length-1];
+    if(TI>=3) wb=BS.stand||null;
+    if(wb && wa+8<s0-2) cont('wsock',lrect(wa,wa+8,wb.b0+2,wb.b0+10),{lr:[wa,wa+8,wb.b0+2,wb.b0+10]}); }
+  /* ---- what the stands hold: from the site's own streams ---- */
+  var RA=townSub(LAY,TI,SALT_AC), STP=Math.max(0,Math.min(100,isFinite(p.stands)?+p.stands:60))/100;
+  var MIX=Math.max(0,Math.min(100,isFinite(p.acmix)?+p.acmix:40))/100;
+  stands.forEach(function(C,m){ var uO=RA(), uK=RA(), uL=RA();
+    C.ac=uO<STP?(T.codes.length>1&&uK<MIX?T.codes[1]:T.codes[0]):null; C.liv=Math.floor(uL*6); });
+  /* ---- the lots near a strip: under d/7 ---- */
+  function pdist(P,Q){
+    function sd(p,a,b){ var dx=b[0]-a[0], dy=b[1]-a[1], L2=dx*dx+dy*dy, t=L2?((p[0]-a[0])*dx+(p[1]-a[1])*dy)/L2:0; t=Math.max(0,Math.min(1,t)); return Math.hypot(p[0]-a[0]-dx*t,p[1]-a[1]-dy*t); }
+    var m=1e18, e; P.forEach(function(q){ for(e=0;e<Q.length;e++) m=Math.min(m,sd(q,Q[e],Q[(e+1)%Q.length])); });
+    Q.forEach(function(q){ for(e=0;e<P.length;e++) m=Math.min(m,sd(q,P[e],P[(e+1)%P.length])); }); return m; }
+  info.near=[];
+  if(info.strips.length) for(k=0;k<G.ROWS;k++){ var PLk=grid[k], gone=[];
+    PLk.lots.forEach(function(L){
+      var d=Math.min.apply(null,info.strips.map(function(S){ return pdist(L.poly,S); }));
+      if(!(d<400)) return;
+      var cap=d/7;
+      if(cap<5.2){ gone.push(L); info.low++; return; }
+      L.under=cap; L.zcap=cap; info.capped++; info.near.push({d:d, cap:cap, poly:L.poly});
+    });
+    if(gone.length){ PLk.lots=PLk.lots.filter(function(L){ return gone.indexOf(L)<0; }); PLk.conts=PLk.conts.filter(function(C){ return gone.indexOf(C)<0; }); }
+  }
+  info.conts=conts.map(function(C){ return {kind:C.kind, poly:C.poly, lr:C.lr, ac:C.ac||null, slot:C.slot}; });
+  var SITE={info:info, conts:conts, M2:M2, T:T, TI:TI, top:top, U:U, stands:stands, LAY:LAY, p:p,
+            blocksOut:BLK.filter(function(b){ return !(b.rect[0]<R[2] && b.rect[2]>R[0] && b.rect[1]<R[3] && b.rect[3]>R[1]); })};
+  SITE.plan={ix:-1, p:p, theme:{key:'town', content:function(K){ return siteTheme(K,SITE); }}, sGaps:[], hasGap:false, Z0:0,
+             conts:conts, lots:[], slabsBySide:{'1':[],'-1':[]}, dropped:0, pushed:0};
+  SITE.plans=pplans.concat([SITE.plan]);
+  return SITE;
+}
+/* AN AIRCRAFT AS CONVEX PARTS (§2.3), in its own frame: x from the nose tip
+   to the tail, y to the left, z up. THE FUSELAGE IS ONE PART: a loft of
+   16-gons (nose ring, barrel, a tail cone raised toward the fin) whose radius
+   profile is concave, so the loft is its own hull, and its facets meet at
+   under the crease. Everything else TOUCHES it, never enters it: a low wing
+   lies under the barrel's flat bottom, a high wing on its flat top, the fin and
+   the tailplane halves on the top flat beside the fin, the engines ahead of
+   the wing's leading edge, the gear legs under a flat. */
+function makeAircraft(code){
+  var S=SITE_AC[code], L=S.L, R=S.R, zc=S.zc, span=S.span, n=16, ph=Math.PI/16, out=[];
+  var zb=zc-R*Math.cos(ph), zt=zc+R*Math.cos(ph), fh=R*Math.sin(ph);
+  function ring(x,r,z){ var o=[]; for(var k=0;k<n;k++){ var a=ph+2*Math.PI*k/n; o.push([x, r*Math.cos(a), z+r*Math.sin(a)]); } return o; }
+  function loft(rings){ var loops=[rings[0], rings[rings.length-1]], k, e, m=rings[0].length;
+    for(k=0;k+1<rings.length;k++) for(e=0;e<m;e++){ var e2=(e+1)%m; loops.push([rings[k][e],rings[k][e2],rings[k+1][e2],rings[k+1][e]]); }
+    return loops; }
+  function slab(Q,z0,z1){ var lo=Q.map(function(q){ return [q[0],q[1],z0]; }), hi=Q.map(function(q){ return [q[0],q[1],z1]; }), loops=[lo,hi], e;
+    for(e=0;e<Q.length;e++){ var e2=(e+1)%Q.length; loops.push([lo[e],lo[e2],hi[e2],hi[e]]); } return loops; }
+  function yslab(Q,y0,y1){ var lo=Q.map(function(q){ return [q[0],y0,q[1]]; }), hi=Q.map(function(q){ return [q[0],y1,q[1]]; }), loops=[lo,hi], e;
+    for(e=0;e<Q.length;e++){ var e2=(e+1)%Q.length; loops.push([lo[e],lo[e2],hi[e2],hi[e]]); } return loops; }
+  function box(x0,x1,y0,y1,z0,z1){ return slab([[x0,y0],[x1,y0],[x1,y1],[x0,y1]],z0,z1); }
+  function ngonX(x0,x1,yc,zcc,r,m,phase){ var A=[], B=[], k;
+    for(k=0;k<m;k++){ var a=phase+2*Math.PI*k/m; A.push([x0, yc+r*Math.cos(a), zcc+r*Math.sin(a)]); B.push([x1, yc+r*Math.cos(a), zcc+r*Math.sin(a)]); }
+    var loops=[A,B]; for(k=0;k<m;k++){ var k2=(k+1)%m; loops.push([A[k],A[k2],B[k2],B[k]]); } return loops; }
+  var xn=Math.min(0.14*L,2.3*R), xt=0.70*L;
+  out.push({kind:'ac-body', loops:loft([ring(0,0.18*R,zc-0.1*R), ring(xn,R,zc), ring(xt,R,zc), ring(L,0.24*R,zc+0.6*R)]), crease:0.5, body:true,
+            win:{fl:2+n+(n-1), fr:2+n+(n/2-1), x0:xn+0.6, x1:xt-1.5, y:R*Math.cos(ph), zw:zc+0.08*R, zl:zc-0.12*R, fh:fh}});
+  /* the wing: swept halves under a low wing's barrel, one straight tapered
+     slab on a high wing's */
+  var hs=span/2, cr=S.wing==='low'?0.20*L:0.13*L, ct=0.32*cr, sw=S.wing==='low'?Math.tan(27*Math.PI/180):Math.tan(3*Math.PI/180);
+  var xr=S.wing==='low'?0.38*L:0.36*L, wt=Math.max(0.12,0.012*span);
+  function le(y){ return xr+Math.abs(y)*sw; }
+  if(S.wing==='low'){
+    [1,-1].forEach(function(sg){ var Q=[[xr,0],[xr+cr,0],[le(hs)+ct,sg*hs],[le(hs),sg*hs]];
+      out.push({kind:'ac-wing', loops:slab(Q,zb-wt,zb)}); });
+  } else {
+    var Q=[[le(-hs),-hs],[xr,0],[le(hs),hs],[le(hs)+ct,hs],[xr+cr,0],[le(-hs)+ct,-hs]];
+    out.push({kind:'ac-wing', loops:slab(Q,zt,zt+wt)});
+  }
+  /* the fin and the tailplane on the barrel's top flat, aft */
+  var hf=Math.max(1.0,S.H-zt), fr0=xt-0.14*L, fl=0.14*L, ft=Math.max(0.08,0.008*L);
+  var finQ=[[fr0,zt],[xt,zt],[Math.min(L,xt+0.35*hf),zt+hf],[Math.min(L,xt+0.35*hf)-0.45*fl,zt+hf]];
+  out.push({kind:'ac-fin', loops:yslab(finQ,-ft,ft), fin:true});
+  var tps=0.17*span, tr=0.10*L, tsw=Math.tan(30*Math.PI/180);
+  [1,-1].forEach(function(sg){ var y0=sg*ft, y1=sg*tps, x0=xt-tr;
+    var Q=[[x0,y0],[xt,y0],[xt+(tps-ft)*tsw*0.6+0.0,y1],[x0+(tps-ft)*tsw,y1]];
+    if(sg<0) Q=[Q[0],Q[3],Q[2],Q[1]];
+    out.push({kind:'ac-tail', loops:slab(Q,zt,zt+0.6*wt)}); });
+  /* the engines */
+  if(S.eng==='jet' || S.eng==='jet4'){
+    var re=0.48*R, ln=Math.max(2.2,0.10*L), ys=S.eng==='jet4'?[0.30,0.58]:[0.33];
+    ys.forEach(function(f){ [1,-1].forEach(function(sg){ var y=sg*f*hs, xa=le(Math.abs(y)-re)-0.08;
+      out.push({kind:'ac-engine', loops:ngonX(xa-ln,xa,y,zb,re,8,Math.PI/8), crease:0.8}); }); });
+  } else if(S.eng==='prop'){
+    var rp=0.42*R, lp=0.11*L;
+    [1,-1].forEach(function(sg){ var y=sg*0.30*hs, xa=le(Math.abs(y)-rp)-0.06;
+      out.push({kind:'ac-engine', loops:ngonX(xa-lp,xa,y,zt,rp,8,Math.PI/8), crease:0.8});
+      out.push({kind:'ac-prop', loops:ngonX(xa-lp-0.12,xa-lp-0.04,y,zt,1.75*R*0.62,8,0), crease:0.8}); });
+  } else {
+    out.push({kind:'ac-prop', loops:box(-0.12,-0.04,-0.06,0.06,zc-0.1*R-0.85,zc-0.1*R+0.85)});
+  }
+  /* the gear: legs to the ground under a flat */
+  var gw=Math.min(0.3,fh*1.6);
+  if(S.wing==='low'){
+    [1,-1].forEach(function(sg){ var y=sg*(R+1.1), x=le(R+1.1)+0.45*cr;
+      out.push({kind:'ac-gear', loops:box(x-0.25,x+0.25,y-0.2,y+0.2,0,zb-wt)}); });
+  } else {
+    var xg=xr+0.5*cr;
+    out.push({kind:'ac-gear', loops:box(xg-0.3,xg+0.3,-gw/2,gw/2,0,zb)});
+  }
+  out.push({kind:'ac-gear', loops:box(xn+0.3,xn+0.6,-gw/2,gw/2,0,zb)});
+  return {parts:out, spec:S, door:{x:xn+0.9, z:zc-0.35*R}, xr:xr, cr:cr, le:le, hs:hs, zb:zb, zt:zt};
+}
+/* THE AIRFIELD'S CONTENT (§2.3), from the site's own streams (salt 641 for
+   the dressing, 631 for which aircraft stands where). Paint is ground lines
+   on each container's plate, which hides nothing: black runway markings on
+   bare paper (there is no grey pen), yellow taxiway and stand lines, blue
+   taxiway edge lights. */
+function siteTheme(K,SITE){
+  var prismN=K.prismN, polyFromLoops=K.polyFromLoops, verts=K.verts, splitPart=K.splitPart, paperGap=K.paperGap, dist3=K.dist3;
+  var COLK='#1a1a1a', COLY='#f2c230', COLB='#2156c7', COLO='#ec7a1c', COLG='#8a8a8a', LIV=['#d42a2a','#2156c7','#137a6e','#6c3a9c','#ec7a1c','#1f2f6b'];
+  var info=SITE.info, M2=SITE.M2, T=SITE.T, TI=SITE.TI, p=SITE.p, GSE=Math.max(0,Math.min(100,isFinite(p.gse)?+p.gse:50))/100;
+  function own(P,C,kind,col,layer){ P.cont=C; P.kind=kind; P.col=col; P.layer=layer||'struct';
+    P.lines.forEach(function(Ln){ if(!Ln.col) Ln.col=col; if(!Ln.kind) Ln.kind=kind; });
+    C.parts.push(P);
+    info.recs.push({kind:kind, V:verts(P), F:P.faces.map(function(f){ return {n:f.n, d:f.d}; }), cont:{kind:C.kind, poly:C.poly}, ac:P.ac, br:P.br});
+    return P; }
+  function W3(a,b,z){ var q=M2(a,b); return [q[0],q[1],z]; }
+  function solidL(loops){ return polyFromLoops(loops.map(function(l){ return l.map(function(q){ return W3(q[0],q[1],q[2]); }); })); }
+  function lbox(a0,a1,b0,b1,z0,z1){ return prismN([M2(a0,b0),M2(a1,b0),M2(a1,b1),M2(a0,b1)],z0,z1); }
+  function lngon(ac,bc,r,m,ph,z0,z1){ var Q=[]; for(var k=0;k<m;k++){ var t=ph+2*Math.PI*k/m; Q.push(M2(ac+r*Math.cos(t),bc+r*Math.sin(t))); } return prismN(Q,z0,z1); }
+  function plate(C){ var Pl=prismN(C.poly.map(function(q){ return [q[0],q[1]]; }),-0.02,0); Pl.lines=[]; Pl.hides=false; own(Pl,C,'siteplate',COLK,'furn'); C.plate=Pl; return Pl; }
+  function paint(C,a0,b0,a1,b1,col,kind){ C.plate.lines.push({a:W3(a0,b0,0), b:W3(a1,b1,0), f0:1, f1:1, col:col, kind:kind}); }
+  function box4(C,a0,b0,a1,b1,col,kind){ paint(C,a0,b0,a1,b0,col,kind); paint(C,a1,b0,a1,b1,col,kind); paint(C,a1,b1,a0,b1,col,kind); paint(C,a0,b1,a0,b0,col,kind); }
+  /* mm on the sheet per metre across lines stacked along b (or a) */
+  function gapB(a,b){ var P=W3(a,b,0), q=M2(a+1,b), r=M2(a,b+1); return paperGap(P,[q[0]-P[0],q[1]-P[1],0],[r[0]-P[0],r[1]-P[1],0]); }
+  function gapA(a,b){ var P=W3(a,b,0), q=M2(a+1,b), r=M2(a,b+1); return paperGap(P,[r[0]-P[0],r[1]-P[1],0],[q[0]-P[0],q[1]-P[1],0]); }
+  /* 7-segment digits, 9 m tall, read from the threshold: up is the landing direction */
+  var SEG={0:'abcdef',1:'bc',2:'abdeg',3:'abcdg',4:'bcfg',5:'acdfg',6:'acdefg',7:'abc',8:'abcdefg',9:'abcdfg'};
+  var HS=SITE.top?-1:1;
+  function digit(C,ch,oa,ob,ua,ub,DW,DH){
+    var ra=HS*ub, rb=-HS*ua;   /* right of the landing direction, in the field's (a,b): the map mirrors b on a top site */
+    function P(x,y){ return [oa+ra*x+ua*y, ob+rb*x+ub*y]; }
+    var seg={a:[[0,DH],[DW,DH]], b:[[DW,DH],[DW,DH/2]], c:[[DW,DH/2],[DW,0]], d:[[0,0],[DW,0]], e:[[0,0],[0,DH/2]], f:[[0,DH/2],[0,DH]], g:[[0,DH/2],[DW,DH/2]]};
+    var s=ch==='L'?'def':ch==='R'?'abefg':SEG[ch];
+    s.split('').forEach(function(k){ var A=P(seg[k][0][0],seg[k][0][1]), B=P(seg[k][1][0],seg[k][1][1]); paint(C,A[0],A[1],B[0],B[1],COLK,'desig'); });
+    if(ch==='R'){ var A=P(0,DH/2), B=P(DW,0); paint(C,A[0],A[1],B[0],B[1],COLK,'desig'); }
+  }
+  function runwayPaint(C){
+    var r=C.rwy, bc=r.bc, hw=r.W/2, a0=r.a0, a1=r.a1, st=[[18,4],[23,6],[30,8],[45,12],[60,16]], ns=4, m;
+    for(m=0;m<st.length;m++) if(r.W>=st[m][0]-1e-9) ns=st[m][1];
+    var g=gapB((a0+a1)/2,bc), fine=g*1.8>=0.7;
+    paint(C,a0,bc-hw,a1,bc-hw,COLK,'rwyedge'); paint(C,a0,bc+hw,a1,bc+hw,COLK,'rwyedge');
+    paint(C,a0,bc-hw,a0,bc+hw,COLK,'rwyedge'); paint(C,a1,bc-hw,a1,bc+hw,COLK,'rwyedge');
+    var pitch=(hw-3)/(ns/2), sw2=Math.min(1.8,pitch*0.6), dl=r.L>=2400?300:150, rec={stripes:[ns,ns], des:[], aim:0};
+    [1,-1].forEach(function(dir,end){
+      var at=dir>0?a0:a1, ua=dir, ub=0;
+      /* threshold stripes, 6 m in, 30 m long */
+      for(m=0;m<ns;m++){ var side=m<ns/2?-1:1, kq=m%(ns/2), o=1.5+kq*pitch, bA=bc+side*o, bB=bc+side*(o+sw2);
+        if(fine) box4(C,at+dir*6,Math.min(bA,bB),at+dir*36,Math.max(bA,bB),COLK,'thrstripe');
+        else paint(C,at+dir*6,(bA+bB)/2,at+dir*36,(bA+bB)/2,COLK,'thrstripe'); }
+      /* the designator: two digits (and L/R under them) 12 m past the stripes */
+      var nd=r.des[end], txt=(nd<10?'0':'')+nd, DW=r.W>=30?3:2, DH=9, ra=HS*ub, rb=-HS*ua, gp=1.2;
+      var oa=at+dir*48, ob=bc;
+      /* a parallel runway's letter first, nearest the threshold; R for the
+         right-hand runway seen landing on the +x heading (the far end swaps) */
+      if(r.side){ var ch=end===0?r.side:(r.side==='L'?'R':'L');
+        digit(C,ch,oa-ra*DW/2,ob-rb*DW/2,ua,ub,DW,DH); oa+=ua*(DH+4); }
+      for(var q=0;q<2;q++){ var off=(q===0?-(DW+gp/2):gp/2); digit(C,txt[q],oa+ra*off,ob+rb*off,ua,ub,DW,DH); }
+      rec.des.push(nd);
+      /* aiming point bars */
+      if(r.L>=2400){ [-1,1].forEach(function(sg){ var bA2=bc+sg*Math.min(hw-3,6), bB2=bc+sg*Math.min(hw-1,15);
+        box4(C,at+dir*dl,Math.min(bA2,bB2),at+dir*(dl+45),Math.max(bA2,bB2),COLK,'aim'); }); rec.aim+=2; }
+    });
+    /* centreline dashes, 30 on 20 off, between the designators */
+    var ca=a0+48+(r.side?13:0)+9+12, cb=a1-48-(r.side?13:0)-9-12;
+    for(var x=ca;x+30<=cb+1e-9;x+=50) paint(C,x,bc,x+30,bc,COLK,'cline');
+    r.rec=rec;
+  }
+  /* a taxiway across a strip to a runway (paint on the strip): centreline,
+     edges, and the hold-short bars 10 m inside the strip edge */
+  function connector(C,a,pave){
+    var r=C.rwy, e=C.lr, bS=e[3], bP=r.bc+r.W/2;
+    paint(C,a,bP,a,bS,COLY,'twycl');
+    paint(C,a-pave/2,bP,a-pave/2,bS,COLK,'twyedge'); paint(C,a+pave/2,bP,a+pave/2,bS,COLK,'twyedge');
+    [10,10.9].forEach(function(o){ paint(C,a-pave/2,bS-o,a+pave/2,bS-o,COLY,'hold'); });
+  }
+  function furnish(dn,df){
+    info.recs=[]; info.aircraft=[]; info.bridges=[]; info.tower=null; info.windsock=0;
+    var RD=townSub(SITE.LAY,TI,SALT_AFD);
+    SITE.conts.forEach(function(C){ plate(C); });
+    var rw=SITE.conts.filter(function(C){ return C.kind==='rwy'; }), tw=SITE.conts.filter(function(C){ return C.kind==='twy'; });
+    rw.forEach(function(C,m){ runwayPaint(C); });
+    /* connectors: every 600 m and at both ends, on the strip nearest each taxiway */
+    tw.forEach(function(C){
+      var e=C.lr, pave=C.pave, bc=(e[2]+e[3])/2;
+      var S=rw.filter(function(R0){ return Math.abs(R0.lr[3]-e[2])<1e-6; })[0];
+      if(C.conn){
+        paint(C,(e[0]+e[1])/2,e[2],(e[0]+e[1])/2,e[3],COLY,'twycl');
+        paint(C,(e[0]+e[1])/2-pave/2,e[2],(e[0]+e[1])/2-pave/2,e[3],COLK,'twyedge'); paint(C,(e[0]+e[1])/2+pave/2,e[2],(e[0]+e[1])/2+pave/2,e[3],COLK,'twyedge');
+        if(S) connector(S,(e[0]+e[1])/2,pave);
+        return;
+      }
+      paint(C,e[0]+10,bc,e[1]-10,bc,COLY,'twycl');
+      paint(C,e[0]+10,bc-pave/2,e[1]-10,bc-pave/2,COLK,'twyedge'); paint(C,e[0]+10,bc+pave/2,e[1]-10,bc+pave/2,COLK,'twyedge');
+      /* the blue edge lights, every 15 m both sides, where 15 m is 0.7 mm on the sheet */
+      if(gapA((e[0]+e[1])/2,bc)*15>=0.7) for(var x=e[0]+12;x<=e[1]-12;x+=15) [-1,1].forEach(function(sg){ var bq=bc+sg*(pave/2+1.2);
+        paint(C,x-0.4,bq,x+0.4,bq,COLB,'edgelight'); paint(C,x,bq-0.4,x,bq+0.4,COLB,'edgelight'); });
+      if(S){ var r=S.rwy, xs=[r.a0+30,r.a1-30], n=Math.floor((r.a1-r.a0-60)/600);
+        for(var q=1;q<n;q++) xs.push(r.a0+30+q*(r.a1-r.a0-60)/n);
+        xs.forEach(function(x){ connector(S,x,pave); paint(C,x,e[2],x,bc,COLY,'twycl'); }); }
+    });
+    /* the stands: lead-in line and stop bar */
+    SITE.stands.forEach(function(C){
+      var e=C.lr, ac=(e[0]+e[1])/2, AC=C.ac?SITE_AC[C.ac]:null, nb=e[3]-6, stop=AC?nb-AC.L*0.14-0.5:e[3]-12;
+      paint(C,ac,e[2],ac,e[3]-4,COLY,'stand'); paint(C,ac-3,stop,ac+3,stop,COLY,'stand');
+      if(!AC) return;
+      placeAircraft(C,C.ac,ac,nb,dn,df);
+    });
+    SITE.conts.forEach(function(C){
+      if(C.kind==='term') terminal(C);
+      else if(C.kind==='hangar') hangar(C);
+      else if(C.kind==='tower') tower(C);
+      else if(C.kind==='wsock') windsock(C,RD);
+      else if(C.kind==='fence') fence(C);
+      else if(C.kind==='pjunction') junction(C);
+    });
+  }
+  /* parked nose-in toward the terminal (+b), its axis along b */
+  function placeAircraft(C,code,ac,nb,dn,df){
+    var A=makeAircraft(code), e=C.lr, liv=LIV[C.liv%LIV.length], near=dist3(W3(ac,nb,3))<dn, rec={code:code, span:A.spec.span, L:A.spec.L, clr:A.spec.clr,
+      cont:C.poly, contW:e[1]-e[0], axis:[M2(ac,nb),M2(ac,nb-A.spec.L)], parts:[]};
+    function L2W(q){ return W3(ac-q[1],nb-q[0],q[2]); }
+    A.parts.forEach(function(pt){
+      var P=polyFromLoops(pt.loops.map(function(l){ return l.map(L2W); }));
+      if(pt.crease) P.crease=pt.crease;
+      var col=pt.fin?liv:COLK;
+      if(pt.win && near){ var w=pt.win;
+        [w.fl,w.fr].forEach(function(fi,sk){ var y=(sk===0?1:-1)*w.y;
+          P.lines.push({a:L2W([w.x0,y,w.zl]), b:L2W([w.x1,y,w.zl]), f0:fi, f1:fi, col:liv, kind:'livery'});
+          if(gapB(ac,nb)*0.9>=0.7) for(var x=w.x0;x<=w.x1;x+=0.9) P.lines.push({a:L2W([x,y,w.zw-0.25]), b:L2W([x,y,w.zw+0.25]), f0:fi, f1:fi, col:COLK, kind:'window'});
+        }); }
+      P.ac=info.aircraft.length;
+      own(P,C,pt.kind,col);
+      rec.parts.push(info.recs.length-1);
+    });
+    info.aircraft.push(rec);
+    /* the jet bridge, for a jet at a stand with a terminal behind it */
+    var TC=SITE.conts.filter(function(Q){ return Q.kind==='term'; })[0];
+    if(TC && A.spec.eng!=='nose' && A.spec.eng!=='prop'){
+      var R=A.spec.R, at1=ac-R-0.45, at0=at1-2.5, am=(at0+at1)/2, bT=TC.lr[2], bd=nb-A.door.x, z0=A.door.z, z1=z0+2.4;
+      var col=lngon(am,bT+3,0.8,8,Math.PI/8,0,z0-0.2), drum=lngon(am,bT+3,2.0,8,Math.PI/8,z0-0.2,z1+0.3);
+      col.crease=0.8; drum.crease=0.8; own(col,TC,'jb-column',COLK); own(drum,TC,'jb-rotunda',COLK);
+      var bdr=bT+3-2.0*Math.cos(Math.PI/8), tun=lbox(at0,at1,bd,bdr,z0,z1), Fp=W3(0,bT,0), q0=M2(0,bT), q1=M2(0,bT+1), Fn=[q1[0]-q0[0],q1[1]-q0[1],0];
+      var dd=Fn[0]*Fp[0]+Fn[1]*Fp[1], hv=splitPart(tun,Fn,dd), brec={pieces:[]};
+      hv.forEach(function(Hh,s){ if(!Hh.faces.length || verts(Hh).length<4) return;
+        var V=verts(Hh), c=[0,0]; V.forEach(function(v){ c[0]+=v[0]/V.length; c[1]+=v[1]/V.length; });
+        var inT=Fn[0]*c[0]+Fn[1]*c[1]>dd, CC=inT?TC:C;
+        for(var key in tun) if(!(key in Hh) && key!=='bb3') Hh[key]=tun[key];
+        Hh.br=info.bridges.length; own(Hh,CC,'jetbridge',COLK);
+        brec.pieces.push({V:verts(Hh), cont:CC.poly, ck:CC.kind}); });
+      brec.face={n:Fn, d:dd}; info.bridges.push(brec);
+    }
+    /* ground vehicles (tier 3): a pushback tractor ahead of the nose, a fuel
+       truck in the clearance strip past the right wingtip, a tug and two carts
+       behind it; each its own roll of Ground vehicles */
+    if(TI>=3){
+      var RG=townSub(SITE.LAY*64+C.slot,TI,SALT_AFD+2), u1=RG(), u2=RG(), u3=RG(), hs=A.spec.span/2, xr=ac+hs+0.9;
+      if(u1<GSE && A.spec.eng==='jet') own(lbox(ac-1.2,ac+1.2,nb+0.6,nb+4.6,0,1.5),C,'gse',COLK);
+      if(u2<GSE && xr+2.5<C.lr[1]-0.3) own(lbox(xr,xr+2.5,nb-A.xr-A.cr-1,nb-A.xr+2,0,3.0),C,'gse',COLO);
+      if(u3<GSE && xr+1.6<C.lr[1]-0.3){ var bq=nb-A.xr-A.cr-3;
+        own(lbox(xr,xr+1.6,bq-2.4,bq,0,1.4),C,'gse',COLK);
+        for(var k=0;k<2;k++){ var bk=bq-2.9-k*3.0; own(lbox(xr,xr+1.6,bk-2.6,bk,0,1.3),C,'gse',COLK); } }
+    }
+  }
+  function terminal(C){
+    var e=C.lr, b0=e[2]+6, b1=e[3]-6, P=lbox(e[0]+2,e[1]-2,b0,b1,0,11);
+    [5.5].forEach(function(z){ for(var f=2;f<P.faces.length;f++){ var pts=P.faces[f].pts, lo=pts.filter(function(q){ return q[2]<1e-6; });
+      if(lo.length===2) P.lines.push({a:[lo[0][0],lo[0][1],z], b:[lo[1][0],lo[1][1],z], f0:f, f1:f}); } });
+    own(P,C,'terminal',COLK);
+    own(lbox(e[0]+2,e[1]-2,b1,e[3]-1,4.4,4.7),C,'canopy',COLK);
+  }
+  function hangar(C){
+    var e=C.lr, big=TI>=3, wa=big?56:15, wb=big?44:12, ac=(e[0]+e[1])/2, b0=e[2]+(big?3:2), zw=big?8:3.5, rise=big?7:4.5, n=10;
+    var P=lbox(ac-wa/2,ac+wa/2,b0,b0+wb,0,zw);
+    /* the door on the face toward the field's airside (b0) */
+    var dw=wa*0.8, dz=zw*0.9, A1=W3(ac-dw/2,b0,0), B1=W3(ac+dw/2,b0,0), fi=-1, qo=M2(ac,b0), qa=M2(ac,b0-1), out=[qa[0]-qo[0],qa[1]-qo[1]];
+    P.faces.forEach(function(f,k){ if(fi<0 && f.n[0]*out[0]+f.n[1]*out[1]>0.9) fi=k; });
+    if(fi>=0){ P.lines.push({a:A1, b:[A1[0],A1[1],dz], f0:fi, f1:fi}); P.lines.push({a:B1, b:[B1[0],B1[1],dz], f0:fi, f1:fi}); P.lines.push({a:[A1[0],A1[1],dz], b:[B1[0],B1[1],dz], f0:fi, f1:fi});
+      P.lines.push({a:W3(ac,b0,0), b:W3(ac,b0,dz), f0:fi, f1:fi}); }
+    own(P,C,'hangar',COLK);
+    /* the barrel vault: a half-ellipse across a, run along b */
+    var loopsA=[], loopsB=[], k;
+    for(k=0;k<=n;k++){ var t=Math.PI*k/n; loopsA.push([ac+wa/2*Math.cos(t), b0, zw+rise*Math.sin(t)]); loopsB.push([ac+wa/2*Math.cos(t), b0+wb, zw+rise*Math.sin(t)]); }
+    var loops=[loopsA,loopsB]; for(k=0;k<n;k++) loops.push([loopsA[k],loopsA[k+1],loopsB[k+1],loopsB[k]]);
+    loops.push([loopsA[n],loopsA[0],loopsB[0],loopsB[n]]);
+    var V=solidL(loops); V.crease=0.45; own(V,C,'vault',COLK);
+  }
+  function tower(C){
+    var e=C.lr, ac=(e[0]+e[1])/2, bc=(e[2]+e[3])/2, H=TI>=4?80:28, zc=H-3.5;
+    var S=lngon(ac,bc,2.2,8,Math.PI/8,0,zc); S.crease=0.8; own(S,C,'tower',COLK);
+    var lo=[], hi=[], k;
+    for(k=0;k<8;k++){ var t=Math.PI/8+Math.PI*k/4; var q0=M2(ac+3.6*Math.cos(t),bc+3.6*Math.sin(t)), q1=M2(ac+4.6*Math.cos(t),bc+4.6*Math.sin(t)); lo.push([q0[0],q0[1],zc]); hi.push([q1[0],q1[1],zc+3.5]); }
+    var loops=[lo,hi]; for(k=0;k<8;k++){ var k2=(k+1)%8; loops.push([lo[k],lo[k2],hi[k2],hi[k]]); }
+    var Cb=polyFromLoops(loops);
+    function mix(a,b,t){ return [a[0]+(b[0]-a[0])*t, a[1]+(b[1]-a[1])*t, a[2]+(b[2]-a[2])*t]; }
+    for(k=0;k<8;k++){ var k2=(k+1)%8, m0=mix(lo[k],lo[k2],0.5), m1=mix(hi[k],hi[k2],0.5);
+      Cb.lines.push({a:mix(m0,m1,0.15), b:mix(m0,m1,0.85), f0:2+k, f1:2+k, kind:'mullion'}); }
+    own(Cb,C,'towercab',COLK);
+    var Rf=lngon(ac,bc,4.9,8,Math.PI/8,zc+3.5,zc+4.1); Rf.crease=0.8; own(Rf,C,'towerroof',COLK);
+    info.tower={top:zc+4.1, cab:true};
+  }
+  function windsock(C,RD){
+    var e=C.lr, ac=(e[0]+e[1])/2, bc=(e[2]+e[3])/2, th=2*Math.PI*RD();
+    var Mst=lbox(ac-0.07,ac+0.07,bc-0.07,bc+0.07,0,6); Mst.lines=[{a:W3(ac,bc,0), b:W3(ac,bc,6), f0:0, f1:0}]; Mst.hides=false; Mst.seeThru=true; own(Mst,C,'wsmast',COLK,'furn');
+    var d=[Math.cos(th),Math.sin(th)], nn=[-d[1],d[0]], A=[], B=[], k, r0=0.45, r1=0.2, L=3.6, s0=0.15, zc=5.7;
+    for(k=0;k<8;k++){ var t=2*Math.PI*k/8+Math.PI/8, cy=Math.cos(t), cz=Math.sin(t);
+      A.push(W3(ac+d[0]*s0+nn[0]*r0*cy, bc+d[1]*s0+nn[1]*r0*cy, zc+r0*cz)); B.push(W3(ac+d[0]*(s0+L)+nn[0]*r1*cy, bc+d[1]*(s0+L)+nn[1]*r1*cy, zc+r1*cz)); }
+    var loops=[A,B]; for(k=0;k<8;k++){ var k2=(k+1)%8; loops.push([A[k],A[k2],B[k2],B[k]]); }
+    var Cn=polyFromLoops(loops); Cn.crease=0.8;
+    for(var bnd=1;bnd<5;bnd++){ var f=bnd/5; for(k=0;k<8;k++){ var k2=(k+1)%8;
+      Cn.lines.push({a:[A[k][0]+(B[k][0]-A[k][0])*f, A[k][1]+(B[k][1]-A[k][1])*f, A[k][2]+(B[k][2]-A[k][2])*f],
+                     b:[A[k2][0]+(B[k2][0]-A[k2][0])*f, A[k2][1]+(B[k2][1]-A[k2][1])*f, A[k2][2]+(B[k2][2]-A[k2][2])*f], f0:2+k, f1:2+k, kind:'wsband'}); } }
+    own(Cn,C,'wscone',COLO); info.windsock++;
+  }
+  function fence(C){
+    var Q=C.poly, b=townBbox(Q), lx=C.along==='x', mid=lx?(b[1]+b[3])/2:(b[0]+b[2])/2, a0=lx?b[0]:b[1], a1=lx?b[2]:b[3], Z=2.0;
+    function pt(s,z){ return lx?[s,mid,z]:[mid,s,z]; }
+    var P=prismN(Q,0,Z);
+    P.lines=[{a:pt(a0,Z), b:pt(a1,Z), f0:0, f1:0},{a:pt(a0,0.15), b:pt(a1,0.15), f0:0, f1:0}];
+    for(var s=Math.ceil(a0/3)*3;s<=a1+1e-9;s+=3) P.lines.push({a:pt(s,0), b:pt(s,Z), f0:0, f1:0});
+    P.hides=false; P.seeThru=true; own(P,C,'sitefence',COLK,'furn');
+  }
+  function junction(C){
+    var Q=C.poly, b=townBbox(Q);
+    if(C.corner) return;
+    if(C.along==='x') paint2(C,[b[0],C.inner,0],[b[2],C.inner,0]); else paint2(C,[C.inner,b[1],0],[C.inner,b[3],0]);
+  }
+  function paint2(C,A,B){ C.plate.lines.push({a:A, b:B, f0:1, f1:1, col:COLK, kind:'kerb'}); }
+  return {dress:function(){}, signsFor:function(){}, furnish:furnish, cars:[], dots:[], poles:[]};
+}
+/* ROW 100 (docs/specs/2026-10-12-town-airfield-harbour.md §3): THE HARBOUR.
+   Site 2 carves the same rectangle as an airfield (townSite), and the
+   rectangle IS WATER: Site share is the water's share of the network. Scale 3
+   adds a quay apron on its landward side, outside the water's share.
+   - THE WATER is a plan of its own standing Embankment low (Z0), its
+     containers each a channel puddle at that plane (the kit's row 96 mirror),
+     every one a convex piece of the water rectangle: the features' own
+     containers (a pier, a slip, a berth, a breakwater, the lighthouse) and
+     what is left between them. A quay wall Embankment tall in a 0.5 m strip
+     along each landward edge, its top at street level, hides like the river's.
+   - THE LADDER (salts 643 layout, 647 vessels, 659 the pier's wood):
+     0 a wooden pier with a dinghy on a painter; 1 a marina (a floating walk,
+     fingers, one boat in each slip); 2 a breakwater, a lighthouse, fishing
+     boats along the quay and a ferry; 3 container berths, a ship in each
+     (berth = length + 20 m by beam + 10 m), two gantries on the apron whose
+     girders reach over the ship, split at the apron/quay and quay/berth faces.
+   - EVERY HULL IS CUT AT THE WATERLINE (splitPart at the water plane): only
+     what is above is drawn, and only that is reflected.
+   Every number is the harbour's own: Site 0 and Site 1 are row 99's drawing. */
+var SALT_HARB=643, SALT_VES=647, SALT_PIER=659;
+var HARB_NEED=[[30,25],[80,60],[200,90],[380,120]], HARB_APRON=50, HARB_QUAY=0.5;
+/* the harbour's ripple is held to 1.25 x Ripple (row 65's clamp on harb) */
+var HRIP=1.25;
+/* ship classes (spec §3, tier 3): length, beam, freeboard */
+var HARB_SHIPS=[[150,23,7],[294,32,9]];
+function townHarbour(o){
+  var p=o.p, R=o.R, top=o.top, mode=o.mode, TI=o.TI, info=o.info, bbox2=o.bbox2, LAY=o.LAY, D0=o.D0;
+  var RDp=Math.max(0.5,Math.min(6,isFinite(p.rdrop)?+p.rdrop:2.5)), QW=HARB_QUAY;
+  var BERTHS=Math.max(1,Math.min(40,Math.round(isFinite(p.berths)?+p.berths:6))), VES=Math.max(0,Math.min(100,isFinite(p.vessels)?+p.vessels:70))/100;
+  var PIERL=Math.max(0,Math.min(400,isFinite(p.pierlen)?+p.pierlen:0)), SLIPW=Math.max(0,Math.min(100,isFinite(p.slips)?+p.slips:50))/100;
+  /* the water: the rectangle less the apron on its landward side */
+  var Wr=[R[0], top?R[1]+D0:R[1], R[2], top?R[3]:R[3]-D0], LA=Wr[2]-Wr[0], LB=Wr[3]-Wr[1];
+  var xq=mode<0?'hi':mode>0?'lo':null;
+  function M2(a,b){ return [Wr[0]+a, top?Wr[3]-b:Wr[1]+b]; }
+  function lrect(a0,a1,b0,b1){ return [M2(a0,b0),M2(a1,b0),M2(a1,b1),M2(a0,b1)]; }
+  info.harbour=true; info.water=LA*LB; info.waterRect=Wr; info.rdrop=RDp; info.area=info.water;
+  info.piles=[]; info.boats=[]; info.ships=[]; info.booms=[]; info.slipsRec=[]; info.blocks=0; info.lighthouse=null; info.pier=null; info.dinghy=null;
+  info.recs=[]; info.conts=[]; info.left=[]; info.aircraft=[]; info.bridges=[]; info.runways=[]; info.strips=[]; info.hangars=0;
+  /* the content's room: inside the quay strips */
+  var A0=xq==='lo'?QW:0, A1=xq==='hi'?LA-QW:LA, B1=LB-QW;
+  var RV=townSub(LAY,TI,SALT_VES), RH=townSub(LAY,TI,SALT_HARB), F=[];
+  function feat(kind,a0,a1,b0,b1,extra){ var f=Object.assign({kind:kind, lr:[a0,a1,b0,b1]},extra||{}); F.push(f); return f; }
+  if(TI===0){
+    /* the pier, square to the quay in the middle of it, and the dinghy's slip */
+    var PL=Math.min(B1-4,PIERL>0?PIERL:12), am=(A0+A1)/2;
+    if(PL>=4){ feat('pier',am-1.25,am+1.25,B1-PL,B1,{L:PL});
+      if(am+1.25+2.2<=A1) feat('slip',am+1.25,am+1.25+2.2,B1-PL+1,B1-PL+1+3.7,{boat:{type:'dinghy', L:2.7, B:1.2, along:'b'}}); }
+    else info.left.push('pier (no room)');
+  } else if(TI===1){
+    /* the marina: a floating walk along the quay, fingers out from it, a slip
+       between each two; a slot whose own number says no boat is water */
+    var WK=2.5, FL=15, FG=1.2, a=A0+6, k=0, fuel=false;
+    feat('walk',A0+2,A1-2,B1-WK-0.5,B1);
+    while(a+FG<A1-8 && k<2*BERTHS){
+      var uB=RV(), uT=RV(), uL=RV();
+      var L=6+8*uL, type=uT<0.45?'sloop':uT<0.85?'cruiser':'dinghy'; if(type==='dinghy') L=2.7+1.3*uL;
+      var Bm=type==='sloop'?L*0.32:type==='cruiser'?L*0.35:L*0.45, sw=Bm+1.0+1.5*SLIPW;
+      feat('finger',a,a+FG,B1-WK-0.5-FL,B1-WK-0.5); a+=FG;
+      if(a+sw>A1-8) break;
+      if(uB<VES) feat('slip',a,a+sw,B1-WK-0.5-L-1,B1-WK-0.5,{boat:{type:type, L:L, B:Bm, along:'b'}});
+      a+=sw; k++;
+    }
+    feat('finger',a,a+FG,B1-WK-0.5-FL,B1-WK-0.5);
+    info.fairway=B1-WK-0.5-FL; info.longest=0;
+    if(a+FG+12<A1-2){ feat('fuel',a+FG+2,a+FG+12,B1-WK-0.5-4,B1-WK-0.5); fuel=true; }
+  } else if(TI===2){
+    /* along the quay: fishing boats in their slips and a ferry at its berth;
+       out at the edge a breakwater with a lighthouse at its end */
+    var a2=A0+10, n2=0;
+    var fL=45, fB=11, fa=A1-10-fL-10;
+    for(;n2<BERTHS && a2<fa-30;n2++){ var u2=RV(), uL2=RV(); var L2=12+13*uL2, B2=L2*0.3; if(a2+L2+4>fa) break;
+      if(u2<VES) feat('slip',a2,a2+L2+4,B1-B2-2,B1,{boat:{type:'fishing', L:L2, B:B2, along:'a'}}); a2+=L2+8; }
+    if(fa>A0+10) feat('berth',fa,fa+fL+10,B1-fB-4,B1,{boat:{type:'ferry', L:fL, B:fB, along:'a'}});
+    var bw0=A0+0.15*(A1-A0), bw1=A0+0.75*(A1-A0);
+    if(LB>40){ feat('breakwater',bw0,bw1,6,20); feat('lhouse',bw1,bw1+12,7,19); }
+    else info.left.push('breakwater (no room)');
+  } else {
+    /* tier 3: berths along the quay, a ship in each; the apron behind */
+    var a3=A0+20, n3=0;
+    for(;n3<BERTHS;n3++){ var u3=RV(), uc=RV(), ud=RV(); var SC=HARB_SHIPS[uc<0.6?0:1], Ls=SC[0], Bs=SC[1];
+      if(a3+Ls+20>A1-20 || Bs+10>B1-30) break;
+      var bf=feat('berth',a3,a3+Ls+20,B1-Bs-10,B1,{ship:u3<VES?{L:Ls, B:Bs, Fb:SC[2], bow:ud<0.5?1:-1}:null}); a3+=Ls+20+10; }
+    if(!n3) info.left.push('berths (no room)');
+  }
+  /* ---- the containers: features, the water between them, the quay strips ---- */
+  var conts=[], apr=[];
+  function cont(kind,Q,extra,list){ var C=Object.assign({kind:kind, poly:Q, bb:bbox2(Q), parts:[]},extra||{}); (list||conts).push(C); return C; }
+  F.forEach(function(f){ f.C=cont('h'+f.kind,lrect(f.lr[0],f.lr[1],f.lr[2],f.lr[3]),{water:true, ripMax:HRIP, lr:f.lr, feat:f}); });
+  var rest=[lrect(A0,A1,0,B1)];
+  F.forEach(function(f){ var Q=f.C.poly, nx=[]; rest.forEach(function(P){ var X=townIntersect(P,Q); if(!X.length || townArea(X)<1e-6){ nx.push(P); return; }
+    townMinus(P,Q).forEach(function(q){ if(townArea(q)>0.01) nx.push(q); }); }); rest=nx; });
+  rest.forEach(function(Q){ cont('hwater',Q,{water:true, ripMax:HRIP}); });
+  cont('hquay',lrect(0,LA,B1,LB),{quay:'b'});
+  if(xq==='lo') cont('hquay',lrect(0,QW,0,B1),{quay:'a', at:QW});
+  if(xq==='hi') cont('hquay',lrect(LA-QW,LA,0,B1),{quay:'a', at:LA-QW});
+  /* the apron (tier 3), at street level in a plan of its own */
+  if(D0>0){
+    var ap0=top?Wr[1]-D0:Wr[3], ap1=ap0+D0;
+    var ABx=[Wr[0],Wr[2]];
+    F.filter(function(f){ return f.kind==='berth'; }).forEach(function(f){ var Q=[[Wr[0]+f.lr[0],ap0],[Wr[0]+f.lr[1],ap0],[Wr[0]+f.lr[1],ap1],[Wr[0]+f.lr[0],ap1]]; f.apron=cont('hapron',Q,{feat:f},apr); });
+    var arest=[[[ABx[0],ap0],[ABx[1],ap0],[ABx[1],ap1],[ABx[0],ap1]]];
+    apr.forEach(function(C){ var nx=[]; arest.forEach(function(P){ var X=townIntersect(P,C.poly); if(!X.length || townArea(X)<1e-6){ nx.push(P); return; } townMinus(P,C.poly).forEach(function(q){ if(townArea(q)>0.01) nx.push(q); }); }); arest=nx; });
+    arest.forEach(function(Q){ cont('hapron',Q,{},apr); });
+    info.apron=[ABx[0],ap0,ABx[1],ap1];
+  }
+  info.conts=conts.concat(apr).map(function(C){ return {kind:C.kind, poly:C.poly, lr:C.lr, water:!!C.water}; });
+  var HB={info:info, conts:conts, apr:apr, F:F, M2:M2, Wr:Wr, LA:LA, LB:LB, B1:B1, A0:A0, A1:A1, QW:QW, RDp:RDp, TI:TI, top:top, LAY:LAY, p:p, xq:xq};
+  var plans=[];
+  HB.plan={ix:-1, p:p, theme:{key:'town', channel:true, content:function(K){ return townHarbourTheme(K,HB); }}, sGaps:[], hasGap:false, Z0:-RDp,
+           conts:conts, lots:[], slabsBySide:{'1':[],'-1':[]}, dropped:0, pushed:0};
+  plans.push(HB.plan);
+  if(apr.length) plans.push({ix:-1, p:p, theme:{key:'town', content:function(){ return {dress:function(){}, signsFor:function(){}, furnish:function(){}, cars:[], dots:[], poles:[]}; }}, sGaps:[], hasGap:false, Z0:0,
+                             conts:apr, lots:[], slabsBySide:{'1':[],'-1':[]}, dropped:0, pushed:0});
+  return {info:info, conts:conts, plans:plans, blocksOut:o.blocksOut, harbour:true};
+}
+/* THE HARBOUR'S CONTENT, built in WORLD heights (the water at -Embankment,
+   the street at 0) and lifted by Embankment into the water plan's own frame,
+   which the kit lowers again (Z0); a gantry's girder over the water is
+   P.via, so it stays where it is built. */
+function townHarbourTheme(K,HB){
+  var prismN=K.prismN, polyFromLoops=K.polyFromLoops, verts=K.verts, splitPart=K.splitPart, paperGap=K.paperGap, dist3=K.dist3;
+  var COLK='#1a1a1a', COLB='#2156c7', COLR='#d42a2a', COLW='#5aa9e6', COLBR='#8b5a2b', COLO='#ec7a1c';
+  var info=HB.info, M2=HB.M2, RDp=HB.RDp, ZW=-RDp, TI=HB.TI;
+  var INWATER=new Set(HB.conts);
+  function lift(P,dz){ var memo=new Map(); function lp(v){ var w=memo.get(v); if(!w){ w=v.slice(); w[2]+=dz; memo.set(v,w); } return w; }
+    var Q=Object.assign({},P); Q.faces=P.faces.map(function(f){ return Object.assign({},f,{d:f.d+f.n[2]*dz, pts:f.pts.map(lp)}); });
+    Q.lines=P.lines.map(function(Ln){ return Object.assign({},Ln,{a:lp(Ln.a), b:lp(Ln.b)}); }); if(P.ins) Q.ins=lp(P.ins); return Q; }
+  function own(P,C,kind,col,layer,tag){
+    var Vw=verts(P);
+    info.recs.push({kind:kind, V:Vw, F:P.faces.map(function(f){ return {n:f.n, d:f.d}; }), cont:{kind:C.kind, poly:C.poly}, tag:tag});
+    if(INWATER.has(C) && P.via===undefined) P=lift(P,RDp);
+    P.cont=C; P.kind=kind; P.col=col; P.layer=layer||'struct';
+    P.lines.forEach(function(Ln){ if(!Ln.col) Ln.col=col; if(!Ln.kind) Ln.kind=kind; });
+    C.parts.push(P); return P; }
+  function W3(a,b,z){ var q=M2(a,b); return [q[0],q[1],z]; }
+  function lbox(a0,a1,b0,b1,z0,z1){ return prismN([M2(a0,b0),M2(a1,b0),M2(a1,b1),M2(a0,b1)],z0,z1); }
+  function lngon(ac,bc,r,m,ph,z0,z1){ var Q=[]; for(var k=0;k<m;k++){ var t=ph+2*Math.PI*k/m; Q.push(M2(ac+r*Math.cos(t),bc+r*Math.sin(t))); } return prismN(Q,z0,z1); }
+  function frustum(ac,bc,r0,r1,m,z0,z1){ var lo=[], hi=[], k; for(k=0;k<m;k++){ var t=Math.PI/m+2*Math.PI*k/m, q0=M2(ac+r0*Math.cos(t),bc+r0*Math.sin(t)), q1=M2(ac+r1*Math.cos(t),bc+r1*Math.sin(t)); lo.push([q0[0],q0[1],z0]); hi.push([q1[0],q1[1],z1]); }
+    var loops=[lo,hi]; for(k=0;k<m;k++){ var k2=(k+1)%m; loops.push([lo[k],lo[k2],hi[k2],hi[k]]); } return polyFromLoops(loops); }
+  /* mm on the sheet per metre across lines stacked along a */
+  function gapA(a,b){ var P=W3(a,b,0), q=M2(a+1,b), r=M2(a,b+1); return paperGap(P,[r[0]-P[0],r[1]-P[1],0],[q[0]-P[0],q[1]-P[1],0]); }
+  function gapB(a,b){ var P=W3(a,b,0), q=M2(a+1,b), r=M2(a,b+1); return paperGap(P,[q[0]-P[0],q[1]-P[1],0],[r[0]-P[0],r[1]-P[1],0]); }
+  /* A HULL in its own frame (x along it, bow at +L/2, y across), placed at
+     (ac,bc) in the field with its x along a or b: convex sections, the bow
+     tapering over its last bowF of length, built from `draft` below the water
+     to `fb` above it and CUT AT THE WATERLINE; the seams between sections draw
+     no line */
+  function hull(C,ac,bc,along,dir,L,B,fb,bowF,nsec,col,tag){
+    function X(x,y,z){ return along==='a'?W3(ac+dir*x,bc+y,z):W3(ac+y,bc+dir*x,z); }
+    function hw(x){ var xb=L/2-bowF*L; return x<=xb?B/2:Math.max(0.06,B/2*(1-(x-xb)/(L/2-xb))); }
+    var xs=[], k; for(k=0;k<=nsec;k++) xs.push(-L/2+L*k/nsec);
+    if(bowF>0){ var xb=L/2-bowF*L; xs=xs.filter(function(x){ return x<xb-1e-6; }).concat([xb]); for(k=1;k<=Math.max(2,nsec>>1);k++) xs.push(xb+(L/2-xb)*k/Math.max(2,nsec>>1)); }
+    var out=[];
+    for(k=0;k+1<xs.length;k++){
+      var xa=xs[k], xc=xs[k+1], Q=[[xa,-hw(xa)],[xc,-hw(xc)],[xc,hw(xc)],[xa,hw(xa)]];
+      var lo=Q.map(function(q){ return X(q[0],q[1],ZW-1.5); }), hi=Q.map(function(q){ return X(q[0],q[1],ZW+fb); }), loops=[lo,hi], e;
+      for(e=0;e<4;e++){ var e2=(e+1)%4; loops.push([lo[e],lo[e2],hi[e2],hi[e]]); }
+      var P=polyFromLoops(loops);
+      /* the waterline */
+      P=splitPart(P,[0,0,1],ZW)[0];
+      if(!P.faces.length || verts(P).length<4) continue;
+      var sx=function(v){ var A=X(0,0,0), U=X(1,0,0); return (v[0]-A[0])*(U[0]-A[0])+(v[1]-A[1])*(U[1]-A[1]); };
+      P.lines=P.lines.filter(function(Ln){ var a=sx(Ln.a), b=sx(Ln.b); return !((k>0 && Math.abs(a-xa)<1e-6 && Math.abs(b-xa)<1e-6) || (k+2<xs.length && Math.abs(a-xc)<1e-6 && Math.abs(b-xc)<1e-6)); });
+      out.push(own(P,C,'hull',col,'struct',tag));
+    }
+    return {X:X, deck:ZW+fb};
+  }
+  function boatIn(C,bt){
+    var lr=C.lr, ac=(lr[0]+lr[1])/2, bc=(lr[2]+lr[3])/2, along=bt.along, tag={boat:info.boats.length};
+    var dir=along==='b'?-1:1;   /* a marina boat lies bow out from the walk */
+    var rec={type:bt.type, L:bt.L, B:bt.B, cont:C.poly, along:along};
+    if(bt.type==='dinghy'){
+      var Hd=hull(C,ac,bc,along,dir,bt.L,bt.B,0.45,0.35,3,COLK,tag);
+      /* two oars along the thwarts */
+      rec.bow=Hd.X(bt.L/2,0,Hd.deck);
+    } else if(bt.type==='sloop'){
+      var Hs=hull(C,ac,bc,along,dir,bt.L,bt.B,0.9,0.3,4,COLK,tag), dk=Hs.deck;
+      var cab=boxX(Hs.X,-bt.L*0.15,bt.L*0.15,-bt.B*0.28,bt.B*0.28,dk,dk+0.9); own(cab,C,'cabin',COLK,'struct',tag);
+      var mx=bt.L*0.18, mt=dk+0.9+bt.L*1.1;
+      own(boxX(Hs.X,mx-0.08,mx+0.08,-0.08,0.08,dk+0.9,mt),C,'mast',COLK,'struct',tag);
+      own(boxX(Hs.X,mx-bt.L*0.35,mx-0.08,-0.05,0.05,dk+1.8,dk+1.92),C,'boom',COLK,'struct',tag);
+    } else if(bt.type==='cruiser'){
+      var Hc=hull(C,ac,bc,along,dir,bt.L,bt.B,1.1,0.3,4,COLK,tag), dk2=Hc.deck;
+      own(boxX(Hc.X,-bt.L*0.3,bt.L*0.12,-bt.B*0.35,bt.B*0.35,dk2,dk2+1.4),C,'cabin',COLK,'struct',tag);
+      own(boxX(Hc.X,-bt.L*0.2,0,-bt.B*0.25,bt.B*0.25,dk2+1.4,dk2+2.2),C,'cabin',COLK,'struct',tag);
+    } else if(bt.type==='fishing'){
+      var Hf=hull(C,ac,bc,along,dir,bt.L,bt.B,1.6,0.3,5,COLR,tag), dk3=Hf.deck;
+      own(boxX(Hf.X,bt.L*0.05,bt.L*0.25,-bt.B*0.3,bt.B*0.3,dk3,dk3+2.6),C,'cabin',COLK,'struct',tag);
+      own(boxX(Hf.X,-bt.L*0.1,-bt.L*0.1+0.2,-0.1,0.1,dk3,dk3+6),C,'mast',COLK,'struct',tag);
+    } else if(bt.type==='ferry'){
+      var Hy=hull(C,ac,bc,along,dir,bt.L,bt.B,2.2,0.2,6,COLK,tag), dk4=Hy.deck;
+      own(boxX(Hy.X,-bt.L*0.38,bt.L*0.25,-bt.B*0.42,bt.B*0.42,dk4,dk4+2.6),C,'cabin',COLK,'struct',tag);
+      own(boxX(Hy.X,-bt.L*0.25,bt.L*0.15,-bt.B*0.36,bt.B*0.36,dk4+2.6,dk4+5.0),C,'cabin',COLB,'struct',tag);
+    }
+    info.boats.push(rec); return rec;
+  }
+  function boxX(X,x0,x1,y0,y1,z0,z1){ var lo=[X(x0,y0,z0),X(x1,y0,z0),X(x1,y1,z0),X(x0,y1,z0)], hi=[X(x0,y0,z1),X(x1,y0,z1),X(x1,y1,z1),X(x0,y1,z1)], loops=[lo,hi], e;
+    for(e=0;e<4;e++){ var e2=(e+1)%4; loops.push([lo[e],lo[e2],hi[e2],hi[e]]); } return polyFromLoops(loops); }
+  function furnish(dn,df){
+    info.recs=[]; info.piles=[]; info.boats=[]; info.ships=[]; info.booms=[]; info.blocks=0; info.lighthouse=null; info.pier=null; info.dinghy=null; info.slipsRec=[];
+    var RW=townSub(HB.LAY,TI,SALT_HARB+1);
+    HB.conts.forEach(function(C){
+      if(C.quay){
+        /* the quay wall: Embankment tall, its top at street level; it hides,
+           with no gap, as the river's quay does */
+        var Q=C.poly, Pq=prismN(Q.map(function(q){ return [q[0],q[1]]; }),ZW,0); Pq.hides=true; Pq.gapless=true; own(Pq,C,'quaywall',COLK);
+        return;
+      }
+      /* the canal's wave dashes on the water, the plate hiding nothing */
+      var Pl=prismN(C.poly.map(function(q){ return [q[0],q[1]]; }),ZW-0.02,ZW); Pl.lines=[]; Pl.hides=false;
+      var b=townBbox(C.poly), area=townArea(C.poly), n=Math.min(60,Math.round(area/400)), m, R=townSub(Math.round(b[0]*7+b[1]*13),TI,SALT_HARB+2);
+      for(m=0;m<n;m++){ var x=b[0]+(b[2]-b[0])*R(), y=b[1]+(b[3]-b[1])*R(), sl=0.6+0.8*R(); if(!K.inConv(C.poly,[x-sl/2,y]) || !K.inConv(C.poly,[x+sl/2,y])) continue;
+        Pl.lines.push({a:[x-sl/2,y,ZW], b:[x+sl/2,y,ZW], f0:1, f1:1, col:COLW, kind:'wave'}); }
+      own(Pl,C,'plate',COLW,'furn');
+    });
+    HB.F.forEach(function(f){
+      var C=f.C, lr=f.lr;
+      if(f.kind==='pier') pier(C,lr,dn);
+      else if((f.kind==='slip' || f.kind==='berth') && f.boat){ var r=boatIn(C,f.boat); info.slipsRec.push({poly:C.poly, boat:r, kind:f.kind}); }
+      else if(f.kind==='walk' || f.kind==='finger' || f.kind==='fuel'){
+        own(lbox(lr[0]+(f.kind==='walk'?0:0.0),lr[1],lr[2]+(f.kind==='walk'?0.5:0.0),lr[3]-(f.kind==='walk'?0.5:0),ZW,ZW+0.4),C,'pontoon',COLBR);
+        if(f.kind==='fuel') own(lbox(lr[0]+4,lr[0]+5,lr[2]+1.5,lr[2]+2.3,ZW+0.4,ZW+1.9),C,'pump',COLR);
+      }
+      else if(f.kind==='breakwater') breakwater(C,lr);
+      else if(f.kind==='lhouse') lighthouse(C,lr);
+      else if(f.kind==='berth' && f.ship) ship(C,f,dn);
+    });
+    if(TI===0 && HB.F.length>1) painter();
+  }
+  /* the pier (spec §3, tier 0): a deck 1.5 m wide just under street level on
+     two stringers, piles 0.25 m square under them every 2.4 m or less, from
+     the waterline up; boards drawn where their 0.146 m pitch reads; cleats */
+  function pier(C,lr,dn){
+    var ac=(lr[0]+lr[1])/2, b0=lr[2], b1=lr[3], L=b1-b0, zd1=-0.1, zd0=zd1-0.06, zs0=zd0-0.22, n=Math.max(2,Math.ceil(L/2.4)+1), k;
+    var deck=lbox(ac-0.75,ac+0.75,b0,b1,zd0,zd1);
+    var g=gapB(ac,(b0+b1)/2);
+    if(g*0.146>=0.7) for(var bq=b0+0.146;bq<b1-1e-6;bq+=0.146) deck.lines.push({a:W3(ac-0.75,bq,zd1), b:W3(ac+0.75,bq,zd1), f0:1, f1:1, kind:'board'});
+    own(deck,C,'deck',COLBR);
+    [-1,1].forEach(function(sg){ var y=ac+sg*0.6;
+      own(lbox(y-0.075,y+0.075,b0+0.1,b1,zs0,zd0),C,'stringer',COLBR);
+      for(k=0;k<n;k++){ var bp=b0+0.25+(L-0.5)*k/(n-1);
+        own(lbox(y-0.125,y+0.125,bp-0.125,bp+0.125,ZW,zs0),C,'pile',COLBR); info.piles.push({side:sg, b:bp, z0:ZW, z1:zs0}); } });
+    [b0+0.6,b0+L/2].forEach(function(bq){ own(lbox(ac+0.55,ac+0.72,bq-0.12,bq+0.12,zd1,zd1+0.1),C,'cleat',COLK); });
+    info.pier={L:L, a:ac, b0:b0, b1:b1, n:n, deck:zd1};
+    /* the painter leaves the cleat over the deck's edge, clear of the deck */
+    HB.cleat=W3(ac+0.78,b0+0.6,zd1+0.06); HB.pierEdge=ac+0.75; HB.pierB=b0+0.6;
+  }
+  /* the dinghy's painter: a sagging line from the pier's cleat to its bow, in
+     two see-through pieces either side of the slip's face */
+  function painter(){
+    var S=HB.F.filter(function(f){ return f.kind==='slip'; })[0], Pf=HB.F.filter(function(f){ return f.kind==='pier'; })[0];
+    if(!S || !Pf || !info.boats.length || !HB.cleat) return;
+    /* tied to a ring 0.08 m over the bow, so no piece meets the hull */
+    var bw=info.boats[0].bow, bow=[bw[0],bw[1],bw[2]+0.08], A=HB.cleat, n=8, pts=[], k;
+    for(k=0;k<=n;k++){ var t=k/n; pts.push([A[0]+(bow[0]-A[0])*t, A[1]+(bow[1]-A[1])*t, A[2]+(bow[2]-A[2])*t-0.35*4*t*(1-t)]); }
+    var face=S.lr[0], q0=M2(face,0), q1=M2(face+1,0), nx=[q1[0]-q0[0],q1[1]-q0[1]], d=nx[0]*q0[0]+nx[1]*q0[1];
+    /* the polyline cut at the slip's face; each piece a 1 cm see-through rod
+       along its segment, in the pier's container or the slip's */
+    var segs=[];
+    for(k=1;k<pts.length;k++){ var a=pts[k-1], b=pts[k], sa=nx[0]*a[0]+nx[1]*a[1]-d, sb=nx[0]*b[0]+nx[1]*b[1]-d;
+      if(sa*sb<0){ var t2=sa/(sa-sb), x=[a[0]+(b[0]-a[0])*t2, a[1]+(b[1]-a[1])*t2, a[2]+(b[2]-a[2])*t2]; segs.push([a,x]); segs.push([x,b]); }
+      else segs.push([a,b]); }
+    segs.forEach(function(sg){
+      var a=sg[0], b=sg[1], u=[b[0]-a[0],b[1]-a[1],b[2]-a[2]], L=Math.hypot(u[0],u[1],u[2]); if(L<1e-6) return;
+      var h=Math.hypot(u[0],u[1]), e1=h>1e-9?[-u[1]/h,u[0]/h,0]:[1,0,0], e2=[u[1]*e1[2]-u[2]*e1[1], u[2]*e1[0]-u[0]*e1[2], u[0]*e1[1]-u[1]*e1[0]], l2=Math.hypot(e2[0],e2[1],e2[2]);
+      e2=[e2[0]/l2,e2[1]/l2,e2[2]/l2]; var r=0.005;
+      var o=[a[0]-e1[0]*r-e2[0]*r, a[1]-e1[1]*r-e2[1]*r, a[2]-e1[2]*r-e2[2]*r];
+      var P=K.para(o,u,[e1[0]*2*r,e1[1]*2*r,0],[e2[0]*2*r,e2[1]*2*r,e2[2]*2*r]);
+      P.lines=[{a:a, b:b, f0:0, f1:0}]; P.hides=false; P.seeThru=true;
+      var mid=nx[0]*(a[0]+b[0])/2+nx[1]*(a[1]+b[1])/2-d;
+      own(P,mid<0?Pf.C:S.C,'painter',COLK,'furn');
+    });
+    info.dinghy={line:true};
+  }
+
+  /* the breakwater: hexagonal rubble blocks in two staggered rows, never
+     touching, 1.5-3.5 m above the water */
+  function breakwater(C,lr){
+    var R=townSub(HB.LAY,TI,SALT_HARB+3), bm=(lr[2]+lr[3])/2, k=0;
+    [[bm-3.2,0],[bm+3.2,1.6]].forEach(function(row){ for(var a=lr[0]+2.2+row[1];a<lr[1]-2.2;a+=4.4){
+      var r=1.6+0.4*R(), h=1.5+2*R(), ph=R()*Math.PI/3;
+      var P=lngon(a,row[0],r,6,ph,ZW,ZW+h); own(P,C,'rubble',COLK); k++; } });
+    info.blocks=k;
+  }
+  function lighthouse(C,lr){
+    var ac=(lr[0]+lr[1])/2, bc=(lr[2]+lr[3])/2, z0=ZW, zb=z0+2, zt=zb+14;
+    var Bs=lngon(ac,bc,3.0,16,0,z0,zb); Bs.crease=0.5; own(Bs,C,'lhbase',COLK);
+    var S=frustum(ac,bc,2.2,1.6,16,zb,zt); S.crease=0.5;
+    [zb+4,zb+9].forEach(function(z){ var f=(z-zb)/(zt-zb), r=2.2+(1.6-2.2)*f; for(var k=0;k<16;k++){ var t0=Math.PI/16+2*Math.PI*k/16, t1=t0+2*Math.PI/16, q0=M2(ac+r*Math.cos(t0),bc+r*Math.sin(t0)), q1=M2(ac+r*Math.cos(t1),bc+r*Math.sin(t1));
+      S.lines.push({a:[q0[0],q0[1],z], b:[q1[0],q1[1],z], f0:2+k, f1:2+k, kind:'lhband', col:COLR}); } });
+    own(S,C,'lhtower',COLK);
+    var Gl=lngon(ac,bc,2.4,16,0,zt,zt+0.3); Gl.crease=0.5; own(Gl,C,'lhgallery',COLK);
+    var Ln=lngon(ac,bc,1.2,8,Math.PI/8,zt+0.3,zt+2.6); Ln.crease=0.9; own(Ln,C,'lhlantern',COLK);
+    var Cp=frustum(ac,bc,1.4,0.3,8,zt+2.6,zt+3.8); Cp.crease=0.9; own(Cp,C,'lhcap',COLR);
+    info.lighthouse={H:zt+3.8-ZW};
+  }
+  /* a container ship along the quay: hull to the waterline, bays of stacks
+     forward of the bridge, the bridge and funnel aft; two gantries on the
+     apron reach over it, their girders split at the apron/quay and quay/berth
+     faces and built at their real height (P.via) */
+  function ship(C,f,dn){
+    var S=f.ship, lr=f.lr, ac=(lr[0]+lr[1])/2, bc=(lr[2]+lr[3])/2, tag={ship:info.ships.length};
+    var Hs=hull(C,ac,bc,'a',S.bow,S.L,S.B,S.Fb,0.12,8,COLK,tag), X=Hs.X, dk=Hs.deck;
+    var xbr=-S.L/2+S.L*0.12;
+    own(boxX(X,-S.L/2+2,xbr,-S.B/2+1,S.B/2-1,dk,dk+16),C,'bridge',COLK,'struct',tag);
+    own(boxX(X,-S.L/2+2+(xbr+S.L/2-2)*0.2,-S.L/2+2+(xbr+S.L/2-2)*0.6,-2,2,dk+16,dk+22),C,'funnel',COLR,'struct',tag);
+    var R=townSub(HB.LAY*97+info.ships.length,TI,SALT_VES+1), x=xbr+1;
+    while(x+13<S.L/2-S.L*0.12-2){ var tiers=2+Math.floor(R()*5), P=boxX(X,x,x+12.5,-S.B/2+1.2,S.B/2-1.2,dk,dk+2.6*tiers);
+      own(P,C,'stack',[COLB,COLR,COLO,COLK][Math.floor(R()*4)],'struct',tag); x+=13; }
+    info.ships.push({L:S.L, B:S.B, cont:C.poly});
+    if(f.apron) [ -S.L/4, S.L/4 ].forEach(function(xg){ gantry(f,ac+xg); });
+  }
+  function gantry(f,ag){
+    var Ap=f.apron, Q=Ap.poly, bA=townBbox(Q), top=HB.top;
+    /* the apron in field b (beyond LB, landward) */
+    var LB=HB.LB, bq=LB, bfar=LB+(bA[3]-bA[1]), zt=38, rec={pieces:[]};
+    [bq+3,bq+33].forEach(function(bl){ [ag-8,ag+8].forEach(function(al){ own(lbox(al-0.8,al+0.8,bl-0.8,bl+0.8,0,zt-3),Ap,'gleg',COLO); }); });
+    own(lbox(ag-9,ag+9,bq+2,bq+34,zt-3,zt-1.5),Ap,'gportal',COLO);
+    /* the girder: from the apron's back over the ship, cut at both faces */
+    var boom=lbox(ag-1.5,ag+1.5,f.lr[2]+2,bq+38,zt-1.5,zt), parts=[boom];
+    [LB,LB-HB.QW].forEach(function(bf){ var q0=M2(0,bf), q1=M2(0,bf+1), n=[q1[0]-q0[0],q1[1]-q0[1],0], d=n[0]*q0[0]+n[1]*q0[1], nx=[];
+      parts.forEach(function(P){ splitPart(P,n,d).forEach(function(H){ if(H.faces.length && verts(H).length>=4) nx.push(H); }); }); parts=nx; });
+    var quay=HB.conts.filter(function(C){ return C.quay==='b'; })[0];
+    parts.forEach(function(H){ var V=verts(H), c=[0,0]; V.forEach(function(v){ c[0]+=v[0]/V.length; c[1]+=v[1]/V.length; });
+      var CC=[Ap,quay,f.C].filter(function(C){ return K.inConv(C.poly,c); })[0]; if(!CC) return;
+      for(var key in boom) if(!(key in H) && key!=='bb3') H[key]=boom[key];
+      H.via='harbour'; own(H,CC,'girder',COLO);
+      rec.pieces.push({V:verts(H), cont:CC.poly, ck:CC.kind}); });
+    info.booms.push(rec);
+  }
+  return {dress:function(){}, signsFor:function(){}, furnish:furnish, cars:[], dots:[], poles:[]};
 }
 /* ---- ROW 117 (lane SA): ISO ARCHETYPES ON TOWN LOTS -------------------------
    docs/specs/2026-10-12-town-power_v3.md §4. Iso Buildings % of the eligible
@@ -33958,9 +36267,13 @@ function streetTheme(K){
     var nMid=Math.max(1,Math.round(FLOORS*(0.45+0.55*R())*(1+CANYON*sfrac*1.5)));
     var midH=THM.midH[0]+R()*spanOf(THM.midH);
     var F0=Math.max(L.quay===false?KOFF:PBACK,L.fe), front=F0, back=L.back, z=KERB, st=[], n;
+    /* row 99: a lot under a runway's 7:1 surface (L.zcap) stops its storeys
+       under it; every storey still draws its four numbers */
+    var capHit=false;
     for(n=0;n<nBase+nMid;n++){
       var u1=R(), u2=R(), u3=R(), u4=R();
       var h=(n<nBase)?baseH:midH;
+      if(L.zcap!==undefined && (capHit || z+h>L.zcap+1e-9)){ capHit=true; continue; }
       if(n>=nBase && u1<STEPB) front=Math.min(back-4, front+0.6+u2*1.4);
       var fr=front;
       if(n>=nBase && u3<CANTI) fr=Math.max(L.fe, front-(0.4+u4*0.8));
@@ -36479,6 +38792,12 @@ function corridorDraw(p,plans,THM,camera){
     if(!PLk.theme || !PLk.theme.channel) return;
     var mzk=PLk.Z0||0, P3k=PLk.P3, HWk=PLk.HALFW;
     PLk.conts.forEach(function(C){
+      /* row 100: a container that is water (a town's harbour) is one puddle
+         over its own polygon, at the plan's plane, its ripple held to C.ripMax */
+      if(C.water){ var Qc=C.poly.map(function(q){ return [q[0],q[1]]; }), bq=bbox2(Qc);
+        puds.push({id:2000+puds.length, channel:true, mz:mzk, C:C, side:1, s:0, o:0, len:bq[2]-bq[0], wid:bq[3]-bq[1],
+                   ring:Qc.map(function(v){ return [v[0],v[1],mzk]; }), hull:hull2(Qc), ph:0, rid:2500, outline:[], ripMax:C.ripMax});
+        return; }
       if(C.kind!=='slab') return;
       var Qw=[P3k(C.s0,C.side,0,0),P3k(C.s1,C.side,0,0),P3k(C.s1,C.side,HWk,0),P3k(C.s0,C.side,HWk,0)];
       puds.push({id:2000+puds.length, channel:true, mz:mzk, C:C, side:C.side, s:(C.s0+C.s1)/2, o:HWk/2, len:C.s1-C.s0, wid:HWk,
@@ -37687,14 +40006,14 @@ function corridorDraw(p,plans,THM,camera){
       if(!(d2<-1e-12)) return null;
       var t=(ZW-CE[2])/d2; return [CE[0]+d0*t, CE[1]+d1*t, t];
     }
-    function ripNew(q,Z){
+    function ripNew(q,Z,mx){
       var G=groundAt(q,Z); if(!G) return 0;
       var x=G[0], y=G[1];
       var wA=Math.sin(TAU*(x*Math.cos(RF.aA)+y*Math.sin(RF.aA))/RF.lA+RF.pA);
       var wB=Math.sin(TAU*(x*Math.cos(RF.aB)+y*Math.sin(RF.aB))/RF.lB+RF.pB);
       var wN=2*vn(x/0.25+RF.nz, y/0.25, 227)-1;
       var env=0.25+0.75*vn(x/RF.lE+RF.ne, y/RF.lE, 229);
-      return env*(0.55*wA+0.30*wB+0.15*wN)*Math.max(0.4,Math.min(THM.ripMax||2.0,5/G[2]));
+      return env*(0.55*wA+0.30*wB+0.15*wN)*Math.max(0.4,Math.min(mx||THM.ripMax||2.0,5/G[2]));
     }
     /* y from the PAGE CENTRE, so the wave rides with the drawing when a taller
        sheet shifts it (pagecheck's FRAMED map) */
@@ -37713,7 +40032,7 @@ function corridorDraw(p,plans,THM,camera){
         src.push([pts[m][0],pts[m][1]]);
       }
       return {src:src, dsp:RIPU>0?src.map(function(q){
-        return [q[0]+RIPU*(RVAR>0?(1-RVAR)*ripW(q[1],pd)+RVAR*ripNew(q,pd.mz):ripW(q[1],pd)), q[1]]; }):src};
+        return [q[0]+RIPU*(RVAR>0?(1-RVAR)*ripW(q[1],pd)+RVAR*ripNew(q,pd.mz,pd.ripMax):ripW(q[1],pd)), q[1]]; }):src};
     }
     /* depth of the ground under a sheet point: 1/zc. RT is level, so only y counts */
     function groundIz(q,Z){ var ZW=Z===undefined?MZ:Z; if(ISO){ var uy=-(q[1]-PGH/2)/ISOS; return 1/(1e5+(ZW-ISOC[2]-UP[2]*uy)/FW[2]); }
@@ -39814,6 +42133,12 @@ var HELP={
 'fact.fspir':'Spiral conveyors carrying cartons down from the mezzanine to the floor: a helix 2.2 m across, 1.4 m a turn, from the belt on the deck to the belt on the floor. They stand at the mezzanine\u2019s ends, the west first; there is room for two, so asking for more says so on the stat line. Nothing without a mezzanine.',
 'fact.flift':'Lifts between the floor and the mezzanine: four posts, a head frame with its drive, and a cab level with the belts at each floor it serves (or, now and then, caught between floors). Some at the west end are enclosed freight lifts. They stand at the mezzanine\u2019s ends beside the spirals; there is room for two.',
 'fact.ftube':'The share of the possible vacuum-tube links that are built: QA to every process station of its line, and the mezzanine lab to QA. A tube rises from a cabinet beside its station to 6.6 m, runs on the 1 m grid with 0.6 m bends, and drops to the other cabinet. A route that finds no room is dropped and the stat line counts it.',
+'fact.fcrane':'An overhead travelling crane in one span with no mezzanine in it: runway beams on brackets off that span\u2019s columns, end trucks, a box girder across the span, an underhung trolley and hoist, the rope straight down to a hook block, and a die block, a coil or nothing on the hook. It runs UNDER the vacuum-tube level, so it never meets a tube. Where the bridge and trolley stand and what hangs on the hook are Pose; the hook always clears everything below it by half a metre.',
+'fact.fveh':'How many vehicles are out in the aisles: counterbalance forklifts, reach trucks, pallet jacks, AGVs carrying a tote, tugger trains of two or three carts. Only in an aisle, wheels on the floor, clear of the columns, bollards and each other. Which ones and where are Pose. The stat line says how many found room.',
+'fact.fpipe':'The share of the services that are built: a duct along each back wall under the eaves (flanges near), a red sprinkler main and its branches in each span just under the column heads, and over every pass of every line a cable tray with an air drop and filter to each machine. Each runs where there is room and stops short of anything in its way.',
+'fact.fcut':'How the roof is cut away. 1 (the default): the portal rafters and purlins only, so the hall is seen through its structure. 0: a sawtooth roof over the half of the hall by the back wall, its glazing facing into the hall, the near half open. 2: no roof at all \u2014 no rafters, eaves beams, purlins or lamps; the columns stand bare. The high-bay lamps hang at 0 and 1.',
+'fact.fwall':'Whether the two back walls are drawn: the plinth, the ribbon window and its glazing bars, and the cladding above. 0 leaves them out and shows what is behind the docks; the dock door frames stay with their stations.',
+'fact.budg':'The most points the drawing may have, in thousands. Over it, whole classes of fine detail are left out in this order until it fits: fence mesh, roller tubes, the cartons on the shipping racks, belt edge lines, arm dress packs, duct flanges, lane paint, sawtooth glazing bars. Structure, belts, arms, lifts and tubes never go. The stat line names what was dropped. The page\u2019s own ceiling caps it.',
 'fact.lod':'The smallest detail still drawn, as its size on the SHEET: belt edge lines, door slats, fence mesh, pendant buttons. A bar thinner than this (handrails, legs, fence posts) is drawn as its centre line and hides nothing behind it — an occlusion gap round a 0.04 m post would be wider than the post.',
 'fact.occ':'How wide a white gap a nearer solid opens in a line passing behind it. The factory hides itself exactly — every solid is cut into 1 m lattice cells and drawn front to back — so this is only the finish. The gap is never opened at a cut, where nothing is drawn, so a belt stays one unbroken line.',
 'harb.len':'How far the yard lane runs, in metres. The camera stands part-way along it and the stacks recede toward the far end.',
@@ -40573,9 +42898,9 @@ var HELP={
 (function(){
   var NR=' Not read at Projection 1 (isometric).';
   var T={rows:'How many parallel streets the city has. Each is a full Street, buildings both sides, and Cross streets join them.',
-    rowsp:'How far apart the parallel streets are, centre to centre, in metres. The lots on two neighbouring streets meet back to back in the middle with a gap; a wider block leaves more bare ground inside it.',
+    rowsp:'How far apart the parallel streets are, centre to centre, in metres (with a Site, its Scale sets it). The lots on two neighbouring streets meet back to back in the middle with a gap; a wider block leaves more bare ground inside it.',
     xblk:'How far apart the cross streets are, in metres along the city. Lots never cross a cross street, so this is how long a run of frontage is.',
-    nlen:'How long the city is, in metres, along its parallel streets.',
+    nlen:'How long the city is, in metres, along its parallel streets. With a Site, the site’s Scale sets it instead.',
     xwidth:'The cross streets’ carriageway, kerb to kerb, in metres. They take the parallel streets’ pavement and carry no lots of their own: the corner buildings’ side walls face them.',
     layout:'Re-rolls where the river, the railway and the highway enter the city: which edge, how far along it, and the heading each starts on. Nothing else in the city moves.',
     river:'A river winds across the grid: water between stone quays, canal houses facing it where it cuts through the blocks, a road bridge wherever a street crosses it, boats and mooring posts. 0 is the plain grid.',
@@ -40591,6 +42916,23 @@ var HELP={
     hwybend:'How much the highway curves, in degrees of turn per 100 m.',
     hwyz:'The underside of the highway deck above the street, in metres (raised further where it must clear the railway).',
     hlanes:'Lanes each way on the highway, 3.5 m each. The highway is Lanes x 7 + 3 m wide.',
+    parks:'The share of the blocks that are parks instead of lots: a hedge or a fence round the edge, two paths across, trees, benches, and sometimes a pond or a swing. Layout picks which blocks.',
+    site:'Gives part of the city to an airfield (1): runways, taxiways, stands with aircraft, a terminal, hangars, behind a fence and a perimeter road, buildings near a runway held low. Or to a harbour (2): water below a quay, with a pier, a marina, fishing boats and a lighthouse, or ships at their berths. With a site there is no river, railway, highway or powerline.',
+    sitepct:'How much of the city the site takes, as a share of the whole plan (a harbour’s water; its Scale 3 apron is extra). The rest is the city, a strip or an L. Layout picks the edge or corner.',
+    tier:'The site’s size, which also sets the city’s length and block depth. Airfield: 2 an airstrip (900 m runway, one hangar, a windsock, no tower), 3 and up a regional airport (2,400 m runways, jet bridges, a tower). Harbour: 0 a pier and a dinghy, 1 a marina, 2 a fishing harbour with a lighthouse, 3 and up container berths.',
+    sscale:'Multiplies the city’s length and block depth that the site’s Scale sets.',
+    rwys:'How many parallel runways, where there is room: an airstrip has one, a regional airport up to two.',
+    rwyhdg:'The compass bearing the runways point along, in degrees. It sets the numbers painted at each end: the bearing over ten, and that plus 18 at the far end.',
+    stands:'The share of the aircraft stands with an aircraft parked on them.',
+    acmix:'How many of the parked aircraft are the larger type: jets rather than turboprops at a regional airport.',
+    tower:'A control tower beside the terminal. An airstrip never has one.',
+    hangars:'How many hangars stand beside the stands (an airstrip has one to four).',
+    gse:'The share of ground vehicles round each parked aircraft: a pushback tractor, a fuel truck, a tug and its baggage carts.',
+    berths:'How many berths a harbour has along its quay, where there is room: fishing boats at Scale 2, container ships at Scale 3; a marina has twice as many slips.',
+    vessels:'The share of a harbour’s berths and slips with a boat or a ship in them.',
+    pierlen:'How long the pier is, in metres (Scale 0). 0 is 12 m.',
+    slips:'How much wider than its boat each marina slip is: 0 is the boat’s beam plus 1 m.',
+    pline:'A powerline crosses the city in a straight line: lattice pylons on small plots, six conductors and an earth wire hanging between them. The pylons are raised until the lowest wire is 12 m over everything under it.',
     alleys:'The share of the parallel streets that are night-market alleys instead: 4.5 m wide, no pavement, stalls along both edges, lantern strings and steam. Each street rolls its own number.',
     archlots:'The share of plots that take one of the Iso city engine’s 87 buildings instead of a Street building: towers, gables, sheds, silos, churches, parks. Only square-cornered plots at least Iso lot min wide can, and each plot rolls its own number, so raising it only adds iso buildings.',
     archmin:'The narrowest plot, along the street, that can take an iso building. Narrower plots keep their Street building.',
