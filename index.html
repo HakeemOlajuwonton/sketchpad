@@ -438,7 +438,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v354</a> &mdash; Corridor city as one city -- with a Site the plan is near-square, the view fits the site (Focus 0-3: the whole city, the site, its busy part, a close look), and whatever is off the sheet is not built; blocks are built on all four sides, lots under 2 mm are boxes, the airfield's terminal stands against the city with a forecourt and a gate on every street, a harbour has a quay road, water that reads as water and boats the length of its quay</span></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v355</a> &mdash; Corridor city: an Iso city button -- it sets the city up as the Iso city engine's kind of drawing, isometric with every plot one of its 87 buildings, and a plot whose building would not fit rolls again instead of falling back to a Street building</span></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <section class="fold" id="fold_pick"><h2>Pick engine<span class="cnt"></span></h2>
@@ -25752,6 +25752,7 @@ function archRect(Q){
     if(lu<1e-9||lv<1e-9||Math.abs((u[0]*v[0]+u[1]*v[1])/(lu*lv))>1e-6) return false; }
   return true;
 }
+var ARCHTRIES=24;
 function archTheme(K,base){
   var p=K.p, AL=Math.max(0,Math.min(1,(isFinite(p.archlots)?+p.archlots:0)/100));
   if(!(AL>0)) return base(K);
@@ -25769,14 +25770,18 @@ function archTheme(K,base){
     /* x along the frontage, y away from the street, handed so x cross y is up */
     var ex=[(B[0]-A[0])/W,(B[1]-A[1])/W], ey=[(C[0]-B[0])/D,(C[1]-B[1])/D], O=A, X0=0;
     if(ex[0]*ey[1]-ex[1]*ey[0]<0){ ex=[-ex[0],-ex[1]]; O=B; }
-    var floors=Math.max(2,Math.round(K.FLOORS*(0.45+0.55*uFl))+1), core=0.15+0.7*uCore, zone=null, rows=null;
+    var floors, core, zone=null, rows=null, fr=null, cb=null;
     if(ZON){
       var cz=[(A[0]+C[0])/2,(A[1]+C[1])/2]; zone=archZoneOf(p,cz[0],cz[1]);
-      var fr=ARCHZONEFLOORS[zone.z], cb=ARCHZONECORE[zone.z];
-      if(fr) floors=fr[0]+Math.min(fr[1]-fr[0],Math.floor(uFl*(fr[1]-fr[0]+1)));
-      core=cb[0]+uCore*(cb[1]-cb[0]);
+      fr=ARCHZONEFLOORS[zone.z]; cb=ARCHZONECORE[zone.z];
       rows={}; ARCHZONEROWS[zone.z].forEach(function(n){ rows[n]=true; });
     }
+    function sized(){
+      floors=Math.max(2,Math.round(K.FLOORS*(0.45+0.55*uFl))+1); core=0.15+0.7*uCore;
+      if(fr) floors=fr[0]+Math.min(fr[1]-fr[0],Math.floor(uFl*(fr[1]-fr[0]+1)));
+      if(cb) core=cb[0]+uCore*(cb[1]-cb[0]);
+    }
+    sized();
     var x1=W/CELLM, y1=D/CELLM;
     function M(q){ return [O[0]+(ex[0]*q[0]+ey[0]*q[1])*CELLM, O[1]+(ex[1]*q[0]+ey[1]*q[1])*CELLM, q[2]*CELLM]; }
     function cell(det){
@@ -25785,7 +25790,16 @@ function archTheme(K,base){
               cr:cr, CU:function(a,b){ return a+(b-a)*cr(); }, detail:det, rows:rows};
     }
     /* the archetype at each detail, as parts; refused if any part leaves the lot */
-    var byDet=[], fits=true, row=null;
+    /* ROW 118: A REFUSED LOT ROLLS AGAIN, from its own stream, and each one used to fall back to
+       a Street building. An archetype is built for a square cell, so on a 6 x 14 m lot its parts
+       leave the lot (29% of the lots the preset picks). And `cbd` has no floor range of its own:
+       at the Street's 5 or 6 floors no cbd row is legal, the pool is empty and the row is null
+       (6%), so the roll alone cannot help and the floors and the core roll too.
+       A lot whose first roll fits is unchanged, part for part. */
+    var byDet, fits, row=null, tries=0;
+    do {
+    if(tries){ uFl=R(); uCore=R(); uRoll=R(); sized(); }
+    byDet=[]; fits=true;
     [0,1,2].forEach(function(det){
       var r=archCells([cell(det)],true)[0], parts=[];
       row=r.row;
@@ -25799,8 +25813,9 @@ function archTheme(K,base){
       parts.forEach(function(P){ K.verts(P).forEach(function(v){ if(!K.inConv(L.poly,v) || v[2]<-1e-6 || v[2]>THM.ztop) fits=false; }); });
       byDet.push(parts);
     });
+    } while((!fits || !byDet[0].length) && ++tries<ARCHTRIES);
     if(!fits || !byDet[0].length) return;
-    L.arch={row:row, byDet:byDet, floors:floors, core:core, W:W, D:D, zone:zone};
+    L.arch={row:row, byDet:byDet, floors:floors, core:core, W:W, D:D, zone:zone, tries:tries};
     picked.push(L);
   });
   var T=base(Object.assign({},K,{lots:K.lots.filter(function(L){ return !L.arch; })}));
@@ -41983,6 +41998,33 @@ ENGEXTRA.strt=function(box){
   b.type='button'; b.textContent='Neon street';
   b.title='Colour the drawing as it is: Pen map 3 (True colour) at your Colours count, so the neon finds its own inks. Turns off Line pens and Engine layers if they are on, since they override the pen map. Changes nothing else: page, camera and every slider stay as you set them.';
   b.addEventListener('click',function(){ var m=applyStrtPreset('neon'); mountG(); mount(); if(m) msg(m); });
+  d.appendChild(b);
+  box.appendChild(d);
+};
+/* THE ISO CITY PRESET (queue row 118, docs/specs/2026-10-12-town-power_v3.md §5):
+   `town` as the iso engine's city -- isometric, every plot one of the 87
+   archetypes, Districts on, a river, no market rows (§5 lists `alley`, the lot gaps,
+   and not `alleys`: a market row is the Night market's shophouses, which P-I2 cannot
+   call archetypes), no viaducts, no site, no cars. It writes
+   knob values and nothing else, no code path of its own, and only the keys below:
+   the page, the camera's zoom and pan, every other Corridor city knob and every
+   global stay as they are (the row 43 lesson: the Sketchpad has no undo). ONE
+   FUNCTION, called by the button and by the gate; it returns the status message. */
+var TOWNPRESETS={isocity:{proj:1,isoaz:45,isoel:30,archlots:100,archmin:4,zones:1,river:1,alleys:0,rail:0,hwy:0,
+  parks:10,pline:0,site:0,lotmin:6,lotmax:12,alley:0,width:7,cars:0}};
+function applyTownPreset(name){
+  var V=TOWNPRESETS[name], E=STATE.eng.town, n=0;
+  if(!V||!E) return false;
+  Object.keys(V).forEach(function(k){ if(E[k]!==V[k]){ E[k]=V[k]; n++; } });
+  return 'Iso city: '+n+' of '+Object.keys(V).length+' knobs changed';
+}
+ENGEXTRA.town=function(box){
+  var d=document.createElement('div');
+  d.className='engx'; d.id='townx';
+  var b=document.createElement('button');
+  b.type='button'; b.textContent='Iso city';
+  b.title='Sets this up as the Iso city engine\u2019s kind of drawing: isometric, every plot one of its 87 buildings, Districts on, a river, no market rows, railway, highway, powerline, site or cars. Writes 18 knobs here and nothing else: the page, Iso zoom and pan, and every other knob stay as they are.';
+  b.addEventListener('click',function(){ var m=applyTownPreset('isocity'); mountG(); mount(); if(m) msg(m); });
   d.appendChild(b);
   box.appendChild(d);
 };
