@@ -116,6 +116,7 @@ body.touch.fly #pad{display:flex}
     <div id="cities" role="group" aria-label="City"></div>
     <div id="tools">
       <button class="btn" id="b-tex" aria-pressed="false" title="Facades, signs, cars, planes, boats and trees (T)">Textures</button>
+      <button class="btn" id="b-sol" aria-pressed="true" title="Hide lines behind solids, like the plot (O)">Solids</button>
       <button class="btn wide" id="b-photo" title="Save a picture (P)">Photo</button>
       <button class="btn wide" id="b-rec" title="Record the current route as a video (R)">Record</button>
       <button class="btn" id="b-more" aria-expanded="false" aria-controls="drawer">Controls</button>
@@ -157,6 +158,7 @@ body.touch.fly #pad{display:flex}
   </div>
   <label class="sl" for="s-fog">Haze <input type="range" id="s-fog" min="0" max="100" value="55"><output id="o-fog"></output></label>
   <label class="sl" for="s-ink">Ink <input type="range" id="s-ink" min="20" max="100" value="85"><output id="o-ink"></output></label>
+  <label class="ck" for="c-solid"><input type="checkbox" id="c-solid" checked> Solids: hide lines behind buildings, like the plot</label>
   <label class="ck" for="c-glow"><input type="checkbox" id="c-glow" checked> Glow (lines add up)</label>
   <label class="ck" for="c-height"><input type="checkbox" id="c-height" checked> Colour buildings by height</label>
   <h2>Layers</h2>
@@ -187,7 +189,7 @@ body.touch.fly #pad{display:flex}
     <dt><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> <kbd>Q</kbd><kbd>E</kbd></dt><dd>Fly, down, up (hold <kbd>Shift</kbd> to go fast)</dd>
     <dt>Drag · scroll</dt><dd>Look / turn · zoom or change speed</dd>
     <dt><kbd>M</kbd></dt><dd>Isometric → Orbit → Fly</dd>
-    <dt><kbd>T</kbd></dt><dd>Textures on / off</dd>
+    <dt><kbd>T</kbd> · <kbd>O</kbd></dt><dd>Textures on / off · solids on / off</dd>
     <dt><kbd>N</kbd></dt><dd>Next city</dd>
     <dt><kbd>K</kbd></dt><dd>Add this view to your flight</dd>
     <dt><kbd>P</kbd> · <kbd>R</kbd></dt><dd>Photo · record the current flight</dd>
@@ -201,18 +203,18 @@ body.touch.fly #pad{display:flex}
 'use strict';
 /* ================= state ================= */
 var cv=document.getElementById('gl');
-var gl=cv.getContext('webgl',{antialias:true,preserveDrawingBuffer:true,alpha:false})||cv.getContext('experimental-webgl',{antialias:true,preserveDrawingBuffer:true});
+var gl=cv.getContext('webgl',{antialias:true,preserveDrawingBuffer:true,alpha:false,depth:true})||cv.getContext('experimental-webgl',{antialias:true,preserveDrawingBuffer:true,depth:true});
 var $=function(id){return document.getElementById(id);};
 if(!gl){ $('load').textContent='This page needs WebGL, which this browser has turned off.'; return; }
 var META=null, CITY=null, GEO=null, ROUTE=null;
 var LAYERS=['Buildings','Streets','Airfield','Water','Decks','Vehicles','Trees','Signs'];
 var layOn=[1,1,1,1,1,1,1,1];
 var THEMES={
-  night:{bg:[.027,.035,.05], cols:[[.37,.86,1],[.24,.29,.36],[1,.33,.3],[.18,.48,.95],[1,.58,.16],[1,1,.86],[.33,.95,.55],[1,.37,.64]], hi:[[.25,.75,1],[.62,.42,1],[1,.37,.64],[1,.75,.3]], glow:true},
-  paper:{bg:[.953,.937,.902], cols:[[.1,.12,.14],[.55,.53,.49],[.7,.2,.16],[.16,.39,.6],[.78,.42,.1],[.75,.16,.13],[.2,.5,.27],[.16,.36,.7]], hi:[[.1,.12,.14],[.1,.12,.14],[.1,.12,.14],[.1,.12,.14]], glow:false},
-  blue:{bg:[.05,.23,.42], cols:[[.92,.96,1],[.55,.7,.86],[1,.8,.55],[.6,.86,1],[1,.95,.6],[1,.92,.4],[.75,1,.8],[1,.75,.9]], hi:[[.92,.96,1],[.92,.96,1],[.92,.96,1],[.92,.96,1]], glow:false}};
+  night:{bg:[.027,.035,.05], f0:[.03,.04,.058], f1:[.085,.105,.145], cols:[[.37,.86,1],[.24,.29,.36],[1,.33,.3],[.18,.48,.95],[1,.58,.16],[1,1,.86],[.33,.95,.55],[1,.37,.64]], hi:[[.25,.75,1],[.62,.42,1],[1,.37,.64],[1,.75,.3]], glow:true},
+  paper:{bg:[.953,.937,.902], f0:[.80,.78,.73], f1:[.985,.975,.95], cols:[[.1,.12,.14],[.55,.53,.49],[.7,.2,.16],[.16,.39,.6],[.78,.42,.1],[.75,.16,.13],[.2,.5,.27],[.16,.36,.7]], hi:[[.1,.12,.14],[.1,.12,.14],[.1,.12,.14],[.1,.12,.14]], glow:false},
+  blue:{bg:[.05,.23,.42], f0:[.05,.21,.39], f1:[.11,.31,.53], cols:[[.92,.96,1],[.55,.7,.86],[1,.8,.55],[.6,.86,1],[1,.95,.6],[1,.92,.4],[.75,1,.8],[1,.75,.9]], hi:[[.92,.96,1],[.92,.96,1],[.92,.96,1],[.92,.96,1]], glow:false}};
 var theme='night';
-var opt={fov:70,speed:60,fog:.55,ink:.85,glow:true,height:true,spin:true,plot:false,trail:false,bars:true,caps:true,pace:1,tex:false};
+var opt={solid:true,fov:70,speed:60,fog:.55,ink:.85,glow:true,height:true,spin:true,plot:false,trail:false,bars:true,caps:true,pace:1,tex:false};
 var mode='orbit';
 var C={tgt:[0,0,0], az:-125, el:28, dist:1500, ortho:1200, eye:[0,-800,200], yaw:90, pitch:-10};
 var dirty=true, idle=true, lastInput=0;
@@ -239,6 +241,16 @@ var QVS='attribute vec2 q;void main(){gl_Position=vec4(q,0.0,1.0);}', QFS='preci
 var QP=gl.createProgram();gl.attachShader(QP,sh(gl.VERTEX_SHADER,QVS));gl.attachShader(QP,sh(gl.FRAGMENT_SHADER,QFS));gl.linkProgram(QP);
 var qb=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,qb);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,1,-1,-1,1,1,1]),gl.STATIC_DRAW);
 var qLoc=gl.getAttribLocation(QP,'q'), qU=gl.getUniformLocation(QP,'uQ');
+/* solids: every face filled first, shaded by a fixed sun, so the lines behind them fail the depth test */
+var FVS='attribute vec3 aP;attribute vec3 aN;uniform mat4 uM;uniform vec3 uE;uniform vec3 uFwd;uniform vec2 uF;uniform float uOrtho;uniform vec3 uSun;varying float vL;varying float vA;'+
+'void main(){vec3 p=aP*0.1;gl_Position=uM*vec4(p,1.0);vec3 n=normalize(aN);vL=0.25+0.75*abs(dot(n,uSun));'+
+'float d=uOrtho>0.5?dot(p-uE,uFwd):distance(p,uE);float fog=clamp((d-uF.x)/max(1.0,uF.y-uF.x),0.0,1.0);vA=1.0-fog*0.92;}';
+var FFS='precision mediump float;varying float vL;varying float vA;uniform vec3 uBg;uniform vec3 uF0;uniform vec3 uF1;'+
+'void main(){gl_FragColor=vec4(mix(uBg,mix(uF0,uF1,vL),vA),1.0);}';
+var FP=gl.createProgram();gl.attachShader(FP,sh(gl.VERTEX_SHADER,FVS));gl.attachShader(FP,sh(gl.FRAGMENT_SHADER,FFS));gl.linkProgram(FP);
+var FU={}; ['uM','uE','uFwd','uF','uOrtho','uSun','uBg','uF0','uF1'].forEach(function(n){FU[n]=gl.getUniformLocation(FP,n);});
+var fP=gl.getAttribLocation(FP,'aP'), fN=gl.getAttribLocation(FP,'aN');
+var SUN=norm([-0.45,-0.62,0.64]);
 
 /* ================= data ================= */
 var cache={};
@@ -268,9 +280,45 @@ function upload(buf,n){
   core=nc?[core[0]/nc,core[1]/nc,0]:[(mn[0]+mx[0])/2,(mn[1]+mx[1])/2,0];
   return {pb:pb,lb:lb,n:n,start:start,cnt:cnt,mn:mn,mx:mx,core:core};
 }
+function uploadFaces(buf,n){
+  var I=new Int16Array(buf,0,n*9), L=new Uint8Array(buf,n*18,n), cnt=[0,0,0,0,0,0,0,0], i, j;
+  for(i=0;i<n;i++) cnt[L[i]]++;
+  var start=[],s=0; for(i=0;i<8;i++){start.push(s);s+=cnt[i];}
+  var pos=new Int16Array(n*9), nor=new Int8Array(n*9), at=start.slice();
+  for(i=0;i<n;i++){ var k=at[L[i]]++, o=i*9;
+    var ax=I[o+3]-I[o],ay=I[o+4]-I[o+1],az=I[o+5]-I[o+2],bx=I[o+6]-I[o],by=I[o+7]-I[o+1],bz=I[o+8]-I[o+2];
+    var nx=ay*bz-az*by, ny=az*bx-ax*bz, nz=ax*by-ay*bx, l=Math.hypot(nx,ny,nz)||1;
+    pos.set(I.subarray(o,o+9),k*9);
+    for(j=0;j<3;j++){ nor[k*9+j*3]=Math.round(nx/l*127); nor[k*9+j*3+1]=Math.round(ny/l*127); nor[k*9+j*3+2]=Math.round(nz/l*127); } }
+  var pb=gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER,pb); gl.bufferData(gl.ARRAY_BUFFER,pos,gl.STATIC_DRAW);
+  var nb=gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER,nb); gl.bufferData(gl.ARRAY_BUFFER,nor,gl.STATIC_DRAW);
+  return {pb:pb,nb:nb,n:n,start:start,cnt:cnt,roof:roofMap(pos,start[0],cnt[0])};
+}
+/* ROOFS: the highest building over every 1.5 m cell, from the building triangles (layer 0). A flight is lifted
+   over them. Decks are left out on purpose: the street flights pass under the viaducts. */
+function roofMap(pos,from,count){
+  var CS=1.5, mn=[1e9,1e9], mx=[-1e9,-1e9], i, j;
+  for(i=from*9;i<(from+count)*9;i+=3){ var x=pos[i]/10,y=pos[i+1]/10; if(x<mn[0])mn[0]=x; if(y<mn[1])mn[1]=y; if(x>mx[0])mx[0]=x; if(y>mx[1])mx[1]=y; }
+  if(mn[0]>mx[0]) return null;
+  var nx=Math.ceil((mx[0]-mn[0])/CS)+1, ny=Math.ceil((mx[1]-mn[1])/CS)+1, H=new Float32Array(nx*ny);
+  for(i=from;i<from+count;i++){ var o=i*9, ax=pos[o]/10,ay=pos[o+1]/10,az=pos[o+2]/10,bx=pos[o+3]/10,by=pos[o+4]/10,bz=pos[o+5]/10,cx=pos[o+6]/10,cy=pos[o+7]/10,cz=pos[o+8]/10;
+    var top=Math.max(az,bz,cz); if(top<2) continue;
+    var x0=Math.floor((Math.min(ax,bx,cx)-mn[0])/CS), x1=Math.floor((Math.max(ax,bx,cx)-mn[0])/CS), y0=Math.floor((Math.min(ay,by,cy)-mn[1])/CS), y1=Math.floor((Math.max(ay,by,cy)-mn[1])/CS);
+    var d=(by-cy)*(ax-cx)+(cx-bx)*(ay-cy);
+    for(var gy=y0;gy<=y1;gy++) for(var gx=x0;gx<=x1;gx++){ var px=mn[0]+(gx+0.5)*CS, py=mn[1]+(gy+0.5)*CS, inside;
+      if(Math.abs(d)<1e-6){ inside=(x1-x0)<=0||(y1-y0)<=0; } /* a wall seen edge-on: the cells it stands in */
+      else { var l1=((by-cy)*(px-cx)+(cx-bx)*(py-cy))/d, l2=((cy-ay)*(px-cx)+(ax-cx)*(py-cy))/d; inside=l1>=-0.02&&l2>=-0.02&&l1+l2<=1.02; }
+      if(inside){ var k=gy*nx+gx; if(top>H[k]) H[k]=top; } } }
+  return {H:H,nx:nx,ny:ny,x0:mn[0],y0:mn[1],cs:CS};
+}
+function roofAt(R,x,y){ if(!R) return 0; var gx=Math.floor((x-R.x0)/R.cs), gy=Math.floor((y-R.y0)/R.cs);
+  return (gx>=0&&gy>=0&&gx<R.nx&&gy<R.ny)?R.H[gy*R.nx+gx]:0;
+}
 function loadGeo(city,which,onProg){
   var key=city.id+'-'+which; if(cache[key]) return Promise.resolve(cache[key]);
-  var f=city[which]; return fetchBin(f.file,onProg).then(function(b){ return cache[key]=upload(b,f.n); });
+  var f=city[which];
+  var faces=(which==='detail'&&city.faces)?fetchBin(city.faces.file).then(function(b){ return uploadFaces(b,city.faces.n); }).catch(function(){ return null; }):Promise.resolve(null);
+  return Promise.all([fetchBin(f.file,onProg),faces]).then(function(r){ var g=upload(r[0],f.n); g.faces=r[1]; return cache[key]=g; });
 }
 
 /* ================= maths ================= */
@@ -302,13 +350,13 @@ function render(){
   if(opt.trail && playing){
     gl.useProgram(QP); gl.enable(gl.BLEND); gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);
     gl.bindBuffer(gl.ARRAY_BUFFER,qb); gl.enableVertexAttribArray(qLoc); gl.vertexAttribPointer(qLoc,2,gl.FLOAT,false,0,0);
-    gl.uniform4f(qU,T.bg[0],T.bg[1],T.bg[2],0.32); gl.drawArrays(gl.TRIANGLE_STRIP,0,4); gl.disableVertexAttribArray(qLoc);
-    gl.useProgram(PR);
-  } else { gl.clearColor(T.bg[0],T.bg[1],T.bg[2],1); gl.clear(gl.COLOR_BUFFER_BIT); }
+    gl.uniform4f(qU,T.bg[0],T.bg[1],T.bg[2],0.32); gl.disable(gl.DEPTH_TEST); gl.drawArrays(gl.TRIANGLE_STRIP,0,4); gl.disableVertexAttribArray(qLoc);
+    gl.useProgram(PR); gl.clear(gl.DEPTH_BUFFER_BIT);
+  } else { gl.clearColor(T.bg[0],T.bg[1],T.bg[2],1); gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT); }
   if(!GEO) return;
   var B=basis(), asp=W/H, S=SPAN(), P, V=lookAt(B.e,B.f,Math.abs(B.f[2])>0.999?[0,1,0]:[0,0,1]);
   if(mode==='iso') P=ortho(C.ortho*asp,C.ortho,1,S*8);
-  else P=persp(opt.fov*D2R,asp,0.5,S*12);
+  else P=persp(opt.fov*D2R,asp,1.0,S*10);
   gl.useProgram(PR);
   gl.uniformMatrix4fv(U.uM,false,new Float32Array(mul(P,V)));
   gl.uniform3fv(U.uE,B.e); gl.uniform3fv(U.uFwd,B.f); gl.uniform1f(U.uOrtho,mode==='iso'?1:0);
@@ -322,12 +370,25 @@ function render(){
   gl.uniform2f(U.uF,near,far);
   gl.uniform3fv(U.uBg,T.bg); gl.uniform1f(U.uInk,opt.ink);
   var glow=opt.glow&&T.glow; gl.uniform1f(U.uGlow,glow?1:0);
+  var MVP=new Float32Array(mul(P,V)), F=GEO.faces, solid=opt.solid&&F;
+  if(solid){
+    gl.useProgram(FP); gl.disable(gl.BLEND); gl.enable(gl.DEPTH_TEST); gl.depthFunc(gl.LEQUAL); gl.depthMask(true);
+    gl.enable(gl.POLYGON_OFFSET_FILL); gl.polygonOffset(1.5,3.0);
+    gl.uniformMatrix4fv(FU.uM,false,MVP); gl.uniform3fv(FU.uE,B.e); gl.uniform3fv(FU.uFwd,B.f); gl.uniform1f(FU.uOrtho,mode==='iso'?1:0);
+    gl.uniform2f(FU.uF,near,far); gl.uniform3fv(FU.uSun,SUN); gl.uniform3fv(FU.uBg,T.bg); gl.uniform3fv(FU.uF0,T.f0); gl.uniform3fv(FU.uF1,T.f1);
+    gl.bindBuffer(gl.ARRAY_BUFFER,F.pb); gl.enableVertexAttribArray(fP); gl.vertexAttribPointer(fP,3,gl.SHORT,false,0,0);
+    gl.bindBuffer(gl.ARRAY_BUFFER,F.nb); gl.enableVertexAttribArray(fN); gl.vertexAttribPointer(fN,3,gl.BYTE,true,0,0);
+    for(var l0=0;l0<8;l0++) if(layOn[l0]&&F.cnt[l0]) gl.drawArrays(gl.TRIANGLES,F.start[l0]*3,F.cnt[l0]*3);
+    gl.disableVertexAttribArray(fP); gl.disableVertexAttribArray(fN); gl.disable(gl.POLYGON_OFFSET_FILL);
+    gl.useProgram(PR); gl.depthMask(false);
+  } else gl.disable(gl.DEPTH_TEST);
   gl.enable(gl.BLEND);
   if(glow) gl.blendFunc(gl.ONE,gl.ONE); else gl.blendFunc(gl.ONE,gl.ZERO);
   gl.bindBuffer(gl.ARRAY_BUFFER,GEO.pb); gl.enableVertexAttribArray(aP); gl.vertexAttribPointer(aP,3,gl.SHORT,false,0,0);
   gl.bindBuffer(gl.ARRAY_BUFFER,GEO.lb); gl.enableVertexAttribArray(aL); gl.vertexAttribPointer(aL,1,gl.FLOAT,false,0,0);
   var order=glow?[1,3,2,4,0,6,5,7]:[1,3,2,4,6,0,7,5];
   order.forEach(function(l){ if(layOn[l]&&GEO.cnt[l]) gl.drawArrays(gl.LINES,GEO.start[l]*2,GEO.cnt[l]*2); });
+  gl.disableVertexAttribArray(aP); gl.disableVertexAttribArray(aL); gl.depthMask(true);
   frameMs=frameMs*0.9+(performance.now()-t0)*0.1;
 }
 
@@ -373,7 +434,7 @@ function setTex(on,quiet){
   if(!CITY) return Promise.resolve();
   var c=CITY;
   if(on && !cache[c.id+'-detail']) toast('Loading textures · '+(c.detail.bytes/1048576).toFixed(1)+' MB');
-  return loadGeo(c,on?'detail':'lite').then(function(g){ if(CITY===c){ GEO=g; stats(); dirty=true; if(on&&!quiet) toast('Textures on: facades, signs, cars, planes, boats, trees'); } });
+  return loadGeo(c,on?'detail':'lite').then(function(g){ if(CITY===c){ GEO=g; if(ROUTE) clearance(ROUTE); stats(); dirty=true; if(on&&!quiet) toast('Textures on: facades, signs, cars, planes, boats, trees'); } });
 }
 
 /* ================= routes ================= */
@@ -383,6 +444,15 @@ function buildRoutes(){
 }
 routesEl.addEventListener('click',function(e){ var b=e.target.closest('.rt'); if(b) playRoute(CITY.routes[+b.dataset.i]); });
 function cr(p0,p1,p2,p3,t){var t2=t*t,t3=t2*t;return 0.5*(2*p1+(-p0+p2)*t+(2*p0-5*p1+4*p2-p3)*t2+(-p0+3*p1-3*p2+p3)*t3);}
+/* MONOTONE CUBIC (Fritsch-Carlson): the curve never goes past either of the two views it runs between, so it
+   cannot swing underground between a high view and a low one */
+function tangents(x,y){ var n=y.length, dl=[], m=new Array(n), i; if(n<2) return [0];
+  for(i=0;i<n-1;i++) dl.push((y[i+1]-y[i])/Math.max(1e-9,x[i+1]-x[i]));
+  m[0]=dl[0]; m[n-1]=dl[n-2];
+  for(i=1;i<n-1;i++) m[i]=dl[i-1]*dl[i]<=0?0:(dl[i-1]+dl[i])/2;
+  for(i=0;i<n-1;i++){ if(dl[i]===0){ m[i]=0; m[i+1]=0; continue; } var a=m[i]/dl[i], b=m[i+1]/dl[i], h=a*a+b*b; if(h>9){ var t=3/Math.sqrt(h); m[i]=t*a*dl[i]; m[i+1]=t*b*dl[i]; } }
+  return m; }
+function herm(y0,y1,m0,m1,h,s){ var s2=s*s,s3=s2*s; return (2*s3-3*s2+1)*y0+(s3-2*s2+s)*h*m0+(-2*s3+3*s2)*y1+(s3-s2)*h*m1; }
 function prepRoute(r){
   var K=r.keys, yaw=[], prev=null;
   K.forEach(function(k){ var y=k.y; if(prev!==null){ while(y-prev>180)y-=360; while(y-prev<-180)y+=360; } yaw.push(y); prev=y; });
@@ -390,16 +460,34 @@ function prepRoute(r){
   /* each leg gets time by the log of its length: close-ups are not rushed, long pull-outs are not dragged */
   var d=[0]; for(var i=1;i<K.length;i++){ var a=K[i-1].e,b=K[i].e; d.push(d[i-1]+0.8+Math.log(1+Math.hypot(b[0]-a[0],b[1]-a[1],b[2]-a[2])/30)); }
   var tot=d[d.length-1]||1; r._u=d.map(function(v){return v/tot;}); r._yaw=yaw;
+  var u=r._u; r._m=[0,1,2].map(function(q){ return tangents(u,K.map(function(k){return k.e[q];})); });
+  r._my=tangents(u,yaw); r._mp=tangents(u,K.map(function(k){return k.p;}));
+  clearance(r);
+}
+/* CLEARANCE: walk the route at 900 points; wherever the flight as drawn would be inside a building, lift it by
+   exactly the shortfall to 3 m over the roof. The lift is eased in and out at 1:1.6 both ways, so the camera rises
+   before an obstacle and settles after it instead of jumping; a flight that already clears a tower is not raised. */
+function clearance(r){
+  var R=GEO&&GEO.faces&&GEO.faces.roof, N=900, i; r._floor=null; if(!R) return;
+  var need=new Float32Array(N+1), pts=[];
+  for(i=0;i<=N;i++){ var q=raw(r,i/N); pts.push(q.e); var h=roofAt(R,q.e[0],q.e[1]); need[i]=h>0?Math.max(0,h+3-Math.max(1.5,q.e[2])):0; }
+  var f=Float32Array.from(need);
+  for(i=1;i<=N;i++){ var d=Math.hypot(pts[i][0]-pts[i-1][0],pts[i][1]-pts[i-1][1]); f[i]=Math.max(f[i],f[i-1]-d/1.6); }
+  for(i=N-1;i>=0;i--){ var d2=Math.hypot(pts[i+1][0]-pts[i][0],pts[i+1][1]-pts[i][1]); f[i]=Math.max(f[i],f[i+1]-d2/1.6); }
+  r._floor=f;
+}
+function raw(r,t){
+  var K=r.keys,n=K.length,u=r._u,i=0; if(n===1) return {e:K[0].e.slice(),y:K[0].y,p:K[0].p,k:0};
+  while(i<n-2&&t>u[i+1]) i++;
+  var h=Math.max(1e-6,u[i+1]-u[i]), s=Math.max(0,Math.min(1,(t-u[i])/h));
+  var e=[0,1,2].map(function(q){return herm(K[i].e[q],K[i+1].e[q],r._m[q][i],r._m[q][i+1],h,s);});
+  return {e:e,y:herm(r._yaw[i],r._yaw[i+1],r._my[i],r._my[i+1],h,s),p:herm(K[i].p,K[i+1].p,r._mp[i],r._mp[i+1],h,s),k:s>0.5?i+1:i};
 }
 function sample(r,t){
-  var K=r.keys,n=K.length,u=r._u,i=0; if(n===1) return {e:K[0].e,y:K[0].y,p:K[0].p,k:0};
-  while(i<n-2&&t>u[i+1]) i++;
-  var s=(t-u[i])/Math.max(1e-6,u[i+1]-u[i]); s=Math.max(0,Math.min(1,s));
-  s=s*s*(3-2*s)*0.35+s*0.65; /* a little ease at every view */
-  function at(j){return Math.max(0,Math.min(n-1,j));}
-  var a=at(i-1),b=i,c=i+1,d=at(i+2);
-  var e=[0,1,2].map(function(q){return cr(K[a].e[q],K[b].e[q],K[c].e[q],K[d].e[q],s);});
-  return {e:e,y:cr(r._yaw[a],r._yaw[b],r._yaw[c],r._yaw[d],s),p:cr(K[a].p,K[b].p,K[c].p,K[d].p,s),k:s>0.5?c:b};
+  var q=raw(r,t);
+  if(q.e[2]<1.5) q.e[2]=1.5;
+  if(r._floor){ var x=Math.max(0,Math.min(1,t))*(r._floor.length-1), j=Math.floor(x), f=r._floor[j]+(r._floor[Math.min(j+1,r._floor.length-1)]-r._floor[j])*(x-j); q.e[2]+=f; }
+  return q;
 }
 var playing=false, rt=0, stepAcc=0, capKey=-1, recAfter=false;
 function playRoute(r,fromRec){
@@ -468,6 +556,7 @@ window.addEventListener('keydown',function(e){
   if(k===' '){ e.preventDefault(); if(ROUTE){ playing=!playing; if(playing) lastT=0; } else if(CITY) playRoute(CITY.routes[ri%CITY.routes.length]); return; }
   if(k==='m'){ setMode(mode==='iso'?'orbit':mode==='orbit'?'fly':'iso'); return; }
   if(k==='t'){ setTex(!opt.tex); return; }
+  if(k==='o'){ setSolid(!opt.solid); return; }
   if(k==='n'){ var i=META.cities.indexOf(CITY); setCity(META.cities[(i+1)%META.cities.length].id); return; }
   if(k==='k'){ addKey(); return; }
   if(k==='p'){ photo(); return; }
@@ -539,11 +628,13 @@ slider('s-fog',function(v){return v+'%';},function(v){opt.fog=v/100;});
 slider('s-ink',function(v){return v+'%';},function(v){opt.ink=v/100;});
 slider('s-len',function(v){return (v/100).toFixed(1)+'×';},function(v){opt.pace=v/100;});
 function check(id,key,after){ var c=$(id); c.checked=!!opt[key]; c.addEventListener('change',function(){ opt[key]=c.checked; dirty=true; if(after) after(); }); }
-check('c-glow','glow'); check('c-height','height'); check('c-spin','spin'); check('c-plot','plot'); check('c-trail','trail');
+check('c-solid','solid',function(){ $('b-sol').setAttribute('aria-pressed',String(opt.solid)); }); check('c-glow','glow'); check('c-height','height'); check('c-spin','spin'); check('c-plot','plot'); check('c-trail','trail');
 check('c-bars','bars',function(){ document.body.classList.toggle('bars',opt.bars&&!!ROUTE); }); check('c-caps','caps',function(){ if(!opt.caps) showCap(''); });
 $('layers').innerHTML=LAYERS.map(function(n,i){ var c=THEMES.night.cols[i]; return '<label class="ck" for="l'+i+'"><input type="checkbox" id="l'+i+'" checked><i style="background:rgb('+c.map(function(v){return Math.round(v*255);}).join(',')+')"></i>'+n+'</label>'; }).join('');
 LAYERS.forEach(function(n,i){ $('l'+i).addEventListener('change',function(){ layOn[i]=this.checked?1:0; dirty=true; }); });
 $('b-tex').onclick=function(){ setTex(!opt.tex); };
+function setSolid(on){ opt.solid=on; $('c-solid').checked=on; $('b-sol').setAttribute('aria-pressed',String(on)); dirty=true; if(on&&!opt.tex) setTex(true); }
+$('b-sol').onclick=function(){ setSolid(!opt.solid); };
 $('b-photo').onclick=photo; $('b-photo2').onclick=photo;
 $('b-rec').onclick=recordRoute; $('b-rec2').onclick=recordRoute;
 $('b-help').onclick=function(){ $('help').classList.add('on'); };
@@ -577,6 +668,7 @@ function tick(ts){
     if(held.d){ C.eye[0]+=rgt[0]*sp;C.eye[1]+=rgt[1]*sp;mv=true; } if(held.a){ C.eye[0]-=rgt[0]*sp;C.eye[1]-=rgt[1]*sp;mv=true; }
     if(held.arrowleft){ C.yaw+=60*dt;mv=true; } if(held.arrowright){ C.yaw-=60*dt;mv=true; }
     if(held.e){ C.eye[2]+=sp;mv=true; } if(held.q){ C.eye[2]=Math.max(0.8,C.eye[2]-sp);mv=true; }
+    if(mv&&GEO.faces&&GEO.faces.roof){ var rf=roofAt(GEO.faces.roof,C.eye[0],C.eye[1]); if(rf>0&&C.eye[2]<rf+1.5) C.eye[2]=rf+1.5; }
     if(mv) dirty=true;
   }
   if(opt.spin&&mode!=='fly'&&!playing&&(idle||ts-lastInput>12000)){ C.az+=dt*3.2; dirty=true; }
@@ -597,6 +689,8 @@ fetch('data/cities.json').then(function(r){ if(!r.ok) throw new Error('cities.js
   requestAnimationFrame(tick);
 }).catch(function(e){ $('load').textContent='Could not load the cities: '+e.message; });
 window.__cc={state:function(){return {mode:mode,C:C,city:CITY&&CITY.id,tex:opt.tex,n:GEO&&GEO.n,frameMs:frameMs,routes:CITY&&CITY.routes.map(function(r){return r.id;})};},
+  probe:function(i){ var r=CITY.routes[i]; prepRoute(r); var R=GEO.faces&&GEO.faces.roof, lo=1e9, inside=0;
+    for(var j=0;j<=900;j++){ var q=sample(r,j/900); lo=Math.min(lo,q.e[2]); if(R){ var h=roofAt(R,q.e[0],q.e[1]); if(h>0&&q.e[2]<h+1) inside++; } } return {id:r.id,lowest:+lo.toFixed(1),insideBuildings:inside,roofs:!!R}; },
   play:function(i){ playRoute(CITY.routes[i]); }, key:function(k){ playing=false; rt=ROUTE._u[k]; applyRoute(); render(); }, at:function(t){ playing=false; rt=t; applyRoute(); render(); }, city:setCity, tex:setTex, theme:function(t){ $('t-'+t).click(); }, mode:setMode};
 })();
 </script>
