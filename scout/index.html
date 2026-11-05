@@ -220,9 +220,9 @@ var C={tgt:[0,0,0], az:-125, el:28, dist:1500, ortho:1200, eye:[0,-800,200], yaw
 var dirty=true, idle=true, lastInput=0;
 
 /* ================= GL ================= */
-var VS='attribute vec3 aP;attribute float aL;uniform mat4 uM;uniform vec3 uE;uniform vec3 uC[8];uniform vec3 uH[4];uniform float uZ;uniform float uHeight;uniform vec2 uF;uniform float uOrtho;uniform vec3 uFwd;'+
+var VS='attribute vec3 aP;attribute float aL;uniform mat4 uM;uniform mat4 uObj;uniform float uS;uniform vec3 uE;uniform vec3 uC[8];uniform vec3 uH[4];uniform float uZ;uniform float uHeight;uniform vec2 uF;uniform float uOrtho;uniform vec3 uFwd;'+
 'varying vec3 vC;varying float vA;'+
-'void main(){vec3 p=aP*0.1;gl_Position=uM*vec4(p,1.0);int l=int(aL+0.5);vec3 c=uC[0];'+
+'void main(){vec3 p=(uObj*vec4(aP*uS,1.0)).xyz;gl_Position=uM*vec4(p,1.0);int l=int(aL+0.5);vec3 c=uC[0];'+
 'for(int i=0;i<8;i++){if(i==l)c=uC[i];}'+
 'if(l==0&&uHeight>0.5){float h=clamp(p.z/uZ,0.0,1.0)*3.0;int k=int(floor(min(h,2.999)));float f=fract(min(h,2.999));vec3 a=uH[0],b=uH[1];'+
 'if(k==1){a=uH[1];b=uH[2];}if(k==2){a=uH[2];b=uH[3];}c=mix(a,b,f);}'+
@@ -234,7 +234,7 @@ function sh(t,s){var o=gl.createShader(t);gl.shaderSource(o,s);gl.compileShader(
 var PR=gl.createProgram();gl.attachShader(PR,sh(gl.VERTEX_SHADER,VS));gl.attachShader(PR,sh(gl.FRAGMENT_SHADER,FS));gl.linkProgram(PR);
 if(!gl.getProgramParameter(PR,gl.LINK_STATUS)){ $('load').textContent='WebGL could not start: '+gl.getProgramInfoLog(PR); return; }
 gl.useProgram(PR);
-var U={}; ['uM','uE','uC','uH','uZ','uHeight','uF','uOrtho','uFwd','uBg','uInk','uGlow'].forEach(function(n){U[n]=gl.getUniformLocation(PR,n);});
+var U={}; ['uM','uE','uC','uH','uZ','uHeight','uF','uOrtho','uFwd','uBg','uInk','uGlow','uObj','uS'].forEach(function(n){U[n]=gl.getUniformLocation(PR,n);});
 var aP=gl.getAttribLocation(PR,'aP'), aL=gl.getAttribLocation(PR,'aL');
 /* a full-screen quad for light trails */
 var QVS='attribute vec2 q;void main(){gl_Position=vec4(q,0.0,1.0);}', QFS='precision mediump float;uniform vec4 uQ;void main(){gl_FragColor=uQ;}';
@@ -242,13 +242,13 @@ var QP=gl.createProgram();gl.attachShader(QP,sh(gl.VERTEX_SHADER,QVS));gl.attach
 var qb=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,qb);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,1,-1,-1,1,1,1]),gl.STATIC_DRAW);
 var qLoc=gl.getAttribLocation(QP,'q'), qU=gl.getUniformLocation(QP,'uQ');
 /* solids: every face filled first, shaded by a fixed sun, so the lines behind them fail the depth test */
-var FVS='attribute vec3 aP;attribute vec3 aN;uniform mat4 uM;uniform vec3 uE;uniform vec3 uFwd;uniform vec2 uF;uniform float uOrtho;uniform vec3 uSun;varying float vL;varying float vA;'+
-'void main(){vec3 p=aP*0.1;gl_Position=uM*vec4(p,1.0);vec3 n=normalize(aN);vL=0.25+0.75*abs(dot(n,uSun));'+
+var FVS='attribute vec3 aP;attribute vec3 aN;uniform mat4 uM;uniform mat4 uObj;uniform float uS;uniform vec3 uE;uniform vec3 uFwd;uniform vec2 uF;uniform float uOrtho;uniform vec3 uSun;varying float vL;varying float vA;'+
+'void main(){vec3 p=(uObj*vec4(aP*uS,1.0)).xyz;gl_Position=uM*vec4(p,1.0);vec3 n=normalize(mat3(uObj)*aN);vL=0.25+0.75*abs(dot(n,uSun));'+
 'float d=uOrtho>0.5?dot(p-uE,uFwd):distance(p,uE);float fog=clamp((d-uF.x)/max(1.0,uF.y-uF.x),0.0,1.0);vA=1.0-fog*0.92;}';
 var FFS='precision mediump float;varying float vL;varying float vA;uniform vec3 uBg;uniform vec3 uF0;uniform vec3 uF1;'+
 'void main(){gl_FragColor=vec4(mix(uBg,mix(uF0,uF1,vL),vA),1.0);}';
 var FP=gl.createProgram();gl.attachShader(FP,sh(gl.VERTEX_SHADER,FVS));gl.attachShader(FP,sh(gl.FRAGMENT_SHADER,FFS));gl.linkProgram(FP);
-var FU={}; ['uM','uE','uFwd','uF','uOrtho','uSun','uBg','uF0','uF1'].forEach(function(n){FU[n]=gl.getUniformLocation(FP,n);});
+var FU={}; ['uM','uE','uFwd','uF','uOrtho','uSun','uBg','uF0','uF1','uObj','uS'].forEach(function(n){FU[n]=gl.getUniformLocation(FP,n);});
 var fP=gl.getAttribLocation(FP,'aP'), fN=gl.getAttribLocation(FP,'aN');
 var SUN=norm([-0.45,-0.62,0.64]);
 
@@ -321,6 +321,45 @@ function loadGeo(city,which,onProg){
   return Promise.all([fetchBin(f.file,onProg),faces]).then(function(r){ var g=upload(r[0],f.n); g.faces=r[1]; return cache[key]=g; });
 }
 
+/* ================= movers: aircraft drawn with their own pose ================= */
+/* Each city's planes come from <id>-movers.json in their own frame (nose along +x). They sit on their stands until a
+   flight moves one. POSES holds one model matrix per plane. */
+var ID4=new Float32Array([1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1]);
+var MOV=null, POSES=[], movCache={};
+function poseM(x,y,z,yaw,pitch,roll){ var cy=Math.cos(yaw*D2R),sy=Math.sin(yaw*D2R),cp=Math.cos(-pitch*D2R),sp=Math.sin(-pitch*D2R),cr=Math.cos(roll*D2R),sr=Math.sin(roll*D2R);
+  /* R = Rz(yaw) Ry(-pitch) Rx(roll): nose up for positive pitch, right wing down for positive roll; column-major */
+  return new Float32Array([cy*cp,sy*cp,-sp,0, cy*sp*sr-sy*cr,sy*sp*sr+cy*cr,cp*sr,0, cy*sp*cr+sy*sr,sy*sp*cr-cy*sr,cp*cr,0, x,y,z,1]); }
+function parked(){ POSES=MOV?MOV.list.map(function(o){ return poseM(o.at[0],o.at[1],0,o.th,0,0); }):[]; dirty=true; }
+function loadMovers(city){
+  if(!city.movers){ MOV=null; parked(); return Promise.resolve(); }
+  if(movCache[city.id]){ MOV=movCache[city.id]; parked(); return Promise.resolve(); }
+  return fetch(city.movers.file).then(function(r){ if(!r.ok) throw new Error(r.status); return r.json(); }).then(function(m){
+    var parts=m.movers.map(function(o){
+      var E=new Float32Array(o.E.length*6), F=new Float32Array(o.F.length*9), N=new Float32Array(o.F.length*9);
+      o.E.forEach(function(e,i){ E.set(e,i*6); });
+      o.F.forEach(function(f,i){ F.set(f,i*9); var ax=f[3]-f[0],ay=f[4]-f[1],az=f[5]-f[2],bx=f[6]-f[0],by=f[7]-f[1],bz=f[8]-f[2], n=norm([ay*bz-az*by,az*bx-ax*bz,ax*by-ay*bx]); for(var j=0;j<3;j++) N.set(n,i*9+j*3); });
+      var eb=gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER,eb); gl.bufferData(gl.ARRAY_BUFFER,E,gl.STATIC_DRAW);
+      var fb=gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER,fb); gl.bufferData(gl.ARRAY_BUFFER,F,gl.STATIC_DRAW);
+      var nb=gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER,nb); gl.bufferData(gl.ARRAY_BUFFER,N,gl.STATIC_DRAW);
+      return {at:o.at,th:o.th,eb:eb,fb:fb,nb:nb,ne:o.E.length,nf:o.F.length};
+    });
+    movCache[city.id]={rwy:m.rwy,list:parts}; if(CITY===city){ MOV=movCache[city.id]; parked(); }
+  }).catch(function(){ MOV=null; parked(); });
+}
+function moverFaces(){ if(!MOV||!layOn[5]) return;
+  gl.uniform1f(FU.uS,1.0);
+  MOV.list.forEach(function(o,i){ if(!POSES[i]) return;
+    gl.bindBuffer(gl.ARRAY_BUFFER,o.fb); gl.vertexAttribPointer(fP,3,gl.FLOAT,false,0,0);
+    gl.bindBuffer(gl.ARRAY_BUFFER,o.nb); gl.vertexAttribPointer(fN,3,gl.FLOAT,false,0,0);
+    gl.uniformMatrix4fv(FU.uObj,false,POSES[i]); gl.drawArrays(gl.TRIANGLES,0,o.nf*3); });
+  gl.uniformMatrix4fv(FU.uObj,false,ID4); gl.uniform1f(FU.uS,0.1); }
+function moverLines(){ if(!MOV||!layOn[5]) return;
+  gl.disableVertexAttribArray(aL); gl.vertexAttrib1f(aL,5); gl.uniform1f(U.uS,1.0); gl.uniform1f(U.uHeight,0);
+  MOV.list.forEach(function(o,i){ if(!POSES[i]) return;
+    gl.bindBuffer(gl.ARRAY_BUFFER,o.eb); gl.vertexAttribPointer(aP,3,gl.FLOAT,false,0,0);
+    gl.uniformMatrix4fv(U.uObj,false,POSES[i]); gl.drawArrays(gl.LINES,0,o.ne*2); });
+  gl.uniformMatrix4fv(U.uObj,false,ID4); gl.uniform1f(U.uS,0.1); gl.uniform1f(U.uHeight,opt.height?1:0); gl.enableVertexAttribArray(aL); }
+
 /* ================= maths ================= */
 function persp(fovy,asp,n,f){var t=1/Math.tan(fovy/2),d=1/(n-f);return [t/asp,0,0,0, 0,t,0,0, 0,0,(f+n)*d,-1, 0,0,2*f*n*d,0];}
 function ortho(w,h,n,f){return [2/w,0,0,0, 0,2/h,0,0, 0,0,-2/(f-n),0, 0,0,-(f+n)/(f-n),1];}
@@ -378,7 +417,9 @@ function render(){
     gl.uniform2f(FU.uF,near,far); gl.uniform3fv(FU.uSun,SUN); gl.uniform3fv(FU.uBg,T.bg); gl.uniform3fv(FU.uF0,T.f0); gl.uniform3fv(FU.uF1,T.f1);
     gl.bindBuffer(gl.ARRAY_BUFFER,F.pb); gl.enableVertexAttribArray(fP); gl.vertexAttribPointer(fP,3,gl.SHORT,false,0,0);
     gl.bindBuffer(gl.ARRAY_BUFFER,F.nb); gl.enableVertexAttribArray(fN); gl.vertexAttribPointer(fN,3,gl.BYTE,true,0,0);
+    gl.uniformMatrix4fv(FU.uObj,false,ID4); gl.uniform1f(FU.uS,0.1);
     for(var l0=0;l0<8;l0++) if(layOn[l0]&&F.cnt[l0]) gl.drawArrays(gl.TRIANGLES,F.start[l0]*3,F.cnt[l0]*3);
+    moverFaces();
     gl.disableVertexAttribArray(fP); gl.disableVertexAttribArray(fN); gl.disable(gl.POLYGON_OFFSET_FILL);
     gl.useProgram(PR); gl.depthMask(false);
   } else gl.disable(gl.DEPTH_TEST);
@@ -387,7 +428,9 @@ function render(){
   gl.bindBuffer(gl.ARRAY_BUFFER,GEO.pb); gl.enableVertexAttribArray(aP); gl.vertexAttribPointer(aP,3,gl.SHORT,false,0,0);
   gl.bindBuffer(gl.ARRAY_BUFFER,GEO.lb); gl.enableVertexAttribArray(aL); gl.vertexAttribPointer(aL,1,gl.FLOAT,false,0,0);
   var order=glow?[1,3,2,4,0,6,5,7]:[1,3,2,4,6,0,7,5];
+  gl.uniformMatrix4fv(U.uObj,false,ID4); gl.uniform1f(U.uS,0.1);
   order.forEach(function(l){ if(layOn[l]&&GEO.cnt[l]) gl.drawArrays(gl.LINES,GEO.start[l]*2,GEO.cnt[l]*2); });
+  moverLines();
   gl.disableVertexAttribArray(aP); gl.disableVertexAttribArray(aL); gl.depthMask(true);
   frameMs=frameMs*0.9+(performance.now()-t0)*0.1;
 }
@@ -412,7 +455,7 @@ function setCity(id,keepView){
   CITY=c; stopRoute();
   [].forEach.call(document.querySelectorAll('#cities .btn'),function(b){b.setAttribute('aria-pressed',String(b.dataset.id===c.id));});
   $('blurb').textContent=c.blurb;
-  buildRoutes();
+  buildRoutes(); MOV=null; POSES=[]; loadMovers(c);
   return loadGeo(c,opt.tex?'detail':'lite',prog).then(function(g){
     GEO=g; $('load').style.display='none';
     if(!keepView) frameCity();
@@ -454,6 +497,7 @@ function tangents(x,y){ var n=y.length, dl=[], m=new Array(n), i; if(n<2) return
   return m; }
 function herm(y0,y1,m0,m1,h,s){ var s2=s*s,s3=s2*s; return (2*s3-3*s2+1)*y0+(s3-2*s2+s)*h*m0+(-2*s3+3*s2)*y1+(s3-s2)*h*m1; }
 function prepRoute(r){
+  if(r.kind==='takeoff'){ buildTakeoff(r); r.keys=TKCAP.map(function(c){ return {c:c[1]}; }); r._u=[0,1]; if(r._tk) clearance(r); return; }
   var K=r.keys, yaw=[], prev=null;
   K.forEach(function(k){ var y=k.y; if(prev!==null){ while(y-prev>180)y-=360; while(y-prev<-180)y+=360; } yaw.push(y); prev=y; });
   /* time is spread by distance travelled so the camera keeps an even pace */
@@ -476,7 +520,60 @@ function clearance(r){
   for(i=N-1;i>=0;i--){ var d2=Math.hypot(pts[i+1][0]-pts[i][0],pts[i+1][1]-pts[i][1]); f[i]=Math.max(f[i],f[i+1]-d2/1.6); }
   r._floor=f;
 }
+/* TAKEOFF: the first plane taxis from its stand onto the runway, rolls, rotates and climbs out in a left turn. A
+   simple model sampled at 60 Hz: 10 s taxi along a curve, 1.5 s lined up, 3.4 m/s2 to rotation at 31 m/s, pitch to
+   11 deg, climb at 9 deg, bank 24 deg toward the city above 70 m. The camera is four rigs blended in time: beside the taxi, a
+   tracking car on the roll, standing near the far end as it lifts off overhead, then a chase pulling back over the
+   city. It goes the way down the runway that leaves the most room. Poses: yaw in degrees, nose up and right wing
+   down positive. */
+var TKCAP=[[0,'Taxi out'],[10.5,'Lined up'],[12.5,'Rolling'],[20,'Rotate'],[23.5,'Overhead'],[28.5,'Climb out'],[33,'Over the city']];
+function bezP(p0,p1,p2,p3,t){ var u=1-t; return [0,1].map(function(i){ return u*u*u*p0[i]+3*u*u*t*p1[i]+3*u*t*t*p2[i]+t*t*t*p3[i]; }); }
+function sst(a,b,t){ var x=Math.max(0,Math.min(1,(t-a)/(b-a))); return x*x*(3-2*x); }
+function lerp3(a,b,f){ return [a[0]+(b[0]-a[0])*f,a[1]+(b[1]-a[1])*f,a[2]+(b[2]-a[2])*f]; }
+function buildTakeoff(r){
+  r._tk=null; if(!MOV||!MOV.rwy||!MOV.list.length) return;
+  var o=MOV.list[0], a=MOV.rwy.a, b=MOV.rwy.b, L=Math.hypot(b[0]-a[0],b[1]-a[1]), u=[(b[0]-a[0])/L,(b[1]-a[1])/L];
+  var st=[o.at[0],o.at[1]], al=(st[0]-a[0])*u[0]+(st[1]-a[1])*u[1];
+  if(al>L/2){ u=[-u[0],-u[1]]; al=L-al; a=b; }                     /* take off the long way */
+  var room=L-al-70, dir0=[Math.cos(o.th*D2R),Math.sin(o.th*D2R)], R0=[a[0]+u[0]*(al+70),a[1]+u[1]*(al+70)];
+  var P1=[st[0]+dir0[0]*28,st[1]+dir0[1]*28], P2=[R0[0]-u[0]*45,R0[1]-u[1]*45];
+  var tx=[],acc=[0],i; for(i=0;i<=200;i++){ tx.push(bezP(st,P1,P2,R0,i/200)); if(i) acc.push(acc[i-1]+Math.hypot(tx[i][0]-tx[i-1][0],tx[i][1]-tx[i-1][1])); }
+  var TL=acc[200], S=[], dt=1/60, yawRw=Math.atan2(u[1],u[0])/D2R;
+  function taxiAt(d){ var j=0; while(j<199&&acc[j+1]<d) j++; var f=(d-acc[j])/Math.max(1e-6,acc[j+1]-acc[j]);
+    return {p:[tx[j][0]+(tx[j+1][0]-tx[j][0])*f,tx[j][1]+(tx[j+1][1]-tx[j][1])*f], yaw:Math.atan2(tx[j+1][1]-tx[j][1],tx[j+1][0]-tx[j][0])/D2R}; }
+  var cr=GEO&&GEO.core?u[0]*(GEO.core[1]-R0[1])-u[1]*(GEO.core[0]-R0[0]):1, turn=cr>=0?1:-1;   /* bank toward the city */
+  var x=st[0],y=st[1],z=0,yaw=o.th,pitch=0,roll=0,v=0,gam=0,T;
+  for(T=0;T<=40;T+=dt){
+    if(T<10){ var e=T/10, q=taxiAt(TL*(e*e*(3-2*e))); x=q.p[0]; y=q.p[1]; var dy=q.yaw-o.th; while(dy>180)dy-=360; while(dy<-180)dy+=360; yaw=T<0.4?o.th+dy*(T/0.4):q.yaw; }
+    else if(T<11.5){ x=R0[0]; y=R0[1]; yaw=yawRw; v=0; }
+    else { v=Math.min(52,v+(v<33?3.4:(z<40?1.4:1.0))*dt);
+      if(v>=31) pitch=Math.min(11,pitch+7*dt);
+      if(pitch>5) gam=Math.min(9,gam+5*dt);
+      if(z>70) roll=Math.min(24,roll+9*dt);
+      if(roll>0) yaw+=turn*(9.81*Math.tan(roll*D2R)/v)/D2R*dt;
+      var h=v*Math.cos(gam*D2R); x+=Math.cos(yaw*D2R)*h*dt; y+=Math.sin(yaw*D2R)*h*dt; z+=v*Math.sin(gam*D2R)*dt; }
+    S.push([x,y,z,yaw,pitch,-turn*roll]);   /* the wing on the inside of the turn goes down */
+  }
+  r._tk={S:S,dt:dt,R0:R0,u:u,st:st,cx:Math.min(318,Math.max(200,room-25))};
+}
+function tkPlane(r,T){ var S=r._tk.S, i=Math.max(0,Math.min(S.length-2,Math.floor(T/r._tk.dt))), f=Math.max(0,Math.min(1,T/r._tk.dt-i)), A=S[i],B=S[i+1];
+  return A.map(function(v,k){ var w=B[k]-v; if(k===3){ while(w>180)w-=360; while(w<-180)w+=360; } return v+w*f; }); }
+function tkRaw(r,t){
+  var T=t*r.secs, k=r._tk, P=tkPlane(r,T), pp=[P[0],P[1],P[2]+1.4], u=k.u, nL=[-u[1],u[0]], R0=k.R0, st=k.st;
+  var mid=[(st[0]+R0[0])/2,(st[1]+R0[1])/2];
+  var A=[[mid[0]+nL[0]*28-u[0]*18, mid[1]+nL[1]*28-u[1]*18, 4.5+0.1*T], pp];
+  var Pr=tkPlane(r,Math.max(11.5,T)), lead=9-Math.max(0,T-12)*1.4;
+  var B=[[Pr[0]+nL[0]*13+u[0]*lead, Pr[1]+nL[1]*13+u[1]*lead, 4.2], pp];
+  var C3=[[R0[0]+u[0]*k.cx+nL[0]*11, R0[1]+u[1]*k.cx+nL[1]*11, 1.7], pp];
+  var fw=[Math.cos(P[3]*D2R),Math.sin(P[3]*D2R)], kk=sst(30.5,38,T), back=26+kk*150, up=6+kk*70, side=7+kk*50;
+  var D=[[P[0]-fw[0]*back-fw[1]*side, P[1]-fw[1]*back+fw[0]*side, P[2]+up], lerp3(lerp3(pp,[P[0]+fw[0]*40,P[1]+fw[1]*40,P[2]],0.4),pp,kk)];
+  var wB=sst(10,12.5,T), wC=sst(18.5,20.5,T), wD=sst(26.5,29,T);
+  var e=lerp3(lerp3(lerp3(A[0],B[0],wB),C3[0],wC),D[0],wD), l=lerp3(lerp3(lerp3(A[1],B[1],wB),C3[1],wC),D[1],wD), d=[l[0]-e[0],l[1]-e[1],l[2]-e[2]];
+  var ci=0; for(var j=0;j<TKCAP.length;j++) if(T>=TKCAP[j][0]) ci=j;
+  return {e:e,y:Math.atan2(d[1],d[0])/D2R,p:Math.atan2(d[2],Math.hypot(d[0],d[1]))/D2R,k:ci,plane:P};
+}
 function raw(r,t){
+  if(r.kind==='takeoff') return tkRaw(r,t);
   var K=r.keys,n=K.length,u=r._u,i=0; if(n===1) return {e:K[0].e.slice(),y:K[0].y,p:K[0].p,k:0};
   while(i<n-2&&t>u[i+1]) i++;
   var h=Math.max(1e-6,u[i+1]-u[i]), s=Math.max(0,Math.min(1,(t-u[i])/h));
@@ -492,6 +589,7 @@ function sample(r,t){
 var playing=false, rt=0, stepAcc=0, capKey=-1, recAfter=false;
 function playRoute(r,fromRec){
   if(!r) return;
+  if(r.kind==='takeoff'&&!(MOV&&MOV.rwy)){ toast('The plane is still loading'); return; }
   ROUTE=r; prepRoute(r); rt=0; playing=true; capKey=-1; setMode('fly',true);
   $('card').style.display='none';
   [].forEach.call(routesEl.children,function(b){ b.setAttribute('aria-pressed',String(CITY.routes[+b.dataset.i]===r)); });
@@ -499,9 +597,10 @@ function playRoute(r,fromRec){
   if(!opt.tex && !fromRec) setTex(true,true);
   applyRoute(); lastT=0;
 }
-function stopRoute(){ if(!ROUTE) return; playing=false; ROUTE=null; document.body.classList.remove('bars'); $('prog').style.width='0'; showCap('');
+function stopRoute(){ if(!ROUTE) return; playing=false; ROUTE=null; parked(); document.body.classList.remove('bars'); $('prog').style.width='0'; showCap('');
   [].forEach.call(routesEl.children,function(b){ b.setAttribute('aria-pressed','false'); }); if(rec) stopRec(); }
 function applyRoute(){ var q=sample(ROUTE,Math.min(1,rt)); C.eye=q.e; C.yaw=q.y; C.pitch=q.p; dirty=true;
+  if(q.plane&&MOV){ POSES=MOV.list.map(function(o,i){ return i===0?poseM(q.plane[0],q.plane[1],q.plane[2],q.plane[3],q.plane[4],q.plane[5]):poseM(o.at[0],o.at[1],0,o.th,0,0); }); }
   if(opt.caps){ var k=q.k; for(var j=k;j>=0;j--) if(ROUTE.keys[j].c){ k=j; break; }
     if(k!==capKey){ capKey=k; showCap(ROUTE.keys[k]&&ROUTE.keys[k].c||''); } }
   $('prog').style.width=(Math.min(1,rt)*100)+'%'; }
@@ -690,7 +789,8 @@ fetch('data/cities.json').then(function(r){ if(!r.ok) throw new Error('cities.js
 }).catch(function(e){ $('load').textContent='Could not load the cities: '+e.message; });
 window.__cc={state:function(){return {mode:mode,C:C,city:CITY&&CITY.id,tex:opt.tex,n:GEO&&GEO.n,frameMs:frameMs,routes:CITY&&CITY.routes.map(function(r){return r.id;})};},
   probe:function(i){ var r=CITY.routes[i]; prepRoute(r); var R=GEO.faces&&GEO.faces.roof, lo=1e9, inside=0;
-    for(var j=0;j<=900;j++){ var q=sample(r,j/900); lo=Math.min(lo,q.e[2]); if(R){ var h=roofAt(R,q.e[0],q.e[1]); if(h>0&&q.e[2]<h+1) inside++; } } return {id:r.id,lowest:+lo.toFixed(1),insideBuildings:inside,roofs:!!R}; },
+    var pin=0; for(var j=0;j<=900;j++){ var q=sample(r,j/900); lo=Math.min(lo,q.e[2]); if(R){ var h=roofAt(R,q.e[0],q.e[1]); if(h>0&&q.e[2]<h+1) inside++;
+      if(q.plane){ var hp=roofAt(R,q.plane[0],q.plane[1]); if(hp>0&&q.plane[2]<hp) pin++; } } } return {id:r.id,lowest:+lo.toFixed(1),insideBuildings:inside,planeInside:pin,roofs:!!R}; },
   play:function(i){ playRoute(CITY.routes[i]); }, key:function(k){ playing=false; rt=ROUTE._u[k]; applyRoute(); render(); }, at:function(t){ playing=false; rt=t; applyRoute(); render(); }, city:setCity, tex:setTex, theme:function(t){ $('t-'+t).click(); }, mode:setMode};
 })();
 </script>
