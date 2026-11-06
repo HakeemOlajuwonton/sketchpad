@@ -217,6 +217,13 @@
                 font-size:12px; opacity:.75; font-variant-numeric:tabular-nums;}
   .fold.closed>.fbody{display:none;}
   .fold>.fbody{padding:0 0 10px;}
+  /* Row 220: the corridor engines' knob panel -- groups inside the Engine fold. */
+  .kgrp.fold{border-top:1px dashed var(--line); margin:0 0 2px;}
+  .kgrp.fold>h2{font-size:12px; padding:8px 2px;}
+  .row .kpin{border:0; background:none; color:var(--dim); cursor:pointer; font-size:13px; padding:0 2px; opacity:.5; order:5;}
+  .row .kpin.on{color:var(--accent); opacity:1;}
+  .row.kpar label{font-weight:700; color:var(--ink);}
+  .kidle{font-size:11.5px; color:var(--dim); opacity:.8; margin:2px 2px 6px; line-height:1.35;}
   /* Phone. The canvas used to sit BELOW every slider, so on a 412 px wide screen
      you were always looking at one or the other. It now leads, and sticks. */
   @media (max-width:820px){
@@ -438,7 +445,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v361</a> &mdash; A link to Corridor City -- Fly through Corridor City in the banner opens the Scout page (the city in the browser) in a new tab</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v362</a> &mdash; The knob panel on the corridor engines -- nine groups and Other, knobs that change nothing in this state hidden and named on a grey Idle now line, stars that keep a knob in Essentials (queue row 220)</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <section class="fold" id="fold_pick"><h2>Pick engine<span class="cnt"></span></h2>
@@ -22831,7 +22838,7 @@ function buildTown(p){
      cut round everything already there, and their content is built after
      every other plan's, so the pylons can be raised clear of it */
   var PWL=Math.round(isFinite(p.pline)?+p.pline:0)===1?townPowerline(p,G,plans,J,RIV,[VR,VH].concat(VB||[]),SITE||(FRM&&FRM.wetAt?{wetAt:FRM.wetAt}:null),WC):null;
-  var PKS=townParks(p,G,plans,J,RIV,[VR,VH],PWL,FRM?FRM.built:SITE?SITE.blocksOut:BLK);
+  var PBLK=FRM?FRM.built:SITE?SITE.blocksOut:BLK, PKS=townParks(p,G,plans,J,RIV,[VR,VH],PWL,PBLK);
   if(PKS) plans.push(PKS.plan);
   if(PWL) plans.push(PWL.plan);
   /* row 204: a pylon's plot stands in a field: the field is cut round it */
@@ -22853,6 +22860,14 @@ function buildTown(p){
   /* row 204 §A6: a close-up dresses what it looks at: at 450 m of dense city every lot dressed is 50,000 parts and minutes */
   if(FTGC){ var RMS=FK===2?110:60; THX=Object.assign({},THX,{massOut:function(L){ var c=townMid(L.poly); return Math.hypot(c[0]-FTGC[0],c[1]-FTGC[1])>RMS; }}); }
   var res=corridorDraw(p,plans,THX,{O:[G.NLEN/2,G.SPAN/2], th:0, CE:ce, TG:[ce[0]+LK,ce[1],CZ], frame:FR, frameFlat:!!FTGC});
+  /* row 220: Parks can move only what reaches the sheet -- a block of its 40%
+     ceiling with a lot drawn, or a park drawn. The knob panel reads `parkSeen`. */
+  (function(){ var LAYk=Math.max(0,Math.min(99,Math.round(isFinite(p.layout)?+p.layout:0))), seen=0, LP=plans.slice(0,G.ROWS);
+    if(RIV) LP.push(RIV.plan);
+    townParkPick(PBLK,LAYk,Math.round(0.4*PBLK.length)).forEach(function(B){ var R=B.rect;
+      if(LP.some(function(PL){ return PL.lots.some(function(L){ var c=townMid(L.poly); return L.drawn && c[0]>R[0] && c[0]<R[2] && c[1]>R[1] && c[1]<R[3]; }); })) seen++; });
+    if(PKS && PKS.plan.conts.some(function(C){ return C.drawn; })) seen++;
+    STRTSTATS.parkSeen=seen; })();
   /* for strtcheck.js L46: the grid, the junctions, and each corridor's line */
   STRTTALLY.town={G:G, J:J.map(function(C){ return {row:C.row, cross:C.cross, poly:C.poly, n:C.parts.length}; }),
     plans:plans.slice(0,G.ROWS+UX.length).map(function(PLk,k){ return {ix:PLk.ix, row:k<G.ROWS, HALFW:PLk.HALFW, KOFF:PLk.KOFF, PBACK:PLk.PBACK,
@@ -24846,15 +24861,19 @@ function townPowerline(p,G,plans,J,RIV,VS,SX,WH){
            conts:plots, lots:[], slabsBySide:{'1':[],'-1':[]}, dropped:0, pushed:0};
   return PW;
 }
+/* which blocks a park takes: the n with the lowest number from Layout's own
+   substream (row 220's panel asks which of the 40% ceiling's blocks are seen) */
+function townParkPick(BLK,LAY,n){
+  return BLK.map(function(b){ return {b:b, r:townSub(b.key,LAY,SALT_PARK)()}; })
+            .sort(function(x,y){ return x.r-y.r || x.b.key-y.b.key; }).slice(0,n).map(function(e){ return e.b; })
+            .sort(function(x,y){ return x.key-y.key; });
+}
 function townParks(p,G,plans,J,RIV,VS,PW,BLK){
   var SH=Math.max(0,Math.min(40,isFinite(p.parks)?+p.parks:10))/100, LAY=Math.max(0,Math.min(99,Math.round(isFinite(p.layout)?+p.layout:0)));
   var n=Math.round(SH*BLK.length); if(!n) return null;
   var NG=G.ROWS+G.UX.length, grid=plans.slice(0,NG), P0=grid[0], polyOverlap=P0.polyOverlap, bbox2=P0.bbox2, bbHit=P0.bbHit;
   var info={share:SH, blocks:BLK.length, parks:[], lots:0, riverLots:0, pieces:0, recs:[], trees:[]};
-  /* which blocks: the n with the lowest number from Layout's own substream */
-  var pick=BLK.map(function(b){ return {b:b, r:townSub(b.key,LAY,SALT_PARK)()}; })
-              .sort(function(x,y){ return x.r-y.r || x.b.key-y.b.key; }).slice(0,n).map(function(e){ return e.b; })
-              .sort(function(x,y){ return x.key-y.key; });
+  var pick=townParkPick(BLK,LAY,n);
   function inR(Rc,c){ return c[0]>Rc[0] && c[0]<Rc[2] && c[1]>Rc[1] && c[1]<Rc[3]; }
   /* a park has no lots */
   pick.forEach(function(B){
@@ -41448,7 +41467,30 @@ function corridorDraw(p,plans,THM,camera){
   if(DPEN){ var plain=res; res=depthSplit(res,RR.farz); penup0=travelByCol(plain); penup1=travelByCol(res); }
   var nsigns=STRTTALLY.signs.filter(function(r){ return r.placed; }).length;
   var npts=0; res.forEach(function(q){ npts+=q.length; });
-  STRTSTATS={lots:lots.length, dropped:dropped, pushed:pushed, conts:live.length,
+  /* ROW 220: how many containers stand inside Solid detail (the final DN, after
+     the budget). The knob panel's `near`: at 0 every knob that only dresses a
+     building up close is idle. A parallel view reads one depth, D_EFF. */
+  var solidConts=0;
+  if(ISO) solidConts=D_EFF<DN?live.length:0;
+  else live.forEach(function(C){ var b=C.bb; if(!b) return;
+    var dx=Math.max(b[0]-CE[0],0,CE[0]-b[2]), dy=Math.max(b[1]-CE[1],0,CE[1]-b[3]);
+    if(Math.hypot(dx,dy)<DN) solidConts++; });
+  /* and `dressed`: lots that are neither culled nor massed (row 200 massing at the
+     isometric camera on a site). At 0 the streets are bare plates and nothing a
+     street carries -- signs, cars, puddles, particles -- can be drawn. */
+  var dressed=lots.filter(function(L){ return !L.massed && !L.culled; }).length;
+  /* and `reflDrawn`: reflected runs that reach the sheet. Ripple and Ripple
+     variety move only these; a reflection hidden or cropped whole draws nothing. */
+  var reflDrawn=res.filter(function(q){ return q.kind==='refl'; }).length;
+  /* and what reaches the sheet: a drawn path names its part, the part its
+     container, which is marked `drawn` (containers are built fresh each build;
+     `town` reads the marks for its parks), and its line (`via`). A camera down
+     a street sees no railway and no park. */
+  var viaDrawn={};
+  res.forEach(function(q){ if(q.kind==='refl' || q.part===undefined) return; var P=committed[q.part]; if(!P) return;
+    if(P.cont) P.cont.drawn=true; if(P.via) viaDrawn[P.via]=(viaDrawn[P.via]||0)+1; });
+  STRTSTATS={lots:lots.length, dropped:dropped, pushed:pushed, conts:live.length, solidConts:solidConts, dressed:dressed, reflDrawn:reflDrawn,
+             railSeen:viaDrawn.rail||0,
              parts:committed.length, paths:res.length, points:npts,
              cycles:cycles, ccycles:ccycles, splits:splits, unsep:unsep,
              unsepParts:RR.unsepParts, budget:BUDG, tries:tries, dnear:DN, dfar:DF, lod:LODE,
@@ -41899,7 +41941,14 @@ var VARI={on:false, cells:[], busy:false, what:'seed'};
    '\u2014' entries are padding in the spec, not controls. */
 function varyOptions(){
   var out=[{v:'seed', label:'Seed'}];
-  SPEC[mode][1].forEach(function(sp){
+  var S=SPEC[mode][1];
+  /* row 220: a corridor engine lists its knobs in panel order, Essentials first */
+  if(typeof KCORR!=='undefined' && KCORR.indexOf(mode)>=0){
+    kLayout(mode,kPins(mode)).forEach(function(g){ g.keys.forEach(function(k){
+      var sp=specOf(S,k); if(sp && sp[0]!=='dummy') out.push({v:sp[0], label:sp[1]}); }); });
+    return out;
+  }
+  S.forEach(function(sp){
     if(sp[1]==='\u2014' || sp[0]==='dummy') return;
     out.push({v:sp[0], label:sp[1]});
   });
@@ -42905,12 +42954,190 @@ var ENGEXTRA={};
    engine that must react to a choice (Poincaré's Motif 5 snapping Sides and
    Meeting) reacts here and cannot fire on a restore. */
 var ENGSET={};
+/* ROW 220: THE KNOB PANEL ON THE CORRIDOR ENGINES
+   (docs/specs/2026-11-04-town-knobs-scout-flythrough_v2.md, Row A).
+   Albert: "the knobs are just turning into a freaking mess and a half".
+   Every knob of `town` and of the 14 corridor engines sits in ONE group of
+   KGROUPS (a theme's own knobs fall to Other); Essentials open, the rest folded.
+   A knob that changes nothing in the current state is HIDDEN by a KIDLE rule --
+   only where the rule is proven against knobaudit.js --ink (strtcheck L58 K2) --
+   and named on its group's grey "Idle now" line, so nothing silently vanishes.
+   The value stays in STATE: presets, exports and the build never see the panel.
+   Pins (the star) and fold state are per viewer in localStorage, never STATE. */
+var KCORR=['town','strt','mkt','harb','libr','grnh','celr','tori','dhal','garg','nave','canal','stn','whse','bagh'];
+var KGROUPS=[
+  ['ess','Essentials','layout form rows nlen site tier water rail hwy river floors archlots isoaz isoel zoom'],
+  ['plan','City plan','sprawl corez rowsp xblk xwidth parks alleys zones'],
+  ['lines','Lines that cross the city','rbend rwidth rdrop railbend railz trains ncar rstn hwybend hwyz hlanes ixtype pline'],
+  ['site','Airfield and harbour','sitepct sscale harb rwys rwyhdg stands acmix tower hangars gse berths vessels pierlen slips'],
+  ['bld','Buildings','width pave lotmin lotmax alley archmin archdet stepb canti fire uvar'],
+  ['life','Street life (close-ups)','glow shopv props signs neon lang cables sag cars graff dots pnear'],
+  ['wet','Wet street','puddles pudsz ripple rvar wmk wglint hero hstr hrag hturn hshape'],
+  ['cam','Camera','proj sfocus ftgt panx pany cams camx camz look turn pitch fov'],
+  ['ink','Ink and detail','hatch hatchmode sun dnear dfar dpen dsplit mono lod budg occ']
+].map(function(g){ return [g[0],g[1],g[2].split(' ')]; });
+/* An Essentials knob un-starred goes home to this group. */
+var KHOME={layout:'plan',form:'plan',rows:'plan',nlen:'plan',site:'site',tier:'site',water:'site',
+           rail:'lines',hwy:'lines',river:'lines',floors:'bld',archlots:'bld',isoaz:'cam',isoel:'cam',zoom:'cam'};
+function kGroupOf(k){ for(var i=0;i<KGROUPS.length;i++) if(KGROUPS[i][2].indexOf(k)>=0) return KGROUPS[i][0]; return 'other'; }
+function kPins(eng){
+  var o={add:[],drop:[]};
+  try{ var v=JSON.parse(localStorage.getItem('kpins.'+eng)||'null');
+       if(v && Array.isArray(v.add) && Array.isArray(v.drop)) o=v; }catch(e){}
+  return o;
+}
+function kSetPins(eng,o){ try{ localStorage.setItem('kpins.'+eng, JSON.stringify(o)); }catch(e){} }
+/* The panel for one engine: [{id,title,keys}], table order inside a group, a
+   starred knob last in Essentials, Other last of all, empty groups dropped. */
+function kLayout(eng,pins){
+  pins=pins||{add:[],drop:[]};
+  var keys=SPEC[eng][1].filter(function(sp){ return sp[1]!=='—'; }).map(function(sp){ return sp[0]; });
+  var out=KGROUPS.map(function(g){ return {id:g[0],title:g[1],keys:[]}; });
+  out.push({id:'other',title:'Other',keys:[]});
+  var by={}; out.forEach(function(g){ by[g.id]=g; });
+  function home(k){ var g=kGroupOf(k);
+    if(pins.add.indexOf(k)>=0) return 'ess';
+    if(g==='ess' && pins.drop.indexOf(k)>=0) return KHOME[k]||'other';
+    return g; }
+  KGROUPS.forEach(function(g){ g[2].forEach(function(k){ if(keys.indexOf(k)>=0 && home(k)===kGroupOf(k)) by[g[0]].keys.push(k); }); });
+  keys.forEach(function(k){ var h=home(k); if(by[h].keys.indexOf(k)<0) by[h].keys.push(k); });
+  return out.filter(function(g){ return g.keys.length; });
+}
+/* KIDLE[eng]: rules {keys, par (the knobs the rule reads), why, on(E,S)}.
+   `on` false = those keys are idle. S is the last build's STRTSTATS, so a rule
+   can read `near` (kN(S): the build drew at least one container inside Solid
+   detail, STRTSTATS.solidConts), which is not a knob. A knob a rule reads is a
+   PARENT and is always shown, bold. Each rule is kept only because L58k K2
+   finds knobaudit's dead set equal to the hidden set, both ways, at its
+   fixtures; a rule that hid a live knob was deleted, not forced.
+   THE RULES ARE READ BY THE PANEL AND NOTHING ELSE -- never by a build. The
+   gate leans on that: its knobaudit cache is keyed on the file with the text
+   between the two KIDLE markers taken out. Keep anything a build reads OUT. */
+function kR(E,k){ return Math.round(+E[k]||0); }
+function kN(S){ return !!(S && S.solidConts>0); }
+/* KIDLE-BEGIN */
+function kD(S){ return !S || S.dressed===undefined || S.dressed>0; }
+function kW(E){ return townWholeOn(E); }
+/* A rule may also read STRTTALLY, the same build's tally (its `town` record says
+   which parks, river and site were built): the panel and the gate both read the
+   last build's STRTSTATS and STRTTALLY together. */
+function kParks(){ return !(typeof STRTTALLY!=='undefined' && STRTTALLY && STRTTALLY.town && STRTTALLY.town.parks===null); }
+var KIDLE={town:[
+  {keys:'layout', par:['form','river','rail','hwy','pline','site','archlots','zones'], why:'nothing Layout places: City form 0, no river, line, site, park or district',
+   on:function(E){ return kR(E,'form')===1 || kR(E,'river')===1 || kR(E,'rail')===1 || kR(E,'hwy')===1 || kR(E,'pline')===1 || kR(E,'site')>0 || kParks() || (kR(E,'archlots')>0 && kR(E,'zones')>0); }},
+  {keys:'cams camx camz look turn pitch', par:['proj'], why:'Projection 1', on:function(E){ return kR(E,'proj')===0; }},
+  {keys:'isoaz isoel zoom panx pany', par:['proj'], why:'Projection 0', on:function(E){ return kR(E,'proj')===1; }},
+  {keys:'sfocus', par:['proj','site'], why:'needs Projection 1 and a Site', on:function(E){ return kR(E,'proj')===1 && kR(E,'site')>0; }},
+  {keys:'ftgt', par:['proj','site','form','sfocus'], why:'needs a Site, City form 1 and Focus 2 or 3', on:function(E){ return kR(E,'proj')===1 && kR(E,'site')>0 && kR(E,'form')===1 && kR(E,'sfocus')>=2; }},
+  {keys:'sprawl corez', par:['form'], why:'City form 0', on:function(E){ return kR(E,'form')===1; }},
+  {keys:'rowsp nlen', par:['site'], why:'a Site sets the plan', on:function(E){ return kR(E,'site')===0; }},
+  {keys:'harb', par:['water'], why:'Water 0', on:function(E){ return kR(E,'water')>0; }},
+  {keys:'rbend rwidth', par:['river','form','site','water'], why:'no river (River 0, or City form\'s water replaces it)', on:function(E){ return kR(E,'river')===1 && !(kR(E,'form')===1 && kR(E,'site')>0 && (kR(E,'water')>0 || kR(E,'site')===2)); }},
+  {keys:'rdrop', par:['river','site','water'], why:'no river and no quay', on:function(E){ return kR(E,'river')===1 || kR(E,'site')===2 || (kR(E,'site')>0 && kR(E,'water')>0); }},
+  {keys:'railz', par:['rail'], why:'Railway 0', on:function(E){ return kR(E,'rail')===1; }},
+  {keys:'trains', par:['rail'], why:'Railway 0', on:function(E){ return kR(E,'rail')===1; }},
+  {keys:'ncar', par:['rail','trains'], why:'no trains, or no piece of the railway in view', on:function(E,S){ return kR(E,'rail')===1 && kR(E,'trains')>0 && (!S || S.railSeen===undefined || S.railSeen>0); }},
+  {keys:'railbend', par:['rail','form','site','nlen','hwy','pline'], why:'Railway 0, or the whole-city line runs edge to edge', on:function(E){ return kR(E,'rail')===1 && !kW(E); }},
+  {keys:'hwyz hlanes', par:['hwy'], why:'Highway 0', on:function(E){ return kR(E,'hwy')===1; }},
+  {keys:'hwybend', par:['hwy','form','site','nlen','rail','pline'], why:'Highway 0, or the whole-city line runs edge to edge', on:function(E){ return kR(E,'hwy')===1 && !kW(E); }},
+  {keys:'rstn', par:['rail','form','site','nlen','hwy','pline'], why:'only on the whole-city railway (a Site, City form 1)', on:function(E){ return kR(E,'rail')===1 && kW(E); }},
+  {keys:'ixtype', par:['hwy','form','site','nlen','rail','pline'], why:'only on the whole-city highway (a Site, City form 1)', on:function(E){ return kR(E,'hwy')===1 && kW(E); }},
+  {keys:'sitepct tier sscale', par:['site'], why:'Site 0', on:function(E){ return kR(E,'site')>0; }},
+  {keys:'stands hangars rwyhdg', par:['site'], why:'Site is not the airfield', on:function(E){ return kR(E,'site')===1; }},
+  {keys:'rwys acmix tower gse', par:['site','tier'], why:'an airstrip (Scale 2 or less)', on:function(E){ return kR(E,'site')===1 && kR(E,'tier')>=3; }},
+  {keys:'berths vessels pierlen slips', par:['site','form','tier'], why:'no harbour site (or City form\'s Scale 0-1 shore harbour)', on:function(E){ return kR(E,'site')===2 && (kR(E,'form')===0 || kR(E,'tier')>=2); }},
+  {keys:'archmin archdet zones', par:['archlots'], why:'Iso buildings 0', on:function(E){ return kR(E,'archlots')>0; }},
+  {keys:'pudsz', par:['puddles'], why:'Puddles 0', on:function(E){ return kR(E,'puddles')>0; }},
+  {keys:'hstr hrag hturn hshape', par:['hero'], why:'Front puddle 0', on:function(E){ return kR(E,'hero')>0; }},
+  {keys:'dsplit', par:['dpen'], why:'Depth pens 0', on:function(E){ return kR(E,'dpen')===1; }},
+  {keys:'signs neon puddles hero', par:[], why:'no dressed lot in view (none, or every one a massed box)', on:function(E,S){ return kD(S); }},
+  {keys:'cars dots', par:['proj'], why:'every lot is a massed box at this scale', on:function(E,S){ return kR(E,'proj')===0 || kD(S); }},
+  {keys:'lotmin lotmax alley floors stepb canti corez', par:[], why:'no lot in view', on:function(E,S){ return !S || S.lots===undefined || S.lots>0; }},
+  {keys:'parks', par:[], why:'no block Parks could take is in view', on:function(E,S){ return !S || ((S.lots===undefined || S.lots>0) && (S.parkSeen===undefined || S.parkSeen>0)); }},
+  {keys:'ripple', par:['puddles'], why:'no water and no puddle in view', on:function(E,S){ return kR(E,'puddles')>0 || !S || S.reflRuns===undefined || S.reflRuns>0; }},
+  {keys:'rvar', par:['puddles','ripple'], why:'no reflection reaches the sheet, or Ripple 0', on:function(E,S){ return kR(E,'ripple')>0 && (!S || S.reflDrawn===undefined || S.reflDrawn>0); }},
+  {keys:'budg', par:[], why:'the drawing is under the smallest budget (10k points)', on:function(E,S){ return !S || S.points===undefined || S.points>10000 || S.tries>0; }},
+  {keys:'look', par:[], why:'the town camera looks level along its street (Pitch tilts it), so how far ahead changes nothing', on:function(){ return false; }},
+  {keys:'dfar fov', par:['proj'], why:'every lot is a massed box at this scale', on:function(E,S){ return kR(E,'proj')===0 || kD(S); }},
+  {keys:'fire glow uvar shopv props lang cables graff hatch hatchmode sun', par:['dnear'], why:'no dressed lot inside Solid detail', on:function(E,S){ return kN(S) && kD(S); }},
+  {keys:'wmk wglint', par:['dnear','puddles'], why:'no dressed lot inside Solid detail, or Puddles 0', on:function(E,S){ return kN(S) && kD(S) && kR(E,'puddles')>0; }},
+  {keys:'sag', par:['dnear','cables'], why:'no dressed lot inside Solid detail, or Cables 0', on:function(E,S){ return kN(S) && kD(S) && kR(E,'cables')>0; }},
+  {keys:'pnear', par:['dnear','dots'], why:'nothing inside Solid detail, or Particles 0', on:function(E,S){ return kN(S) && kR(E,'dots')>0; }}
+]};
+/* KIDLE-END */
+function kNear(){ return kN(STRTSTATS); }
+/* key -> why, for every knob a rule calls idle at these values */
+function kIdleSet(eng,E,S){
+  var out={};
+  (KIDLE[eng]||[]).forEach(function(r){
+    if(r.on(E,S)) return;
+    r.keys.split(' ').forEach(function(k){ if(!(k in out)) out[k]=r.why; });
+  });
+  var par=kParents(eng); Object.keys(par).forEach(function(k){ delete out[k]; });
+  return out;
+}
+function kParents(eng){
+  var o={}; (KIDLE[eng]||[]).forEach(function(r){ (r.par||[]).forEach(function(k){ o[k]=1; }); }); return o;
+}
+var KPANEL=null;
+function kBuild(box){
+  box.innerHTML='';
+  var eng=mode, pins=kPins(eng), par=kParents(eng), S=SPEC[eng][1];
+  KPANEL={eng:eng, rows:{}, groups:[], box:box};
+  function get(k){ return STATE.eng[eng][k]; }
+  function set(k,v){ STATE.eng[eng][k]=v; liveBack(k); if(ENGSET[eng]) ENGSET[eng](k,v); kpanelIdle(); }
+  kLayout(eng,pins).forEach(function(g){
+    var body=makeFold(box,'k_'+g.id,g.title,g.id==='ess'), sec=body.parentNode;
+    sec.classList.add('kgrp');
+    g.keys.forEach(function(k){
+      var sp=specOf(S,k), n0=body.children.length;
+      mkRow(body,sp,'sl_',get,set);
+      if(body.children.length===n0) return;
+      var row=body.lastChild; row.setAttribute('data-k',k);
+      if(par[k]) row.classList.add('kpar');
+      var pb=document.createElement('button'); pb.type='button';
+      var on=(g.id==='ess'); pb.className='kpin'+(on?' on':''); pb.textContent=on?'★':'☆';
+      pb.title=on?'Starred: kept in Essentials. Click to send it back to its group.'
+                 :'Star this knob to keep it in Essentials. Only on this browser; never in a preset or a file.';
+      pb.addEventListener('click',function(){
+        var P=kPins(eng), i;
+        if(on){ i=P.add.indexOf(k); if(i>=0) P.add.splice(i,1); else if(P.drop.indexOf(k)<0) P.drop.push(k); }
+        else { i=P.drop.indexOf(k); if(i>=0) P.drop.splice(i,1); else if(P.add.indexOf(k)<0) P.add.push(k); }
+        kSetPins(eng,P); kBuild(box); kpanelIdle();
+      });
+      row.appendChild(pb);
+      KPANEL.rows[k]=row;
+    });
+    var idl=document.createElement('div'); idl.className='kidle'; body.appendChild(idl);
+    KPANEL.groups.push({id:g.id, sec:sec, keys:g.keys, idle:idl});
+  });
+}
+/* Hide what is idle now; say so on each group. Runs on every knob move and
+   after every paint (foldSummaries), so `near` follows the last build. A row
+   holding the focus is never hidden under the hand that is moving it. */
+function kpanelIdle(){
+  if(!KPANEL || KPANEL.eng!==mode || !STATE.eng[mode]) return;
+  var idle=kIdleSet(mode,STATE.eng[mode],STRTSTATS), act=document.activeElement, S=SPEC[mode][1];
+  Object.keys(KPANEL.rows).forEach(function(k){
+    var row=KPANEL.rows[k], hide=(k in idle) && !(act && row.contains(act));
+    row.style.display=hide?'none':'';
+  });
+  KPANEL.groups.forEach(function(G){
+    var names=G.keys.filter(function(k){ return k in idle; });
+    var c=G.sec.querySelector('h2 .cnt');
+    if(c) c.textContent=G.keys.length+(names.length?' · '+names.length+' idle':'');
+    var by={}; names.forEach(function(k){ var sp=specOf(S,k); (by[idle[k]]=by[idle[k]]||[]).push(sp?sp[1]:k); });
+    G.idle.textContent=names.length?'Idle now: '+Object.keys(by).map(function(w){ return by[w].join(', ')+' ('+w+')'; }).join('; '):'';
+  });
+}
 function mount(){
   var box=document.getElementById('sliders'); box.innerHTML='';
+  if(KCORR.indexOf(mode)>=0 && SPEC[mode]){ KPANEL=null; kBuild(box); kpanelIdle(); }
+  else { KPANEL=null;
   SPEC[mode][1].forEach(function(sp){ mkRow(box,sp,'sl_',
     function(k){return STATE.eng[mode][k];},
     function(k,v){STATE.eng[mode][k]=v; liveBack(k);
-                  if(ENGSET[mode]) ENGSET[mode](k,v);}); });
+                  if(ENGSET[mode]) ENGSET[mode](k,v);}); }); }
   if(ENGEXTRA[mode]) ENGEXTRA[mode](box);
   mountVarySel();
   draw();
@@ -44449,6 +44676,7 @@ function foldSummaries(){
      which is PGW/PGH times PAGEMM, and those three are only refreshed here.
      Reading STATE.g on its own would print the last drawn page, not this one. */
   var g=gvals();
+  if(typeof kpanelIdle==='function') kpanelIdle();
   function put(id,txt){
     var el=document.querySelector('#fold_'+id+' .cnt');
     if(el) el.textContent=txt;
@@ -45688,6 +45916,11 @@ document.getElementById('reroll').addEventListener('click',function(){
       /* do not refuse -- there is always something to sweep */
       var o=varyOptions(); if(o.length>1){ VARI.what=o[1].v; mountVarySel();
         msg('this engine ignores the seed \u2014 sweeping '+o[1].label+' instead'); }
+    }
+    /* row 220: on a slow engine, say what twelve will cost before starting */
+    if(!VARI.on && BUILT && BUILT.ms>5000){
+      var vs=BUILT.ms/1000;
+      msg('12 drawings × ~'+vs.toFixed(0)+' s ≈ '+Math.max(1,Math.round(12*vs/60))+' min');
     }
     VARI.on=!VARI.on;
     bv.className=VARI.on?'armed':'';
