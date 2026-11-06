@@ -445,7 +445,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v362</a> &mdash; The knob panel on the corridor engines -- nine groups and Other, knobs that change nothing in this state hidden and named on a grey Idle now line, stars that keep a knob in Essentials (queue row 220)</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v363</a> &mdash; The corridor camera lifted out of the draw, refactor only -- one function places the eye and fits the frame for the build and for Scout (queue row 221)</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <section class="fold" id="fold_pick"><h2>Pick engine<span class="cnt"></span></h2>
@@ -22843,23 +22843,12 @@ function buildTown(p){
   if(PWL) plans.push(PWL.plan);
   /* row 204: a pylon's plot stands in a field: the field is cut round it */
   if(PWL && WC) WC.cutSoft(function(q){ var ps=[q], hit=false; PWL.plan.conts.forEach(function(C){ var nx=[]; ps.forEach(function(r){ if(!WC.polyOverlap(r,C.poly)){ nx.push(r); return; } hit=true; townMinus(r,C.poly).forEach(function(m){ nx.push(m); }); }); ps=nx; }); return hit?ps.map(function(r){ return {poly:r}; }):null; });
-  /* the camera: isometric about the grid's middle, turned from +u; the
-     perspective eye at Camera along (a share of City length) and Camera side
-     (-100 the first row, 100 the last), aimed along +u before Turn and Pitch */
-  var CS=(isFinite(p.cams)?+p.cams:0)/100, CXs=(isFinite(p.camx)?+p.camx:-100)/100;
-  var CZ=Math.max(0.2,isFinite(p.camz)?+p.camz:120), LK=Math.max(5,+p.look||200);
-  var ce=[CS*G.NLEN, (CXs+1)/2*G.SPAN, CZ];
-  /* row 200: with a site the camera fits Focus's rectangle, and the kit culls and masses (§§2-4) */
-  var FK=Math.max(0,Math.min(3,Math.round(isFinite(p.sfocus)?+p.sfocus:1))), FR=SITE&&FK>0?SITE.frameOf(FK):null;
-  if(FRM && SITE && FRM.frameOf){ var FRf=FRM.frameOf(FK); if(FRf) FR=FRf; }
-  if(WC && SITE && FK===0) FR=WC.ext;
-  /* row 204 §A6: a close-up: 450 m or 150 m of plan on the target, fitted to the rectangle and never to what is in it */
-  var FTG=Math.max(0,Math.min(5,Math.round(isFinite(p.ftgt)?+p.ftgt:0))), FTGC=null;
-  if(FTG && FK>=2 && SITE && G.FORM){ FTGC=townTarget(FTG,VR,VH,WC,SITE,FRM); if(FTGC){ var HFT=FK===2?215:70; FR=[FTGC[0]-HFT,FTGC[1]-HFT,FTGC[0]+HFT,FTGC[1]+HFT]; } }
+  /* the camera argument: townCamArg (row 221), so the Scout view reads the same eye and frame */
+  var TCA=townCamArg(p,G,SITE,FRM,WC,VR,VH), FR=TCA.FR, FTGC=TCA.FTGC, FK=TCA.FK;
   var THX=SITE?Object.assign({},THM,{frameCull:true, formTall:G.FORM?Math.max(1,Math.min(4,(isFinite(p.corez)?+p.corez:250)/100)):1}):THM;
   /* row 204 §A6: a close-up dresses what it looks at: at 450 m of dense city every lot dressed is 50,000 parts and minutes */
   if(FTGC){ var RMS=FK===2?110:60; THX=Object.assign({},THX,{massOut:function(L){ var c=townMid(L.poly); return Math.hypot(c[0]-FTGC[0],c[1]-FTGC[1])>RMS; }}); }
-  var res=corridorDraw(p,plans,THX,{O:[G.NLEN/2,G.SPAN/2], th:0, CE:ce, TG:[ce[0]+LK,ce[1],CZ], frame:FR, frameFlat:!!FTGC});
+  var res=corridorDraw(p,plans,THX,TCA.camera);
   /* row 220: Parks can move only what reaches the sheet -- a block of its 40%
      ceiling with a lot drawn, or a park drawn. The knob panel reads `parkSeen`. */
   (function(){ var LAYk=Math.max(0,Math.min(99,Math.round(isFinite(p.layout)?+p.layout:0))), seen=0, LP=plans.slice(0,G.ROWS);
@@ -22904,6 +22893,25 @@ function buildTown(p){
     STRTINFO+=' · powerline: '+WI.plots.length+' pylons ('+WI.pylMoved+' moved, '+WI.pylDropped+' dropped), '+WI.met+' lots carved ('+WI.split+' split, '+WI.dropped+' too small dropped'+(WI.riverLots?', '+WI.riverLots+' canal house'+(WI.riverLots===1?'':'s')+' dropped':'')+')'+
       (WI.raised?', '+WI.raised+' raised to clear what is under it (lowest crossarm up to '+hz.toFixed(1)+' m)':''); }
   return res;
+}
+/* ROW 221 (v363, REFACTOR ONLY): buildTown's camera argument, lifted verbatim.
+   The plan is built first and never reads it; the Scout view calls this on the
+   cached plan for every camera it shows. */
+function townCamArg(p,G,SITE,FRM,WC,VR,VH){
+  /* the camera: isometric about the grid's middle, turned from +u; the
+     perspective eye at Camera along (a share of City length) and Camera side
+     (-100 the first row, 100 the last), aimed along +u before Turn and Pitch */
+  var CS=(isFinite(p.cams)?+p.cams:0)/100, CXs=(isFinite(p.camx)?+p.camx:-100)/100;
+  var CZ=Math.max(0.2,isFinite(p.camz)?+p.camz:120), LK=Math.max(5,+p.look||200);
+  var ce=[CS*G.NLEN, (CXs+1)/2*G.SPAN, CZ];
+  /* row 200: with a site the camera fits Focus's rectangle, and the kit culls and masses (§§2-4) */
+  var FK=Math.max(0,Math.min(3,Math.round(isFinite(p.sfocus)?+p.sfocus:1))), FR=SITE&&FK>0?SITE.frameOf(FK):null;
+  if(FRM && SITE && FRM.frameOf){ var FRf=FRM.frameOf(FK); if(FRf) FR=FRf; }
+  if(WC && SITE && FK===0) FR=WC.ext;
+  /* row 204 §A6: a close-up: 450 m or 150 m of plan on the target, fitted to the rectangle and never to what is in it */
+  var FTG=Math.max(0,Math.min(5,Math.round(isFinite(p.ftgt)?+p.ftgt:0))), FTGC=null;
+  if(FTG && FK>=2 && SITE && G.FORM){ FTGC=townTarget(FTG,VR,VH,WC,SITE,FRM); if(FTGC){ var HFT=FK===2?215:70; FR=[FTGC[0]-HFT,FTGC[1]-HFT,FTGC[0]+HFT,FTGC[1]+HFT]; } }
+  return {camera:{O:[G.NLEN/2,G.SPAN/2], th:0, CE:ce, TG:[ce[0]+LK,ce[1],CZ], frame:FR, frameFlat:!!FTGC}, FR:FR, FTGC:FTGC, FK:FK};
 }
 /* the junctions' own dressing (row 95 §4.2): each one's corner kerb lines on
    a road plate that hides nothing, and on each approach slab just outside it
@@ -39003,6 +39011,18 @@ function corridorKnobs(p,THM){
   if(THM.alias){ p=Object.assign({},p); for(var ak in THM.alias) p[ak]=p[THM.alias[ak]]; }
   return p;
 }
+/* ROW 221 (v363, REFACTOR ONLY): the plan's camera fields from the knobs, lifted
+   verbatim out of corridorPlan so the Scout view derives them for a camera it
+   shows exactly as a plan built at that camera would. */
+function corridorCamKnobs(p){
+  var CAMS=(isFinite(p.cams)?+p.cams:12)/100, CAMX=(isFinite(p.camx)?+p.camx:-10)/100;
+  var CAMZ=Math.max(0.2,isFinite(p.camz)?+p.camz:1.6);
+  var LOOK=Math.max(5,+p.look||60), PITCH=(isFinite(p.pitch)?+p.pitch:6)*Math.PI/180;
+  /* row 72: Turn, positive LEFT (counter-clockwise in plan) */
+  var TURN=Math.max(-90,Math.min(90,isFinite(p.turn)?+p.turn:0))*Math.PI/180;
+  var FOV=Math.max(25,Math.min(120,isFinite(p.fov)?+p.fov:72))*Math.PI/180;
+  return {CAMS:CAMS, CAMX:CAMX, CAMZ:CAMZ, LOOK:LOOK, PITCH:PITCH, TURN:TURN, FOV:FOV};
+}
 function corridorPlan(p,THM,ix,hooks){
   p=corridorKnobs(p,THM); ix=ix||0; hooks=hooks||{};
   var LEN=Math.max(THM.minLen||60,+p.len||220), BEND=Math.max(0,+p.bend||0);
@@ -39015,12 +39035,7 @@ function corridorPlan(p,THM,ix,hooks){
   var LOTMIN=Math.max(3,+p.lotmin||5), LOTMAX=Math.max(LOTMIN,+p.lotmax||11);
   var ALLEY=(p.alley||0)/100, FLOORS=Math.max(1,Math.round(p.floors||9));
   var CANYON=(p.canyon||0)/100, STEPB=(p.stepb||0)/100, CANTI=(p.canti||0)/100;
-  var CAMS=(isFinite(p.cams)?+p.cams:12)/100, CAMX=(isFinite(p.camx)?+p.camx:-10)/100;
-  var CAMZ=Math.max(0.2,isFinite(p.camz)?+p.camz:1.6);
-  var LOOK=Math.max(5,+p.look||60), PITCH=(isFinite(p.pitch)?+p.pitch:6)*Math.PI/180;
-  /* row 72: Turn, positive LEFT (counter-clockwise in plan) */
-  var TURN=Math.max(-90,Math.min(90,isFinite(p.turn)?+p.turn:0))*Math.PI/180;
-  var FOV=Math.max(25,Math.min(120,isFinite(p.fov)?+p.fov:72))*Math.PI/180;
+  var CK=corridorCamKnobs(p), CAMS=CK.CAMS, CAMX=CK.CAMX, CAMZ=CK.CAMZ, LOOK=CK.LOOK, PITCH=CK.PITCH, TURN=CK.TURN, FOV=CK.FOV;
   var LODMM=Math.max(0,(isFinite(p.lod)?+p.lod:4)/10);
   var GAP=((p.occ||0)/10)/PAGEMM;
   /* Fixed, not knobs. PAD is the drawable margin in page units (the station's);
@@ -39291,37 +39306,15 @@ function corridorPlan(p,THM,ix,hooks){
   return {ix:ix, p:p, theme:hooks.theme, sGaps:SGAPS, hasGap:HASGAP, Z0:hooks.Z0||0,
           LEN:LEN, BEND:BEND, WID:WID, PAVE:PAVE, LOTMIN:LOTMIN, LOTMAX:LOTMAX, ALLEY:ALLEY, FLOORS:FLOORS, CANYON:CANYON, STEPB:STEPB, CANTI:CANTI, CAMS:CAMS, CAMX:CAMX, CAMZ:CAMZ, LOOK:LOOK, PITCH:PITCH, TURN:TURN, FOV:FOV, LODMM:LODMM, GAP:GAP, PAD:PAD, NEAR:NEAR, KERB:KERB, DS:DS, ZTOP:ZTOP, SLAB:SLAB, HALFW:HALFW, KOFF:KOFF, PBACK:PBACK, SALT_BLD:SALT_BLD, NS:NS, SX:SX, SY:SY, SH:SH, frame:frame, P3:P3, sub:sub, lateral:lateral, polyOverlap:polyOverlap, convex:convex, bbox2:bbox2, bbHit:bbHit, conts:conts, slabsBySide:slabsBySide, lots:lots, dropped:dropped, pushed:pushed};
 }
-function corridorDraw(p,plans,THM,camera){
-  p=corridorKnobs(p,THM);
-  var PL=plans[0];
-  var LEN=PL.LEN, WID=PL.WID, FLOORS=PL.FLOORS, CANYON=PL.CANYON, STEPB=PL.STEPB, CANTI=PL.CANTI, CAMS=PL.CAMS, CAMX=PL.CAMX, CAMZ=PL.CAMZ, LOOK=PL.LOOK, PITCH=PL.PITCH, TURN=PL.TURN, FOV=PL.FOV, LODMM=PL.LODMM, GAP=PL.GAP, PAD=PL.PAD, NEAR=PL.NEAR, KERB=PL.KERB, DS=PL.DS, SLAB=PL.SLAB, HALFW=PL.HALFW, KOFF=PL.KOFF, PBACK=PL.PBACK, NS=PL.NS, SX=PL.SX, SY=PL.SY, frame=PL.frame, P3=PL.P3, sub=PL.sub, polyOverlap=PL.polyOverlap, bbox2=PL.bbox2, bbHit=PL.bbHit, slabsBySide=PL.slabsBySide;
-  var out=[], i, j, k;
-  /* the kit's own inks: structure, tone hatch, the puddles' edge */
-  var COL_K='#1a1a1a', COL_HATCH='#4a4a4a', COL_LBLUE='#5aa9e6';
-  STRTINFO=''; STRTSTATS={lots:0,conts:0,parts:0,paths:0,points:0,cycles:0};
-  STRTTALLY={cam:null,project:null,parts:[],pre:[],sil:[],conts:[],lots:[],slabs:[],
-             signs:[],bank:null,words:[],poles:[],cables:[],cars:[],dots:null,graff:[],
-             puds:[],rparts:[],rpre:[],rsil:[],refl:[],allparts:[],upr:[],urows:[]};
-  /* every plan's slabs, then its lots, in plan order: one plan is today's list */
-  var conts=[], lots=[], dropped=0, pushed=0;
-  plans.forEach(function(PLk){
-    PLk.conts.forEach(function(C){ conts.push(C); if(C.kind==='slab') STRTTALLY.slabs.push({side:C.side, s0:C.s0, s1:C.s1, poly:C.poly}); });
-    PLk.lots.forEach(function(L){ lots.push(L); });
-    dropped+=PLk.dropped; pushed+=PLk.pushed;
-  });
-  var NOHOME=plans.some(function(PLk){ return PLk.hasGap; })?0:null;
-  /* row 96: does any container stand cut short by a town's river */
-  var HASCUT=conts.some(function(C){ return !!C.cut; });
-  /* row 97: does any container lie under a town's viaduct deck */
-  var HASUNDER=conts.some(function(C){ return C.under!==undefined; });
-  /* row 96: the eye-on-a-line tie in the container order (sideRule) */
-  var EYETIE=plans.some(function(PLk){ return !!(PLk.theme && PLk.theme.channel); });
-  /* ROW 95: which plan each container is laid along, for what the draw itself
-     builds on a lot or a slab (block stacks, kerbs, a street face's frame). One
-     plan: every lookup misses and reads the first plan's, as before. */
-  var CPL=new Map(); if(plans.length>1) plans.forEach(function(PLk){ PLk.conts.forEach(function(C){ CPL.set(C,PLk); }); });
-  function PLof(C){ return CPL.get(C)||PL; }
-
+/* ROW 221 (v363, REFACTOR ONLY): THE CORRIDOR CAMERA, lifted out of corridorDraw
+   verbatim so that one function places the eye and fits the frame for both the
+   build and the Scout view (docs/specs/2026-11-04-town-knobs-scout-flythrough_v2.md
+   §B.2: Scout has no projection maths of its own). `p` is corridorKnobs' output,
+   PL the first plan; it reads the page (PGW, PGH) and nothing else global, and
+   writes nothing: corridorDraw puts `tally` on STRTTALLY.cam itself. */
+function corridorCamera(p,PL,plans,THM,camera){
+  var LEN=PL.LEN, CAMS=PL.CAMS, CAMX=PL.CAMX, CAMZ=PL.CAMZ, LOOK=PL.LOOK, PITCH=PL.PITCH, TURN=PL.TURN, FOV=PL.FOV,
+      PAD=PL.PAD, NEAR=PL.NEAR, HALFW=PL.HALFW, frame=PL.frame, P3=PL.P3;
   /* ---- the camera, §3.1 --------------------------------------------------- */
   var sC=CAMS*LEN;
   /* ROW 85: Camera side is a share of HALFW, so it reached the kerb and never
@@ -39354,8 +39347,7 @@ function corridorDraw(p,plans,THM,camera){
      move every time a building grew. */
   function scr(c){ if(ISO) return [PGW/2+ISOS*c[0], PGH/2-ISOS*c[1]]; return [PGW/2+FF*c[0]/c[2]*HW, PGH/2-FF*c[1]/c[2]*HW]; }
   function project(P){ var c=cam(P); return c[2]>1e-12?scr(c):null; }
-  STRTTALLY.cam={C:CE, f:FW, r:RT, u:UP, F:FF, near:NEAR, pad:PAD, hw:HW, hh:HH};
-  STRTTALLY.project=project;
+  var tally={C:CE, f:FW, r:RT, u:UP, F:FF, near:NEAR, pad:PAD, hw:HW, hh:HH};
   /* ---- ROW 94: THE ISOMETRIC CAMERA, Projection 1 (corridor-city spec §3.2).
      A PARALLEL projection: the view direction is Iso turn from the street's
      tangent at its middle and Iso tilt below level, FW/RT/UP built from it as
@@ -39402,9 +39394,49 @@ function corridorDraw(p,plans,THM,camera){
     ISOC=[ISOC[0]+Fc[2]*PANY*(thi-tlo)-Fc[3]*PANX*(nhi-nlo), ISOC[1]+Fc[3]*PANY*(thi-tlo)+Fc[2]*PANX*(nhi-nlo), 0];
     CE=[ISOC[0]-FW[0]*1e5, ISOC[1]-FW[1]*1e5, ISOC[2]-FW[2]*1e5];
     D_EFF=FF*HW/ISOS;
-    STRTTALLY.cam={C:CE, f:FW, r:RT, u:UP, F:FF, near:NEAR, pad:PAD, hw:HW, hh:HH,
+    tally={C:CE, f:FW, r:RT, u:UP, F:FF, near:NEAR, pad:PAD, hw:HW, hh:HH,
                    iso:true, S:ISOS, fit:SFIT, O:ISOC, deff:D_EFF, zfit:ZFIT, az:IAZ, el:IEL};
   }
+  return {sC:sC, CREACH:CREACH, CE:CE, TG:TG, fx:fx, fy:fy, FW:FW, RT:RT, UP:UP, FF:FF, HW:HW, HH:HH,
+          ISO:ISO, ISOS:ISOS, D_EFF:D_EFF, ISOC:ISOC, SINEL:SINEL, cam:cam, scr:scr, project:project, tally:tally};
+}
+function corridorDraw(p,plans,THM,camera){
+  p=corridorKnobs(p,THM);
+  var PL=plans[0];
+  var LEN=PL.LEN, WID=PL.WID, FLOORS=PL.FLOORS, CANYON=PL.CANYON, STEPB=PL.STEPB, CANTI=PL.CANTI, CAMS=PL.CAMS, CAMX=PL.CAMX, CAMZ=PL.CAMZ, LOOK=PL.LOOK, PITCH=PL.PITCH, TURN=PL.TURN, FOV=PL.FOV, LODMM=PL.LODMM, GAP=PL.GAP, PAD=PL.PAD, NEAR=PL.NEAR, KERB=PL.KERB, DS=PL.DS, SLAB=PL.SLAB, HALFW=PL.HALFW, KOFF=PL.KOFF, PBACK=PL.PBACK, NS=PL.NS, SX=PL.SX, SY=PL.SY, frame=PL.frame, P3=PL.P3, sub=PL.sub, polyOverlap=PL.polyOverlap, bbox2=PL.bbox2, bbHit=PL.bbHit, slabsBySide=PL.slabsBySide;
+  var out=[], i, j, k;
+  /* the kit's own inks: structure, tone hatch, the puddles' edge */
+  var COL_K='#1a1a1a', COL_HATCH='#4a4a4a', COL_LBLUE='#5aa9e6';
+  STRTINFO=''; STRTSTATS={lots:0,conts:0,parts:0,paths:0,points:0,cycles:0};
+  STRTTALLY={cam:null,project:null,parts:[],pre:[],sil:[],conts:[],lots:[],slabs:[],
+             signs:[],bank:null,words:[],poles:[],cables:[],cars:[],dots:null,graff:[],
+             puds:[],rparts:[],rpre:[],rsil:[],refl:[],allparts:[],upr:[],urows:[]};
+  /* every plan's slabs, then its lots, in plan order: one plan is today's list */
+  var conts=[], lots=[], dropped=0, pushed=0;
+  plans.forEach(function(PLk){
+    PLk.conts.forEach(function(C){ conts.push(C); if(C.kind==='slab') STRTTALLY.slabs.push({side:C.side, s0:C.s0, s1:C.s1, poly:C.poly}); });
+    PLk.lots.forEach(function(L){ lots.push(L); });
+    dropped+=PLk.dropped; pushed+=PLk.pushed;
+  });
+  var NOHOME=plans.some(function(PLk){ return PLk.hasGap; })?0:null;
+  /* row 96: does any container stand cut short by a town's river */
+  var HASCUT=conts.some(function(C){ return !!C.cut; });
+  /* row 97: does any container lie under a town's viaduct deck */
+  var HASUNDER=conts.some(function(C){ return C.under!==undefined; });
+  /* row 96: the eye-on-a-line tie in the container order (sideRule) */
+  var EYETIE=plans.some(function(PLk){ return !!(PLk.theme && PLk.theme.channel); });
+  /* ROW 95: which plan each container is laid along, for what the draw itself
+     builds on a lot or a slab (block stacks, kerbs, a street face's frame). One
+     plan: every lookup misses and reads the first plan's, as before. */
+  var CPL=new Map(); if(plans.length>1) plans.forEach(function(PLk){ PLk.conts.forEach(function(C){ CPL.set(C,PLk); }); });
+  function PLof(C){ return CPL.get(C)||PL; }
+
+  /* ---- the camera, §3.1 and ROW 94's isometric camera: corridorCamera (row 221) */
+  var KCAM=corridorCamera(p,PL,plans,THM,camera);
+  var sC=KCAM.sC, CREACH=KCAM.CREACH, CE=KCAM.CE, TG=KCAM.TG, fx=KCAM.fx, fy=KCAM.fy, FW=KCAM.FW, RT=KCAM.RT, UP=KCAM.UP,
+      FF=KCAM.FF, HW=KCAM.HW, HH=KCAM.HH, ISO=KCAM.ISO, ISOS=KCAM.ISOS, D_EFF=KCAM.D_EFF, ISOC=KCAM.ISOC, SINEL=KCAM.SINEL, ISOZN=NEAR;
+  var cam=KCAM.cam, scr=KCAM.scr, project=KCAM.project;
+  STRTTALLY.cam=KCAM.tally; STRTTALLY.project=project;
   /* the eye's value on a separating axis whose normal has view component dn:
      at infinity, so the side the view comes from is first; an axis square to
      the view separates two prisms whose sheet ranges are disjoint, and returns
