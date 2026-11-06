@@ -170,6 +170,7 @@ body.touch.fly #pad{display:flex}
   <label class="ck" for="c-trail"><input type="checkbox" id="c-trail"> Light trails</label>
   <label class="ck" for="c-bars"><input type="checkbox" id="c-bars" checked> Cinema bars during flights</label>
   <label class="ck" for="c-caps"><input type="checkbox" id="c-caps" checked> Captions</label>
+  <label class="ck" for="c-ghost"><input type="checkbox" id="c-ghost"> Ghost: the takeoff as a multiple exposure</label>
 
   <h2>Your own flight</h2>
   <p class="note">Fly somewhere and press <kbd>K</kbd> or Add view. Add a few, then play them back as a flight.</p>
@@ -190,6 +191,7 @@ body.touch.fly #pad{display:flex}
     <dt>Drag · scroll</dt><dd>Look / turn · zoom or change speed</dd>
     <dt><kbd>M</kbd></dt><dd>Isometric → Orbit → Fly</dd>
     <dt><kbd>T</kbd> · <kbd>O</kbd></dt><dd>Textures on / off · solids on / off</dd>
+    <dt><kbd>G</kbd></dt><dd>Ghost: the takeoff as a multiple exposure</dd>
     <dt><kbd>N</kbd></dt><dd>Next city</dd>
     <dt><kbd>K</kbd></dt><dd>Add this view to your flight</dd>
     <dt><kbd>P</kbd> · <kbd>R</kbd></dt><dd>Photo · record the current flight</dd>
@@ -214,7 +216,7 @@ var THEMES={
   paper:{bg:[.953,.937,.902], f0:[.80,.78,.73], f1:[.985,.975,.95], cols:[[.1,.12,.14],[.55,.53,.49],[.7,.2,.16],[.16,.39,.6],[.78,.42,.1],[.75,.16,.13],[.2,.5,.27],[.16,.36,.7]], hi:[[.1,.12,.14],[.1,.12,.14],[.1,.12,.14],[.1,.12,.14]], glow:false},
   blue:{bg:[.05,.23,.42], f0:[.05,.21,.39], f1:[.11,.31,.53], cols:[[.92,.96,1],[.55,.7,.86],[1,.8,.55],[.6,.86,1],[1,.95,.6],[1,.92,.4],[.75,1,.8],[1,.75,.9]], hi:[[.92,.96,1],[.92,.96,1],[.92,.96,1],[.92,.96,1]], glow:false}};
 var theme='night';
-var opt={solid:true,fov:70,speed:60,fog:.55,ink:.85,glow:true,height:true,spin:true,plot:false,trail:false,bars:true,caps:true,pace:1,tex:false};
+var opt={ghost:false,solid:true,fov:70,speed:60,fog:.55,ink:.85,glow:true,height:true,spin:true,plot:false,trail:false,bars:true,caps:true,pace:1,tex:false};
 var mode='orbit';
 var C={tgt:[0,0,0], az:-125, el:28, dist:1500, ortho:1200, eye:[0,-800,200], yaw:90, pitch:-10};
 var dirty=true, idle=true, lastInput=0;
@@ -323,13 +325,13 @@ function loadGeo(city,which,onProg){
 
 /* ================= movers: aircraft drawn with their own pose ================= */
 /* Each city's planes come from <id>-movers.json in their own frame (nose along +x). They sit on their stands until a
-   flight moves one. POSES holds one model matrix per plane. */
+   flight moves one. POSES holds {i: which mover, m: its model matrix}; a mover can appear more than once (Ghost). */
 var ID4=new Float32Array([1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1]);
 var MOV=null, POSES=[], movCache={};
 function poseM(x,y,z,yaw,pitch,roll){ var cy=Math.cos(yaw*D2R),sy=Math.sin(yaw*D2R),cp=Math.cos(-pitch*D2R),sp=Math.sin(-pitch*D2R),cr=Math.cos(roll*D2R),sr=Math.sin(roll*D2R);
   /* R = Rz(yaw) Ry(-pitch) Rx(roll): nose up for positive pitch, right wing down for positive roll; column-major */
   return new Float32Array([cy*cp,sy*cp,-sp,0, cy*sp*sr-sy*cr,sy*sp*sr+cy*cr,cp*sr,0, cy*sp*cr+sy*sr,sy*sp*cr-cy*sr,cp*cr,0, x,y,z,1]); }
-function parked(){ POSES=MOV?MOV.list.map(function(o){ return poseM(o.at[0],o.at[1],0,o.th,0,0); }):[]; dirty=true; }
+function parked(){ POSES=MOV?MOV.list.map(function(o,i){ return {i:i,m:poseM(o.at[0],o.at[1],0,o.th,0,0)}; }):[]; dirty=true; }
 function loadMovers(city){
   if(!city.movers){ MOV=null; parked(); return Promise.resolve(); }
   if(movCache[city.id]){ MOV=movCache[city.id]; parked(); return Promise.resolve(); }
@@ -348,16 +350,16 @@ function loadMovers(city){
 }
 function moverFaces(){ if(!MOV||!layOn[5]) return;
   gl.uniform1f(FU.uS,1.0);
-  MOV.list.forEach(function(o,i){ if(!POSES[i]) return;
+  POSES.forEach(function(P){ var o=MOV.list[P.i]; if(!o) return;
     gl.bindBuffer(gl.ARRAY_BUFFER,o.fb); gl.vertexAttribPointer(fP,3,gl.FLOAT,false,0,0);
     gl.bindBuffer(gl.ARRAY_BUFFER,o.nb); gl.vertexAttribPointer(fN,3,gl.FLOAT,false,0,0);
-    gl.uniformMatrix4fv(FU.uObj,false,POSES[i]); gl.drawArrays(gl.TRIANGLES,0,o.nf*3); });
+    gl.uniformMatrix4fv(FU.uObj,false,P.m); gl.drawArrays(gl.TRIANGLES,0,o.nf*3); });
   gl.uniformMatrix4fv(FU.uObj,false,ID4); gl.uniform1f(FU.uS,0.1); }
 function moverLines(){ if(!MOV||!layOn[5]) return;
   gl.disableVertexAttribArray(aL); gl.vertexAttrib1f(aL,5); gl.uniform1f(U.uS,1.0); gl.uniform1f(U.uHeight,0);
-  MOV.list.forEach(function(o,i){ if(!POSES[i]) return;
+  POSES.forEach(function(P){ var o=MOV.list[P.i]; if(!o) return;
     gl.bindBuffer(gl.ARRAY_BUFFER,o.eb); gl.vertexAttribPointer(aP,3,gl.FLOAT,false,0,0);
-    gl.uniformMatrix4fv(U.uObj,false,POSES[i]); gl.drawArrays(gl.LINES,0,o.ne*2); });
+    gl.uniformMatrix4fv(U.uObj,false,P.m); gl.drawArrays(gl.LINES,0,o.ne*2); });
   gl.uniformMatrix4fv(U.uObj,false,ID4); gl.uniform1f(U.uS,0.1); gl.uniform1f(U.uHeight,opt.height?1:0); gl.enableVertexAttribArray(aL); }
 
 /* ================= maths ================= */
@@ -600,7 +602,10 @@ function playRoute(r,fromRec){
 function stopRoute(){ if(!ROUTE) return; playing=false; ROUTE=null; parked(); document.body.classList.remove('bars'); $('prog').style.width='0'; showCap('');
   [].forEach.call(routesEl.children,function(b){ b.setAttribute('aria-pressed','false'); }); if(rec) stopRec(); }
 function applyRoute(){ var q=sample(ROUTE,Math.min(1,rt)); C.eye=q.e; C.yaw=q.y; C.pitch=q.p; dirty=true;
-  if(q.plane&&MOV){ POSES=MOV.list.map(function(o,i){ return i===0?poseM(q.plane[0],q.plane[1],q.plane[2],q.plane[3],q.plane[4],q.plane[5]):poseM(o.at[0],o.at[1],0,o.th,0,0); }); }
+  if(q.plane&&MOV){ var pm=function(P){ return poseM(P[0],P[1],P[2],P[3],P[4],P[5]); };
+    POSES=MOV.list.map(function(o,i){ return {i:i,m:i===0?pm(q.plane):poseM(o.at[0],o.at[1],0,o.th,0,0)}; });
+    /* GHOST: a multiple exposure -- the plane where it was every 0.9 s, back to the start of its roll */
+    if(opt.ghost){ var T=Math.min(1,rt)*ROUTE.secs; for(var k=1;k<=12&&T-k*0.9>=11.5;k++) POSES.push({i:0,m:pm(tkPlane(ROUTE,T-k*0.9))}); } }
   if(opt.caps){ var k=q.k; for(var j=k;j>=0;j--) if(ROUTE.keys[j].c){ k=j; break; }
     if(k!==capKey){ capKey=k; showCap(ROUTE.keys[k]&&ROUTE.keys[k].c||''); } }
   $('prog').style.width=(Math.min(1,rt)*100)+'%'; }
@@ -656,6 +661,7 @@ window.addEventListener('keydown',function(e){
   if(k==='m'){ setMode(mode==='iso'?'orbit':mode==='orbit'?'fly':'iso'); return; }
   if(k==='t'){ setTex(!opt.tex); return; }
   if(k==='o'){ setSolid(!opt.solid); return; }
+  if(k==='g'){ opt.ghost=!opt.ghost; $('c-ghost').checked=opt.ghost; toast(opt.ghost?'Ghost on: play Takeoff':'Ghost off'); if(ROUTE) applyRoute(); dirty=true; return; }
   if(k==='n'){ var i=META.cities.indexOf(CITY); setCity(META.cities[(i+1)%META.cities.length].id); return; }
   if(k==='k'){ addKey(); return; }
   if(k==='p'){ photo(); return; }
@@ -728,7 +734,7 @@ slider('s-ink',function(v){return v+'%';},function(v){opt.ink=v/100;});
 slider('s-len',function(v){return (v/100).toFixed(1)+'×';},function(v){opt.pace=v/100;});
 function check(id,key,after){ var c=$(id); c.checked=!!opt[key]; c.addEventListener('change',function(){ opt[key]=c.checked; dirty=true; if(after) after(); }); }
 check('c-solid','solid',function(){ $('b-sol').setAttribute('aria-pressed',String(opt.solid)); }); check('c-glow','glow'); check('c-height','height'); check('c-spin','spin'); check('c-plot','plot'); check('c-trail','trail');
-check('c-bars','bars',function(){ document.body.classList.toggle('bars',opt.bars&&!!ROUTE); }); check('c-caps','caps',function(){ if(!opt.caps) showCap(''); });
+check('c-ghost','ghost'); check('c-bars','bars',function(){ document.body.classList.toggle('bars',opt.bars&&!!ROUTE); }); check('c-caps','caps',function(){ if(!opt.caps) showCap(''); });
 $('layers').innerHTML=LAYERS.map(function(n,i){ var c=THEMES.night.cols[i]; return '<label class="ck" for="l'+i+'"><input type="checkbox" id="l'+i+'" checked><i style="background:rgb('+c.map(function(v){return Math.round(v*255);}).join(',')+')"></i>'+n+'</label>'; }).join('');
 LAYERS.forEach(function(n,i){ $('l'+i).addEventListener('change',function(){ layOn[i]=this.checked?1:0; dirty=true; }); });
 $('b-tex').onclick=function(){ setTex(!opt.tex); };
@@ -791,7 +797,7 @@ window.__cc={state:function(){return {mode:mode,C:C,city:CITY&&CITY.id,tex:opt.t
   probe:function(i){ var r=CITY.routes[i]; prepRoute(r); var R=GEO.faces&&GEO.faces.roof, lo=1e9, inside=0;
     var pin=0; for(var j=0;j<=900;j++){ var q=sample(r,j/900); lo=Math.min(lo,q.e[2]); if(R){ var h=roofAt(R,q.e[0],q.e[1]); if(h>0&&q.e[2]<h+1) inside++;
       if(q.plane){ var hp=roofAt(R,q.plane[0],q.plane[1]); if(hp>0&&q.plane[2]<hp) pin++; } } } return {id:r.id,lowest:+lo.toFixed(1),insideBuildings:inside,planeInside:pin,roofs:!!R}; },
-  play:function(i){ playRoute(CITY.routes[i]); }, key:function(k){ playing=false; rt=ROUTE._u[k]; applyRoute(); render(); }, at:function(t){ playing=false; rt=t; applyRoute(); render(); }, city:setCity, tex:setTex, theme:function(t){ $('t-'+t).click(); }, mode:setMode};
+  play:function(i){ playRoute(CITY.routes[i]); }, ghost:function(on){ opt.ghost=!!on; $('c-ghost').checked=opt.ghost; if(ROUTE) applyRoute(); }, key:function(k){ playing=false; rt=ROUTE._u[k]; applyRoute(); render(); }, at:function(t){ playing=false; rt=t; applyRoute(); render(); }, city:setCity, tex:setTex, theme:function(t){ $('t-'+t).click(); }, mode:setMode};
 })();
 </script>
 </body>
