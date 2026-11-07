@@ -461,7 +461,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v366</a> &mdash; the fly-through: keyframes and a path in Scout, Play, Render film with detail held, Resume, Save film (queue row 222)</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v367</a> &mdash; the views sheet: one corridor scene from two to four cameras on one plot, each panel its own pen, labels and a title block (queue row 218)</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <section class="fold" id="fold_pick"><h2>Pick engine<span class="cnt"></span></h2>
@@ -739,6 +739,7 @@ var TAU=Math.PI*2;
 /* ROW 123: THE PAGE'S OWN SOURCE, KEPT AT BOOT for the build worker, which is
    made from it -- there is no second file (CLAUDE.md rule 2). Empty where the
    browser gives no currentScript, and then the build runs inline. */
+var PAGEVER='';
 var PAGESRC=(typeof document!=='undefined' && document.currentScript && document.currentScript.textContent)||'';
 var cv=document.getElementById('cv'), ctx=cv.getContext('2d');
 var W=800,H=800, seed=41, mode='record', cur=null, pend=false;
@@ -3267,6 +3268,9 @@ var SPEC={
     ['pitch','Pitch',-45,45,0.5,6,[1,'°']],['fov','Field of view',25,120,1,72,[1,'°']],
     ['proj','Projection',0,1,1,0],['isoaz','Iso turn',-180,180,1,45,[1,'°']],['isoel','Iso tilt',10,89,1,30,[1,'°']],
     ['zoom','Iso zoom',10,800,1,100,[100,'%']],['panx','Iso pan across',-100,100,1,0,[100,'%']],['pany','Iso pan along',-100,100,1,0,[100,'%']],
+    ['views','Views',0,3,1,0],['v2az','View 2 turn',-180,180,1,45,[1,'°']],['v2el','View 2 tilt',10,89,1,30,[1,'°']],['v2zoom','View 2 zoom',10,800,1,100,[100,'%']],
+    ['v3az','View 3 turn',-180,180,1,-30,[1,'°']],['v3el','View 3 tilt',10,89,1,14,[1,'°']],['v3zoom','View 3 zoom',10,800,1,140,[100,'%']],
+    ['v4az','View 4 turn',-180,180,1,135,[1,'°']],['v4el','View 4 tilt',10,89,1,30,[1,'°']],['v4zoom','View 4 zoom',10,800,1,100,[100,'%']],
     ['dnear','Solid detail to',2,80,1,18,[1,' m']],['dfar','Outline detail to',10,400,5,90,[1,' m']],
     ['dpen','Depth pens',0,1,1,0],['dsplit','Depth split',5,300,5,60,[1,' m']],
     ['mono','Colour only in reflections',0,2,1,0],
@@ -3299,6 +3303,9 @@ var SPEC={
     ['pitch','Pitch',-45,45,0.5,4,[1,'°']],['fov','Field of view',25,120,1,80,[1,'°']],
     ['proj','Projection',0,1,1,0],['isoaz','Iso turn',-180,180,1,45,[1,'°']],['isoel','Iso tilt',10,89,1,30,[1,'°']],
     ['zoom','Iso zoom',10,800,1,100,[100,'%']],['panx','Iso pan across',-100,100,1,0,[100,'%']],['pany','Iso pan along',-100,100,1,0,[100,'%']],
+    ['views','Views',0,3,1,0],['v2az','View 2 turn',-180,180,1,45,[1,'°']],['v2el','View 2 tilt',10,89,1,30,[1,'°']],['v2zoom','View 2 zoom',10,800,1,100,[100,'%']],
+    ['v3az','View 3 turn',-180,180,1,-30,[1,'°']],['v3el','View 3 tilt',10,89,1,14,[1,'°']],['v3zoom','View 3 zoom',10,800,1,140,[100,'%']],
+    ['v4az','View 4 turn',-180,180,1,135,[1,'°']],['v4el','View 4 tilt',10,89,1,30,[1,'°']],['v4zoom','View 4 zoom',10,800,1,100,[100,'%']],
     ['dnear','Solid detail to',2,80,1,18,[1,' m']],['dfar','Outline detail to',10,400,5,90,[1,' m']],
     ['dpen','Depth pens',0,1,1,0],['dsplit','Depth split',5,300,5,60,[1,' m']],
     ['lod','LOD cutoff',0,60,1,4,[10,' mm']],['budg','Size budget',10,300,5,90,[1,' k points']],
@@ -3319,6 +3326,9 @@ var SPEC={
     ['pitch','Pitch',-45,45,0.5,3,[1,'°']],['fov','Field of view',25,120,1,70,[1,'°']],
     ['proj','Projection',0,1,1,0],['isoaz','Iso turn',-180,180,1,45,[1,'°']],['isoel','Iso tilt',10,89,1,30,[1,'°']],
     ['zoom','Iso zoom',10,800,1,100,[100,'%']],['panx','Iso pan across',-100,100,1,0,[100,'%']],['pany','Iso pan along',-100,100,1,0,[100,'%']],
+    ['views','Views',0,3,1,0],['v2az','View 2 turn',-180,180,1,45,[1,'°']],['v2el','View 2 tilt',10,89,1,30,[1,'°']],['v2zoom','View 2 zoom',10,800,1,100,[100,'%']],
+    ['v3az','View 3 turn',-180,180,1,-30,[1,'°']],['v3el','View 3 tilt',10,89,1,14,[1,'°']],['v3zoom','View 3 zoom',10,800,1,140,[100,'%']],
+    ['v4az','View 4 turn',-180,180,1,135,[1,'°']],['v4el','View 4 tilt',10,89,1,30,[1,'°']],['v4zoom','View 4 zoom',10,800,1,100,[100,'%']],
     ['dnear','Solid detail to',2,80,1,18,[1,' m']],['dfar','Outline detail to',10,400,5,90,[1,' m']],
     ['dpen','Depth pens',0,1,1,0],['dsplit','Depth split',5,300,5,60,[1,' m']],
     ['lod','LOD cutoff',0,60,1,4,[10,' mm']],['budg','Size budget',10,300,5,90,[1,' k points']],
@@ -3339,6 +3349,9 @@ var SPEC={
     ['pitch','Pitch',-45,45,0.5,2,[1,'°']],['fov','Field of view',25,120,1,75,[1,'°']],
     ['proj','Projection',0,1,1,0],['isoaz','Iso turn',-180,180,1,45,[1,'°']],['isoel','Iso tilt',10,89,1,30,[1,'°']],
     ['zoom','Iso zoom',10,800,1,100,[100,'%']],['panx','Iso pan across',-100,100,1,0,[100,'%']],['pany','Iso pan along',-100,100,1,0,[100,'%']],
+    ['views','Views',0,3,1,0],['v2az','View 2 turn',-180,180,1,45,[1,'°']],['v2el','View 2 tilt',10,89,1,30,[1,'°']],['v2zoom','View 2 zoom',10,800,1,100,[100,'%']],
+    ['v3az','View 3 turn',-180,180,1,-30,[1,'°']],['v3el','View 3 tilt',10,89,1,14,[1,'°']],['v3zoom','View 3 zoom',10,800,1,140,[100,'%']],
+    ['v4az','View 4 turn',-180,180,1,135,[1,'°']],['v4el','View 4 tilt',10,89,1,30,[1,'°']],['v4zoom','View 4 zoom',10,800,1,100,[100,'%']],
     ['dnear','Solid detail to',1,40,0.5,6,[1,' m']],['dfar','Outline detail to',2,120,1,20,[1,' m']],
     ['dpen','Depth pens',0,1,1,0],['dsplit','Depth split',2,120,1,15,[1,' m']],
     ['lod','LOD cutoff',0,60,1,4,[10,' mm']],['budg','Size budget',10,300,5,90,[1,' k points']],
@@ -3360,6 +3373,9 @@ var SPEC={
     ['pitch','Pitch',-45,45,0.5,8,[1,'°']],['fov','Field of view',25,120,1,78,[1,'°']],
     ['proj','Projection',0,1,1,0],['isoaz','Iso turn',-180,180,1,45,[1,'°']],['isoel','Iso tilt',10,89,1,30,[1,'°']],
     ['zoom','Iso zoom',10,800,1,100,[100,'%']],['panx','Iso pan across',-100,100,1,0,[100,'%']],['pany','Iso pan along',-100,100,1,0,[100,'%']],
+    ['views','Views',0,3,1,0],['v2az','View 2 turn',-180,180,1,45,[1,'°']],['v2el','View 2 tilt',10,89,1,30,[1,'°']],['v2zoom','View 2 zoom',10,800,1,100,[100,'%']],
+    ['v3az','View 3 turn',-180,180,1,-30,[1,'°']],['v3el','View 3 tilt',10,89,1,14,[1,'°']],['v3zoom','View 3 zoom',10,800,1,140,[100,'%']],
+    ['v4az','View 4 turn',-180,180,1,135,[1,'°']],['v4el','View 4 tilt',10,89,1,30,[1,'°']],['v4zoom','View 4 zoom',10,800,1,100,[100,'%']],
     ['dnear','Solid detail to',1,40,0.5,12,[1,' m']],['dfar','Outline detail to',2,200,1,50,[1,' m']],
     ['dpen','Depth pens',0,1,1,0],['dsplit','Depth split',2,200,1,30,[1,' m']],
     ['lod','LOD cutoff',0,60,1,4,[10,' mm']],['budg','Size budget',10,300,5,120,[1,' k points']],
@@ -3382,6 +3398,9 @@ var SPEC={
     ['pitch','Pitch',-45,45,0.5,4,[1,'°']],['fov','Field of view',25,120,1,78,[1,'°']],
     ['proj','Projection',0,1,1,0],['isoaz','Iso turn',-180,180,1,45,[1,'°']],['isoel','Iso tilt',10,89,1,30,[1,'°']],
     ['zoom','Iso zoom',10,800,1,100,[100,'%']],['panx','Iso pan across',-100,100,1,0,[100,'%']],['pany','Iso pan along',-100,100,1,0,[100,'%']],
+    ['views','Views',0,3,1,0],['v2az','View 2 turn',-180,180,1,45,[1,'°']],['v2el','View 2 tilt',10,89,1,30,[1,'°']],['v2zoom','View 2 zoom',10,800,1,100,[100,'%']],
+    ['v3az','View 3 turn',-180,180,1,-30,[1,'°']],['v3el','View 3 tilt',10,89,1,14,[1,'°']],['v3zoom','View 3 zoom',10,800,1,140,[100,'%']],
+    ['v4az','View 4 turn',-180,180,1,135,[1,'°']],['v4el','View 4 tilt',10,89,1,30,[1,'°']],['v4zoom','View 4 zoom',10,800,1,100,[100,'%']],
     ['dnear','Solid detail to',1,40,0.5,10,[1,' m']],['dfar','Outline detail to',2,120,1,45,[1,' m']],
     ['dpen','Depth pens',0,1,1,0],['dsplit','Depth split',2,120,1,30,[1,' m']],
     ['lod','LOD cutoff',0,60,1,4,[10,' mm']],['budg','Size budget',10,300,5,120,[1,' k points']],
@@ -3402,6 +3421,9 @@ var SPEC={
     ['pitch','Pitch',-45,45,0.5,3,[1,'°']],['fov','Field of view',25,120,1,78,[1,'°']],
     ['proj','Projection',0,1,1,0],['isoaz','Iso turn',-180,180,1,45,[1,'°']],['isoel','Iso tilt',10,89,1,30,[1,'°']],
     ['zoom','Iso zoom',10,800,1,100,[100,'%']],['panx','Iso pan across',-100,100,1,0,[100,'%']],['pany','Iso pan along',-100,100,1,0,[100,'%']],
+    ['views','Views',0,3,1,0],['v2az','View 2 turn',-180,180,1,45,[1,'°']],['v2el','View 2 tilt',10,89,1,30,[1,'°']],['v2zoom','View 2 zoom',10,800,1,100,[100,'%']],
+    ['v3az','View 3 turn',-180,180,1,-30,[1,'°']],['v3el','View 3 tilt',10,89,1,14,[1,'°']],['v3zoom','View 3 zoom',10,800,1,140,[100,'%']],
+    ['v4az','View 4 turn',-180,180,1,135,[1,'°']],['v4el','View 4 tilt',10,89,1,30,[1,'°']],['v4zoom','View 4 zoom',10,800,1,100,[100,'%']],
     ['dnear','Solid detail to',2,80,0.5,14,[1,' m']],['dfar','Outline detail to',10,400,1,70,[1,' m']],
     ['dpen','Depth pens',0,1,1,0],['dsplit','Depth split',5,300,1,30,[1,' m']],
     ['lod','LOD cutoff',0,60,1,4,[10,' mm']],['budg','Size budget',10,300,5,140,[1,' k points']],
@@ -3424,6 +3446,9 @@ var SPEC={
     ['pitch','Pitch',-45,45,0.5,3,[1,'°']],['fov','Field of view',25,120,1,78,[1,'°']],
     ['proj','Projection',0,1,1,0],['isoaz','Iso turn',-180,180,1,45,[1,'°']],['isoel','Iso tilt',10,89,1,30,[1,'°']],
     ['zoom','Iso zoom',10,800,1,100,[100,'%']],['panx','Iso pan across',-100,100,1,0,[100,'%']],['pany','Iso pan along',-100,100,1,0,[100,'%']],
+    ['views','Views',0,3,1,0],['v2az','View 2 turn',-180,180,1,45,[1,'°']],['v2el','View 2 tilt',10,89,1,30,[1,'°']],['v2zoom','View 2 zoom',10,800,1,100,[100,'%']],
+    ['v3az','View 3 turn',-180,180,1,-30,[1,'°']],['v3el','View 3 tilt',10,89,1,14,[1,'°']],['v3zoom','View 3 zoom',10,800,1,140,[100,'%']],
+    ['v4az','View 4 turn',-180,180,1,135,[1,'°']],['v4el','View 4 tilt',10,89,1,30,[1,'°']],['v4zoom','View 4 zoom',10,800,1,100,[100,'%']],
     ['dnear','Solid detail to',1,40,0.5,8,[1,' m']],['dfar','Outline detail to',2,120,1,30,[1,' m']],
     ['dpen','Depth pens',0,1,1,0],['dsplit','Depth split',2,120,1,30,[1,' m']],
     ['lod','LOD cutoff',0,60,1,4,[10,' mm']],['budg','Size budget',10,300,5,140,[1,' k points']],
@@ -3448,6 +3473,9 @@ var SPEC={
     ['pitch','Pitch',-45,45,0.5,2,[1,'°']],['fov','Field of view',25,120,1,78,[1,'°']],
     ['proj','Projection',0,1,1,0],['isoaz','Iso turn',-180,180,1,45,[1,'°']],['isoel','Iso tilt',10,89,1,30,[1,'°']],
     ['zoom','Iso zoom',10,800,1,100,[100,'%']],['panx','Iso pan across',-100,100,1,0,[100,'%']],['pany','Iso pan along',-100,100,1,0,[100,'%']],
+    ['views','Views',0,3,1,0],['v2az','View 2 turn',-180,180,1,45,[1,'°']],['v2el','View 2 tilt',10,89,1,30,[1,'°']],['v2zoom','View 2 zoom',10,800,1,100,[100,'%']],
+    ['v3az','View 3 turn',-180,180,1,-30,[1,'°']],['v3el','View 3 tilt',10,89,1,14,[1,'°']],['v3zoom','View 3 zoom',10,800,1,140,[100,'%']],
+    ['v4az','View 4 turn',-180,180,1,135,[1,'°']],['v4el','View 4 tilt',10,89,1,30,[1,'°']],['v4zoom','View 4 zoom',10,800,1,100,[100,'%']],
     ['dnear','Solid detail to',2,80,1,14,[1,' m']],['dfar','Outline detail to',10,400,5,70,[1,' m']],
     ['dpen','Depth pens',0,1,1,0],['dsplit','Depth split',5,300,5,30,[1,' m']],
     ['lod','LOD cutoff',0,60,1,4,[10,' mm']],['budg','Size budget',10,300,5,140,[1,' k points']],
@@ -3470,6 +3498,9 @@ var SPEC={
     ['pitch','Pitch',-45,60,0.5,12,[1,'°']],['fov','Field of view',25,120,1,78,[1,'°']],
     ['proj','Projection',0,1,1,0],['isoaz','Iso turn',-180,180,1,45,[1,'°']],['isoel','Iso tilt',10,89,1,30,[1,'°']],
     ['zoom','Iso zoom',10,800,1,100,[100,'%']],['panx','Iso pan across',-100,100,1,0,[100,'%']],['pany','Iso pan along',-100,100,1,0,[100,'%']],
+    ['views','Views',0,3,1,0],['v2az','View 2 turn',-180,180,1,45,[1,'°']],['v2el','View 2 tilt',10,89,1,30,[1,'°']],['v2zoom','View 2 zoom',10,800,1,100,[100,'%']],
+    ['v3az','View 3 turn',-180,180,1,-30,[1,'°']],['v3el','View 3 tilt',10,89,1,14,[1,'°']],['v3zoom','View 3 zoom',10,800,1,140,[100,'%']],
+    ['v4az','View 4 turn',-180,180,1,135,[1,'°']],['v4el','View 4 tilt',10,89,1,30,[1,'°']],['v4zoom','View 4 zoom',10,800,1,100,[100,'%']],
     ['dnear','Solid detail to',2,80,0.5,16,[1,' m']],['dfar','Outline detail to',10,300,1,90,[1,' m']],
     ['dpen','Depth pens',0,1,1,0],['dsplit','Depth split',2,200,1,30,[1,' m']],
     ['lod','LOD cutoff',0,60,1,4,[10,' mm']],['budg','Size budget',10,300,5,140,[1,' k points']],
@@ -3497,6 +3528,9 @@ var SPEC={
     ['pitch','Pitch',-45,45,0.5,3,[1,'°']],['fov','Field of view',25,120,1,70,[1,'°']],
     ['proj','Projection',0,1,1,0],['isoaz','Iso turn',-180,180,1,45,[1,'°']],['isoel','Iso tilt',10,89,1,30,[1,'°']],
     ['zoom','Iso zoom',10,800,1,100,[100,'%']],['panx','Iso pan across',-100,100,1,0,[100,'%']],['pany','Iso pan along',-100,100,1,0,[100,'%']],
+    ['views','Views',0,3,1,0],['v2az','View 2 turn',-180,180,1,45,[1,'°']],['v2el','View 2 tilt',10,89,1,30,[1,'°']],['v2zoom','View 2 zoom',10,800,1,100,[100,'%']],
+    ['v3az','View 3 turn',-180,180,1,-30,[1,'°']],['v3el','View 3 tilt',10,89,1,14,[1,'°']],['v3zoom','View 3 zoom',10,800,1,140,[100,'%']],
+    ['v4az','View 4 turn',-180,180,1,135,[1,'°']],['v4el','View 4 tilt',10,89,1,30,[1,'°']],['v4zoom','View 4 zoom',10,800,1,100,[100,'%']],
     ['dnear','Solid detail to',2,80,1,18,[1,' m']],['dfar','Outline detail to',10,400,5,90,[1,' m']],
     ['dpen','Depth pens',0,1,1,0],['dsplit','Depth split',5,300,5,60,[1,' m']],
     ['lod','LOD cutoff',0,60,1,4,[10,' mm']],['budg','Size budget',10,300,5,90,[1,' k points']],
@@ -3527,6 +3561,9 @@ var SPEC={
     ['pitch','Pitch',-45,45,0.5,2,[1,'°']],['fov','Field of view',25,120,1,70,[1,'°']],
     ['proj','Projection',0,1,1,0],['isoaz','Iso turn',-180,180,1,45,[1,'°']],['isoel','Iso tilt',10,89,1,30,[1,'°']],
     ['zoom','Iso zoom',10,800,1,100,[100,'%']],['panx','Iso pan across',-100,100,1,0,[100,'%']],['pany','Iso pan along',-100,100,1,0,[100,'%']],
+    ['views','Views',0,3,1,0],['v2az','View 2 turn',-180,180,1,45,[1,'°']],['v2el','View 2 tilt',10,89,1,30,[1,'°']],['v2zoom','View 2 zoom',10,800,1,100,[100,'%']],
+    ['v3az','View 3 turn',-180,180,1,-30,[1,'°']],['v3el','View 3 tilt',10,89,1,14,[1,'°']],['v3zoom','View 3 zoom',10,800,1,140,[100,'%']],
+    ['v4az','View 4 turn',-180,180,1,135,[1,'°']],['v4el','View 4 tilt',10,89,1,30,[1,'°']],['v4zoom','View 4 zoom',10,800,1,100,[100,'%']],
     ['dnear','Solid detail to',2,80,1,18,[1,' m']],['dfar','Outline detail to',10,400,5,90,[1,' m']],
     ['dpen','Depth pens',0,1,1,0],['dsplit','Depth split',5,300,5,60,[1,' m']],
     ['lod','LOD cutoff',0,60,1,4,[10,' mm']],['budg','Size budget',10,300,5,90,[1,' k points']],
@@ -3590,6 +3627,9 @@ var SPEC={
     ['hdg','Heading',0,359,1,0,[1,'°']],
     ['proj','Projection',0,1,1,1],['isoaz','Iso turn',-180,180,1,45,[1,'°']],['isoel','Iso tilt',10,89,1,30,[1,'°']],
     ['zoom','Iso zoom',10,800,1,100,[100,'%']],['panx','Iso pan across',-100,100,1,0,[100,'%']],['pany','Iso pan along',-100,100,1,0,[100,'%']],
+    ['views','Views',0,3,1,0],['v2az','View 2 turn',-180,180,1,45,[1,'°']],['v2el','View 2 tilt',10,89,1,30,[1,'°']],['v2zoom','View 2 zoom',10,800,1,100,[100,'%']],
+    ['v3az','View 3 turn',-180,180,1,-30,[1,'°']],['v3el','View 3 tilt',10,89,1,14,[1,'°']],['v3zoom','View 3 zoom',10,800,1,140,[100,'%']],
+    ['v4az','View 4 turn',-180,180,1,135,[1,'°']],['v4el','View 4 tilt',10,89,1,30,[1,'°']],['v4zoom','View 4 zoom',10,800,1,100,[100,'%']],
     ['dnear','Solid detail to',2,80,1,18,[1,' m']],['dfar','Outline detail to',10,400,5,90,[1,' m']],
     ['dpen','Depth pens',0,1,1,0],['dsplit','Depth split',5,300,5,60,[1,' m']],
     ['mono','Colour only in reflections',0,2,1,0],
@@ -3616,6 +3656,9 @@ var SPEC={
     ['pitch','Pitch',-45,45,0.5,6,[1,'°']],['fov','Field of view',25,120,1,78,[1,'°']],
     ['proj','Projection',0,1,1,0],['isoaz','Iso turn',-180,180,1,45,[1,'°']],['isoel','Iso tilt',10,89,1,30,[1,'°']],
     ['zoom','Iso zoom',10,800,1,100,[100,'%']],['panx','Iso pan across',-100,100,1,0,[100,'%']],['pany','Iso pan along',-100,100,1,0,[100,'%']],
+    ['views','Views',0,3,1,0],['v2az','View 2 turn',-180,180,1,45,[1,'°']],['v2el','View 2 tilt',10,89,1,30,[1,'°']],['v2zoom','View 2 zoom',10,800,1,100,[100,'%']],
+    ['v3az','View 3 turn',-180,180,1,-30,[1,'°']],['v3el','View 3 tilt',10,89,1,14,[1,'°']],['v3zoom','View 3 zoom',10,800,1,140,[100,'%']],
+    ['v4az','View 4 turn',-180,180,1,135,[1,'°']],['v4el','View 4 tilt',10,89,1,30,[1,'°']],['v4zoom','View 4 zoom',10,800,1,100,[100,'%']],
     ['dnear','Solid detail to',1,40,0.5,14,[1,' m']],['dfar','Outline detail to',2,120,1,60,[1,' m']],
     ['dpen','Depth pens',0,1,1,0],['dsplit','Depth split',2,120,1,30,[1,' m']],
     ['lod','LOD cutoff',0,60,1,4,[10,' mm']],['budg','Size budget',10,300,5,120,[1,' k points']],
@@ -3639,6 +3682,9 @@ var SPEC={
     ['pitch','Pitch',-45,45,0.5,4,[1,'°']],['fov','Field of view',25,120,1,78,[1,'°']],
     ['proj','Projection',0,1,1,0],['isoaz','Iso turn',-180,180,1,45,[1,'°']],['isoel','Iso tilt',10,89,1,30,[1,'°']],
     ['zoom','Iso zoom',10,800,1,100,[100,'%']],['panx','Iso pan across',-100,100,1,0,[100,'%']],['pany','Iso pan along',-100,100,1,0,[100,'%']],
+    ['views','Views',0,3,1,0],['v2az','View 2 turn',-180,180,1,45,[1,'°']],['v2el','View 2 tilt',10,89,1,30,[1,'°']],['v2zoom','View 2 zoom',10,800,1,100,[100,'%']],
+    ['v3az','View 3 turn',-180,180,1,-30,[1,'°']],['v3el','View 3 tilt',10,89,1,14,[1,'°']],['v3zoom','View 3 zoom',10,800,1,140,[100,'%']],
+    ['v4az','View 4 turn',-180,180,1,135,[1,'°']],['v4el','View 4 tilt',10,89,1,30,[1,'°']],['v4zoom','View 4 zoom',10,800,1,100,[100,'%']],
     ['dnear','Solid detail to',1,60,0.5,16,[1,' m']],['dfar','Outline detail to',2,200,1,70,[1,' m']],
     ['dpen','Depth pens',0,1,1,0],['dsplit','Depth split',2,150,1,30,[1,' m']],
     ['lod','LOD cutoff',0,60,1,4,[10,' mm']],['budg','Size budget',10,300,5,120,[1,' k points']],
@@ -14618,7 +14664,8 @@ function penByPosition(groups,g){
    engine's own Accent knob already does that. It decides only whether the
    split reaches paper. */
 function engineLayers(paths,g){
-  if(!(Math.round(g.elay||0)>0)) return null;
+  /* row 218: a views sheet's panels are its pens whatever this knob says */
+  if(!(Math.round(g.elay||0)>0) && !(paths&&paths.panels)) return null;
   var L=paths&&paths.layers;
   return (L&&L.length)?L:null;
 }
@@ -22782,6 +22829,7 @@ function townSub(a,b,salt){
   };
 }
 function buildTown(p){
+  if(viewsOn(p)) return viewsSheet(p,buildTown,STHEMES.town.label);
   var THM=STHEMES.town; p=corridorKnobs(p,THM);
   /* row 99: with a site, its Scale sets the city's length and block depth */
   var SK=townSiteKind(p);
@@ -39026,7 +39074,125 @@ function streetTheme(K){
    plan. STILL READ FROM THE FIRST PLAN ALONE, for row 95 to make per plan: the
    camera, the puddles and the front puddle, the kerbs and box stacks in render,
    wallOf, and the stat line's content counts. */
-function buildCorridor(p,THM){ return corridorDraw(p,[corridorPlan(p,THM,0)],THM,p.scoutScene?{scene:true}:null); }
+/* ---------- ROW 218: THE VIEWS SHEET -------------------------------------------
+   docs/specs/2026-11-04-scout-public-page.md §2. Views 1-3 lays two, three or four
+   views of the same knob state on one sheet: a PLAN fixed at Projection 1, Iso
+   turn 0, Iso tilt 89, Iso zoom 100, and the others at View N turn / tilt / zoom.
+
+   EACH VIEW IS ITS OWN FULL BUILD ON A PAGE THE SIZE OF ITS PANEL. PAGEMM, PGW and
+   PGH are the panel's while it builds, so every decision made on paper -- detail
+   bands, the LOD cutoff, line spacing held in mm, the budget -- is made for the
+   panel the view lands in, and it is then moved onto the sheet by one exact,
+   isotropic affine: x*s+ox, y*s+oy with s = panel mm / sheet mm. A panel is never
+   a different drawing from that one view on a sheet its own size; the gate
+   (strtcheck L61 V1) undoes the affine and compares.
+
+   Each panel's paths and its label are one LAYER, named view1-plan, view2-isometric
+   ..., and the title block is a layer of its own, so the export is one top-level
+   <g> per panel and `plot -M` plots them one at a time. LIKE ENGINE LAYERS, THE
+   PANELS REPLACE Pens, Pen map and Line pens -- a panel is a pen -- and they do so
+   whatever Engine layers says (engineLayers reads `panels`).
+
+   Off (Views 0), for Scout's scene and for a film frame, the engine builds as it
+   always did: viewsOn says 0 and nothing below runs. */
+function viewsOn(p){
+  var v=Math.round(+p.views||0);
+  return (v>=1 && !p.scoutScene && !p.film && !p.viewPanel)?Math.min(3,v)+1:0;
+}
+function viewsCams(p,n){
+  var D=[null,null,[45,30,100],[-30,14,140],[135,30,100]], C=[{proj:1,isoaz:0,isoel:89,zoom:100}];
+  for(var i=2;i<=n;i++){
+    var az=+p['v'+i+'az'], el=+p['v'+i+'el'], zm=+p['v'+i+'zoom'];
+    C.push({proj:1, isoaz:isFinite(az)?az:D[i][0], isoel:isFinite(el)?el:D[i][1], zoom:isFinite(zm)?zm:D[i][2]});
+  }
+  return C;
+}
+function viewsName(c){ return c.isoel>=80?'PLAN':(c.isoel>=25?'ISOMETRIC':'LOW OBLIQUE'); }
+function viewsLabel(c,i){
+  if(i===0) return 'PLAN';
+  return viewsName(c)+', TURN '+Math.round(c.isoaz)+', TILT '+Math.round(c.isoel)+
+         (Math.round(c.zoom)!==100?', ZOOM '+Math.round(c.zoom)+'%':'');
+}
+/* The sheet in mm: a 6 mm margin, 6 mm between panels, a 6 mm label band over
+   each panel and a 14 mm title block along the bottom. Three views put the PLAN
+   at 3/7 of the width with the other two stacked beside it (on a portrait sheet,
+   3/7 of the height with the two side by side under it); two are side by side
+   (stacked on portrait); four are a 2 x 2 grid. */
+var VIEWSM={M:6, G:6, LB:6, TB:14};
+function viewsLayout(n,W,H){
+  var M=VIEWSM.M, G=VIEWSM.G, LB=VIEWSM.LB, TB=VIEWSM.TB;
+  var x0=M, y0=M, CW=W-2*M, CH=H-2*M-TB-G, port=H>W, cells=[];
+  function cell(x,y,w,h){ cells.push({x:x, y:y, w:w, h:h}); }
+  if(n===2){
+    if(!port){ var w2=(CW-G)/2; cell(x0,y0,w2,CH); cell(x0+w2+G,y0,w2,CH); }
+    else { var h2=(CH-G)/2; cell(x0,y0,CW,h2); cell(x0,y0+h2+G,CW,h2); }
+  } else if(n===3){
+    if(!port){ var wl=(CW-G)*3/7, wr=CW-G-wl, hr=(CH-G)/2;
+      cell(x0,y0,wl,CH); cell(x0+wl+G,y0,wr,hr); cell(x0+wl+G,y0+hr+G,wr,hr); }
+    else { var ht=(CH-G)*3/7, hb=CH-G-ht, wb=(CW-G)/2;
+      cell(x0,y0,CW,ht); cell(x0,y0+ht+G,wb,hb); cell(x0+wb+G,y0+ht+G,wb,hb); }
+  } else {
+    var w4=(CW-G)/2, h4=(CH-G)/2;
+    cell(x0,y0,w4,h4); cell(x0+w4+G,y0,w4,h4); cell(x0,y0+h4+G,w4,h4); cell(x0+w4+G,y0+h4+G,w4,h4);
+  }
+  return {cells:cells.map(function(c){ return {cell:c, box:{x:c.x, y:c.y+LB, w:c.w, h:c.h-LB}, base:c.y+LB-1.8}; }),
+          title:{x:x0, y:H-M-TB, w:CW, h:TB}};
+}
+/* Single-stroke text in the page's Hershey face: polylines in mm, left at x,
+   baseline at yb (y down), cap height cap mm; squeezed to maxw if it would run
+   over. A glyph the face lacks advances half an em and draws nothing. */
+function viewsText(str,x,yb,cap,maxw){
+  var tot=0, i, G;
+  for(i=0;i<str.length;i++){ G=glyphStrokes(str.charAt(i),'futural'); tot+=G?G.adv:0.5; }
+  var sc=cap; if(maxw && tot*sc>maxw) sc=maxw/tot;
+  var out=[], u=x;
+  for(i=0;i<str.length;i++){ G=glyphStrokes(str.charAt(i),'futural');
+    if(G) G.strokes.forEach(function(st){ if(st.length>1) out.push(st.map(function(q){ return [u+q[0]*sc, yb-q[1]*sc]; })); });
+    u+=(G?G.adv:0.5)*sc; }
+  return out; }
+function viewsVer(){ return (typeof PAGEVER!=='undefined' && PAGEVER) || (typeof SV==='string'?SV:''); }
+function viewsSheet(p,build,name){
+  var n=viewsOn(p), MM0=PAGEMM, W=PGW*PAGEMM, H=PGH*PAGEMM, L=viewsLayout(n,W,H), C=viewsCams(p,n);
+  var keep=[PAGEMM,PGW,PGH], out=[], texts=[], names=[], info=[], st0=null, ta0=null, in0='', span=null, t0=Date.now();
+  function put(path,lay){ path.lay=lay; out.push(path); }
+  /* text and the title's rule, in mm on the sheet, tagged so a gate can tell them from a panel's ink */
+  function mmPath(pts,lay){ var q=pts.map(function(a){ return [a[0]/MM0, a[1]/MM0]; }); q.vtext=1; put(q,lay); }
+  function words(str,x,yb,cap,maxw,lay){ texts.push({lay:lay, str:str}); viewsText(str,x,yb,cap,maxw).forEach(function(q){ mmPath(q,lay); }); }
+  try{
+    for(var i=0;i<n;i++){
+      var B=L.cells[i].box, mm=Math.min(B.w,B.h), nm='view'+(i+1)+'-'+viewsName(C[i]).toLowerCase().replace(/ /g,'-');
+      PAGEMM=mm; PGW=B.w/mm; PGH=B.h/mm;
+      var R=build(Object.assign({},p,C[i],{viewPanel:1}))||[];
+      if(i===0){ st0=STRTSTATS; ta0=STRTTALLY; in0=STRTINFO;
+        var T=STRTTALLY&&STRTTALLY.cam; if(T && T.iso && T.S>0) span=[PGW/T.S, PGH/T.S]; }
+      var s=mm/MM0, ox=B.x/MM0, oy=B.y/MM0, seen=new Set();
+      R.forEach(function(path){
+        if(!path || seen.has(path)) return; seen.add(path);
+        for(var j=0;j<path.length;j++){ var a=path[j].slice(); a[0]=path[j][0]*s+ox; a[1]=path[j][1]*s+oy; path[j]=a; }
+        put(path,nm);
+      });
+      PAGEMM=keep[0]; PGW=keep[1]; PGH=keep[2];
+      var Cl=L.cells[i].cell;
+      words(viewsLabel(C[i],i),Cl.x,L.cells[i].base,3.2,Cl.w,nm);
+      names.push(nm); info.push(viewsName(C[i]).toLowerCase()+' '+R.length.toLocaleString()+' paths');
+    }
+  } finally { PAGEMM=keep[0]; PGW=keep[1]; PGH=keep[2]; }
+  /* the title block: a rule, the name, and a line of facts */
+  var TB=L.title, ver=viewsVer(), sd=(typeof seed!=='undefined')?seed:null;
+  mmPath([[TB.x,TB.y],[TB.x+TB.w,TB.y]],'title');
+  words(String(name||'').toUpperCase()+(sd!==null?', SEED '+sd:''),TB.x,TB.y+7,4.6,TB.w,'title');
+  var facts=[];
+  if(span) facts.push('PLAN '+(span[0]>=1000?(span[0]/1000).toFixed(2)+' X '+(span[1]/1000).toFixed(2)+' KM':Math.round(span[0])+' X '+Math.round(span[1])+' M'));
+  facts.push(C.map(function(c,i){ return i===0?'PLAN':'TURN '+Math.round(c.isoaz)+' TILT '+Math.round(c.isoel)+(Math.round(c.zoom)!==100?' ZOOM '+Math.round(c.zoom)+'%':''); }).join(' / '));
+  if(ver) facts.push('SKETCHPAD '+ver.toUpperCase());
+  words(facts.join(' - '),TB.x,TB.y+12.2,2.4,TB.w,'title');
+  out.layers=names.concat(['title']); out.panels=true; out.texts=texts;
+  if(st0) STRTSTATS=st0;
+  if(ta0) STRTTALLY=ta0;
+  STRTINFO='views sheet, '+n+' panels ('+info.join(' · ')+', '+((Date.now()-t0)/1000).toFixed(1)+' s) · the plan: '+in0;
+  /* not the bare tail form: extract.js ends an engine's slice at the first one */
+  return out; }
+function buildCorridor(p,THM){ if(viewsOn(p)) return viewsSheet(p,function(q){ return buildCorridor(q,THM); },THM.label); return corridorDraw(p,[corridorPlan(p,THM,0)],THM,p.scoutScene?{scene:true}:null); }
 /* the knobs a theme pins or renames, read the same way by the plan and the draw */
 function corridorKnobs(p,THM){
   /* a theme PINS the knobs it has no use for (row 50): a market alley has no
@@ -42261,7 +42427,7 @@ function paintBuilding(){
 function buildInput(gen){
   return {gen:gen, mode:mode, seed:seed, draft:!!DRAFT, g:STATE.g, eng:STATE.eng[mode],
           mask:MASK, word:{w:WORD, name:WORDNAME, strokes:WORDSTROKES, typed:WORDTYPED},
-          text:FLOWTEXT, tile:POINUSER, face:HFACE};
+          text:FLOWTEXT, tile:POINUSER, face:HFACE, ver:(typeof SV==='string'?SV:'')};
 }
 function installInput(I){
   mode=I.mode; seed=I.seed; DRAFT=I.draft;
@@ -42271,6 +42437,8 @@ function installInput(I){
   FLOWTEXT=I.text; POINUSER=I.tile; HFACE=I.face;
   /* row 222: a film frame brings the page's pens (the build's worker has none) */
   if(I.pens){ PENS=I.pens; STATE.pens=PENS; }
+  /* row 218: the views sheet's title block names the version */
+  if(I.ver) PAGEVER=I.ver;
 }
 function packPath(p){
   var t=null; Object.keys(p).forEach(function(k){ if(!/^\d+$/.test(k)){ (t||(t={}))[k]=p[k]; } });
@@ -43150,7 +43318,7 @@ var KGROUPS=[
   ['bld','Buildings','width pave lotmin lotmax alley archmin archdet stepb canti fire uvar'],
   ['life','Street life (close-ups)','glow shopv props signs neon lang cables sag cars graff dots pnear'],
   ['wet','Wet street','puddles pudsz ripple rvar wmk wglint hero hstr hrag hturn hshape'],
-  ['cam','Camera','proj sfocus ftgt panx pany cams camx camz look turn pitch fov camabs eyex eyey hdg'],
+  ['cam','Camera','proj sfocus ftgt panx pany cams camx camz look turn pitch fov camabs eyex eyey hdg views v2az v2el v2zoom v3az v3el v3zoom v4az v4el v4zoom'],
   ['ink','Ink and detail','hatch hatchmode sun dnear dfar dpen dsplit mono lod budg occ']
 ].map(function(g){ return [g[0],g[1],g[2].split(' ')]; });
 /* An Essentials knob un-starred goes home to this group. */
@@ -43209,6 +43377,10 @@ var KIDLE={town:[
   {keys:'eyex eyey hdg', par:['camabs'], why:'Camera placed 0', on:function(E){ return kR(E,'camabs')===1; }},
   {keys:'cams camx turn', par:['camabs'], why:'Camera placed 1, with Puddles and Front puddle 0', on:function(E){ return kR(E,'camabs')!==1 || kR(E,'puddles')>0 || kR(E,'hero')>0; }},
   {keys:'isoaz isoel zoom panx pany', par:['proj'], why:'Projection 0', on:function(E){ return kR(E,'proj')===1; }},
+  /* row 218: View N's camera exists only once Views reaches N */
+  {keys:'v2az v2el v2zoom', par:['views'], why:'Views 0', on:function(E){ return kR(E,'views')>=1; }},
+  {keys:'v3az v3el v3zoom', par:['views'], why:'Views below 2 (three views)', on:function(E){ return kR(E,'views')>=2; }},
+  {keys:'v4az v4el v4zoom', par:['views'], why:'Views below 3 (four views)', on:function(E){ return kR(E,'views')>=3; }},
   {keys:'sfocus', par:['proj','site'], why:'needs Projection 1 and a Site', on:function(E){ return kR(E,'proj')===1 && kR(E,'site')>0; }},
   {keys:'ftgt', par:['proj','site','form','sfocus'], why:'needs a Site, City form 1 and Focus 2 or 3', on:function(E){ return kR(E,'proj')===1 && kR(E,'site')>0 && kR(E,'form')===1 && kR(E,'sfocus')>=2; }},
   {keys:'sprawl corez', par:['form'], why:'City form 0', on:function(E){ return kR(E,'form')===1; }},
@@ -44559,6 +44731,18 @@ var HELP={
   ['strt','mkt','harb','libr','grnh','celr','tori','dhal','garg','nave','canal','stn','town','whse','bagh'].forEach(function(e){
     for(var k in T) HELP[e+'.'+k]=T[k];
     ['cams','camx','camz','look','turn','pitch'].forEach(function(k){ var h=HELP[e+'.'+k]; if(h) HELP[e+'.'+k]=h+NR; });
+  });
+})();
+/* ROW 218: THE VIEWS SHEET's ten knobs on every corridor engine */
+(function(){
+  var V='The camera of view %N on a views sheet (Views %M or more): ', T={
+    views:'Lays the same drawing on one sheet from several cameras, each its own full build fitted to its panel: 1 two views, 2 three (the plan at 3/7 of the width, two beside it), 3 four in a grid. The first is always a plan (isometric, turn 0, tilt 89); the rest are View 2-4 turn, tilt and zoom. Each panel is its own pen, with a single-stroke label, and a title block runs along the bottom. 0 is one drawing.'};
+  [2,3,4].forEach(function(i){ var v=V.replace('%N',i).replace('%M',i-1);
+    T['v'+i+'az']=v+'its Iso turn, in degrees from looking along the streets.';
+    T['v'+i+'el']=v+'its Iso tilt, in degrees below level. 30 is the isocity angle, 89 nearly a plan.';
+    T['v'+i+'zoom']=v+'its Iso zoom. 100% fits the whole plan in its panel.'; });
+  ['strt','mkt','harb','libr','grnh','celr','tori','dhal','garg','nave','canal','stn','town','whse','bagh'].forEach(function(e){
+    for(var k in T) HELP[e+'.'+k]=T[k];
   });
 })();
 /* row 95: Corridor city runs the Street's content on every corridor, so a
