@@ -461,7 +461,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v368</a> &mdash; better aircraft on the town airfield: a rounded nose and tail cone, spinners and blades, wheels on every leg, struts, winglets, intake lips and a windscreen (queue row 244)</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v369</a> &mdash; kit hooks for ground that varies, supplied lots and long edges split: zAt, lots and seg on a corridor plan, no caller yet (queue row 237)</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <section class="fold" id="fold_pick"><h2>Pick engine<span class="cnt"></span></h2>
@@ -39130,6 +39130,18 @@ function streetTheme(K){
      hooks.Z0     metres added to every point of every part in a container the
                   plan owns (its slabs and lots, and any its content adds)
      hooks.theme  the theme the plan's content comes from; absent, the draw's
+     hooks.zAt    (x,y) -> metres (row 237): every container the plan owns stands
+                  on a base of its own, the LOWEST zAt over its plan corners (a
+                  wall never floats above the ground), added the way Z0 is, and
+                  Z0 still adds on top; the base rides on the container as zBase
+     hooks.lots   [{q,front,kind,h},..] (row 237): convex plan quads used as the
+                  lot envelopes, in this order, instead of the lot walk. A quad
+                  failing the walk's own convex() is dropped and counted in the
+                  plan's lotsDropped. `front` is the edge facing the street;
+                  kind and h ride on the lot as L.sup for its content
+     hooks.seg    metres (row 237): every part edge longer than this in plan is
+                  split into equal pieces before projection, so a camera that is
+                  not linear (row 238's tilt) can bend it
    camera: null, the only value today -- the camera the knobs place on the first
    plan. STILL READ FROM THE FIRST PLAN ALONE, for row 95 to make per plan: the
    camera, the puddles and the front puddle, the kerbs and box stacks in render,
@@ -39463,7 +39475,7 @@ function corridorPlan(p,THM,ix,hooks){
      starts past it; hooks.depthCap -- the deepest a lot may be, so lots facing
      two rows meet back to back with a gap. Each absent = as before. */
   var LGAPS=hooks.lotGaps||null, DCAP=isFinite(hooks.depthCap)?hooks.depthCap:Infinity;
-  if(!hooks.noLots) [1,-1].forEach(function(sd){
+  if(!hooks.noLots && !hooks.lots) [1,-1].forEach(function(sd){
     var cum=[0], m;
     var nb=Math.floor(LEN/DS);
     var prev=P3(0,sd,PBACK,0);
@@ -39544,6 +39556,34 @@ function corridorPlan(p,THM,ix,hooks){
     }
   });
 
+  /* ROW 237, hooks.lots: THE ENVELOPES COME FROM THE CALLER (engine `real`'s lots,
+     cut from real blocks), in its order. The one test is the walk's own convex();
+     a quad that fails it is dropped and counted. The lot's other fields are read
+     off this plan's frame, so content can stand on it: the side by its centroid's
+     lateral sign, s0/s1 the arc of its front edge, fe the nearer front corner's
+     offset and back the farthest corner's. */
+  var LOTSDROPPED=0;
+  if(hooks.lots){
+    var arcAt=function(X){
+      var bs=0, bd=1e18, m, F, d, s;
+      for(m=0;m*DS<=LEN;m+=8){ F=frame(m*DS); d=Math.hypot(X[0]-F[0],X[1]-F[1]); if(d<bd){ bd=d; bs=m*DS; } }
+      var c=bs;
+      for(m=-8;m<=8;m++){ s=Math.max(0,Math.min(LEN,c+m*DS)); F=frame(s); d=Math.hypot(X[0]-F[0],X[1]-F[1]); if(d<bd){ bd=d; bs=s; } }
+      return bs; };
+    hooks.lots.forEach(function(Lq,li){
+      var env=(Lq.q||[]).map(function(v){ return [v[0],v[1]]; });
+      if(env.length<3 || !convex(env)){ LOTSDROPPED++; return; }
+      var fr=(Lq.front|0)%env.length, A=env[fr], B=env[(fr+1)%env.length], cx=0, cy=0;
+      env.forEach(function(v){ cx+=v[0]/env.length; cy+=v[1]/env.length; });
+      var sd=lateral([cx,cy],arcAt([cx,cy]),1)>=0?1:-1, sA=arcAt(A), sB=arcAt(B);
+      var fe=Math.min(lateral(A,sA,sd),lateral(B,sB,sd)), bk=-1e18;
+      env.forEach(function(v){ bk=Math.max(bk,lateral(v,arcAt(v),sd)); });
+      var LOT={kind:'lot', side:sd, idx:li, s0:Math.min(sA,sB), s1:Math.max(sA,sB), poly:env, bb:bbox2(env), parts:[],
+               fe:fe, back:bk, depth:bk-fe, blocks:[], gen:null, front:fr, sup:{kind:Lq.kind, h:Lq.h}};
+      conts.push(LOT); lots.push(LOT);
+    });
+  }
+
   /* the signed lateral offset of plan point X from the centreline, on side sd */
   function lateral(X,sGuess,sd){
     var best=1e18, bs=sGuess, s, k;
@@ -39556,6 +39596,7 @@ function corridorPlan(p,THM,ix,hooks){
   /* the knobs every plan reads from the same p ride on the plan, so the draw
      takes them from it rather than parsing p a second time */
   return {ix:ix, p:p, theme:hooks.theme, sGaps:SGAPS, hasGap:HASGAP, Z0:hooks.Z0||0,
+          zAt:hooks.zAt||null, seg:+hooks.seg||0, lotsDropped:LOTSDROPPED,
           LEN:LEN, BEND:BEND, WID:WID, PAVE:PAVE, LOTMIN:LOTMIN, LOTMAX:LOTMAX, ALLEY:ALLEY, FLOORS:FLOORS, CANYON:CANYON, STEPB:STEPB, CANTI:CANTI, CAMS:CAMS, CAMX:CAMX, CAMZ:CAMZ, LOOK:LOOK, PITCH:PITCH, TURN:TURN, FOV:FOV, LODMM:LODMM, GAP:GAP, PAD:PAD, NEAR:NEAR, KERB:KERB, DS:DS, ZTOP:ZTOP, SLAB:SLAB, HALFW:HALFW, KOFF:KOFF, PBACK:PBACK, SALT_BLD:SALT_BLD, NS:NS, SX:SX, SY:SY, SH:SH, frame:frame, P3:P3, sub:sub, lateral:lateral, polyOverlap:polyOverlap, convex:convex, bbox2:bbox2, bbHit:bbHit, conts:conts, slabsBySide:slabsBySide, lots:lots, dropped:dropped, pushed:pushed};
 }
 /* ROW 221 (v363, REFACTOR ONLY): THE CORRIDOR CAMERA, lifted out of corridorDraw
@@ -41241,21 +41282,48 @@ function corridorDraw(p,plans,THM,camera){
        part in a container the plan owns is replaced by a copy whose points
        are Z0 higher -- a copy, because a point may be shared with a puddle
        ring or a block that the next pass of the budget loop reads again.
-       Absent (0 on every plan today), nothing runs. */
+       Absent (0 on every plan today), nothing runs.
+       ROW 237, hooks.zAt: each container its own base, the lowest ground under
+       its plan corners, so cz is per container and so is the memo. Absent, cz
+       is Z0 on every container and the memo is shared, as before. */
     plans.forEach(function(PLk,ki){
-      var dz=PLk.Z0; if(!dz) return;
-      var memo=new Map();
-      function lp(v){ var w=memo.get(v); if(!w){ w=v.slice(); w[2]+=dz; memo.set(v,w); } return w; }
-      OWN[ki].forEach(function(C){ C.parts=C.parts.map(function(P){
+      var dz=PLk.Z0, zA=PLk.zAt; if(!dz && !zA) return;
+      var memo=new Map(), cz=dz;
+      function lp(v){ var w=memo.get(v); if(!w){ w=v.slice(); w[2]+=cz; memo.set(v,w); } return w; }
+      OWN[ki].forEach(function(C){
+        if(zA){ var zb=Infinity; (C.poly||[]).forEach(function(q){ var z=+zA(q[0],q[1]); if(z<zb) zb=z; });
+          if(!isFinite(zb)) zb=0; C.zBase=zb; cz=dz+zb; memo=new Map(); if(!cz) return; }
+        C.parts=C.parts.map(function(P){
         /* row 96: a channel puddle already lies at its own plane (pd.mz) */
         if(P.pud && P.pud.mz!==undefined) return P;
         /* row 97: a town's viaduct is built at its real height, so a piece of
            it over the river is not lowered with the water */
         if(P.via!==undefined) return P;
         var Q=Object.assign({},P);
-        Q.faces=P.faces.map(function(f){ return Object.assign({},f,{d:f.d+f.n[2]*dz, pts:f.pts.map(lp)}); });
+        Q.faces=P.faces.map(function(f){ return Object.assign({},f,{d:f.d+f.n[2]*cz, pts:f.pts.map(lp)}); });
         Q.lines=P.lines.map(function(Ln){ return Object.assign({},Ln,{a:lp(Ln.a), b:lp(Ln.b)}); });
         if(P.ins) Q.ins=lp(P.ins);
+        return Q; }); });
+    });
+    /* ROW 237, hooks.seg: every part edge longer than seg in plan is cut into
+       ceil(length/seg) equal pieces -- a face loop gains the points on the edge,
+       and a line becomes that many lines carrying its faces and inks -- so a
+       camera whose projection is not linear (row 238's tilt) can bend it.
+       Absent (every engine today), nothing runs. */
+    plans.forEach(function(PLk,ki){
+      var SG=PLk.seg; if(!(SG>0)) return;
+      function cuts(a,b){ var L=Math.hypot(b[0]-a[0],b[1]-a[1]); return L>SG?Math.ceil(L/SG-1e-9):1; }
+      function along(a,b,m){ var V=[a], k; for(k=1;k<m;k++) V.push([a[0]+(b[0]-a[0])*k/m, a[1]+(b[1]-a[1])*k/m, a[2]+(b[2]-a[2])*k/m]); V.push(b); return V; }
+      OWN[ki].forEach(function(C){ C.parts=C.parts.map(function(P){
+        var Q=Object.assign({},P);
+        Q.faces=P.faces.map(function(f){ var o=[], n=f.pts.length, e;
+          for(e=0;e<n;e++){ var a=f.pts[e], b=f.pts[(e+1)%n], V=along(a,b,cuts(a,b)); V.pop(); V.forEach(function(v){ o.push(v); }); }
+          return o.length===n?f:Object.assign({},f,{pts:o}); });
+        Q.lines=[];
+        P.lines.forEach(function(Ln){ var m=cuts(Ln.a,Ln.b), V, k;
+          if(m===1){ Q.lines.push(Ln); return; }
+          V=along(Ln.a,Ln.b,m);
+          for(k=0;k<m;k++) Q.lines.push(Object.assign({},Ln,{a:V[k], b:V[k+1]})); });
         return Q; }); });
     });
 
