@@ -461,7 +461,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v369</a> &mdash; kit hooks for ground that varies, supplied lots and long edges split: zAt, lots and seg on a corridor plan, no caller yet (queue row 237)</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v370</a> &mdash; the tilt camera: camera.tilt eases the elevation from the plan to the isometric along the heading so the sheet never folds, grow exposed, off by default (queue row 238)</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <section class="fold" id="fold_pick"><h2>Pick engine<span class="cnt"></span></h2>
@@ -39636,7 +39636,10 @@ function corridorCamera(p,PL,plans,THM,camera){
   var UP=[RT[1]*FW[2]-RT[2]*FW[1], RT[2]*FW[0]-RT[0]*FW[2], RT[0]*FW[1]-RT[1]*FW[0]];
   var FF=1/Math.tan(FOV/2);
   var HW=(PGW-2*PAD)/2, HH=(PGH-2*PAD)/2;
+  /* ROW 238: under camera.tilt, cam is TILT (below); null, as before */
+  var TILT=null;
   function cam(P){
+    if(TILT) return TILT(P);
     var vx=P[0]-CE[0], vy=P[1]-CE[1], vz=P[2]-CE[2];
     return [vx*RT[0]+vy*RT[1]+vz*RT[2], vx*UP[0]+vy*UP[1]+vz*UP[2], vx*FW[0]+vy*FW[1]+vz*FW[2]];
   }
@@ -39663,9 +39666,25 @@ function corridorCamera(p,PL,plans,THM,camera){
      dist3, and the depth a theme's own size-on-the-sheet arithmetic reads from
      K.cam. At Projection 0 none of this runs and nothing reads it. */
   var ISOAX=null;
-  var ISO=Math.round(isFinite(p.proj)?+p.proj:0)===1, ISOS=0, D_EFF=0, ISOC=null, CEK=CE, SINEL=0, ISOZN=NEAR;
+  /* ROW 238: THE TILT (docs/specs/2026-11-05-real-ground.md §3). camera.tilt =
+     {az, v0, v1, elMin} is the isometric camera at Iso turn az and Iso tilt elMin
+     -- the same heading, FW, RT and UP, so facing and the plan order are ISO's --
+     whose ELEVATION eases from the plan (90) to elMin along the heading: v is a
+     point's distance along the heading as a share of the drawing's span from its
+     nearest edge, s = smoothstep(v0, v1, v), el = 90 - (90 - elMin) s.
+       screen x  = S u                       (u across the heading, as ISO)
+       screen up = S (F(A) - F(A_O) + z cos el(A)),  F(A) = integral of sin el
+     F is a table at 1 m over the span and 25% + 50 m either side, straight beyond.
+     sin el > 0, so on level ground or ground rising away the sheet never folds.
+     Where s is 1 throughout this is ISO exactly; where 0, the plan. The depth is
+     ISO's with the point's own el. The fit is ISO's rule through this projection,
+     the ground under each corner (the plan's zAt) included. Absent, nothing runs
+     and ISO comes from Projection as before. */
+  var TL=camera&&camera.tilt?camera.tilt:null, TC=null;
+  var ISO=TL?true:Math.round(isFinite(p.proj)?+p.proj:0)===1, ISOS=0, D_EFF=0, ISOC=null, CEK=CE, SINEL=0, ISOZN=NEAR;
   if(ISO){
     var IAZ=(isFinite(p.isoaz)?+p.isoaz:45)*Math.PI/180, IEL=Math.max(10,Math.min(89,isFinite(p.isoel)?+p.isoel:30))*Math.PI/180;
+    if(TL){ IAZ=(+TL.az||0)*Math.PI/180; IEL=Math.max(10,Math.min(89,isFinite(TL.elMin)?+TL.elMin:30))*Math.PI/180; }
     var ZOOM=Math.max(10,Math.min(800,isFinite(p.zoom)?+p.zoom:100))/100;
     var PANX=Math.max(-1,Math.min(1,(isFinite(p.panx)?+p.panx:0)/100)), PANY=Math.max(-1,Math.min(1,(isFinite(p.pany)?+p.pany:0)/100));
     var Fc=camera&&camera.O?[camera.O[0],camera.O[1],Math.cos(camera.th),Math.sin(camera.th)]:frame(LEN/2), th0=Math.atan2(Fc[3],Fc[2])+IAZ;
@@ -39674,12 +39693,30 @@ function corridorCamera(p,PL,plans,THM,camera){
     RT=[FW[1], -FW[0], 0]; rl=Math.hypot(RT[0],RT[1])||1; RT=[RT[0]/rl, RT[1]/rl, 0];
     UP=[RT[1]*FW[2]-RT[2]*FW[1], RT[2]*FW[0]-RT[0]*FW[2], RT[0]*FW[1]-RT[1]*FW[0]];
     ISOC=[Fc[0],Fc[1],0];
+    if(TL){
+      var ALO=1e18, AHI=-1e18, tfx=fx, tfy=fy;
+      (camera.frame?[[camera.frame[0],camera.frame[1]],[camera.frame[2],camera.frame[1]],[camera.frame[2],camera.frame[3]],[camera.frame[0],camera.frame[3]]]
+        :[].concat.apply([],plans.map(function(PLk){ return [].concat.apply([],PLk.conts.map(function(C){ return C.poly; })); }))).forEach(function(q){
+        var A=q[0]*tfx+q[1]*tfy; if(A<ALO) ALO=A; if(A>AHI) AHI=A; });
+      if(!(AHI>ALO)){ ALO=-1; AHI=1; }
+      var TV0=Math.max(0,Math.min(1,isFinite(TL.v0)?+TL.v0:0)), TV1=Math.max(TV0,Math.min(1,isFinite(TL.v1)?+TL.v1:1));
+      var ss=function(A){ var v=(A-ALO)/(AHI-ALO); if(v<=TV0) return 0; if(v>=TV1) return 1; var t=(v-TV0)/(TV1-TV0); return t*t*(3-2*t); };
+      var elOf=function(A){ return Math.PI/2-(Math.PI/2-IEL)*ss(A); };
+      var MG=0.25*(AHI-ALO)+50, A0=ALO-MG, A1=AHI+MG, NG=Math.ceil(A1-A0)+1, HG=(A1-A0)/(NG-1), GT=new Float64Array(NG), gk;
+      for(gk=1;gk<NG;gk++) GT[gk]=GT[gk-1]+HG*0.5*(Math.sin(elOf(A0+(gk-1)*HG))+Math.sin(elOf(A0+gk*HG)));
+      var Gf=function(A){ if(A<=A0) return (A-A0)*Math.sin(elOf(A0)); if(A>=A1) return GT[NG-1]+(A-A1)*Math.sin(elOf(A1));
+        var x=(A-A0)/HG, k=Math.min(NG-2,Math.floor(x)); return GT[k]+(GT[k+1]-GT[k])*(x-k); };
+      TC={fx:tfx, fy:tfy, lo:ALO, hi:AHI, v0:TV0, v1:TV1, el:elOf, s:ss, G:Gf,
+          up:function(O,X,Y,z){ var A=X*tfx+Y*tfy, AO=O[0]*tfx+O[1]*tfy; return Gf(A)-Gf(AO)+z*Math.cos(elOf(A)); }};
+    }
     var ZFIT=THM.zfit||30, SFIT=1e18, tlo=1e18, thi=-1e18, nlo=1e18, nhi=-1e18;
     plans.forEach(function(PLk){ PLk.conts.forEach(function(C){ C.poly.forEach(function(q){
       var dx=q[0]-ISOC[0], dy=q[1]-ISOC[1], ta=dx*Fc[2]+dy*Fc[3], na=-dx*Fc[3]+dy*Fc[2], zz;
       if(ta<tlo) tlo=ta; if(ta>thi) thi=ta; if(na<nlo) nlo=na; if(na>nhi) nhi=na;
       for(zz=0;zz<2;zz++){
-        var z=zz?ZFIT:0, xs=Math.abs(dx*RT[0]+dy*RT[1]), ys=Math.abs(dx*UP[0]+dy*UP[1]+z*UP[2]);
+        var z=zz?ZFIT:0, xs=Math.abs(dx*RT[0]+dy*RT[1]), ys;
+        if(TC){ if(PLk.zAt) z+=+PLk.zAt(q[0],q[1]); ys=Math.abs(TC.up(ISOC,q[0],q[1],z)); }
+        else ys=Math.abs(dx*UP[0]+dy*UP[1]+z*UP[2]);
         if(xs>1e-12) SFIT=Math.min(SFIT,HW/xs); if(ys>1e-12) SFIT=Math.min(SFIT,HH/ys);
       }
     }); }); });
@@ -39687,7 +39724,9 @@ function corridorCamera(p,PL,plans,THM,camera){
        centre, by the same rule on a smaller rectangle. Absent, nothing here runs. */
     if(camera&&camera.frame){ var FRk=camera.frame; ISOC=[(FRk[0]+FRk[2])/2,(FRk[1]+FRk[3])/2,0]; SFIT=1e18;
       [[FRk[0],FRk[1]],[FRk[2],FRk[1]],[FRk[2],FRk[3]],[FRk[0],FRk[3]]].forEach(function(q){ var dx=q[0]-ISOC[0], dy=q[1]-ISOC[1], zz;
-        for(zz=0;zz<(camera.frameFlat?1:2);zz++){ var z=zz?ZFIT:0, xs=Math.abs(dx*RT[0]+dy*RT[1]), ys=Math.abs(dx*UP[0]+dy*UP[1]+z*UP[2]);
+        for(zz=0;zz<(camera.frameFlat?1:2);zz++){ var z=zz?ZFIT:0, xs=Math.abs(dx*RT[0]+dy*RT[1]), ys;
+          if(TC){ if(PL.zAt) z+=+PL.zAt(q[0],q[1]); ys=Math.abs(TC.up(ISOC,q[0],q[1],z)); }
+          else ys=Math.abs(dx*UP[0]+dy*UP[1]+z*UP[2]);
           if(xs>1e-12) SFIT=Math.min(SFIT,HW/xs); if(ys>1e-12) SFIT=Math.min(SFIT,HH/ys); } }); }
     ISOS=SFIT*ZOOM; ISOAX={Fc:Fc, along:thi-tlo, across:nhi-nlo, fit:SFIT};
     ISOC=[ISOC[0]+Fc[2]*PANY*(thi-tlo)-Fc[3]*PANX*(nhi-nlo), ISOC[1]+Fc[3]*PANY*(thi-tlo)+Fc[2]*PANX*(nhi-nlo), 0];
@@ -39695,7 +39734,18 @@ function corridorCamera(p,PL,plans,THM,camera){
     D_EFF=FF*HW/ISOS;
     tally={C:CE, f:FW, r:RT, u:UP, F:FF, near:NEAR, pad:PAD, hw:HW, hh:HH,
                    iso:true, S:ISOS, fit:SFIT, O:ISOC, deff:D_EFF, zfit:ZFIT, az:IAZ, el:IEL};
+    if(TC){
+      var TO=ISOC, TAO=TO[0]*TC.fx+TO[1]*TC.fy, TRT=RT;
+      TILT=function(P){
+        var A=P[0]*TC.fx+P[1]*TC.fy, a=A-TAO, e=TC.el(A), z=P[2]-TO[2];
+        return [(P[0]-TO[0])*TRT[0]+(P[1]-TO[1])*TRT[1], TC.G(A)-TC.G(TAO)+z*Math.cos(e), 1e5+a*Math.cos(e)-z*Math.sin(e)]; };
+      tally.tilt={az:IAZ, elMin:IEL, v0:TC.v0, v1:TC.v1, lo:TC.lo, hi:TC.hi};
+    }
   }
+  /* ROW 238: the tilt's height growth, s^2(3-2s) of the smoothstep s at (x,y),
+     0 in the plan to 1 where the tilt is complete; nothing in the kit applies it
+     (engine `real` scales its invented heights by it). No tilt: 1 everywhere. */
+  function grow(x,y){ if(!TC) return 1; var t=TC.s(x*TC.fx+y*TC.fy); return t*t*(3-2*t); }
   /* ROW 221: THE SCOUT VIEW'S PROJECTION LOOP, the same arithmetic as cam() and
      scr() above over a flat array: S holds x,y,z per point; O gets, per point,
      the camera's x, y, depth and the page x, y (page x, y undefined behind the
@@ -39710,7 +39760,7 @@ function corridorCamera(p,PL,plans,THM,camera){
   }
   return {sC:sC, CREACH:CREACH, CE:CE, TG:TG, fx:fx, fy:fy, FW:FW, RT:RT, UP:UP, FF:FF, HW:HW, HH:HH,
           ISO:ISO, ISOS:ISOS, D_EFF:D_EFF, ISOC:ISOC, SINEL:SINEL, cam:cam, scr:scr, project:project, tally:tally,
-          batch:batch, near:NEAR, isoAx:ISOAX, cabs:CABS};
+          batch:batch, near:NEAR, isoAx:ISOAX, cabs:CABS, tilt:TC, grow:grow};
 }
 /* ROW 221: THE SCENE'S EDGES. Every face edge of every part once (ends rounded
    to 0.1 m, either direction), tagged with its container's kind; a container
