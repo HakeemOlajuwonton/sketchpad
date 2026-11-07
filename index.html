@@ -461,7 +461,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v371</a> &mdash; engine real, part A: a Map Studio fusion bundle dropped on the page (or a demo made from the seed) drawn as a plan map -- streets weighted by class, rail, water, parks, contours (queue row 239)</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v372</a> &mdash; engine real, part B -- the standing city: lots cut convex from the bundle's blocks, envelopes shrunk inside them, heights from real arterial density, stood on the real ground and drawn by the tilt camera</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <section class="fold" id="fold_pick"><h2>Pick engine<span class="cnt"></span></h2>
@@ -3576,6 +3576,12 @@ var SPEC={
   /* row 239: REAL GROUND (docs/specs/2026-11-05-real-ground.md §4); the rest of
      §7's knobs arrive with the rows that make them do something */
   real:['Real ground',[
+    ['isoaz','Heading',-180,180,1,0,[1,'\u00b0']],['isoel','Tilt elevation',15,60,1,26,[1,'\u00b0']],
+    ['t0','Tilt start',0,100,1,8,[1,'%']],['t1','Tilt end',0,100,1,30,[1,'%']],
+    ['ex','Relief',1,4,0.1,2,[1,'\u00d7']],
+    ['lotmin','Lot min',6,40,1,12,[1,' m']],['lotmax','Lot max',6,40,1,28,[1,' m']],
+    ['alley','Alley chance',0,60,1,15,[1,'%']],
+    ['towers','Towers',0,100,1,35,[1,'%']],['peak','Tallest',20,250,1,110,[1,' m']],
     ['contour','Contour interval',2,50,1,10,[1,' m']],
     ['pad','Margin',0,20,1,6]]],
   town:['Corridor city',[
@@ -17910,28 +17916,309 @@ function realContours(H,L){
   return out;
 }
 
+/* ==== PART B (row 240, real-ground spec §5): THE STANDING CITY ==== */
+/* The format's band half-widths (fusion-bundle-format_v1, Blocks 1-2): the block edge
+   stands that far from a centreline. A kerb line is drawn 3 m inside it (a pavement),
+   never nearer the centreline than 2.5 m. */
+var REALHW={motorway:14, trunk:11, primary:9, secondary:8, tertiary:7, residential:5, unclassified:5, living_street:4};
+function realHW(c){ return REALHW[c]!==undefined?REALHW[c]:(/_link$/.test(String(c||''))?4:5); }
+function realKerb(c){ return Math.max(2.5,realHW(c)-3); }
+/* the streets that make a place dense (§5 Heights) */
+var REALART={trunk:1, primary:1, secondary:1};
+/* salts new in row 240, each 0 in a grep of the file before it */
+var SALT_RLOT=857, SALT_RHGT=859, SALT_RTREE=863;
+/* what the last build of `real` made, for the gates and the stat line */
+var REALTALLY=null;
+/* a substream keyed on (a, b, salt): the corridor kit's splitmix finaliser */
+function realSub(a,b,salt){
+  var s=(rnd(a*7919+b*104729+salt*1299709+17)*4294967296)>>>0;
+  return function(){ s=(s+0x9E3779B9)>>>0; var t=s;
+    t=Math.imul(t^(t>>>15),0x85EBCA6B)>>>0; t=Math.imul(t^(t>>>13),0xC2B2AE35)>>>0;
+    return ((t^(t>>>16))>>>0)/4294967296; };
+}
+function realArea(P){ var s=0, i; for(i=0;i<P.length;i++){ var a=P[i], b=P[(i+1)%P.length]; s+=a[0]*b[1]-b[0]*a[1]; } return s/2; }
+function realCentroid(P){
+  var A=0, cx=0, cy=0, i;
+  for(i=0;i<P.length;i++){ var a=P[i], b=P[(i+1)%P.length], c=a[0]*b[1]-b[0]*a[1]; A+=c; cx+=(a[0]+b[0])*c; cy+=(a[1]+b[1])*c; }
+  if(Math.abs(A)<1e-12){ cx=0; cy=0; P.forEach(function(q){ cx+=q[0]/P.length; cy+=q[1]/P.length; }); return [cx,cy]; }
+  return [cx/(3*A), cy/(3*A)];
+}
+/* a convex counter-clockwise ring kept where n.p >= c: one half-plane cut, which keeps
+   it convex (§5: half-plane cuts keep every lot convex) */
+function realHP(P,n,c){
+  var o=[], r=[], i;
+  for(i=0;i<P.length;i++){
+    var a=P[i], b=P[(i+1)%P.length], da=n[0]*a[0]+n[1]*a[1]-c, db=n[0]*b[0]+n[1]*b[1]-c;
+    if(da>=0) o.push(a);
+    if((da>=0)!==(db>=0)){ var t=da/(da-db); o.push([a[0]+(b[0]-a[0])*t, a[1]+(b[1]-a[1])*t]); }
+  }
+  o.forEach(function(q){ var l=r[r.length-1]; if(!l || Math.hypot(q[0]-l[0],q[1]-l[1])>1e-6) r.push(q); });
+  if(r.length>1 && Math.hypot(r[0][0]-r[r.length-1][0],r[0][1]-r[r.length-1][1])<=1e-6) r.pop();
+  return r.length>=3 && realArea(r)>1e-9?r:[];
+}
+/* the ring shrunk inward by d */
+function realInset(P,d){
+  var R=P, i;
+  for(i=0;i<P.length && R.length;i++){
+    var a=P[i], b=P[(i+1)%P.length], L=Math.hypot(b[0]-a[0],b[1]-a[1]); if(L<1e-9) continue;
+    var n=[-(b[1]-a[1])/L,(b[0]-a[0])/L]; R=realHP(R,n,n[0]*a[0]+n[1]*a[1]+d);
+  }
+  return R;
+}
+/* q inside the convex counter-clockwise ring P, `tol` metres of slack */
+function realIn(P,q,tol){
+  for(var i=0;i<P.length;i++){ var a=P[i], b=P[(i+1)%P.length], L=Math.hypot(b[0]-a[0],b[1]-a[1]); if(L<1e-12) continue;
+    if(((b[0]-a[0])*(q[1]-a[1])-(b[1]-a[1])*(q[0]-a[0]))/L<-tol) return false; }
+  return true;
+}
+/* THE MINIMUM-AREA RECTANGLE of a convex ring (one side on an edge of it), long axis u */
+function realMinRect(P){
+  var best=null, i;
+  for(i=0;i<P.length;i++){
+    var a=P[i], b=P[(i+1)%P.length], L=Math.hypot(b[0]-a[0],b[1]-a[1]); if(L<1e-9) continue;
+    var u=[(b[0]-a[0])/L,(b[1]-a[1])/L], v=[-u[1],u[0]], u0=1e18, u1=-1e18, v0=1e18, v1=-1e18;
+    P.forEach(function(q){ var s=q[0]*u[0]+q[1]*u[1], t=q[0]*v[0]+q[1]*v[1]; if(s<u0)u0=s; if(s>u1)u1=s; if(t<v0)v0=t; if(t>v1)v1=t; });
+    var ar=(u1-u0)*(v1-v0); if(!best || ar<best.area-1e-9) best={u:u, v:v, u0:u0, u1:u1, v0:v0, v1:v1, area:ar};
+  }
+  if(best.u1-best.u0<best.v1-best.v0) best={u:best.v, v:[-best.u[0],-best.u[1]], u0:best.v0, u1:best.v1, v0:-best.u1, v1:-best.u0, area:best.area};
+  var B=best; B.corners=[[B.u0,B.v0],[B.u1,B.v0],[B.u1,B.v1],[B.u0,B.v1]].map(function(st){
+    return [st[0]*B.u[0]+st[1]*B.v[0], st[0]*B.u[1]+st[1]*B.v[1]]; });
+  return B;
+}
+function realSegD(p,a,b){ var dx=b[0]-a[0], dy=b[1]-a[1], L2=dx*dx+dy*dy, t=L2?((p[0]-a[0])*dx+(p[1]-a[1])*dy)/L2:0; t=Math.max(0,Math.min(1,t));
+  return Math.hypot(p[0]-a[0]-t*dx, p[1]-a[1]-t*dy); }
+/* centrelines cut into pieces of 10 m or less, bucketed on a 100 m grid */
+function realPieces(lines,keep){
+  var G=new Map(), CS=100, n=0;
+  lines.forEach(function(s,si){ if(keep && !keep(s)) return;
+    for(var i=0;i+1<s.p.length;i++){ var a=s.p[i], b=s.p[i+1], L=Math.hypot(b[0]-a[0],b[1]-a[1]), m=Math.max(1,Math.ceil(L/10)), k;
+      for(k=0;k<m;k++){ var A=[a[0]+(b[0]-a[0])*k/m, a[1]+(b[1]-a[1])*k/m], B=[a[0]+(b[0]-a[0])*(k+1)/m, a[1]+(b[1]-a[1])*(k+1)/m];
+        var pc={a:A, b:B, m:[(A[0]+B[0])/2,(A[1]+B[1])/2], l:L/m, si:si, c:s.c}, key=Math.floor(pc.m[0]/CS)+','+Math.floor(pc.m[1]/CS);
+        if(!G.has(key)) G.set(key,[]); G.get(key).push(pc); n++; } } });
+  return {n:n, near:function(x,y,r,fn){ var i0=Math.floor((x-r)/CS), i1=Math.floor((x+r)/CS), j0=Math.floor((y-r)/CS), j1=Math.floor((y+r)/CS), i, j;
+    for(i=i0;i<=i1;i++) for(j=j0;j<=j1;j++){ var L=G.get(i+','+j); if(L) for(var k=0;k<L.length;k++) fn(L[k]); } }};
+}
+/* THE LOTS (§5): per block piece, its minimum-area rectangle's long axis; a piece deeper
+   than 28 m is split along it (a 3 m alley at `alley` %), then cut across it at
+   frontages from `lotmin`-`lotmax`. Lots under 30 m2 are dropped. Each lot's envelope is
+   its minimum-area rectangle scaled about the lot's centroid by 0.95, 0.90, ... until its
+   four corners are inside the lot shrunk 1 m (none by 0.30: dropped). Heights from the
+   real arterials (D), kind and height seeded per lot. Every number from SALT_RLOT /
+   SALT_RHGT, keyed on the block and piece, so a lot is the same lot whatever the camera. */
+function realLots(B,p){
+  function kn(k,lo,hi,d){ var v=isFinite(p[k])?+p[k]:d; return Math.max(lo,Math.min(hi,v)); }
+  var LOTMIN=kn('lotmin',6,40,12), LOTMAX=Math.max(LOTMIN,kn('lotmax',6,40,28)), ALLEY=kn('alley',0,60,15)/100,
+      TOWERS=kn('towers',0,100,35)/100, PEAK=kn('peak',20,250,110);
+  var lots=[], parks=[], small=0, nofit=0, split=0, alleys=0;
+  B.blocks.forEach(function(bk,bi){
+    bk.pieces.forEach(function(ring,pi){
+      var P=realArea(ring)<0?ring.slice().reverse():ring;
+      if(bk.park){ parks.push({bi:bi, pi:pi, poly:P, c:realCentroid(P)}); return; }
+      var R=realSub(bi+1,pi+1,SALT_RLOT), mr=realMinRect(P), ua=R(), parts=[P];
+      if(mr.v1-mr.v0>28){ var vm=(mr.v0+mr.v1)/2, g=ua<ALLEY?1.5:0; split++; if(g) alleys++;
+        parts=[realHP(P,mr.v,vm+g), realHP(P,[-mr.v[0],-mr.v[1]],-(vm-g))].filter(function(Q){ return Q.length; }); }
+      parts.forEach(function(Q,hi){
+        var u0=1e18, u1=-1e18, cuts, t, k, guard=0;
+        Q.forEach(function(q){ var s=q[0]*mr.u[0]+q[1]*mr.u[1]; if(s<u0)u0=s; if(s>u1)u1=s; });
+        cuts=[u0]; t=u0;
+        while(guard++<400){ var w=LOTMIN+R()*(LOTMAX-LOTMIN); if(u1-(t+w)<LOTMIN) break; t+=w; cuts.push(t); }
+        cuts.push(u1);
+        for(k=0;k+1<cuts.length;k++){
+          var S=realHP(realHP(Q,mr.u,cuts[k]),[-mr.u[0],-mr.u[1]],-cuts[k+1]);
+          if(!S.length || realArea(S)<30){ small++; continue; }
+          lots.push({bi:bi, pi:pi, hi:hi, k:k, piece:P, poly:S});
+        }
+      });
+    });
+  });
+  /* the envelope */
+  lots=lots.filter(function(L){
+    var mr=realMinRect(L.poly), Lin=realInset(L.poly,1), c=realCentroid(L.poly), k, env=null;
+    if(Lin.length>=3) for(k=95;k>=30;k-=5){
+      var s=k/100, Q=mr.corners.map(function(q){ return [c[0]+(q[0]-c[0])*s, c[1]+(q[1]-c[1])*s]; });
+      if(Q.every(function(q){ return realIn(Lin,q,1e-9); })){ env=Q; break; }
+    }
+    if(!env){ nofit++; return false; }
+    L.rect=mr; L.c=c; L.env=env; L.scale=k; return true;
+  });
+  /* D: arterial centreline within 400 m, normalised by the largest; the distance from
+     the lot to the nearest arterial for the 18 m test */
+  var ART=realPieces(B.streets,function(s){ return REALART[s.c]; }), Dmax=0;
+  lots.forEach(function(L){
+    var D=0, ad=1e18, rr=0;
+    L.poly.forEach(function(q){ rr=Math.max(rr,Math.hypot(q[0]-L.c[0],q[1]-L.c[1])); });
+    ART.near(L.c[0],L.c[1],400,function(pc){ if(Math.hypot(pc.m[0]-L.c[0],pc.m[1]-L.c[1])<=400) D+=pc.l; });
+    ART.near(L.c[0],L.c[1],rr+30,function(pc){
+      L.poly.forEach(function(q){ var d=realSegD(q,pc.a,pc.b); if(d<ad) ad=d; });
+      for(var e=0;e<L.poly.length;e++){ var a=L.poly[e], b=L.poly[(e+1)%L.poly.length];
+        ad=Math.min(ad,realSegD(pc.a,a,b),realSegD(pc.b,a,b)); } });
+    L.Draw=D; L.ad=ad; if(D>Dmax) Dmax=D;
+  });
+  lots.forEach(function(L){ L.D=Dmax>0?L.Draw/Dmax:0; });
+  /* the top `towers` % by D, and within 18 m of such a street, build tall */
+  var srt=lots.map(function(L){ return L.D; }).sort(function(a,b){ return b-a; }), nq=Math.ceil(TOWERS*lots.length-1e-9), Dq=nq>0?srt[nq-1]:Infinity;
+  var ALL=realPieces(B.streets), ntow=0, nmid=0, nhouse=0;
+  lots.forEach(function(L){
+    var R=realSub(L.bi+1,(L.pi+1)*4096+L.hi*1024+L.k,SALT_RHGT), u1=R(), u2=R(), u3=R(), u4=R();
+    var Dk=L.D;   /* the density the heights read */
+    L.q=nq>0 && Dk>=Dq && Dk>0 && L.ad<=18;
+    if(L.q){
+      if(u1<Dk*Dk){ L.kind='tower'; L.h=Math.max(25,PEAK*Dk*Dk*Dk*(0.6+0.4*u2)); ntow++; }
+      else { L.kind='mid'; L.h=8+16*u2; nmid++; }
+    } else {
+      L.kind='house'; L.h=3.4+3.1*u2; L.gable=u3<0.8; nhouse++;
+      var hs=0.55+0.17*u4;
+      L.env=L.env.map(function(q){ return [L.c[0]+(q[0]-L.c[0])*hs, L.c[1]+(q[1]-L.c[1])*hs]; }); L.hs=hs;
+    }
+    /* front: the envelope edge whose midpoint is nearest a street centreline */
+    var bf=0, bd=1e18;
+    for(var e=0;e<4;e++){ var a=L.env[e], b=L.env[(e+1)%4], m=[(a[0]+b[0])/2,(a[1]+b[1])/2];
+      ALL.near(m[0],m[1],60,function(pc){ var d=realSegD(m,pc.a,pc.b); if(d<bd){ bd=d; bf=e; } }); }
+    L.front=bf;
+  });
+  return {lots:lots, parks:parks, small:small, nofit:nofit, split:split, alleys:alleys, Dmax:Dmax, Dq:Dq, nq:nq,
+          tow:ntow, mid:nmid, house:nhouse, TOWERS:TOWERS, PEAK:PEAK};
+}
+/* THE GROUND (§5): bilinear on the height grid, metres above the bundle's 2nd-percentile
+   height, times `ex` */
+function realGround(H,EX){
+  var s=Array.prototype.slice.call(H.z).sort(function(a,b){ return a-b; }), p2=s[Math.floor(0.02*(s.length-1))];
+  function z(x,y){
+    var fx=(x-H.x0)/H.dx, fy=(y-H.y0)/H.dx, i=Math.max(0,Math.min(H.nx-2,Math.floor(fx))), j=Math.max(0,Math.min(H.ny-2,Math.floor(fy)));
+    var tx=Math.max(0,Math.min(1,fx-i)), ty=Math.max(0,Math.min(1,fy-j)), Z=H.z, k=j*H.nx+i;
+    var h=Z[k]*(1-tx)*(1-ty)+Z[k+1]*tx*(1-ty)+Z[k+H.nx]*(1-tx)*ty+Z[k+H.nx+1]*tx*ty;
+    return (h-p2)*EX;
+  }
+  return {z:z, p2:p2};
+}
+/* THE TILT'S HEIGHT GROWTH, as corridorCamera computes it for a frame (row 238): the
+   heading is north turned by `isoaz`, the smoothstep s of the frame's extent along it
+   between t0 and t1, and grow = s^2 (3 - 2 s). Needed BEFORE the draw (a lot below 0.10
+   is not built), so it is the same arithmetic here and L66 holds the two equal. */
+function realGrowFn(W,HT,az,v0,v1){
+  var th=Math.PI/2+az*Math.PI/180, fx=Math.cos(th), fy=Math.sin(th), lo=1e18, hi=-1e18;
+  [[-W/2,-HT/2],[W/2,-HT/2],[W/2,HT/2],[-W/2,HT/2]].forEach(function(q){ var A=q[0]*fx+q[1]*fy; if(A<lo) lo=A; if(A>hi) hi=A; });
+  var V0=Math.max(0,Math.min(1,v0)), V1=Math.max(V0,Math.min(1,v1));
+  function s(x,y){ var v=(x*fx+y*fy-lo)/(hi-lo); if(v<=V0) return 0; if(v>=V1) return 1; var t=(v-V0)/(V1-V0); return t*t*(3-2*t); }
+  return function(x,y){ var t=s(x,y); return t*t*(3-2*t); };
+}
+/* THE STANDING CITY'S CONTENT (§5), for the corridor kit: every lot of `real` is a
+   container whose polygon IS its envelope (hooks.lots), and this theme builds on it in
+   furnish -- a gabled or flat house, a mid-rise box, or a tower in stepped tiers -- at
+   the invented height times the tilt's grow at the lot's centroid; a lot whose grow is
+   under 0.10 is left as plan. A park piece gets trees (a trunk and a lofted crown, 9 m
+   apart, jittered, from SALT_RTREE) and nothing else. Parts are built from z = 0: the
+   kit stands each container on its lowest corner (row 237's zAt), and a tree on a slope
+   adds the ground under it. The kit's own box stacks are switched off (L.blocks = []). */
+function realTheme(K,RS){
+  var prismN=K.prismN, polyFromLoops=K.polyFromLoops, paperGap=K.paperGap, ZUP=[0,0,1];
+  var COLK='#1a1a1a', COLG='#2f9a44';
+  K.lots.forEach(function(L){ L.blocks=[]; });
+  function own(P,C,kind,col){ P.cont=C; P.kind=kind; P.col=col; P.layer='struct';
+    P.lines.forEach(function(Ln){ if(!Ln.col) Ln.col=col; if(!Ln.kind) Ln.kind=kind; });
+    C.parts.push(P); return P; }
+  function scaleQ(Q,c,s){ return Q.map(function(q){ return [c[0]+(q[0]-c[0])*s, c[1]+(q[1]-c[1])*s]; }); }
+  /* a box; floor lines every 3.5 m on its sides when they are 0.7 mm apart on the paper */
+  function tier(C,Q,z0,z1,floors){
+    var P=prismN(Q,z0,z1), e, zf;
+    if(floors) for(zf=z0+3.5;zf<z1-1;zf+=3.5) for(e=0;e<Q.length;e++){ var a=Q[e], b=Q[(e+1)%Q.length];
+      P.lines.push({a:[a[0],a[1],zf], b:[b[0],b[1],zf], f0:2+e, f1:2+e}); }
+    return own(P,C,'rbld',COLK);
+  }
+  /* a gabled house: eaves at 0.62 of the height, the ridge parallel to the front */
+  function gable(C,Q,H,f){
+    var a=Q[f], b=Q[(f+1)%4], c=Q[(f+2)%4], d=Q[(f+3)%4], E=0.62*H;
+    function at(q,z){ return [q[0],q[1],z]; }
+    var m1=[(d[0]+a[0])/2,(d[1]+a[1])/2,H], m2=[(b[0]+c[0])/2,(b[1]+c[1])/2,H];
+    var a0=at(a,0), b0=at(b,0), c0=at(c,0), d0=at(d,0), aE=at(a,E), bE=at(b,E), cE=at(c,E), dE=at(d,E);
+    return own(polyFromLoops([[a0,b0,c0,d0],[a0,b0,bE,aE],[c0,d0,dE,cE],[b0,c0,cE,m2,bE],[d0,a0,aE,m1,dE],[aE,bE,m2,m1],[cE,dE,m1,m2]]),C,'rbld',COLK);
+  }
+  function oct(c,r,z){ var o=[], k; for(k=0;k<8;k++){ var t=2*Math.PI*(k+0.5)/8; o.push([c[0]+r*Math.cos(t), c[1]+r*Math.sin(t), z]); } return o; }
+  function loft(rings){
+    var loops=[rings[0], rings[rings.length-1]], k, e, n=rings[0].length;
+    for(k=0;k+1<rings.length;k++) for(e=0;e<n;e++){ var e2=(e+1)%n; loops.push([rings[k][e],rings[k][e2],rings[k+1][e2],rings[k+1][e]]); }
+    return polyFromLoops(loops);
+  }
+  /* a park piece's trees: one try draws four numbers whatever it decides */
+  function trees(C,rec,g){
+    var Q=C.poly, R=realSub(rec.bi+1,rec.pi+1,SALT_RTREE), zb=1e18, x0=1e18, y0=1e18, x1=-1e18, y1=-1e18, placed=[], gx, gy;
+    Q.forEach(function(q){ zb=Math.min(zb,RS.zAt(q[0],q[1])); x0=Math.min(x0,q[0]); y0=Math.min(y0,q[1]); x1=Math.max(x1,q[0]); y1=Math.max(y1,q[1]); });
+    for(gx=Math.floor(x0/9)*9+4.5;gx<x1;gx+=9) for(gy=Math.floor(y0/9)*9+4.5;gy<y1;gy+=9){
+      var u1=R(), u2=R(), u3=R(), u4=R();
+      if(placed.length>=400) continue;
+      var x=gx+(u1-0.5)*5, y=gy+(u2-0.5)*5, r=2.2+1.3*u3, Ht=(6+5*u4)*g;
+      if(!oct([x,y],r,0).every(function(q){ return realIn(Q,q,-0.3); })) continue;
+      if(placed.some(function(t){ return Math.hypot(t[0]-x,t[1]-y)<t[2]+r+0.5; })) continue;
+      placed.push([x,y,r]);
+      var z0=RS.zAt(x,y)-zb, zc=z0+0.35*Ht, zt=z0+Ht, z1=zc+0.45*(zt-zc);
+      own(prismN([[x-0.175,y-0.175],[x+0.175,y-0.175],[x+0.175,y+0.175],[x-0.175,y+0.175]],z0,zc),C,'rtree',COLG);
+      own(loft([oct([x,y],0.55*r,zc),oct([x,y],r,z1),oct([x,y],0.35*r,zt)]),C,'rtree',COLG);
+    }
+    RS.trees+=placed.length; rec.trees=placed.length;
+  }
+  function furnish(){
+    RS.built=0; RS.trees=0;
+    K.lots.forEach(function(L){
+      var rec=RS.rec[L.idx]; if(!rec) return;
+      var g=RS.grow(rec.c[0],rec.c[1]); rec.g=g; rec.built=false; rec.hd=0;
+      if(g<0.10) return;
+      if(rec.kind==='park'){ trees(L,rec,g); return; }
+      var Q=L.poly, H=rec.h*g, mid=[(Q[0][0]+Q[2][0])/2,(Q[0][1]+Q[2][1])/2];
+      var t=[Q[1][0]-Q[0][0],Q[1][1]-Q[0][1]], tl=Math.hypot(t[0],t[1])||1;
+      var fl=paperGap([mid[0],mid[1],H/2],[t[0]/tl,t[1]/tl,0],ZUP)*3.5>=0.7;
+      rec.hd=H; rec.built=true; RS.built++;
+      if(rec.kind==='house'){ if(rec.gable) gable(L,Q,H,rec.front); else tier(L,Q,0,H,false); }
+      else if(rec.kind==='mid') tier(L,Q,0,H,fl);
+      else (H>=40?[[0,0.62,1],[0.62,0.84,0.82],[0.84,1,0.6]]:[[0,0.75,1],[0.75,1,0.75]]).forEach(function(tr){
+        tier(L,scaleQ(Q,mid,tr[2]),tr[0]*H,tr[1]*H,fl); });
+    });
+  }
+  return {dress:function(){}, signsFor:function(){}, furnish:furnish, cars:[], dots:[], poles:[],
+          info:function(){ return ' · '+RS.built+' buildings · '+RS.trees+' trees'; }};
+}
 /* ==== REAL END ==== */
-/* THE PLAN MAP (§4): the bundle as a map on the sheet, the frame fitted to the margin box
-   and centred. A pen has one width, so WEIGHT IS STROKES: motorway, trunk and primary
-   are two strokes 0.4 mm apart on the paper, every other class one; every fifth contour
-   two strokes 0.3 mm apart. Pen groups `map` `rail` `water` `green` `ground` (Engine
-   layers), and at True colour each group's ink by §6 (black, red, blue, green, brown),
-   the groups folding into black in §6's order when Colours is below five; Pen map 0 is
-   one pen. */
+/* THE ENGINE (§§4-5). The bundle's lots stand on its ground through the corridor kit --
+   one plan along the frame's north-south line that lays no road (every slab is in its
+   gap), its lots supplied, its ground the height grid, its edges split every 8 m -- and
+   are drawn by the tilt camera: plan where the heading starts (Tilt start), easing to the
+   isometric at Tilt elevation (Tilt end). The map is then laid on the ground through the
+   same camera and hidden behind the buildings' outlines: a street is its centreline in
+   the plan (wide classes two strokes 0.4 mm apart), dashed where grow is 0.10-0.45, and
+   its two kerb lines where grow is 0.45 or more, cut where they cross another street.
+   Pen groups `map` `buildings` `rail` `water` `green` `ground`; True colour as row 239.
+   The margin is the camera's zoom: at 6 % the frame fits the kit's drawable box. */
 function buildReal(p){
-  var B=realBundle(), F=B.frame, W=+F.width, HT=+F.height, m=(p.pad||0)/100;
-  var S=Math.min((PGW-2*m)/W, (PGH-2*m)/HT), OX=PGW/2, OY=PGH/2, MM=1/PAGEMM;
+  var T0ms=Date.now(), B=realBundle(), F=B.frame, W=+F.width, HT=+F.height, MM=1/PAGEMM;
+  function kn(k,lo,hi,d){ var v=isFinite(p[k])?+p[k]:d; return Math.max(lo,Math.min(hi,v)); }
+  var AZ=kn('isoaz',-180,180,0), EL=kn('isoel',15,60,26), T0=kn('t0',0,100,8)/100, T1=Math.max(T0,kn('t1',0,100,30)/100),
+      EX=kn('ex',1,4,2), m=kn('pad',0,20,6)/100;
   /* the page's pens (STATE.g); an engine lifted out of the page has none and draws §6's five */
   var G=(typeof STATE!=='undefined'&&STATE&&STATE.g)||{}, PM=Math.round(G.pmap||0), NP=PM===3?Math.max(2,Math.round(G.bands||6)):5;
-  function ink(lay){ var f=REALFOLD.indexOf(lay); return (f>=0 && f<5-NP)?REALINK.map:REALINK[lay]; }
+  function ink(lay){ var f=REALFOLD.indexOf(lay); return (f>=0 && f<5-NP)?REALINK.map:(REALINK[lay]||REALINK.map); }
+  var GR=realGround(B.H,EX), grow=realGrowFn(W,HT,AZ,T0,T1), LT=realLots(B,p), HL=[];
+  LT.lots.forEach(function(L){ HL.push({q:L.env, front:L.front, kind:L.kind, h:L.h}); });
+  LT.parks.forEach(function(P){ P.kind='park'; HL.push({q:P.poly, front:0, kind:'park', h:0}); });
+  var REC=LT.lots.concat(LT.parks), RS={rec:REC, grow:grow, zAt:GR.z, built:0, trees:0};
+  var RTHM={key:'real', label:'Real ground', lotDepth:[8,20], alleyW:[1.2,2.5], baseN2:0, baseH:[3,3], midH:[3,3],
+            edgeZ:0, slabLen:4, clear:4.5, ztop:400, zfit:40, minLen:10,
+            fixed:{puddles:0, hero:0, wmk:0, cars:0, dots:0, graff:0, shopv:0, props:0},
+            content:function(K){ return realTheme(K,RS); }};
+  var ZOOM=Math.min((PGW-2*m)/(PGW-0.12),(PGH-2*m)/(PGH-0.12));
+  var pk=Object.assign({},p,{len:HT, zoom:100*ZOOM, panx:0, pany:0});
+  var PL=corridorPlan(pk,RTHM,0,{line:{x:0, y:-HT/2, h:Math.PI/2}, sGaps:[[-1e9,1e9]], lots:HL, zAt:GR.z, seg:8});
+  var CAM={tilt:{az:AZ, v0:T0, v1:T1, elMin:EL}, frame:[-W/2,-HT/2,W/2,HT/2]};
+  var res=corridorDraw(pk,[PL],RTHM,CAM)||[], kitInfo=STRTINFO, kitStats=STRTSTATS;
   var out=[], used={};
-  function pg(q){ return [OX+q[0]*S, OY-q[1]*S]; }
-  /* clip a metre polyline to the frame */
+  res.forEach(function(q){ var lay=q.kind==='rtree'?'green':'buildings'; q.lay=lay; q.col=ink(lay); used[lay]=1; out.push(q); });
+  /* ---- the map on the ground, through the build's own camera ---- */
+  var KC=corridorCamera(corridorKnobs(pk,RTHM),PL,[PL],RTHM,CAM), GP=[];
+  function put(pts,lay,tags){ if(pts.length<2) return; var q=pts.slice(); q.lay=lay; q.col=ink(lay);
+    Object.keys(tags||{}).forEach(function(k){ q[k]=tags[k]; }); GP.push(q); }
   var X0=-W/2, X1=W/2, Y0=-HT/2, Y1=HT/2;
-  function clip(pl,closed){
+  function clipB(pl,closed,bx){
     var src=closed?pl.concat([pl[0]]):pl, runs=[], run=[], i;
     for(i=0;i+1<src.length;i++){
-      var a=src[i], b=src[i+1], t0=0, t1=1, dx=b[0]-a[0], dy=b[1]-a[1], P=[-dx,dx,-dy,dy], Q=[a[0]-X0,X1-a[0],a[1]-Y0,Y1-a[1]], j, ok=true;
+      var a=src[i], b=src[i+1], t0=0, t1=1, dx=b[0]-a[0], dy=b[1]-a[1], P=[-dx,dx,-dy,dy], Q=[a[0]-bx[0],bx[2]-a[0],a[1]-bx[1],bx[3]-a[1]], j, ok=true;
       for(j=0;j<4&&ok;j++){ if(P[j]===0){ if(Q[j]<0) ok=false; } else { var r=Q[j]/P[j]; if(P[j]<0){ if(r>t1) ok=false; else if(r>t0) t0=r; } else { if(r<t0) ok=false; else if(r<t1) t1=r; } } }
       if(!ok||t1<t0){ if(run.length>1) runs.push(run); run=[]; continue; }
       var A=[a[0]+t0*dx,a[1]+t0*dy], Bq=[a[0]+t1*dx,a[1]+t1*dy];
@@ -17942,12 +18229,12 @@ function buildReal(p){
     if(run.length>1) runs.push(run);
     return runs;
   }
-  /* a page polyline offset by d (page units), mitred, the mitre held to 4 d */
+  function clip(pl,closed){ return clipB(pl,closed,[X0,Y0,X1,Y1]); }
+  /* a polyline offset by d, mitred, the mitre held to 4 d (page or metres alike) */
   function offset(pl,d){
     var n=pl.length, o=[], i;
     for(i=0;i<n;i++){
-      var a=pl[Math.max(0,i-1)], b=pl[i], c=pl[Math.min(n-1,i+1)];
-      var n1=null, n2=null, L;
+      var a=pl[Math.max(0,i-1)], b=pl[i], c=pl[Math.min(n-1,i+1)], n1=null, n2=null, L;
       if(i>0){ L=Math.hypot(b[0]-a[0],b[1]-a[1])||1; n1=[-(b[1]-a[1])/L,(b[0]-a[0])/L]; }
       if(i<n-1){ L=Math.hypot(c[0]-b[0],c[1]-b[1])||1; n2=[-(c[1]-b[1])/L,(c[0]-b[0])/L]; }
       if(!n1) n1=n2; if(!n2) n2=n1;
@@ -17958,41 +18245,98 @@ function buildReal(p){
     }
     return o;
   }
-  function put(pts,lay,tags){
-    if(pts.length<2) return;
-    var q=pts.slice(); q.lay=lay; q.col=ink(lay); used[lay]=1;
-    Object.keys(tags||{}).forEach(function(k){ q[k]=tags[k]; });
-    out.push(q);
-  }
-  var WIDE={motorway:1, trunk:1, primary:1};
+  function dens(pl,step){ var o=[pl[0]], i, k;
+    for(i=0;i+1<pl.length;i++){ var a=pl[i], b=pl[i+1], n=Math.max(1,Math.ceil(Math.hypot(b[0]-a[0],b[1]-a[1])/step));
+      for(k=1;k<=n;k++) o.push([a[0]+(b[0]-a[0])*k/n, a[1]+(b[1]-a[1])*k/n]); }
+    return o; }
+  function proj(pl,zc){ var o=[]; pl.forEach(function(q){ var P=KC.project([q[0],q[1],zc!==undefined?zc:GR.z(q[0],q[1])]); if(P) o.push(P); }); return o; }
+  /* dashes along a page polyline: 1.6 mm drawn, 1.0 mm gap */
+  function dashes(pl){ var on=1.6*MM, off=1.0*MM, o=[], cur=[pl[0]], draw=true, left=on, i;
+    for(i=0;i+1<pl.length;i++){ var a=pl[i], b=pl[i+1], L=Math.hypot(b[0]-a[0],b[1]-a[1]), t=0;
+      while(L-t>left){ t+=left; var P=[a[0]+(b[0]-a[0])*t/L, a[1]+(b[1]-a[1])*t/L];
+        if(draw){ cur.push(P); o.push(cur); cur=null; } else cur=[P];
+        draw=!draw; left=draw?on:off; }
+      left-=L-t; if(draw) cur.push(b); }
+    if(draw && cur && cur.length>1) o.push(cur);
+    return o; }
+  var WIDE={motorway:1, trunk:1, primary:1}, ALLS=realPieces(B.streets), nkerb=0, ndash=0;
+  function band(g){ return g<0.10?0:g<0.45?1:2; }
   B.streets.forEach(function(s,si){
     clip(s.p).forEach(function(r){
-      var pl=r.map(pg);
-      if(WIDE[s.c]){ put(offset(pl,0.2*MM),'map',{rk:'st', si:si, sd:1}); put(offset(pl,-0.2*MM),'map',{rk:'st', si:si, sd:-1}); }
-      else put(pl,'map',{rk:'st', si:si, sd:0});
+      var d=dens(r,8), gs=d.map(function(q){ return grow(q[0],q[1]); }), runs=[], cur=null, i;
+      for(i=0;i<d.length;i++){
+        if(i>0){ var g0=gs[i-1], g1=gs[i];
+          if(band(g0)!==band(g1)){
+            var up=g1>g0, th=[0.10,0.45].filter(function(v){ return up?(v>g0&&v<=g1):(v<=g0&&v>g1); });
+            if(!up) th.reverse();
+            th.forEach(function(v){ var t=(v-g0)/(g1-g0), X=[d[i-1][0]+(d[i][0]-d[i-1][0])*t, d[i-1][1]+(d[i][1]-d[i-1][1])*t];
+              cur.pts.push(X); runs.push(cur); cur={b:up?band(v):band(v)-1, pts:[X]}; });
+          }
+        }
+        if(!cur) cur={b:band(gs[i]), pts:[]};
+        cur.pts.push(d[i]);
+      }
+      if(cur) runs.push(cur);
+      runs.forEach(function(R){
+        if(R.pts.length<2) return;
+        if(R.b===0){ var pl=proj(R.pts);
+          if(WIDE[s.c]){ put(offset(pl,0.2*MM),'map',{rk:'st', si:si, sd:1}); put(offset(pl,-0.2*MM),'map',{rk:'st', si:si, sd:-1}); }
+          else put(pl,'map',{rk:'st', si:si, sd:0}); return; }
+        if(R.b===1){ dashes(proj(R.pts)).forEach(function(q){ ndash++; put(q,'map',{rk:'st', si:si, sd:0, dash:1}); }); return; }
+        /* the kerbs: the centreline offset by the kerb on each side, cut where it is
+           inside another street's carriageway */
+        [1,-1].forEach(function(sg){
+          var kl=dens(offset(R.pts,sg*realKerb(s.c)),2), run=[];
+          kl.forEach(function(q){
+            var inside=false;
+            ALLS.near(q[0],q[1],20,function(pc){ if(!inside && pc.si!==si && realSegD(q,pc.a,pc.b)<realKerb(pc.c)-0.01) inside=true; });
+            if(inside){ if(run.length>1){ put(proj(run),'map',{rk:'kerb', si:si, sd:2*sg}); nkerb++; } run=[]; }
+            else run.push(q);
+          });
+          if(run.length>1){ put(proj(run),'map',{rk:'kerb', si:si, sd:2*sg}); nkerb++; }
+        });
+      });
     });
   });
-  B.rail.forEach(function(s,i){ clip(s.p).forEach(function(r){ put(r.map(pg),'rail',{rk:'rail', si:i, sd:0}); }); });
-  B.water.forEach(function(s,i){ clip(s.p).forEach(function(r){ put(r.map(pg),'water',{rk:'wl', si:i, sd:0}); }); });
-  B.waterAreas.forEach(function(s,i){ clip(s.p,1).forEach(function(r){ put(r.map(pg),'water',{rk:'wa', si:i, sd:0}); }); });
-  B.parks.forEach(function(s,i){ clip(s.p,1).forEach(function(r){ put(r.map(pg),'green',{rk:'park', si:i, sd:0}); }); });
-  /* contours at `contour` metres; every fifth (a multiple of 5 intervals) doubled */
+  B.rail.forEach(function(s,i){ clip(s.p).forEach(function(r){ put(proj(dens(r,8)),'rail',{rk:'rail', si:i, sd:0}); }); });
+  B.water.forEach(function(s,i){ clip(s.p).forEach(function(r){ put(proj(dens(r,8)),'water',{rk:'wl', si:i, sd:0}); }); });
+  B.waterAreas.forEach(function(s,i){ clip(s.p,1).forEach(function(r){ put(proj(dens(r,8)),'water',{rk:'wa', si:i, sd:0}); }); });
+  B.parks.forEach(function(s,i){ clip(s.p,1).forEach(function(r){ put(proj(dens(r,8)),'green',{rk:'park', si:i, sd:0}); }); });
+  /* contours at `contour` metres, at their own height; every fifth doubled */
   var CI=Math.max(2,+p.contour||10), Z=B.H.z, zl=1e9, zh=-1e9, i, nlev=0;
   for(i=0;i<Z.length;i++){ if(Z[i]<zl) zl=Z[i]; if(Z[i]>zh) zh=Z[i]; }
   for(var lv=Math.ceil(zl/CI);lv*CI<=zh && nlev<2000;lv++,nlev++){
-    var L=lv*CI, idx=(lv%5===0);
+    var L=lv*CI, idx=(lv%5===0), zc=(L-GR.p2)*EX;
     realContours(B.H,L).forEach(function(pl){
       clip(pl).forEach(function(r){
-        var q=r.map(pg);
+        var q=proj(dens(r,8),zc);
         if(idx){ put(offset(q,0.15*MM),'ground',{rk:'ct', lv:L, sd:1}); put(offset(q,-0.15*MM),'ground',{rk:'ct', lv:L, sd:-1}); }
         else put(q,'ground',{rk:'ct', lv:L, sd:0});
       });
     });
   }
-  out.layers=['map','rail','water','green','ground'].filter(function(k){ return used[k]; });
+  /* hidden behind the buildings' and trees' outlines (the depth rule of §6 is row 241),
+     then the kit's page clip */
+  var occl=[], TP=STRTTALLY.parts||[], TS=STRTTALLY.sil||[];
+  TP.forEach(function(rp,k){ if(TS[k] && rp.hides) occl.push(TS[k]); });
+  var frag=occl.length?hlrConvex(GP,occl,0.25*MM):GP.map(function(q,k){ var c=q.slice(); c.src=k; return c; });
+  var PB=[0.06,0.06,PGW-0.06,PGH-0.06], nhid=0;
+  frag.forEach(function(run){
+    if(run.length<2) return; var S=GP[run.src];
+    clipB(run,false,PB).forEach(function(c){
+      c.lay=S.lay; c.col=S.col; ['rk','si','sd','lv','dash'].forEach(function(k){ if(S[k]!==undefined) c[k]=S[k]; });
+      used[S.lay]=1; out.push(c); });
+  });
+  out.layers=['map','buildings','rail','water','green','ground'].filter(function(k){ return used[k]; });
+  REALTALLY={lots:LT, rec:REC, grow:grow, zAt:GR.z, p2:GR.p2, ex:EX, az:AZ, el:EL, t0:T0, t1:T1,
+             kitDropped:PL.lotsDropped, built:RS.built, trees:RS.trees, cam:KC.tally, kit:kitStats, ground:GP.length,
+             kerbs:nkerb, dashes:ndash, occl:occl.length, ms:Date.now()-T0ms};
   STRTINFO=(REALB?B.name:'demo — drop a Map Studio fusion bundle to draw a real place')+' · '+
     (W/1000).toFixed(1)+' × '+(HT/1000).toFixed(1)+' km · '+B.blocks.length+' blocks'+
-    ((REALB&&B.source&&B.source.pbf_date)?' · OSM '+B.source.pbf_date:'');
+    ((REALB&&B.source&&B.source.pbf_date)?' · OSM '+B.source.pbf_date:'')+
+    ' · '+LT.lots.length+' lots ('+LT.tow+' towers, '+LT.mid+' mid-rise, '+LT.house+' houses; '+
+    (LT.small+LT.nofit+PL.lotsDropped)+' dropped) · '+RS.built+' built · '+RS.trees+' trees · '+
+    (kitStats&&kitStats.cycles?'CYCLES '+kitStats.cycles:'cycles 0')+' · '+((Date.now()-T0ms)/1000).toFixed(1)+' s';
   return out;
 }
 /* A DROPPED BUNDLE: read, install, switch to the engine and draw. A refused file
@@ -44262,6 +44606,16 @@ ENGEXTRA.real=function(box){
 };
 var HELP={
 'real.contour':'Contour interval of the ground, in metres. Every fifth contour is drawn as two strokes 0.3 mm apart, so it reads heavier with one pen.',
+'real.isoaz':'Which way the camera faces, in degrees from north (positive turns it left). The tilt runs along this heading: the near edge of the map stays a plan, the far edge stands up.',
+'real.isoel':'The elevation angle where the tilt is complete: 60 looks down steeply, 15 looks across the city. The plan end is always straight down.',
+'real.t0':'How far along the heading the map starts to tilt, as a share of the frame. Before it everything is plan and nothing is built.',
+'real.t1':'How far along the heading the tilt is complete. Between Tilt start and Tilt end the ground bends up smoothly and the buildings grow from nothing to full height.',
+'real.ex':'Vertical exaggeration of the real ground. 1 is true scale; real hills read flat on paper, so the default doubles them.',
+'real.lotmin':'Narrowest lot frontage, in metres. Blocks are cut across their long axis into lots between Lot min and Lot max.',
+'real.lotmax':'Widest lot frontage, in metres.',
+'real.alley':'Share of deep blocks (over 28 m) that are split with a 3 m alley down the middle rather than back to back.',
+'real.towers':'Share of lots, ranked by how much arterial street is within 400 m, that may build tall (mid-rise or tower) when they are within 18 m of an arterial. The rest are houses.',
+'real.peak':'Height of the tallest tower, in metres, at the densest point of the map. Towers fall off with the cube of the density.',
 'real.pad':'Margin round the map, as a percentage of the short side. The bundle\u2019s frame is fitted inside it, centred, at one scale both ways.',
 '_g.penrow':'One swatch per pen \u2014 including when there is only one of them, which is the case that matters if you are pinning a layer at a time. Set the colour, draw, pin: the pin keeps the colour it had when you pinned it, so each layer carries its own and the next one is free to differ. Leave a swatch unset and that pen stays the near-black it always was. Click one and that pen is yours \u2014 the palette only fills in the ones you have not set, so picking a colour for pen 2 does not disturb pen 1. The canvas composites these SUBTRACTIVELY, the way ink does: blue laid over red reads as the dark purple the paper will actually give you, not as whichever pen happened to be drawn last. Overlaps can never come out lighter than either pen. The colours you pick are the colours written into the SVG, one labelled layer per pen, so the file plots what the preview showed. Palette resets every override.',
 'record.spiral':'Cuts the disc as ONE continuous groove instead of a stack of closed rings. A real record is a single spiral, and off, this is 160 separate circles \u2014 160 pen lifts, and the plotter spends the whole job hopping between them. On, the radius creeps outward by one groove pitch per turn, so every turn ends exactly where the next begins and the whole face plots without the pen leaving the paper: measured on an uncut disc, 160 paths and 121 mm of travel between them become 1 path and none at all, and at 900 grooves it is still 1. It cannot join across a cut, because there is no groove there to follow \u2014 a cut disc comes out as one arc per turn, the same count as before. The word ring breaks it too, since that turn ends on the letterforms rather than back where it started. At the pitch a record uses, a spiral and a stack of rings look the same on paper except at the lead-in; this is for the plot, not the picture.',
