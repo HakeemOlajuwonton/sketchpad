@@ -456,7 +456,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v364</a> &mdash; Scout -- a live wireframe camera on the corridor engines (Isometric, Orbit, Fly), Render this view, View variations, and Camera placed (queue row 221)</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v365</a> &mdash; the Download SVG writer lifted into exportMulti and svgBody, refactor only (queue row 222)</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <section class="fold" id="fold_pick"><h2>Pick engine<span class="cnt"></span></h2>
@@ -46405,37 +46405,19 @@ document.getElementById('reroll').addEventListener('click',function(){
       msg('cleared '+k+' pin'+(k>1?'s':'')+' \u2014 view fitting itself again'); sched();
     });
 })();
-document.getElementById('dl').addEventListener('click',function(){
-  ensureFull();                       /* row 122: never export a DRAFT build */
-  if(ENGERR){ msg('cannot export: '+mode+' failed to build'); return; }
-  var live=0; (cur||[]).forEach(function(p){ if(p&&p.length>1) live++; });
-  if(!live){ msg(mode+' produced no geometry \u2014 nothing to export'); return; }
-  var g=gvals(), groups=allGroups(), multi=(g.copies>1)||PINS.length>0||
+/* ROW 222 (REFACTOR ONLY): THE SVG WRITER, lifted out of Download SVG so a film
+   frame is written by the same code as an export. exportMulti is the export's
+   multi-pen test (npins: the pins written with it); svgBody the file's text,
+   RB the recipe block written straight after the root tag. */
+function exportMulti(groups,paths,g,npins){
+  return (g.copies>1)||npins>0||
     Object.keys(PENS).length>0||
-      (Math.round(g.pmap||0)>0)||!!engineLayers(cur,g)||
+      (Math.round(g.pmap||0)>0)||!!engineLayers(paths,g)||
       (Math.round(g.lpen||0)>0 && groups.length>1)||
-      (Math.round(g.iring||0)>0 && Math.round(g.ipen||0)===1), PAD=5, MM=PAGEMM, s;
-  /* THE NAME AND THE RECIPE (row 88). commitName() advances the day's counter,
-     logs the export and moves the parent; RB is the non-rendering block both
-     branches write straight after the root tag, which itself does not change. */
-  var NM=commitName('svg'), RB=recipeBlock(NM);
-  /* Pins force the multi-pen path even at Copies 1. The single-pen path writes
-     one unnamed <g> at raw unit scale with no page fit; emitting pins through
-     it would collapse every layer into one pen and lose the registration the
-     pin exists to provide.
-     ENGINE LAYERS FORCE IT FOR THE SAME REASON, and this line is why the flag
-     is computed here rather than being read off the knobs alone: at Pens 1
-     with no pens set and no pin, `multi` is false, and the single-<g> branch
-     would flatten `iso`'s three named layers back into one unnamed group --
-     silently, since the path count would be right.
-     RING PENS ARE WORSE THAN SILENT AND THAT IS WHY THEY ARE HERE TOO. The
-     single-<g> branch writes `groups[0].paths` and nothing else, so 1+iring
-     groups at Pens 1 would export the ORIGINAL STROKES ONLY and drop every
-     ring on the floor -- a shorter file, not merely a flatter one. Spec v3 does
-     not mention this clause; it is forced by v3's own decision to build fresh
-     groups, the same way it was forced for engine layers. Nothing below this changes:
-     the <g> emission, the labels and the per-path stroke-width override are the
-     same code the fan has always used. */
+      (Math.round(g.iring||0)>0 && Math.round(g.ipen||0)===1);
+}
+function svgBody(groups,multi,g,RB){
+  var PAD=5, MM=PAGEMM, s;
   if(!multi){
     /* The sheet is the PAGE, which is PGW x PGH units at MM mm per unit. Both
        axes are the same scale, so the geometry below still multiplies by MM and
@@ -46490,7 +46472,36 @@ document.getElementById('dl').addEventListener('click',function(){
     }
     s.push('</svg>');
   }
-  var body=s.join('');
+  return s.join('');
+}
+document.getElementById('dl').addEventListener('click',function(){
+  ensureFull();                       /* row 122: never export a DRAFT build */
+  if(ENGERR){ msg('cannot export: '+mode+' failed to build'); return; }
+  var live=0; (cur||[]).forEach(function(p){ if(p&&p.length>1) live++; });
+  if(!live){ msg(mode+' produced no geometry \u2014 nothing to export'); return; }
+  var g=gvals(), groups=allGroups(), multi=exportMulti(groups,cur,g,PINS.length);
+  /* THE NAME AND THE RECIPE (row 88). commitName() advances the day's counter,
+     logs the export and moves the parent; RB is the non-rendering block both
+     branches write straight after the root tag, which itself does not change. */
+  var NM=commitName('svg'), RB=recipeBlock(NM);
+  /* Pins force the multi-pen path even at Copies 1. The single-pen path writes
+     one unnamed <g> at raw unit scale with no page fit; emitting pins through
+     it would collapse every layer into one pen and lose the registration the
+     pin exists to provide.
+     ENGINE LAYERS FORCE IT FOR THE SAME REASON, and this line is why the flag
+     is computed here rather than being read off the knobs alone: at Pens 1
+     with no pens set and no pin, `multi` is false, and the single-<g> branch
+     would flatten `iso`'s three named layers back into one unnamed group --
+     silently, since the path count would be right.
+     RING PENS ARE WORSE THAN SILENT AND THAT IS WHY THEY ARE HERE TOO. The
+     single-<g> branch writes `groups[0].paths` and nothing else, so 1+iring
+     groups at Pens 1 would export the ORIGINAL STROKES ONLY and drop every
+     ring on the floor -- a shorter file, not merely a flatter one. Spec v3 does
+     not mention this clause; it is forced by v3's own decision to build fresh
+     groups, the same way it was forced for engine layers. Nothing below this changes:
+     the <g> emission, the labels and the per-path stroke-width override are the
+     same code the fan has always used. */
+  var body=svgBody(groups,multi,g,RB);
   var a=document.createElement('a');
   a.href=URL.createObjectURL(new Blob([body],{type:'image/svg+xml'}));
   a.download=NM.name+'.svg'; a.click();
