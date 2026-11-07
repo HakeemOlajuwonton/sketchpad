@@ -374,6 +374,11 @@
   #scoutbar .sbhelp{font-size:12px; color:var(--dim); margin:0 0 4px;}
   #scoutbar .sbread{display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:2px 12px; font-size:12px; margin:0;}
   #scoutbar .sbread dt{color:var(--dim); float:left; margin-right:6px;} #scoutbar .sbread dd{margin:0;}
+  /* row 222: the film row */
+  #scoutbar .sbfilm{display:flex; gap:6px; flex-wrap:wrap; align-items:center; margin:8px 0 4px; font-size:12px;}
+  #scoutbar .sbfilm ol{display:flex; gap:4px; list-style:none; margin:0; padding:0; flex-wrap:wrap;}
+  #scoutbar .sbfilm li{display:flex;} #scoutbar .sbfilm li button{padding:2px 7px;}
+  #scoutbar .sbfilm input[type=number]{width:4.5em;} #scoutbar .sbfilm input[type=range]{width:9em; vertical-align:middle;}
   .penrow{display:flex; align-items:center; gap:6px; flex-wrap:wrap;
           grid-column:1/-1; margin:2px 0 4px;}
   .penlab{font-size:10px; letter-spacing:.14em; color:var(--dim);}
@@ -456,7 +461,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v365</a> &mdash; the Download SVG writer lifted into exportMulti and svgBody, refactor only (queue row 222)</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v366</a> &mdash; the fly-through: keyframes and a path in Scout, Play, Render film with detail held, Resume, Save film (queue row 222)</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <section class="fold" id="fold_pick"><h2>Pick engine<span class="cnt"></span></h2>
@@ -22864,7 +22869,11 @@ function buildTown(p){
   /* row 221: Scout's scene -- the same plan, the camera argument by townCamArg for whatever view it shows */
   if(p.scoutScene){ var SCT=corridorDraw(p,plans,THX,Object.assign({},TCA.camera,{scene:true}));
     SCT.camArg=function(q){ return townCamArg(q,G,SITE,FRM,WC,VR,VH).camera; }; return SCT; }
-  var res=corridorDraw(p,plans,THX,TCA.camera);
+  /* row 222: a film frame holds detail over every frame's camera (corridorDraw's HOLD) */
+  var CAMH=TCA.camera;
+  if(p.filmHold && p.filmHold.length) CAMH=Object.assign({},TCA.camera||{},{hold:p.filmHold.map(function(v){
+    var q=Object.assign({},p,v); return {p:q, camera:townCamArg(q,G,SITE,FRM,WC,VR,VH).camera}; })});
+  var res=corridorDraw(p,plans,THX,CAMH);
   /* row 220: Parks can move only what reaches the sheet -- a block of its 40%
      ceiling with a lot drawn, or a park drawn. The knob panel reads `parkSeen`. */
   (function(){ var LAYk=Math.max(0,Math.min(99,Math.round(isFinite(p.layout)?+p.layout:0))), seen=0, LP=plans.slice(0,G.ROWS);
@@ -28490,10 +28499,11 @@ function marketTheme(K){
          it is left out */
       var bs=st.s0+0.25+(Ls-0.5)*(k+0.5)/st.nb, bo=ob-0.4, bz=hc-0.16, P0=X(bs,bo,bz), c0=cam(P0);
       if(!(c0[2]>2*NEAR)) continue;
-      var Lw=0.35*c0[2]/(PAGEMM*FF*HW), h=0.005, hz=[-RT[1],RT[0],0];
+      /* row 222: across the sheet as the frame nearest it sees it, when a film holds detail */
+      var RB=K.rtAt(P0), Lw=0.35*c0[2]/(PAGEMM*FF*HW), h=0.005, hz=[-RB[1],RB[0],0];
       if(Lw>0.25) continue;
-      var a=[P0[0]-RT[0]*Lw/2,P0[1]-RT[1]*Lw/2,bz], b2=[P0[0]+RT[0]*Lw/2,P0[1]+RT[1]*Lw/2,bz];
-      var Pd=para([a[0]-hz[0]*h,a[1]-hz[1]*h,bz-h],[RT[0]*Lw,RT[1]*Lw,0],[hz[0]*2*h,hz[1]*2*h,0],[0,0,2*h]);
+      var a=[P0[0]-RB[0]*Lw/2,P0[1]-RB[1]*Lw/2,bz], b2=[P0[0]+RB[0]*Lw/2,P0[1]+RB[1]*Lw/2,bz];
+      var Pd=para([a[0]-hz[0]*h,a[1]-hz[1]*h,bz-h],[RB[0]*Lw,RB[1]*Lw,0],[hz[0]*2*h,hz[1]*2*h,0],[0,0,2*h]);
       Pd.lines=[{a:a, b:b2, f0:0, f1:0, kind:'bulb', col:COL_YEL}];
       add(Pd,'bulb',COL_YEL,{hides:false, seeThru:true, nolod:true});
     }
@@ -38152,7 +38162,7 @@ function streetTheme(K){
          going solid. No solids on a return: it is the lot's own side. */
       [3,5].forEach(function(fk){
         var fc=BP.faces[fk], RRT=sub(sk,(L.idx*16+bi)*2+(fk===3?0:1),SALT_RET);
-        if(!(fc.n[0]*CE[0]+fc.n[1]*CE[1]+fc.n[2]*CE[2]-fc.d>1e-9)) return;
+        if(!K.facesEye(fc)) return;
         var q0=fc.pts[0], q1=fc.pts[1];
         var tx=q1[0]-q0[0], ty=q1[1]-q0[1], Wr=Math.hypot(tx,ty);
         if(Wr<2.5) return;
@@ -39504,6 +39514,35 @@ function corridorDraw(p,plans,THM,camera){
       FF=KCAM.FF, HW=KCAM.HW, HH=KCAM.HH, ISO=KCAM.ISO, ISOS=KCAM.ISOS, D_EFF=KCAM.D_EFF, ISOC=KCAM.ISOC, SINEL=KCAM.SINEL, ISOZN=NEAR;
   var cam=KCAM.cam, scr=KCAM.scr, project=KCAM.project;
   STRTTALLY.cam=KCAM.tally; STRTTALLY.project=project;
+  /* ROW 222: THE FILM HOLDS DETAIL. camera.hold is every frame's camera (its knobs
+     and its camera argument); the frame being drawn is one of them. What the
+     content decides by the camera -- the detail bands (dist3), a size on the
+     sheet (paperGap, mmPerM, K.cam's depth), the LOD cutoff, which movable thing
+     is cleared from the eye -- is decided by the frame whose eye comes NEAREST a
+     point while the point is in view (holdK), so every frame builds the same
+     content and only the projection moves. The budget does not run: it would
+     pull the bands in on one frame and not the next. Perspective only; absent,
+     nothing here runs. */
+  var HOLD=null;
+  if(camera && camera.hold && camera.hold.length && !ISO && !camera.scene)
+    HOLD=camera.hold.map(function(h){ return corridorCamera(h.p,Object.assign({},PL,corridorCamKnobs(h.p)),plans,THM,h.camera); });
+  function holdK(P){
+    var bk=-1, bd=1e300, ak=0, ad=1e300, k, K, E, d, c, q;
+    for(k=0;k<HOLD.length;k++){
+      K=HOLD[k]; E=K.CE; d=(P[0]-E[0])*(P[0]-E[0])+(P[1]-E[1])*(P[1]-E[1])+(P[2]-E[2])*(P[2]-E[2]);
+      if(d<ad){ ad=d; ak=k; }
+      if(d<bd){ c=K.cam(P);
+        if(c[2]>NEAR){ q=K.scr(c); if(q[0]>-0.1*PGW && q[0]<1.1*PGW && q[1]>-0.1*PGH && q[1]<1.1*PGH){ bd=d; bk=k; } } }
+    }
+    return HOLD[bk>=0?bk:ak];
+  }
+  /* a part's size on the sheet as the frame nearest it draws it (the held LOD cutoff) */
+  function holdSpan(P){
+    var hk=holdK(P.ins), x0=1e18, y0=1e18, x1=-1e18, y1=-1e18, n=0;
+    verts(P).forEach(function(v){ var c=hk.cam(v); if(c[2]<NEAR) return; var q=hk.scr(c); n++;
+      if(q[0]<x0) x0=q[0]; if(q[0]>x1) x1=q[0]; if(q[1]<y0) y0=q[1]; if(q[1]>y1) y1=q[1]; });
+    return n?Math.max(x1-x0,y1-y0):1e9;
+  }
   /* ROW 221: THE SCENE (camera.scene, Scout's corridorScene). Every part at one
      detail level -- the outline band, the middle of Solid detail and Outline
      detail -- whatever its distance, and the render stops before the frustum,
@@ -39622,7 +39661,9 @@ function corridorDraw(p,plans,THM,camera){
     for(e=0;e<Q.length;e++){ var e2=(e+1)%Q.length; loops.push([lo[e],lo[e2],hi[e2],hi[e]]); }
     return polyFromLoops(loops);
   }
-  function dist3(P){ if(SCENE) return SCENED; if(ISO) return D_EFF; return Math.hypot(P[0]-CE[0],P[1]-CE[1],P[2]-CE[2]); }
+  function dist3(P){ if(SCENE) return SCENED; if(ISO) return D_EFF;
+    if(HOLD){ var E=holdK(P).CE; return Math.hypot(P[0]-E[0],P[1]-E[1],P[2]-E[2]); }
+    return Math.hypot(P[0]-CE[0],P[1]-CE[1],P[2]-CE[2]); }
   /* ROW 200 §§3-4 (site-frame spec): THE CULL AND THE MASSING. A theme's frameCull,
      at the isometric camera only.
      THE CULL: a lot, street slab or junction whose prism (z up to the tallest a
@@ -39704,7 +39745,10 @@ function corridorDraw(p,plans,THM,camera){
   /* row 94: what a theme reads as camera depth -- its own size-on-the-sheet
      arithmetic divides by it -- is D_EFF at Projection 1, so a 0.35 mm dot is
      0.35 mm there too; the kit's own cam is the true one */
-  function camK(P){ var c=cam(P); if(ISO) c[2]=D_EFF; return c; }
+  function camK(P){
+    /* row 222: held, the depth is the nearest frame's, read through this frame's lens */
+    if(HOLD){ var hk=holdK(P), ch=hk.cam(P); ch[2]*=FF/hk.FF; return ch; }
+    var c=cam(P); if(ISO) c[2]=D_EFF; return c; }
   /* MILLIMETRES ON THE SHEET PER METRE OF SPACING between parallel lines
      running along `dl` and stacked along `dn`, at P. Distance alone is not
      the measure -- a wall seen nearly edge-on packs its lines together across
@@ -39712,9 +39756,10 @@ function corridorDraw(p,plans,THM,camera){
      exactly those walls. So the step is projected, and the gap measured
      perpendicular to the projected line. 0 when P is not in front of the eye. */
   function paperGap(P,dl,dn){
-    var c0=cam(P), c1=cam(add3(P,dl,0.05)), c2=cam(add3(P,dn,0.05));
+    var hk=HOLD?holdK(P):null, CM=hk?hk.cam:cam, SC=hk?hk.scr:scr;
+    var c0=CM(P), c1=CM(add3(P,dl,0.05)), c2=CM(add3(P,dn,0.05));
     if(!(c0[2]>NEAR && c1[2]>NEAR && c2[2]>NEAR)) return 0;
-    var a=scr(c0), b=scr(c1), q=scr(c2), lx=b[0]-a[0], ly=b[1]-a[1], L=Math.hypot(lx,ly);
+    var a=SC(c0), b=SC(c1), q=SC(c2), lx=b[0]-a[0], ly=b[1]-a[1], L=Math.hypot(lx,ly);
     if(L<1e-15) return 0;
     return Math.abs((q[0]-a[0])*ly-(q[1]-a[1])*lx)/L*PAGEMM/0.05;
   }
@@ -39754,12 +39799,13 @@ function corridorDraw(p,plans,THM,camera){
   /* mm on the sheet per metre at P, along the worse of a vertical surface's
      two axes; 0 when P is not in front of the eye */
   function mmPerM(P,N){
-    var c0=cam(P); if(!(c0[2]>NEAR)) return 0;
-    var a=scr(c0), e1=nrm3([-N[1],N[0],0]), best=1e18, k;
+    var hk=HOLD?holdK(P):null, CM=hk?hk.cam:cam, SC=hk?hk.scr:scr;
+    var c0=CM(P); if(!(c0[2]>NEAR)) return 0;
+    var a=SC(c0), e1=nrm3([-N[1],N[0],0]), best=1e18, k;
     var dirs=[e1,[0,0,1]];
     for(k=0;k<2;k++){
-      var c1=cam(add3(P,dirs[k],0.05)); if(!(c1[2]>NEAR)) return 0;
-      var b=scr(c1); best=Math.min(best, Math.hypot(b[0]-a[0],b[1]-a[1])*PAGEMM/0.05);
+      var c1=CM(add3(P,dirs[k],0.05)); if(!(c1[2]>NEAR)) return 0;
+      var b=SC(c1); best=Math.min(best, Math.hypot(b[0]-a[0],b[1]-a[1])*PAGEMM/0.05);
     }
     return best;
   }
@@ -40452,7 +40498,7 @@ function corridorDraw(p,plans,THM,camera){
     });
     var x0=1e18,y0=1e18,x1=-1e18,y1=-1e18;
     sp.forEach(function(q){ if(q[0]<x0)x0=q[0]; if(q[0]>x1)x1=q[0]; if(q[1]<y0)y0=q[1]; if(q[1]>y1)y1=q[1]; });
-    if(LODNOW>0 && !P.nolod && Math.max(x1-x0,y1-y0)*PAGEMM<LODNOW) return false;
+    if(LODNOW>0 && !P.nolod && (HOLD?holdSpan(P):Math.max(x1-x0,y1-y0))*PAGEMM<LODNOW) return false;
     P.sil=hull2(sp); P.sbb=[x0,y0,x1,y1];
     var cz=cam(P.ins); P.czc=cz[2];
     return true;
@@ -41009,17 +41055,22 @@ function corridorDraw(p,plans,THM,camera){
          and an eye 6 m up looks down on a truck. Measured: plan alone dropped
          the whole first gantry on Harbour seeds 7 and 41 for its trolley house,
          and a truck under strtcheck's 6 m harbour camera. */
+      /* row 222: a held film clears what stands at ANY frame's eye, in every frame */
+      var EYES=HOLD?HOLD.map(function(K){ return K.CE; }):[CE];
       function near(P){
-        var V=verts(P), b=[1e18,1e18,-1e18,-1e18], zlo=1e18, zhi=-1e18, m;
+        var V=verts(P), b=[1e18,1e18,-1e18,-1e18], zlo=1e18, zhi=-1e18, m, H=null;
         V.forEach(function(v){ if(v[0]<b[0])b[0]=v[0]; if(v[1]<b[1])b[1]=v[1]; if(v[0]>b[2])b[2]=v[0]; if(v[1]>b[3])b[3]=v[1]; if(v[2]<zlo) zlo=v[2]; if(v[2]>zhi) zhi=v[2]; });
-        if(zlo>CE[2]+CLR || zhi<CE[2]-CLR) return false;
-        if(EP[0]<b[0]-CLR || EP[0]>b[2]+CLR || EP[1]<b[1]-CLR || EP[1]>b[3]+CLR) return false;
-        var H=hull2(V.map(function(v){ return [v[0],v[1]]; })); if(!H) return false;
-        if(inConv(H,EP)) return true;
-        for(m=0;m<H.length;m++){ var a=H[m], c=H[(m+1)%H.length], dx=c[0]-a[0], dy=c[1]-a[1], L2=dx*dx+dy*dy;
-          var t=L2>0?Math.max(0,Math.min(1,((EP[0]-a[0])*dx+(EP[1]-a[1])*dy)/L2)):0;
-          if(Math.hypot(EP[0]-a[0]-t*dx,EP[1]-a[1]-t*dy)<CLR) return true; }
-        return false;
+        return EYES.some(function(CEk){
+          var EPk=[CEk[0],CEk[1]];
+          if(zlo>CEk[2]+CLR || zhi<CEk[2]-CLR) return false;
+          if(EPk[0]<b[0]-CLR || EPk[0]>b[2]+CLR || EPk[1]<b[1]-CLR || EPk[1]>b[3]+CLR) return false;
+          if(!H) H=hull2(V.map(function(v){ return [v[0],v[1]]; })); if(!H) return false;
+          if(inConv(H,EPk)) return true;
+          for(m=0;m<H.length;m++){ var a=H[m], c=H[(m+1)%H.length], dx=c[0]-a[0], dy=c[1]-a[1], L2=dx*dx+dy*dy;
+            var t=L2>0?Math.max(0,Math.min(1,((EPk[0]-a[0])*dx+(EPk[1]-a[1])*dy)/L2)):0;
+            if(Math.hypot(EPk[0]-a[0]-t*dx,EPk[1]-a[1]-t*dy)<CLR) return true; }
+          return false;
+        });
       }
       conts.forEach(function(C){
         if(C.kind==='lot' && inConv(C.poly,EP)) EYEIN++;
@@ -41031,6 +41082,12 @@ function corridorDraw(p,plans,THM,camera){
       if(EYECLR) conts.forEach(function(C){ if(C.kind==='slab') C.parts=C.parts.filter(function(P){ return !(movable(P) && drop[key(P)]); }); });
     })();
 
+    /* ROW 222: what each container holds once its content is built -- its parts,
+       their lines, a sum over their points -- on a film frame (p.film), for the
+       film's gate: with detail held, the same in every frame */
+    if(p.film) STRTTALLY.contSig=conts.map(function(C){ var nl=0, sx=0;
+      C.parts.forEach(function(Pq){ nl+=(Pq.lines||[]).length; verts(Pq).forEach(function(v){ sx+=v[0]*0.37+v[1]*0.61+v[2]*0.83; }); });
+      return C.kind+' '+C.parts.length+'/'+nl+'/'+sx.toFixed(3); });
     if(SCENE) return sceneEdges(conts);
     var live=[], nparts=0;
     /* THE WHOLE STREET, before the frustum, the LOD cut or any mirror filter,
@@ -41550,7 +41607,7 @@ function corridorDraw(p,plans,THM,camera){
        after the eight steps gets here, so every one that fits is untouched.
        The Street's near particles (row 61) are drawn as plain strokes there
        too: about 180 rings cost 3,200 points on that sheet. */
-    if(npts0<=BUDG || tries>=9) break;
+    if(npts0<=BUDG || tries>=9 || HOLD) break;
     /* ROW 119: before the reflections go, the water marks are halved -- a
        step of its own, taken only when there are marks to halve */
     if(tries===8 && !WMHALF && NWM>0){ WMHALF=1; wmAll(WMK/2); continue; }
@@ -41628,7 +41685,11 @@ function corridorDraw(p,plans,THM,camera){
                   (WMHALF?', water marks halved':'')+
                   (tries>=9?', and the water left unreflected'+((CT.dots||[]).some(function(d){ return d.near; })?', the near particles drawn as dots':''):''):'');
   return res;
-  function KIT(PL){ var K={planRef:PL, massedAt:MASSED&&MASSED.get(PL)?function(sd,s){ return MASSED.get(PL)[sd].some(function(L){ return s>=L.s0-1 && s<=L.s1+1; }); }:null, sGaps:PL.sGaps, hasGap:PL.hasGap, slabPieces:slabPieces, bbHit:bbHit, MINSP:0.7, FW:FW, UP:UP, PAD:PAD, NS:PL.NS, THM:PL.theme||THM, P3:PL.P3, add3:add3, addCable:addCable, cam:camK, dist3:dist3, drawOn:drawOn, faceC:faceC, faceIx:faceIx, frame:PL.frame, hitsAny:hitsAny, inConv:inConv, lateral:PL.lateral, mmPerM:mmPerM, paperGap:paperGap, para:para, polyFromLoops:polyFromLoops, prism:prism, prismN:prismN, splitPart:splitPart, sub:PL.sub, surf:surf, vec:vec, verts:verts, wallOf:wallOf, wp:wp, CANTI:PL.CANTI, CANYON:PL.CANYON, CE:CE, FF:FF, FLOORS:PL.FLOORS, HALFW:PL.HALFW, HW:HW, KERB:PL.KERB, KOFF:PL.KOFF, LEN:PL.LEN, NEAR:NEAR, PBACK:PL.PBACK, RT:RT, SALT_BLD:PL.SALT_BLD, STEPB:PL.STEPB, ZUP:ZUP, cables:cables, conts:conts, lots:PL.lots, slabsBySide:PL.slabsBySide, p:p};
+  /* row 222: does face f face the eye -- held, any frame's eye */
+  function facesEye(f){ return (HOLD||[KCAM]).some(function(Kc){ var E=Kc.CE; return f.n[0]*E[0]+f.n[1]*E[1]+f.n[2]*E[2]-f.d>1e-9; }); }
+  /* and the sheet's across direction at P -- held, the nearest frame's */
+  function rtAt(P){ return HOLD?holdK(P).RT:RT; }
+  function KIT(PL){ var K={planRef:PL, facesEye:facesEye, rtAt:rtAt, massedAt:MASSED&&MASSED.get(PL)?function(sd,s){ return MASSED.get(PL)[sd].some(function(L){ return s>=L.s0-1 && s<=L.s1+1; }); }:null, sGaps:PL.sGaps, hasGap:PL.hasGap, slabPieces:slabPieces, bbHit:bbHit, MINSP:0.7, FW:FW, UP:UP, PAD:PAD, NS:PL.NS, THM:PL.theme||THM, P3:PL.P3, add3:add3, addCable:addCable, cam:camK, dist3:dist3, drawOn:drawOn, faceC:faceC, faceIx:faceIx, frame:PL.frame, hitsAny:hitsAny, inConv:inConv, lateral:PL.lateral, mmPerM:mmPerM, paperGap:paperGap, para:para, polyFromLoops:polyFromLoops, prism:prism, prismN:prismN, splitPart:splitPart, sub:PL.sub, surf:surf, vec:vec, verts:verts, wallOf:wallOf, wp:wp, CANTI:PL.CANTI, CANYON:PL.CANYON, CE:CE, FF:FF, FLOORS:PL.FLOORS, HALFW:PL.HALFW, HW:HW, KERB:PL.KERB, KOFF:PL.KOFF, LEN:PL.LEN, NEAR:NEAR, PBACK:PL.PBACK, RT:RT, SALT_BLD:PL.SALT_BLD, STEPB:PL.STEPB, ZUP:ZUP, cables:cables, conts:conts, lots:PL.lots, slabsBySide:PL.slabsBySide, p:p};
     /* row 96: a plan with a theme of its own reads its own knobs and cables */
     if(PL.theme){ K.p=PL.p; K.addCable=PL.addCable||addCable; K.cables=PL.cables||cables; }
     return K; }
@@ -42208,6 +42269,8 @@ function installInput(I){
   if(STATE.eng[I.mode]!==I.eng) Object.keys(I.eng).forEach(function(k){ STATE.eng[I.mode][k]=I.eng[k]; });
   MASK=I.mask; WORD=I.word.w; WORDNAME=I.word.name; WORDSTROKES=I.word.strokes; WORDTYPED=I.word.typed;
   FLOWTEXT=I.text; POINUSER=I.tile; HFACE=I.face;
+  /* row 222: a film frame brings the page's pens (the build's worker has none) */
+  if(I.pens){ PENS=I.pens; STATE.pens=PENS; }
 }
 function packPath(p){
   var t=null; Object.keys(p).forEach(function(k){ if(!/^\d+$/.test(k)){ (t||(t={}))[k]=p[k]; } });
@@ -42337,6 +42400,10 @@ function build(input){
   try{ (setGeoCap(gvals()),cur=runEngine()); }
   catch(e){ cur=[]; err=e.message; }
   var groups=buildGroups();
+  /* row 222: a film frame comes back as the SVG Download SVG would write (no pins,
+     no recipe), with what each container held (the film's gate) */
+  if(input.film){ var gf=gvals();
+    return {gen:input.gen, err:err, film:1, svg:svgBody(groups,exportMulti(groups,cur,gf,0),gf,''), sig:(STRTTALLY&&STRTTALLY.contSig)||null}; }
   var info={POININFO:POININFO, POINSTATS:POINSTATS, FLOWINFO:FLOWINFO, MCONTINFO:MCONTINFO, SORTINFO:SORTINFO,
             STATINFO:STATINFO, STATSTATS:STATSTATS, FACTINFO:FACTINFO, FACTSTATS:FACTSTATS, STRTINFO:STRTINFO,
             STRTSTATS:STRTSTATS, POINSNAP:POINSNAP, WORDFIT:WORDFIT};
@@ -45545,15 +45612,18 @@ function scoutDrawView(V,x0,y0,w,h,thin){
 }
 function scoutDraw(){
   var t0=performance.now();
-  ctx.setTransform(1,0,0,1,0,0); ctx.fillStyle='#fbf8f3'; ctx.fillRect(0,0,W,H);
+  /* row 222: Blend lays a frame over a 55% fade of the last (SCOUT.fade) */
+  ctx.setTransform(1,0,0,1,0,0); ctx.globalAlpha=SCOUT.fade||1; ctx.fillStyle='#fbf8f3'; ctx.fillRect(0,0,W,H); ctx.globalAlpha=1;
   if(SCOUT.key!==scoutKey()) corridorScene();
   if(!SCOUT.scn){ return; }
   if(SCOUT.vary){ scoutDrawVary(); SCOUT.ms=performance.now()-t0; scoutReadout(); return; }
   /* the page, as the build fits it */
   var vs=VIEW.s*W, vox=VIEW.ox*W, voy=VIEW.oy*H;
   ctx.strokeStyle='#d9d2c6'; ctx.lineWidth=2; ctx.strokeRect(vox,voy,PGW*vs,PGH*vs);
-  SCOUT.V=scoutValues();
+  /* row 222: while a film plays, the view is the frame's own knobs, unsnapped */
+  SCOUT.V=FILM.playV||scoutValues();
   SCOUT.cams=scoutDrawView(SCOUT.V,0,0,W,H,false);
+  if(scoutHas('camabs')) filmOverlay(SCOUT.cams);
   SCOUT.ms=performance.now()-t0;
   scoutReadout();
 }
@@ -45593,11 +45663,13 @@ function scoutBar(){
     '<button type="button" id="scoutRender" class="go">Render this view</button>'+
     '<button type="button" id="scoutVary">View variations</button>'+
     '<button type="button" id="scoutExit" title="Esc">Leave Scout</button></div>'+
-    '<div class="sbhelp" id="scoutHelp"></div><dl class="sbread" id="scoutRead"></dl>';
+    '<div class="sbhelp" id="scoutHelp"></div><dl class="sbread" id="scoutRead"></dl>'+
+    (abs?'<div class="sbfilm" id="filmRow"></div><div class="sbhelp" id="filmStat"></div>':'');
   b.querySelectorAll('[data-sm]').forEach(function(x){ x.addEventListener('click',function(){ scoutSetMode(x.getAttribute('data-sm')); }); });
   document.getElementById('scoutRender').addEventListener('click',scoutRender);
   document.getElementById('scoutVary').addEventListener('click',function(){ if(SCOUT.vary){ SCOUT.vary=null; scoutKick(); } else scoutVaryStart(); });
   document.getElementById('scoutExit').addEventListener('click',function(){ scoutLeave(); });
+  if(abs) filmBar();
   scoutReadout();
 }
 var SCOUTHELP={iso:'Drag turns and tilts. Shift-drag or right-drag pans. Wheel or pinch zooms.',
@@ -45629,6 +45701,7 @@ function scoutGo(){
 }
 function scoutLeave(){
   if(!SCOUT.on) return;
+  filmPlayStop();
   SCOUT.on=false; SCOUT.vary=null; SCOUT.held={}; scoutBar();
   if(SCOUT.raf){ cancelAnimationFrame(SCOUT.raf); SCOUT.raf=0; }
   schedPaint();
@@ -45716,6 +45789,407 @@ function scoutInstall(){
   if(btn) btn.addEventListener('click',function(){ if(SCOUT.on) scoutLeave(); else if(!SCOUT.pending) scoutEnter(); });
 }
 scoutInstall();
+
+/* ---- ROW 222: THE FLY-THROUGH -----------------------------------------------
+   docs/specs/2026-11-04-town-knobs-scout-flythrough_v2.md, Row C. In Scout, on an
+   engine with Camera placed: keyframes (Add keyframe, K), a path through them,
+   Play, and Render film.
+   THE PATH: Catmull-Rom through the keyframes' eyes; the heading unwrapped
+   (each key taken the short way round from the one before) and then
+   Catmull-Rom, and pitch and field of view likewise. It passes through every
+   keyframe exactly (at t = i/(n-1) the spline IS the key).
+   A FRAME IS A SET OF CAMERA KNOBS: frame k of N is the path at k/(N-1),
+   written raw (not snapped) as Camera placed 1 at Projection 0. Seed and every
+   other knob are the page's when Render film is pressed, with puddles, front
+   puddle and particles off (all three are placed in the view, as in Scout).
+   HOLD DETAIL (on by default) hands every frame's camera to the build
+   (eng.filmHold), and corridorDraw decides detail by the frame that comes
+   nearest each point, so the content is the same in every frame and only the
+   projection moves (the spec's "decided once from its nearest approach").
+   FRAMES ARE SVG, written by svgBody (v365) in the build's own worker, stored
+   in IndexedDB (`spad-film`) under the film's id -- a hash of everything that
+   makes it -- with a meta record holding the whole input, so Resume continues a
+   stopped film after a reload whatever the page holds now. No IndexedDB: the
+   frames live in memory for the session.
+   STATE.path[engine] = {keys:[{eye:[x,y,z], hdg, pitch, fov}], secs, fps}.
+   Save preset and Save to browser write it (presetSnapshot); an export's
+   recipe and the knob panel never see it. */
+var FILM={play:null, playV:null, run:null, w:null, at:0, hold:true, blend:false, step12:false, sigs:[], log:[]};
+function filmPath(){
+  var A=STATE.path||(STATE.path={});
+  return A[mode]||(A[mode]={keys:[], secs:10, fps:12});
+}
+function filmCR(a,b,c,d,f){ return 0.5*(2*b+(c-a)*f+(2*a-5*b+4*c-d)*f*f+(3*b-a-3*c+d)*f*f*f); }
+/* the path at t in [0,1] */
+function filmSample(P,t){
+  var K=P.keys, n=K.length, i;
+  if(!n) return null;
+  if(n===1) return {eye:K[0].eye.slice(), hdg:K[0].hdg, pitch:K[0].pitch, fov:K[0].fov};
+  var H=[K[0].hdg];
+  for(i=1;i<n;i++) H.push(H[i-1]+((((K[i].hdg-H[i-1])%360)+540)%360-180));
+  var u=Math.max(0,Math.min(1,t))*(n-1), b=Math.min(n-2,Math.floor(u)), f=u-b, a=Math.max(0,b-1), c=b+1, d=Math.min(n-1,b+2);
+  function v(g){ return filmCR(g(a),g(b),g(c),g(d),f); }
+  return {eye:[0,1,2].map(function(m){ return v(function(j){ return K[j].eye[m]; }); }),
+          hdg:v(function(j){ return H[j]; }), pitch:v(function(j){ return K[j].pitch; }), fov:v(function(j){ return K[j].fov; })};
+}
+function filmN(P){ return Math.max(2,Math.round(P.secs*P.fps)); }
+function filmT(k,N){ return N>1?k/(N-1):0; }
+/* a sample as the camera knobs a frame is built at: raw, inside the knobs' ranges */
+function filmKnobs(s){
+  function cl(k,v){ var sp=specOf(SPEC[mode][1],k); return sp?Math.max(sp[2],Math.min(sp[3],v)):v; }
+  return {proj:0, camabs:1, eyex:cl('eyex',s.eye[0]), eyey:cl('eyey',s.eye[1]), camz:cl('camz',s.eye[2]),
+          hdg:((s.hdg%360)+360)%360, pitch:cl('pitch',s.pitch), fov:cl('fov',s.fov)};
+}
+function filmR2(v){ return Math.round(v*100)/100; }
+/* ---- keyframes ---- */
+function filmKeyNow(){
+  var C=SCOUT.C, e=SCOUT.mode==='orbit'?scoutOrbitEye():C.eye;
+  return {eye:e.map(filmR2), hdg:filmR2(((C.hdg%360)+360)%360), pitch:filmR2(C.pitch), fov:filmR2(C.fov)};
+}
+function filmAddKey(){
+  if(!SCOUT.on || !scoutHas('camabs')) return;
+  if(SCOUT.mode==='iso'){ msg('a keyframe is a perspective view: switch to Orbit or Fly first'); return; }
+  var P=filmPath(); P.keys.push(filmKeyNow()); filmBar(); scoutKick();
+  msg('keyframe '+P.keys.length+' added');
+}
+function filmJump(i){
+  var k=filmPath().keys[i]; if(!k) return;
+  filmPlayStop();
+  var C=SCOUT.C; C.eye=k.eye.slice(); C.hdg=k.hdg; C.pitch=k.pitch; C.fov=k.fov;
+  if(SCOUT.mode!=='fly'){ SCOUT.mode='fly'; scoutBar(); }
+  scoutKick();
+}
+function filmDelKey(i){ var P=filmPath(); P.keys.splice(i,1); filmBar(); scoutKick(); }
+function filmMoveKey(i,j){
+  var P=filmPath(); if(i===j || !P.keys[i] || j<0 || j>=P.keys.length) return;
+  var k=P.keys.splice(i,1)[0]; P.keys.splice(j,0,k); filmBar(); scoutKick();
+}
+/* ---- the path over Scout's view: dashed, keyframes as numbered dots ---- */
+function filmOverlay(K){
+  var P=filmPath(); if(!P.keys.length || FILM.play || !K) return;
+  var vs=VIEW.s*W, vox=VIEW.ox*W, voy=VIEW.oy*H, lim=8*Math.max(W,H), M=Math.max(48,P.keys.length*32), i, pen=false;
+  function at(e){ var c=K.cam(e); if(!K.ISO && !(c[2]>K.near)) return null; var q=K.scr(c), x=q[0]*vs+vox, y=q[1]*vs+voy;
+    return (Math.abs(x)>lim||Math.abs(y)>lim)?null:[x,y]; }
+  ctx.save(); ctx.strokeStyle='#c96f3a'; ctx.lineWidth=2; ctx.setLineDash([8,6]); ctx.beginPath();
+  for(i=0;i<=M;i++){ var q=at(filmSample(P,i/M).eye); if(!q){ pen=false; continue; } if(pen) ctx.lineTo(q[0],q[1]); else ctx.moveTo(q[0],q[1]); pen=true; }
+  ctx.stroke(); ctx.setLineDash([]);
+  ctx.font='bold 11px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  P.keys.forEach(function(k,j){ var q=at(k.eye); if(!q) return;
+    ctx.fillStyle='#c96f3a'; ctx.beginPath(); ctx.arc(q[0],q[1],9,0,2*Math.PI); ctx.fill();
+    ctx.fillStyle='#fff'; ctx.fillText(String(j+1),q[0],q[1]); });
+  ctx.restore();
+}
+/* ---- Play: the path in Scout, in real time; 12 fps steps it; Blend lays each
+   frame over a 55% fade of the last ---- */
+function filmPlay(){
+  var P=filmPath();
+  if(FILM.play){ filmPlayStop(); return; }
+  if(P.keys.length<2){ msg('a film needs two keyframes or more'); return; }
+  FILM.play={t0:performance.now(), raf:0};
+  if(SCOUT.mode!=='fly'){ SCOUT.mode='fly'; scoutBar(); } else filmBar();
+  FILM.play.raf=requestAnimationFrame(filmPlayTick);
+}
+function filmPlayTick(){
+  var F=FILM.play; if(!F || !SCOUT.on) return;
+  var P=filmPath(), N=filmN(P), el=(performance.now()-F.t0)/1000, t;
+  if(FILM.step12){ var N12=Math.max(2,Math.round(P.secs*12)); t=Math.min(N12-1,Math.floor(el*12))/(N12-1); }
+  else t=Math.min(1,el/P.secs);
+  var s=filmSample(P,t), C=SCOUT.C;
+  C.eye=s.eye.slice(); C.hdg=s.hdg; C.pitch=s.pitch; C.fov=s.fov;
+  FILM.playV=filmKnobs(s); FILM.at=Math.round(t*(N-1));
+  var fa=document.getElementById('filmAt'); if(fa) fa.value=FILM.at;
+  SCOUT.fade=FILM.blend?0.55:1; paint(); SCOUT.fade=1;
+  if(t<1) F.raf=requestAnimationFrame(filmPlayTick); else filmPlayStop();
+}
+function filmPlayStop(){
+  if(!FILM.play) return;
+  if(FILM.play.raf) cancelAnimationFrame(FILM.play.raf);
+  FILM.play=null; FILM.playV=null; filmBar(); scoutKick();
+}
+/* scrub: the view at frame k */
+function filmScrub(k){
+  var P=filmPath(); if(P.keys.length<2) return;
+  filmPlayStop();
+  var N=filmN(P); FILM.at=Math.max(0,Math.min(N-1,k|0));
+  var s=filmSample(P,filmT(FILM.at,N)), C=SCOUT.C;
+  C.eye=s.eye.slice(); C.hdg=s.hdg; C.pitch=s.pitch; C.fov=s.fov;
+  if(SCOUT.mode!=='fly'){ SCOUT.mode='fly'; scoutBar(); }
+  scoutKick();
+}
+/* ---- the frame store: IndexedDB, or memory when there is none ---- */
+var FILMDB={mem:{frames:{}, meta:{}}, idb:null, ready:false, opening:false, waits:[],
+  open:function(cb){
+    if(FILMDB.ready){ cb(); return; }
+    FILMDB.waits.push(cb); if(FILMDB.opening) return; FILMDB.opening=true;
+    function done(){ if(FILMDB.ready) return; FILMDB.ready=true; FILMDB.opening=false;
+      var w=FILMDB.waits; FILMDB.waits=[]; w.forEach(function(f){ f(); }); }
+    if(typeof indexedDB==='undefined' || !indexedDB){ done(); return; }
+    try{
+      var r=indexedDB.open('spad-film',1);
+      r.onupgradeneeded=function(){ var d=r.result; ['frames','meta'].forEach(function(s){ if(!d.objectStoreNames.contains(s)) d.createObjectStore(s); }); };
+      r.onsuccess=function(){ if(!FILMDB.ready) FILMDB.idb=r.result; done(); };
+      r.onerror=r.onblocked=done;
+    }catch(e){ done(); }
+  },
+  put:function(st,k,v,cb){ FILMDB.open(function(){
+    if(!FILMDB.idb){ FILMDB.mem[st][k]=v; if(cb) cb(true); return; }
+    try{ var t=FILMDB.idb.transaction(st,'readwrite'); t.objectStore(st).put(v,k);
+      t.oncomplete=function(){ if(cb) cb(true); }; t.onerror=t.onabort=function(){ if(cb) cb(false); }; }
+    catch(e){ if(cb) cb(false); } }); },
+  get:function(st,k,cb){ FILMDB.open(function(){
+    if(!FILMDB.idb){ cb(FILMDB.mem[st][k]); return; }
+    try{ var r=FILMDB.idb.transaction(st,'readonly').objectStore(st).get(k);
+      r.onsuccess=function(){ cb(r.result); }; r.onerror=function(){ cb(undefined); }; }
+    catch(e){ cb(undefined); } }); }
+};
+/* ---- Render film ---- */
+var FILMOFF={puddles:0, hero:0, dots:0, pnear:0};
+function filmBase(){
+  var eng=Object.assign({},STATE.eng[mode]);
+  Object.keys(FILMOFF).forEach(function(k){ if(k in eng) eng[k]=FILMOFF[k]; });
+  return {mode:mode, seed:seed, draft:false, g:Object.assign({},STATE.g), eng:eng, mask:MASK,
+          word:{w:WORD, name:WORDNAME, strokes:WORDSTROKES, typed:WORDTYPED}, text:FLOWTEXT, tile:POINUSER, face:HFACE,
+          pens:Object.assign({},PENS)};
+}
+function filmInput(m,k){
+  var b=m.base, eng=Object.assign({},b.eng,m.frames[k],{film:1});
+  if(m.hold) eng.filmHold=m.frames;
+  return Object.assign({},b,{gen:'film'+k, film:1, eng:eng});
+}
+function filmStart(){
+  if(FILM.run){ msg('a film is rendering: Stop it first'); return; }
+  var P=filmPath(); if(P.keys.length<2){ msg('a film needs two keyframes or more'); return; }
+  filmPlayStop();
+  var N=filmN(P), base=filmBase(), frames=[], k;
+  for(k=0;k<N;k++) frames.push(filmKnobs(filmSample(P,filmT(k,N))));
+  var m={v:1, mode:mode, N:N, fps:P.fps, secs:P.secs, hold:!!FILM.hold, base:base, frames:frames, done:0, ms:0, made:Date.now()};
+  m.id=mode+'-'+fnv36(JSON.stringify([base.mode,base.seed,base.g,base.eng,base.pens,frames,m.hold]));
+  FILMDB.get('meta',m.id,function(old){
+    if(old && old.N===N && old.done>0 && old.done<=N) m=old;
+    FILMDB.put('meta','last',m.id,function(){ filmGo(m); });
+  });
+}
+function filmResume(){
+  if(FILM.run){ msg('a film is rendering already'); return; }
+  FILMDB.get('meta','last',function(id){
+    if(!id){ msg('no film to resume'); return; }
+    FILMDB.get('meta',id,function(m){
+      if(!m){ msg('no film to resume'); return; }
+      if(m.done>=m.N){ msg('film '+m.id+' is rendered: all '+m.N+' frames'); filmBar(); return; }
+      filmGo(m);
+    });
+  });
+}
+function filmGo(m){
+  FILM.run={meta:m, n:0, ms:0, stop:false, from:m.done}; FILM.sigs=[]; FILM.log=[];
+  filmBar(); filmStat(); filmNext();
+}
+function filmNext(){
+  var R=FILM.run; if(!R || R.stop) return;
+  var m=R.meta, k=m.done;
+  if(k>=m.N){ filmDone(); return; }
+  var I=filmInput(m,k), t=performance.now();
+  filmBuild(I,function(res){
+    if(FILM.run!==R || R.stop) return;
+    if(!res || res.err || !res.svg){ filmFail('frame '+(k+1)+': '+((res&&res.err)||'no drawing')); return; }
+    var ms=performance.now()-t, cam={};
+    ['proj','camabs','eyex','eyey','camz','hdg','pitch','fov'].forEach(function(q){ cam[q]=I.eng[q]; });
+    FILM.sigs[k]=res.sig||null; FILM.log.push({k:k, cam:cam, hold:!!I.eng.filmHold, ms:ms});
+    FILMDB.put('frames',m.id+'|'+k,res.svg,function(ok){
+      if(FILM.run!==R) return;
+      if(!ok){ filmFail('the browser would not store frame '+(k+1)+' (storage full?)'); return; }
+      m.done=k+1; m.ms+=ms; R.n++; R.ms+=ms;
+      FILMDB.put('meta',m.id,m,function(){ filmStat(); setTimeout(filmNext,0); });
+    });
+  });
+}
+/* one frame: in a worker of its own (the page's own text, like the build's),
+   or inline with the page's state put back afterwards */
+function filmBuild(I,cb){
+  if(!FILM.noWorker && typeof Worker!=='undefined' && typeof Blob!=='undefined' && typeof URL!=='undefined' && PAGESRC){
+    try{
+      if(!WK.url){ var src=workerSource(); if(src) WK.url=URL.createObjectURL(new Blob([src],{type:'text/javascript'})); }
+      if(WK.url){
+        if(!FILM.w) FILM.w=new Worker(WK.url);
+        FILM.w.onmessage=function(e){ var R=e.data||{}; cb(R.fatal?{err:R.fatal}:R); };
+        FILM.w.onerror=function(){ try{ FILM.w.terminate(); }catch(er){} FILM.w=null; FILM.noWorker=true; setTimeout(function(){ cb(filmInline(I)); },0); };
+        FILM.w.postMessage(I); return;
+      }
+    }catch(e){ FILM.w=null; FILM.noWorker=true; }
+  }
+  setTimeout(function(){ cb(filmInline(I)); },0);
+}
+function filmInline(I){
+  function put(o,s){ Object.keys(o).forEach(function(k){ if(!(k in s)) delete o[k]; }); Object.keys(s).forEach(function(k){ o[k]=s[k]; }); }
+  var K={mode:mode, seed:seed, DRAFT:DRAFT, g:Object.assign({},STATE.g), eng:Object.assign({},STATE.eng[I.mode]), MASK:MASK, WORD:WORD,
+    WORDNAME:WORDNAME, WORDSTROKES:WORDSTROKES, WORDTYPED:WORDTYPED, FLOWTEXT:FLOWTEXT, POINUSER:POINUSER, HFACE:HFACE, PENS:PENS, cur:cur,
+    info:[POININFO,POINSTATS,FLOWINFO,MCONTINFO,SORTINFO,STATINFO,STATSTATS,FACTINFO,FACTSTATS,STRTINFO,STRTSTATS,POINSNAP,WORDFIT,STRTTALLY]}, R;
+  try{ R=build(I); }
+  catch(e){ R={err:String((e&&e.message)||e)}; }
+  finally{
+    mode=K.mode; seed=K.seed; DRAFT=K.DRAFT; put(STATE.g,K.g); put(STATE.eng[I.mode],K.eng); MASK=K.MASK; WORD=K.WORD; WORDNAME=K.WORDNAME;
+    WORDSTROKES=K.WORDSTROKES; WORDTYPED=K.WORDTYPED; FLOWTEXT=K.FLOWTEXT; POINUSER=K.POINUSER; HFACE=K.HFACE; PENS=K.PENS; STATE.pens=PENS; cur=K.cur;
+    POININFO=K.info[0]; POINSTATS=K.info[1]; FLOWINFO=K.info[2]; MCONTINFO=K.info[3]; SORTINFO=K.info[4]; STATINFO=K.info[5]; STATSTATS=K.info[6];
+    FACTINFO=K.info[7]; FACTSTATS=K.info[8]; STRTINFO=K.info[9]; STRTSTATS=K.info[10]; POINSNAP=K.info[11]; WORDFIT=K.info[12]; STRTTALLY=K.info[13];
+    setGeoCap(gvals());
+  }
+  return R;
+}
+function filmHalt(){ var R=FILM.run; if(R) R.stop=true; FILM.run=null; if(FILM.w){ try{ FILM.w.terminate(); }catch(e){} FILM.w=null; } }
+function filmStop(){
+  var R=FILM.run; if(!R){ msg('no film is rendering'); return; }
+  filmHalt(); filmStat(R.meta,'stopped after frame '+R.meta.done+' of '+R.meta.N+': Resume continues at frame '+(R.meta.done+1));
+  filmBar();
+}
+function filmFail(why){ var m=FILM.run&&FILM.run.meta; filmHalt(); filmStat(m,'stopped: '+why); filmBar(); }
+function filmDone(){
+  var R=FILM.run, m=R.meta; filmHalt();
+  filmStat(m,'rendered: '+m.N+' frames at '+m.fps+' fps, '+(m.ms/m.N/1000).toFixed(1)+' s a frame. Save film writes the video');
+  filmBar();
+}
+function filmTime(s){ s=Math.max(0,Math.round(s)); return s<60?s+' s':s<3600?Math.floor(s/60)+' min '+(s%60)+' s':Math.floor(s/3600)+' h '+Math.floor((s%3600)/60)+' min'; }
+/* progress, frames done, seconds a frame and time left, on the stat line and the bar */
+function filmStat(m,tail){
+  var R=FILM.run; m=m||(R&&R.meta); if(!m) return;
+  var txt;
+  if(tail) txt='Film '+m.id+': '+tail;
+  else {
+    var per=R&&R.n?R.ms/R.n/1000:0;
+    txt='Film '+m.id+': '+Math.round(100*m.done/m.N)+'% · '+m.done+' of '+m.N+' frames'+
+      (per?' · '+per.toFixed(1)+' s a frame · about '+filmTime(per*(m.N-m.done))+' left':' · building frame '+(m.done+1)+'…');
+  }
+  FILM.statText=txt;
+  var a=document.getElementById('stat'); if(a) a.textContent=txt;
+  var b=document.getElementById('filmStat'); if(b) b.textContent=txt;
+}
+/* ---- Save film, Save frame ---- */
+function filmLast(cb){ FILMDB.get('meta','last',function(id){ if(!id){ cb(null); return; } FILMDB.get('meta',id,function(m){ cb(m||null); }); }); }
+function filmFrames(m,cb){
+  var out=[], k=0;
+  (function nx(){ if(k>=m.N){ cb(out); return; } FILMDB.get('frames',m.id+'|'+k,function(s){ out.push(s); k++; nx(); }); })();
+}
+function filmDownload(blob,name){
+  var a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; a.click();
+}
+function filmSave(){
+  if(FILM.run){ msg('the film is still rendering'); return; }
+  filmLast(function(m){
+    if(!m){ msg('no film rendered yet'); return; }
+    if(m.done<m.N){ msg('film '+m.id+' has '+(m.N-m.done)+' frames to render: Resume'); return; }
+    filmFrames(m,function(svgs){
+      if(svgs.some(function(s){ return !s; })){ msg('film '+m.id+' is missing frames: render it again'); return; }
+      msg('Save film: recording '+m.N+' frames at '+m.fps+' fps'+(FILM.blend?', blended':'')+'…');
+      FILMX.assemble(svgs,m.fps,!!FILM.blend,function(blob,why){
+        if(!blob){ msg('Save film: '+why); return; }
+        filmDownload(blob,m.mode+'_film_'+dayStamp(new Date())+'-'+m.id.split('-').pop()+(FILM.blend?'_blend':'')+'.webm');
+        msg('Save film: '+m.N+' frames, '+filmTime(m.N/m.fps));
+      });
+    });
+  });
+}
+function filmSaveFrame(){
+  filmLast(function(m){
+    if(!m){ msg('no film rendered yet'); return; }
+    var k=Math.max(0,Math.min(m.N-1,FILM.at|0));
+    FILMDB.get('frames',m.id+'|'+k,function(s){
+      if(!s){ msg('frame '+(k+1)+' of '+m.id+' is not rendered yet'); return; }
+      filmDownload(new Blob([s],{type:'image/svg+xml'}),m.mode+'_film_'+m.id.split('-').pop()+'_f'+String(k+1).padStart(4,'0')+'.svg');
+      msg('saved frame '+(k+1)+' of '+m.N);
+    });
+  });
+}
+/* the video: each frame drawn onto a canvas and recorded at the film's rate
+   (MediaRecorder, WebM). Blend lays each frame over a 55% fade of the last.
+   The gate replaces assemble to see exactly what it is handed. */
+var FILMX={assemble:function(svgs,fps,blend,cb){
+  if(typeof MediaRecorder==='undefined' || !document.createElement('canvas').captureStream){ cb(null,'this browser cannot record video (no MediaRecorder)'); return; }
+  var mm=/width="([\d.]+)mm" height="([\d.]+)mm"/.exec(svgs[0])||[0,1,1], cw=1280, ch=2*Math.round(cw*(+mm[2])/(+mm[1])/2);
+  var c=document.createElement('canvas'); c.width=cw; c.height=ch;
+  var x=c.getContext('2d'), st=c.captureStream(0), tr=st.getVideoTracks()[0];
+  var mime=['video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm'].filter(function(t){ return !MediaRecorder.isTypeSupported || MediaRecorder.isTypeSupported(t); })[0];
+  var rec=new MediaRecorder(st,{mimeType:mime, videoBitsPerSecond:12e6}), parts=[];
+  rec.ondataavailable=function(e){ if(e.data && e.data.size) parts.push(e.data); };
+  rec.onstop=function(){ cb(new Blob(parts,{type:'video/webm'})); };
+  function load(k,f){ var im=new Image(), u=URL.createObjectURL(new Blob([svgs[k]],{type:'image/svg+xml'}));
+    im.onload=function(){ URL.revokeObjectURL(u); f(im); }; im.onerror=function(){ f(null); }; im.src=u; }
+  x.fillStyle='#ffffff'; x.fillRect(0,0,cw,ch);
+  var k=0, t0=0, nextIm=null;
+  load(0,function(im0){
+    if(!im0){ cb(null,'frame 1 would not load'); return; }
+    rec.start(); t0=performance.now(); nextIm=im0;
+    (function show(){
+      var im=nextIm;
+      if(!im){ rec.stop(); cb(null,'frame '+(k+1)+' would not load'); return; }
+      x.globalAlpha=blend?0.55:1; x.fillStyle='#ffffff'; x.fillRect(0,0,cw,ch); x.globalAlpha=1; x.drawImage(im,0,0,cw,ch);
+      if(tr.requestFrame) tr.requestFrame();
+      k++;
+      if(k>=svgs.length){ setTimeout(function(){ rec.stop(); },1000/fps); return; }
+      load(k,function(n){ nextIm=n; setTimeout(show,Math.max(0,t0+k*1000/fps-performance.now())); });
+    })();
+  });
+}};
+/* ---- presets carry the path ---- */
+function filmPathsOut(){
+  var A=STATE.path||{}, o=null;
+  Object.keys(A).forEach(function(e){ var P=A[e]; if(P && P.keys && P.keys.length) (o||(o={}))[e]=JSON.parse(JSON.stringify(P)); });
+  return o;
+}
+function filmReadPaths(o){
+  var out={};
+  Object.keys(o).forEach(function(e){
+    var P=o[e]; if(!SPEC[e] || !P || !Array.isArray(P.keys)) return;
+    var keys=P.keys.filter(function(k){ return k && Array.isArray(k.eye) && k.eye.length===3 && k.eye.every(isFinite) &&
+      isFinite(k.hdg) && isFinite(k.pitch) && isFinite(k.fov); })
+      .map(function(k){ return {eye:k.eye.map(Number), hdg:+k.hdg, pitch:+k.pitch, fov:+k.fov}; });
+    out[e]={keys:keys, secs:isFinite(P.secs)?Math.max(1,Math.min(600,+P.secs)):10, fps:+P.fps===24?24:12};
+  });
+  return out;
+}
+function presetSnapshot(){ var o=snapshot(), P=filmPathsOut(); if(P) o.path=P; return o; }
+/* ---- the film row of the Scout bar ---- */
+function filmBar(){
+  var b=document.getElementById('filmRow'); if(!b) return;
+  var P=filmPath(), N=filmN(P), run=!!FILM.run, two=P.keys.length>=2;
+  b.innerHTML=
+    '<button type="button" id="filmKey" title="K. The view Scout shows now, as a keyframe (Orbit or Fly).">Add keyframe</button>'+
+    '<ol id="filmKeys">'+P.keys.map(function(k,i){ return '<li draggable="true" data-fi="'+i+'"><button type="button" data-fk="'+i+'" title="Go to keyframe '+(i+1)+' (drag to reorder)">'+(i+1)+'</button>'+
+      '<button type="button" data-fdel="'+i+'" title="Delete keyframe '+(i+1)+'">×</button></li>'; }).join('')+'</ol>'+
+    '<button type="button" id="filmPlay"'+(two?'':' disabled')+'>'+(FILM.play?'Stop playing':'Play')+'</button>'+
+    '<label><input type="checkbox" id="filmStep"'+(FILM.step12?' checked':'')+'> 12 fps</label>'+
+    '<label><input type="checkbox" id="filmBlend"'+(FILM.blend?' checked':'')+'> Blend</label>'+
+    '<label>Length <input type="number" id="filmSecs" min="1" max="600" step="1" value="'+P.secs+'"> s</label>'+
+    '<label>Rate <select id="filmFps"><option value="12"'+(P.fps===12?' selected':'')+'>12 fps</option><option value="24"'+(P.fps===24?' selected':'')+'>24 fps</option></select></label>'+
+    '<label>Frame <input type="range" id="filmAt" min="0" max="'+(N-1)+'" step="1" value="'+Math.min(FILM.at,N-1)+'"'+(two?'':' disabled')+'></label>'+
+    '<label title="Each part keeps the detail of the frame that comes nearest it, so the city does not change from frame to frame."><input type="checkbox" id="filmHold"'+(FILM.hold?' checked':'')+'> Hold detail</label>'+
+    '<button type="button" id="filmRender" class="go"'+(two&&!run?'':' disabled')+'>Render film ('+N+' frames)</button>'+
+    '<button type="button" id="filmStop"'+(run?'':' disabled')+'>Stop</button>'+
+    '<button type="button" id="filmResume"'+(run?' disabled':'')+'>Resume</button>'+
+    '<button type="button" id="filmSave"'+(run?' disabled':'')+'>Save film</button>'+
+    '<button type="button" id="filmFrame">Save frame</button>';
+  var st=document.getElementById('filmStat'); if(st) st.textContent=FILM.statText||'';
+  function on(id,ev,f){ var e=document.getElementById(id); if(e) e.addEventListener(ev,f); }
+  on('filmKey','click',filmAddKey); on('filmPlay','click',filmPlay);
+  on('filmStep','change',function(e){ FILM.step12=e.target.checked; });
+  on('filmBlend','change',function(e){ FILM.blend=e.target.checked; });
+  on('filmHold','change',function(e){ FILM.hold=e.target.checked; });
+  on('filmSecs','change',function(e){ var v=+e.target.value; if(isFinite(v)) P.secs=Math.max(1,Math.min(600,Math.round(v))); filmBar(); });
+  on('filmFps','change',function(e){ P.fps=+e.target.value===24?24:12; filmBar(); });
+  on('filmAt','input',function(e){ filmScrub(+e.target.value); });
+  on('filmRender','click',filmStart); on('filmStop','click',filmStop); on('filmResume','click',filmResume);
+  on('filmSave','click',filmSave); on('filmFrame','click',filmSaveFrame);
+  b.querySelectorAll('[data-fk]').forEach(function(x){ x.addEventListener('click',function(){ filmJump(+x.getAttribute('data-fk')); }); });
+  b.querySelectorAll('[data-fdel]').forEach(function(x){ x.addEventListener('click',function(){ filmDelKey(+x.getAttribute('data-fdel')); }); });
+  b.querySelectorAll('[data-fi]').forEach(function(li){
+    li.addEventListener('dragstart',function(e){ FILM.drag=+li.getAttribute('data-fi'); try{ e.dataTransfer.setData('text/plain',String(FILM.drag)); }catch(er){} });
+    li.addEventListener('dragover',function(e){ e.preventDefault(); });
+    li.addEventListener('drop',function(e){ e.preventDefault(); if(FILM.drag!=null) filmMoveKey(FILM.drag,+li.getAttribute('data-fi')); FILM.drag=null; });
+  });
+}
+document.addEventListener('keydown',function(e){
+  if(!SCOUT.on) return;
+  var t=e.target, tag=t&&t.tagName; if(tag==='INPUT'||tag==='TEXTAREA'||tag==='SELECT') return;
+  if((e.key||'').toLowerCase()==='k' && !e.ctrlKey && !e.metaKey && !e.altKey){ e.preventDefault(); filmAddKey(); }
+});
 
 /* INSTALL A TILE, FROM WHEREVER IT CAME. Returns the line to show. The three
    callers -- Load preset, Load tile, and the tile-maker handoff -- differ only
@@ -45835,6 +46309,9 @@ function restore(o){
     if(rt.err){ POINUSER=null; unknown.push('tile ('+rt.err+')'); }
     else POINUSER=rt.tile;
   } else POINUSER=null;
+  /* row 222: a preset's film path (Save preset and Save to browser write one);
+     absent, the paths the page holds are left as they are */
+  if(o.path && typeof o.path==='object'){ STATE.path=filmReadPaths(o.path); if(SCOUT.on) filmBar(); }
   mountTabs(); mountG(); mount();
   return unknown;
 }
@@ -45853,7 +46330,7 @@ document.getElementById('pReset').addEventListener('click',function(){
 });
 document.getElementById('pSave').addEventListener('click',function(){
   var a=document.createElement('a');
-  a.href=URL.createObjectURL(new Blob([JSON.stringify(snapshot(),null,1)],{type:'application/json'}));
+  a.href=URL.createObjectURL(new Blob([JSON.stringify(presetSnapshot(),null,1)],{type:'application/json'}));
   a.download=commitName('preset').name+'.json'; a.click();
   msg('preset saved as '+a.download);
 });
@@ -45962,7 +46439,7 @@ if(!LS_OK){
   document.getElementById('pStore').addEventListener('click',function(){
     var n=(document.getElementById('pName').value||'').trim();
     if(!n) n=peekName().name;
-    try{ localStorage.setItem(LSK+n, JSON.stringify(snapshot())); refreshSlots(); msg('saved to slot "'+n+'"'); }
+    try{ localStorage.setItem(LSK+n, JSON.stringify(presetSnapshot())); refreshSlots(); msg('saved to slot "'+n+'"'); }
     catch(e){ msg('slot save failed: '+e.message); }
   });
   document.getElementById('pRecall').addEventListener('click',function(){
