@@ -58,7 +58,8 @@ kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-b
 /* caption */
 #cap{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 92px);font-family:var(--display);font-weight:600;font-size:clamp(22px,4vw,40px);letter-spacing:.04em;text-transform:uppercase;text-shadow:0 2px 18px rgba(0,0,0,.8);pointer-events:none;opacity:0;transition:opacity .5s;white-space:nowrap}
 #cap.on{opacity:1}
-.bars::before,.bars::after{content:"";position:fixed;left:0;right:0;height:11vh;background:#000;z-index:2;pointer-events:none}
+.bars::before,.bars::after{content:"";position:fixed;left:0;right:0;height:min(11vh,9vw);background:#000;z-index:2;pointer-events:none}
+#top,#routes,#pad,#hud,#cap{z-index:3}
 .bars::before{top:0}.bars::after{bottom:0}
 
 /* drawer */
@@ -99,6 +100,7 @@ body.touch.fly #pad{display:flex}
 #load{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);font-family:var(--mono);font-size:12px;color:var(--dim)}
 @media (max-width:640px){
   .brand{font-size:18px}
+  #hud{display:none}
   #card{bottom:calc(env(safe-area-inset-bottom,0px) + 86px)}
   #card p{font-size:14px}
   #tools .wide{display:none}
@@ -170,6 +172,7 @@ body.touch.fly #pad{display:flex}
   <label class="ck" for="c-trail"><input type="checkbox" id="c-trail"> Light trails</label>
   <label class="ck" for="c-bars"><input type="checkbox" id="c-bars" checked> Cinema bars during flights</label>
   <label class="ck" for="c-caps"><input type="checkbox" id="c-caps" checked> Captions</label>
+  <label class="ck" for="c-auto"><input type="checkbox" id="c-auto" checked> Play the next flight when one ends</label>
   <label class="ck" for="c-ghost"><input type="checkbox" id="c-ghost"> Ghost: the takeoff as a multiple exposure</label>
 
   <h2>Your own flight</h2>
@@ -216,15 +219,15 @@ var THEMES={
   paper:{bg:[.953,.937,.902], f0:[.80,.78,.73], f1:[.985,.975,.95], cols:[[.1,.12,.14],[.55,.53,.49],[.7,.2,.16],[.16,.39,.6],[.78,.42,.1],[.75,.16,.13],[.2,.5,.27],[.16,.36,.7]], hi:[[.1,.12,.14],[.1,.12,.14],[.1,.12,.14],[.1,.12,.14]], glow:false},
   blue:{bg:[.05,.23,.42], f0:[.05,.21,.39], f1:[.11,.31,.53], cols:[[.92,.96,1],[.55,.7,.86],[1,.8,.55],[.6,.86,1],[1,.95,.6],[1,.92,.4],[.75,1,.8],[1,.75,.9]], hi:[[.92,.96,1],[.92,.96,1],[.92,.96,1],[.92,.96,1]], glow:false}};
 var theme='night';
-var opt={ghost:false,solid:true,fov:70,speed:60,fog:.55,ink:.85,glow:true,height:true,spin:true,plot:false,trail:false,bars:true,caps:true,pace:1,tex:false};
+var opt={auto:true,ghost:false,solid:true,fov:70,speed:60,fog:.55,ink:.85,glow:true,height:true,spin:true,plot:false,trail:false,bars:true,caps:true,pace:1,tex:false};
 var mode='orbit';
 var C={tgt:[0,0,0], az:-125, el:28, dist:1500, ortho:1200, eye:[0,-800,200], yaw:90, pitch:-10};
 var dirty=true, idle=true, lastInput=0;
 
 /* ================= GL ================= */
-var VS='attribute vec3 aP;attribute float aL;uniform mat4 uM;uniform mat4 uObj;uniform float uS;uniform vec3 uE;uniform vec3 uC[8];uniform vec3 uH[4];uniform float uZ;uniform float uHeight;uniform vec2 uF;uniform float uOrtho;uniform vec3 uFwd;'+
+var VS='attribute vec3 aP;attribute float aL;uniform mat4 uM;uniform mat4 uObj;uniform float uS;uniform float uBias;uniform vec3 uE;uniform vec3 uC[8];uniform vec3 uH[4];uniform float uZ;uniform float uHeight;uniform vec2 uF;uniform float uOrtho;uniform vec3 uFwd;'+
 'varying vec3 vC;varying float vA;'+
-'void main(){vec3 p=(uObj*vec4(aP*uS,1.0)).xyz;gl_Position=uM*vec4(p,1.0);int l=int(aL+0.5);vec3 c=uC[0];'+
+'void main(){vec3 p=(uObj*vec4(aP*uS,1.0)).xyz;gl_Position=uM*vec4(p,1.0);gl_Position.z-=uBias*gl_Position.w;int l=int(aL+0.5);vec3 c=uC[0];'+
 'for(int i=0;i<8;i++){if(i==l)c=uC[i];}'+
 'if(l==0&&uHeight>0.5){float h=clamp(p.z/uZ,0.0,1.0)*3.0;int k=int(floor(min(h,2.999)));float f=fract(min(h,2.999));vec3 a=uH[0],b=uH[1];'+
 'if(k==1){a=uH[1];b=uH[2];}if(k==2){a=uH[2];b=uH[3];}c=mix(a,b,f);}'+
@@ -236,7 +239,7 @@ function sh(t,s){var o=gl.createShader(t);gl.shaderSource(o,s);gl.compileShader(
 var PR=gl.createProgram();gl.attachShader(PR,sh(gl.VERTEX_SHADER,VS));gl.attachShader(PR,sh(gl.FRAGMENT_SHADER,FS));gl.linkProgram(PR);
 if(!gl.getProgramParameter(PR,gl.LINK_STATUS)){ $('load').textContent='WebGL could not start: '+gl.getProgramInfoLog(PR); return; }
 gl.useProgram(PR);
-var U={}; ['uM','uE','uC','uH','uZ','uHeight','uF','uOrtho','uFwd','uBg','uInk','uGlow','uObj','uS'].forEach(function(n){U[n]=gl.getUniformLocation(PR,n);});
+var U={}; ['uM','uE','uC','uH','uZ','uHeight','uF','uOrtho','uFwd','uBg','uInk','uGlow','uObj','uS','uBias'].forEach(function(n){U[n]=gl.getUniformLocation(PR,n);});
 var aP=gl.getAttribLocation(PR,'aP'), aL=gl.getAttribLocation(PR,'aL');
 /* a full-screen quad for light trails */
 var QVS='attribute vec2 q;void main(){gl_Position=vec4(q,0.0,1.0);}', QFS='precision mediump float;uniform vec4 uQ;void main(){gl_FragColor=uQ;}';
@@ -253,6 +256,10 @@ var FP=gl.createProgram();gl.attachShader(FP,sh(gl.VERTEX_SHADER,FVS));gl.attach
 var FU={}; ['uM','uE','uFwd','uF','uOrtho','uSun','uBg','uF0','uF1','uObj','uS'].forEach(function(n){FU[n]=gl.getUniformLocation(FP,n);});
 var fP=gl.getAttribLocation(FP,'aP'), fN=gl.getAttribLocation(FP,'aN');
 var SUN=norm([-0.45,-0.62,0.64]);
+/* PHONES: many give WebGL a 16-bit depth buffer (desktops 24). With 16 bits, polygon offset alone cannot keep a
+   face from hiding its own outline, and the solids swallowed the lines (the city went dark on phones). On a
+   low-precision buffer the lines are pulled toward the camera by a small clip-space bias as well. ?lowz forces it. */
+var DEPTHBITS=gl.getParameter(gl.DEPTH_BITS)||16, LOWZ=DEPTHBITS<24||/[?&]lowz/.test(location.search);
 
 /* ================= data ================= */
 var cache={};
@@ -397,7 +404,12 @@ function render(){
   if(!GEO) return;
   var B=basis(), asp=W/H, S=SPAN(), P, V=lookAt(B.e,B.f,Math.abs(B.f[2])>0.999?[0,1,0]:[0,0,1]);
   if(mode==='iso') P=ortho(C.ortho*asp,C.ortho,1,S*8);
-  else P=persp(opt.fov*D2R,asp,1.0,S*10);
+  else { /* PORTRAIT: hold a usable width -- the vertical angle opens as the screen narrows (to 108 deg at most) */
+    var vf=opt.fov*D2R; if(asp<1) vf=Math.min(108*D2R,2*Math.atan(Math.tan(vf/2)*Math.pow(1/asp,0.75)));
+    /* the near plane follows the camera's height (0.5 m in the street, up to 300 m from high up): depth precision goes
+       where the picture is */
+    var nearP=Math.max(0.5,Math.min(300,0.2*Math.max(0,B.e[2]-(GEO.faces&&GEO.faces.roof?roofAt(GEO.faces.roof,B.e[0],B.e[1]):0))));
+    P=persp(vf,asp,nearP,S*10); }
   gl.useProgram(PR);
   gl.uniformMatrix4fv(U.uM,false,new Float32Array(mul(P,V)));
   gl.uniform3fv(U.uE,B.e); gl.uniform3fv(U.uFwd,B.f); gl.uniform1f(U.uOrtho,mode==='iso'?1:0);
@@ -407,14 +419,19 @@ function render(){
   gl.uniform1f(U.uHeight,opt.height?1:0);
   var near,far;
   if(mode==='iso'){ var d0=S*3-S*0.8; near=d0+(1-opt.fog)*S*1.6; far=near+S*(0.6+(1-opt.fog)*2.5); }
-  else { far=80+Math.pow(1-opt.fog,2)*S*3+S*0.4*(1-opt.fog); near=far*0.08; if(opt.fog<=0.01){near=1e6;far=2e6;} }
+  else { far=80+Math.pow(1-opt.fog,2)*S*3+S*0.4*(1-opt.fog);
+    /* HAZE FOLLOWS THE CAMERA: the far edge is never closer than 1.6 x the distance to what a flight is aimed at
+       (or 1.6 x the orbit distance), nor 4 x the camera's height -- so a pull-back to the whole city never fades
+       it to black */
+    var aim=mode==='orbit'?C.dist:(AIMD||0); far=Math.max(far,aim*1.6+60,B.e[2]*4);
+    near=far*0.08; if(opt.fog<=0.01){near=1e6;far=2e6;} }
   gl.uniform2f(U.uF,near,far);
-  gl.uniform3fv(U.uBg,T.bg); gl.uniform1f(U.uInk,opt.ink);
+  gl.uniform3fv(U.uBg,T.bg); gl.uniform1f(U.uInk,opt.ink); gl.uniform1f(U.uBias,(LOWZ&&opt.solid&&GEO.faces&&mode!=='iso')?0.00035:0);
   var glow=opt.glow&&T.glow; gl.uniform1f(U.uGlow,glow?1:0);
   var MVP=new Float32Array(mul(P,V)), F=GEO.faces, solid=opt.solid&&F;
   if(solid){
     gl.useProgram(FP); gl.disable(gl.BLEND); gl.enable(gl.DEPTH_TEST); gl.depthFunc(gl.LEQUAL); gl.depthMask(true);
-    gl.enable(gl.POLYGON_OFFSET_FILL); gl.polygonOffset(1.5,3.0);
+    gl.enable(gl.POLYGON_OFFSET_FILL); gl.polygonOffset(LOWZ?2.0:1.5,LOWZ?8.0:3.0);
     gl.uniformMatrix4fv(FU.uM,false,MVP); gl.uniform3fv(FU.uE,B.e); gl.uniform3fv(FU.uFwd,B.f); gl.uniform1f(FU.uOrtho,mode==='iso'?1:0);
     gl.uniform2f(FU.uF,near,far); gl.uniform3fv(FU.uSun,SUN); gl.uniform3fv(FU.uBg,T.bg); gl.uniform3fv(FU.uF0,T.f0); gl.uniform3fv(FU.uF1,T.f1);
     gl.bindBuffer(gl.ARRAY_BUFFER,F.pb); gl.enableVertexAttribArray(fP); gl.vertexAttribPointer(fP,3,gl.SHORT,false,0,0);
@@ -508,6 +525,10 @@ function prepRoute(r){
   var tot=d[d.length-1]||1; r._u=d.map(function(v){return v/tot;}); r._yaw=yaw;
   var u=r._u; r._m=[0,1,2].map(function(q){ return tangents(u,K.map(function(k){return k.e[q];})); });
   r._my=tangents(u,yaw); r._mp=tangents(u,K.map(function(k){return k.p;}));
+  /* AIM: every view looks at a point (the builder's t; a saved view of your own gets one 120 m ahead), and the
+     camera aims at that point as it moves, so between two views it never swings round to face empty sky */
+  r._tg=K.map(function(k){ if(k.t) return k.t; var cy=Math.cos(k.y*D2R), sy=Math.sin(k.y*D2R), cp=Math.cos(k.p*D2R), sp=Math.sin(k.p*D2R); return [k.e[0]+cy*cp*120,k.e[1]+sy*cp*120,k.e[2]+sp*120]; });
+  r._mt=[0,1,2].map(function(q){ return tangents(u,r._tg.map(function(g){return g[q];})); });
   clearance(r);
 }
 /* CLEARANCE: walk the route at 900 points; wherever the flight as drawn would be inside a building, lift it by
@@ -562,17 +583,33 @@ function tkPlane(r,T){ var S=r._tk.S, i=Math.max(0,Math.min(S.length-2,Math.floo
   return A.map(function(v,k){ var w=B[k]-v; if(k===3){ while(w>180)w-=360; while(w<-180)w+=360; } return v+w*f; }); }
 function tkRaw(r,t){
   var T=t*r.secs, k=r._tk, P=tkPlane(r,T), pp=[P[0],P[1],P[2]+1.4], u=k.u, nL=[-u[1],u[0]], R0=k.R0, st=k.st;
+  if(opt.ghost){
+    /* GHOST CAMERA: side-on and low (0.13 x its distance up, so the runway reads as a band), beside the runway on whichever side is clear of buildings, far enough back
+       to hold the roll and the liftoff (start of the roll to 25 s), panning with the plane as it climbs away, so the
+       multiple exposure spreads across the screen. A tall screen stands further back (its view is narrower). */
+    if(!k.gh){ var Pa=tkPlane(r,11.5), Pb=tkPlane(r,25), M=[(Pa[0]+Pb[0])/2,(Pa[1]+Pb[1])/2,0], Lg=Math.hypot(Pb[0]-Pa[0],Pb[1]-Pa[1]);
+      var Ro=GEO&&GEO.faces&&GEO.faces.roof, best=null;
+      [1,-1].forEach(function(sg){ var hit=0; for(var q=0;q<=20;q++){ var f=q/20; if(roofAt(Ro,M[0]+sg*nL[0]*f*Lg*1.2,M[1]+sg*nL[1]*f*Lg*1.2)>0) hit++; } if(!best||hit<best.hit) best={sg:sg,hit:hit}; });
+      k.gh={M:M,Lg:Lg,sg:best.sg}; }
+    var G=k.gh, asp=W/Math.max(1,H), Dg=Math.max(asp<1?95:70,G.Lg*(asp<1?0.95:0.5));
+    var eg=[G.M[0]+G.sg*nL[0]*Dg,G.M[1]+G.sg*nL[1]*Dg,0.13*Dg], lg=lerp3([G.M[0],G.M[1],0],pp,0.55), ci0=0;
+    for(var j0=0;j0<TKCAP.length;j0++) if(T>=TKCAP[j0][0]) ci0=j0;
+    return {e:eg,tg:lg,k:ci0,plane:P};
+  }
   var mid=[(st[0]+R0[0])/2,(st[1]+R0[1])/2];
   var A=[[mid[0]+nL[0]*28-u[0]*18, mid[1]+nL[1]*28-u[1]*18, 4.5+0.1*T], pp];
   var Pr=tkPlane(r,Math.max(11.5,T)), lead=9-Math.max(0,T-12)*1.4;
   var B=[[Pr[0]+nL[0]*13+u[0]*lead, Pr[1]+nL[1]*13+u[1]*lead, 4.2], pp];
   var C3=[[R0[0]+u[0]*k.cx+nL[0]*11, R0[1]+u[1]*k.cx+nL[1]*11, 1.7], pp];
   var fw=[Math.cos(P[3]*D2R),Math.sin(P[3]*D2R)], kk=sst(30.5,38,T), back=26+kk*150, up=6+kk*70, side=7+kk*50;
-  var D=[[P[0]-fw[0]*back-fw[1]*side, P[1]-fw[1]*back+fw[0]*side, P[2]+up], lerp3(lerp3(pp,[P[0]+fw[0]*40,P[1]+fw[1]*40,P[2]],0.4),pp,kk)];
+  /* the pull-back ends on the far side of the plane from the city, looking past it at the city */
+  var cc=GEO&&GEO.core?GEO.core:[P[0],P[1],0], aw=[P[0]-cc[0],P[1]-cc[1]], al=Math.hypot(aw[0],aw[1])||1; aw=[aw[0]/al,aw[1]/al];
+  var chase=[P[0]-fw[0]*back-fw[1]*side, P[1]-fw[1]*back+fw[0]*side, P[2]+up], away=[P[0]+aw[0]*(60+kk*260), P[1]+aw[1]*(60+kk*260), P[2]+10+kk*120];
+  var D=[lerp3(chase,away,kk), lerp3(lerp3(pp,[P[0]+fw[0]*40,P[1]+fw[1]*40,P[2]],0.4),lerp3(pp,[cc[0],cc[1],0],0.45),kk)];
   var wB=sst(10,12.5,T), wC=sst(18.5,20.5,T), wD=sst(26.5,29,T);
   var e=lerp3(lerp3(lerp3(A[0],B[0],wB),C3[0],wC),D[0],wD), l=lerp3(lerp3(lerp3(A[1],B[1],wB),C3[1],wC),D[1],wD), d=[l[0]-e[0],l[1]-e[1],l[2]-e[2]];
   var ci=0; for(var j=0;j<TKCAP.length;j++) if(T>=TKCAP[j][0]) ci=j;
-  return {e:e,y:Math.atan2(d[1],d[0])/D2R,p:Math.atan2(d[2],Math.hypot(d[0],d[1]))/D2R,k:ci,plane:P};
+  return {e:e,tg:l,k:ci,plane:P};
 }
 function raw(r,t){
   if(r.kind==='takeoff') return tkRaw(r,t);
@@ -580,12 +617,15 @@ function raw(r,t){
   while(i<n-2&&t>u[i+1]) i++;
   var h=Math.max(1e-6,u[i+1]-u[i]), s=Math.max(0,Math.min(1,(t-u[i])/h));
   var e=[0,1,2].map(function(q){return herm(K[i].e[q],K[i+1].e[q],r._m[q][i],r._m[q][i+1],h,s);});
-  return {e:e,y:herm(r._yaw[i],r._yaw[i+1],r._my[i],r._my[i+1],h,s),p:herm(K[i].p,K[i+1].p,r._mp[i],r._mp[i+1],h,s),k:s>0.5?i+1:i};
+  var tg=[0,1,2].map(function(q){return herm(r._tg[i][q],r._tg[i+1][q],r._mt[q][i],r._mt[q][i+1],h,s);});
+  return {e:e,tg:tg,k:s>0.5?i+1:i};
 }
 function sample(r,t){
   var q=raw(r,t);
   if(q.e[2]<1.5) q.e[2]=1.5;
   if(r._floor){ var x=Math.max(0,Math.min(1,t))*(r._floor.length-1), j=Math.floor(x), f=r._floor[j]+(r._floor[Math.min(j+1,r._floor.length-1)]-r._floor[j])*(x-j); q.e[2]+=f; }
+  /* aim after any lift, so a camera raised over a roof tips down to what it was looking at */
+  if(q.tg){ var d=[q.tg[0]-q.e[0],q.tg[1]-q.e[1],q.tg[2]-q.e[2]]; q.y=Math.atan2(d[1],d[0])/D2R; q.p=Math.atan2(d[2],Math.hypot(d[0],d[1]))/D2R; q.dist=Math.hypot(d[0],d[1],d[2]); }
   return q;
 }
 var playing=false, rt=0, stepAcc=0, capKey=-1, recAfter=false;
@@ -599,16 +639,31 @@ function playRoute(r,fromRec){
   if(!opt.tex && !fromRec) setTex(true,true);
   applyRoute(); lastT=0;
 }
-function stopRoute(){ if(!ROUTE) return; playing=false; ROUTE=null; parked(); document.body.classList.remove('bars'); $('prog').style.width='0'; showCap('');
+function stopRoute(){ if(!ROUTE) return; playing=false; ROUTE=null; AIMD=0; parked(); document.body.classList.remove('bars'); $('prog').style.width='0'; showCap('');
   [].forEach.call(routesEl.children,function(b){ b.setAttribute('aria-pressed','false'); }); if(rec) stopRec(); }
-function applyRoute(){ var q=sample(ROUTE,Math.min(1,rt)); C.eye=q.e; C.yaw=q.y; C.pitch=q.p; dirty=true;
+var AIMD=0;
+function applyRoute(){ var q=sample(ROUTE,Math.min(1,rt)); C.eye=q.e; C.yaw=q.y; C.pitch=q.p; AIMD=q.dist||0; dirty=true;
   if(q.plane&&MOV){ var pm=function(P){ return poseM(P[0],P[1],P[2],P[3],P[4],P[5]); };
     POSES=MOV.list.map(function(o,i){ return {i:i,m:i===0?pm(q.plane):poseM(o.at[0],o.at[1],0,o.th,0,0)}; });
     /* GHOST: a multiple exposure -- the plane where it was every 0.9 s, back to the start of its roll */
-    if(opt.ghost){ var T=Math.min(1,rt)*ROUTE.secs; for(var k=1;k<=12&&T-k*0.9>=11.5;k++) POSES.push({i:0,m:pm(tkPlane(ROUTE,T-k*0.9))}); } }
+    /* GHOST: up to 12 more copies at equal time steps from the start of the roll to now, so the gaps grow as it speeds up */
+    if(opt.ghost){ var T=Math.min(1,rt)*ROUTE.secs; if(T>12.5){ var n=Math.min(12,Math.floor((T-11.5)/0.6)), dtg=(T-11.5)/Math.max(1,n);
+      for(var k=1;k<=n;k++) POSES.push({i:0,m:pm(tkPlane(ROUTE,T-k*dtg))}); } } }
   if(opt.caps){ var k=q.k; for(var j=k;j>=0;j--) if(ROUTE.keys[j].c){ k=j; break; }
     if(k!==capKey){ capKey=k; showCap(ROUTE.keys[k]&&ROUTE.keys[k].c||''); } }
   $('prog').style.width=(Math.min(1,rt)*100)+'%'; }
+/* THE END OF A FLIGHT: hold the last view a moment, then play the next flight (Film > Play the next flight, on by
+   default; touching the screen stops it) or ease into Orbit around what the camera was looking at, with the title
+   card back. A recording stops instead. */
+function endFlight(r){
+  if(recAfter){ setTimeout(stopRec,600); return; }
+  setTimeout(function(){
+    if(playing||ROUTE!==r||rt<1) return;           /* the viewer took over, or another flight started */
+    var i=CITY.routes.indexOf(r);
+    if(opt.auto&&i>=0){ ri=i+1; playRoute(CITY.routes[(i+1)%CITY.routes.length]); return; }
+    setMode('orbit',true); stopRoute(); idle=true; lastInput=0; $('card').style.display=''; showCap('');
+  },1400);
+}
 var capEl=$('cap'), capT=0;
 function showCap(s){ clearTimeout(capT); capEl.classList.remove('on'); if(!s) return; capT=setTimeout(function(){ capEl.textContent=s; capEl.classList.add('on'); },220); }
 
@@ -661,7 +716,7 @@ window.addEventListener('keydown',function(e){
   if(k==='m'){ setMode(mode==='iso'?'orbit':mode==='orbit'?'fly':'iso'); return; }
   if(k==='t'){ setTex(!opt.tex); return; }
   if(k==='o'){ setSolid(!opt.solid); return; }
-  if(k==='g'){ opt.ghost=!opt.ghost; $('c-ghost').checked=opt.ghost; toast(opt.ghost?'Ghost on: play Takeoff':'Ghost off'); if(ROUTE) applyRoute(); dirty=true; return; }
+  if(k==='g'){ setGhost(!opt.ghost); return; }
   if(k==='n'){ var i=META.cities.indexOf(CITY); setCity(META.cities[(i+1)%META.cities.length].id); return; }
   if(k==='k'){ addKey(); return; }
   if(k==='p'){ photo(); return; }
@@ -689,11 +744,11 @@ var comp=document.createElement('canvas'), cx=comp.getContext('2d');
 function composite(){
   comp.width=cv.width; comp.height=cv.height; cx.drawImage(cv,0,0);
   var s=DPR, T=THEMES[theme], dark=T.bg[0]+T.bg[1]+T.bg[2]<1.5;
-  if(opt.bars&&ROUTE){ cx.fillStyle='#000'; var bh=comp.height*0.11; cx.fillRect(0,0,comp.width,bh); cx.fillRect(0,comp.height-bh,comp.width,bh); }
+  if(opt.bars&&ROUTE){ cx.fillStyle='#000'; var bh=Math.min(comp.height*0.11,comp.width*0.09); cx.fillRect(0,0,comp.width,bh); cx.fillRect(0,comp.height-bh,comp.width,bh); }
   if(opt.caps&&capEl.classList.contains('on')&&capEl.textContent){ cx.font='600 '+Math.round(Math.min(40,Math.max(22,W*0.04))*s)+'px "Big Shoulders Display", sans-serif';
-    cx.textAlign='center'; cx.fillStyle=dark?'#e9e6dc':'#1d2228'; cx.shadowColor='rgba(0,0,0,.7)'; cx.shadowBlur=18*s; cx.fillText(capEl.textContent.toUpperCase(),comp.width/2,comp.height-(opt.bars&&ROUTE?comp.height*0.11+24*s:110*s)); cx.shadowBlur=0; }
+    cx.textAlign='center'; cx.fillStyle=dark?'#e9e6dc':'#1d2228'; cx.shadowColor='rgba(0,0,0,.7)'; cx.shadowBlur=18*s; cx.fillText(capEl.textContent.toUpperCase(),comp.width/2,comp.height-(opt.bars&&ROUTE?Math.min(comp.height*0.11,comp.width*0.09)+24*s:110*s)); cx.shadowBlur=0; }
   cx.font='800 '+Math.round(16*s)+'px "Big Shoulders Display", sans-serif'; cx.textAlign='left'; cx.fillStyle=dark?'rgba(233,230,220,.85)':'rgba(29,34,40,.85)';
-  var y0=(opt.bars&&ROUTE?comp.height*0.11:0)+28*s; cx.fillText('CORRIDOR CITY · '+(CITY?CITY.name.toUpperCase():''),18*s,y0);
+  var y0=(opt.bars&&ROUTE?Math.min(comp.height*0.11,comp.width*0.09):0)+28*s; cx.fillText('CORRIDOR CITY · '+(CITY?CITY.name.toUpperCase():''),18*s,y0);
   cx.font=Math.round(10*s)+'px "JetBrains Mono", monospace'; cx.fillText('drawn by Plotter Sketchpad '+(META?META.version:''),18*s,y0+16*s);
   return comp;
 }
@@ -734,10 +789,13 @@ slider('s-ink',function(v){return v+'%';},function(v){opt.ink=v/100;});
 slider('s-len',function(v){return (v/100).toFixed(1)+'×';},function(v){opt.pace=v/100;});
 function check(id,key,after){ var c=$(id); c.checked=!!opt[key]; c.addEventListener('change',function(){ opt[key]=c.checked; dirty=true; if(after) after(); }); }
 check('c-solid','solid',function(){ $('b-sol').setAttribute('aria-pressed',String(opt.solid)); }); check('c-glow','glow'); check('c-height','height'); check('c-spin','spin'); check('c-plot','plot'); check('c-trail','trail');
-check('c-ghost','ghost'); check('c-bars','bars',function(){ document.body.classList.toggle('bars',opt.bars&&!!ROUTE); }); check('c-caps','caps',function(){ if(!opt.caps) showCap(''); });
+check('c-auto','auto'); check('c-ghost','ghost',function(){ setGhost(opt.ghost); }); check('c-bars','bars',function(){ document.body.classList.toggle('bars',opt.bars&&!!ROUTE); }); check('c-caps','caps',function(){ if(!opt.caps) showCap(''); });
 $('layers').innerHTML=LAYERS.map(function(n,i){ var c=THEMES.night.cols[i]; return '<label class="ck" for="l'+i+'"><input type="checkbox" id="l'+i+'" checked><i style="background:rgb('+c.map(function(v){return Math.round(v*255);}).join(',')+')"></i>'+n+'</label>'; }).join('');
 LAYERS.forEach(function(n,i){ $('l'+i).addEventListener('change',function(){ layOn[i]=this.checked?1:0; dirty=true; }); });
 $('b-tex').onclick=function(){ setTex(!opt.tex); };
+function setGhost(on){ opt.ghost=!!on; $('c-ghost').checked=opt.ghost; if(ROUTE&&ROUTE.kind==='takeoff'){ clearance(ROUTE); applyRoute(); }
+  else if(on&&CITY){ var ti=-1; CITY.routes.forEach(function(r,i){ if(r.kind==='takeoff') ti=i; }); toast(ti<0?'Ghost works on the Takeoff flight (Bay City, Freeway)':'Ghost on: play Takeoff'); }
+  dirty=true; }
 function setSolid(on){ opt.solid=on; $('c-solid').checked=on; $('b-sol').setAttribute('aria-pressed',String(on)); dirty=true; if(on&&!opt.tex) setTex(true); }
 $('b-sol').onclick=function(){ setSolid(!opt.solid); };
 $('b-photo').onclick=photo; $('b-photo2').onclick=photo;
@@ -763,7 +821,7 @@ function tick(ts){
     var len=ROUTE.secs*opt.pace;
     if(opt.plot){ stepAcc+=dt; if(stepAcc>=1/12){ rt+=stepAcc/len; stepAcc=0; applyRoute(); } }
     else { rt+=dt/len; applyRoute(); }
-    if(rt>=1){ rt=1; playing=false; if(recAfter) setTimeout(stopRec,600); else setTimeout(function(){ if(!playing&&ROUTE&&rt>=1){ ri++; } },0); }
+    if(rt>=1){ rt=1; playing=false; endFlight(ROUTE); }
   }
   if(mode==='fly'&&!playing){
     var sp=opt.speed*(held.shift?4:1)*dt, y=C.yaw*D2R, fw=[Math.cos(y),Math.sin(y)], rgt=[Math.sin(y),-Math.cos(y)], mv=false;
@@ -797,7 +855,7 @@ window.__cc={state:function(){return {mode:mode,C:C,city:CITY&&CITY.id,tex:opt.t
   probe:function(i){ var r=CITY.routes[i]; prepRoute(r); var R=GEO.faces&&GEO.faces.roof, lo=1e9, inside=0;
     var pin=0; for(var j=0;j<=900;j++){ var q=sample(r,j/900); lo=Math.min(lo,q.e[2]); if(R){ var h=roofAt(R,q.e[0],q.e[1]); if(h>0&&q.e[2]<h+1) inside++;
       if(q.plane){ var hp=roofAt(R,q.plane[0],q.plane[1]); if(hp>0&&q.plane[2]<hp) pin++; } } } return {id:r.id,lowest:+lo.toFixed(1),insideBuildings:inside,planeInside:pin,roofs:!!R}; },
-  play:function(i){ playRoute(CITY.routes[i]); }, ghost:function(on){ opt.ghost=!!on; $('c-ghost').checked=opt.ghost; if(ROUTE) applyRoute(); }, key:function(k){ playing=false; rt=ROUTE._u[k]; applyRoute(); render(); }, at:function(t){ playing=false; rt=t; applyRoute(); render(); }, city:setCity, tex:setTex, theme:function(t){ $('t-'+t).click(); }, mode:setMode};
+  play:function(i){ playRoute(CITY.routes[i]); }, cam:function(){ return {eye:C.eye,yaw:C.yaw,pitch:C.pitch,poses:POSES.length,route:ROUTE&&ROUTE.id,mode:mode,playing:playing}; }, auto:function(on){ opt.auto=!!on; $('c-auto').checked=opt.auto; }, run:function(t){ rt=t; playing=true; lastT=0; }, ghost:function(on){ setGhost(on); }, key:function(k){ playing=false; rt=ROUTE._u[k]; applyRoute(); render(); }, at:function(t){ playing=false; rt=t; applyRoute(); render(); }, city:setCity, tex:setTex, theme:function(t){ $('t-'+t).click(); }, mode:setMode};
 })();
 </script>
 </body>
