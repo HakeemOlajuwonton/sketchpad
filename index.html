@@ -461,7 +461,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v367</a> &mdash; the views sheet: one corridor scene from two to four cameras on one plot, each panel its own pen, labels and a title block (queue row 218)</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v368</a> &mdash; better aircraft on the town airfield: a rounded nose and tail cone, spinners and blades, wheels on every leg, struts, winglets, intake lips and a windscreen (queue row 244)</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <section class="fold" id="fold_pick"><h2>Pick engine<span class="cnt"></span></h2>
@@ -26007,12 +26007,19 @@ function townSite(p,G,plans,J,BLK,KIND){
 function townGrow(B,f){ var mx=f/2*(B[2]-B[0]), my=f/2*(B[3]-B[1]); return [B[0]-mx,B[1]-my,B[2]+mx,B[3]+my]; }
 /* AN AIRCRAFT AS CONVEX PARTS (§2.3), in its own frame: x from the nose tip
    to the tail, y to the left, z up. THE FUSELAGE IS ONE PART: a loft of
-   16-gons (nose ring, barrel, a tail cone raised toward the fin) whose radius
-   profile is concave, so the loft is its own hull, and its facets meet at
-   under the crease. Everything else TOUCHES it, never enters it: a low wing
-   lies under the barrel's flat bottom, a high wing on its flat top, the fin and
-   the tailplane halves on the top flat beside the fin, the engines ahead of
-   the wing's leading edge, the gear legs under a flat. */
+   16-gons whose radius profile is concave, so the loft is its own hull, and its
+   facets meet at under the crease. Everything else TOUCHES it, never enters it:
+   a low wing lies under the barrel's flat bottom, a high wing on its flat top,
+   the fin and the tailplane halves on the top flat beside the fin, the engines
+   ahead of the wing's leading edge, the gear legs under a flat.
+   QUEUE ROW 244 (docs/specs/2026-11-05-town-aircraft-shapes.md):
+   seven rings (a rounded nose, the barrel, a two-ring tail cone), spinners and
+   blades, 8-gon wheels on every leg, struts on a high wing, winglets on a swept
+   one, intake lips on jets, and the windscreen's two lines. A part that meets
+   a SLOPED facet of the barrel (a high wing's leg, a strut) is a horizontal
+   square swept along its axis and stopped where its last corner reaches that
+   facet's plane, so the whole part lies outside that plane and cannot enter the
+   body. */
 function makeAircraft(code){
   var S=SITE_AC[code], L=S.L, R=S.R, zc=S.zc, span=S.span, n=16, ph=Math.PI/16, out=[];
   var zb=zc-R*Math.cos(ph), zt=zc+R*Math.cos(ph), fh=R*Math.sin(ph);
@@ -26024,13 +26031,39 @@ function makeAircraft(code){
     for(e=0;e<Q.length;e++){ var e2=(e+1)%Q.length; loops.push([lo[e],lo[e2],hi[e2],hi[e]]); } return loops; }
   function yslab(Q,y0,y1){ var lo=Q.map(function(q){ return [q[0],y0,q[1]]; }), hi=Q.map(function(q){ return [q[0],y1,q[1]]; }), loops=[lo,hi], e;
     for(e=0;e<Q.length;e++){ var e2=(e+1)%Q.length; loops.push([lo[e],lo[e2],hi[e2],hi[e]]); } return loops; }
+  /* a prism along x over a polygon Q of (y,z) points */
+  function xslab(Q,x0,x1){ var lo=Q.map(function(q){ return [x0,q[0],q[1]]; }), hi=Q.map(function(q){ return [x1,q[0],q[1]]; }), loops=[lo,hi], e;
+    for(e=0;e<Q.length;e++){ var e2=(e+1)%Q.length; loops.push([lo[e],lo[e2],hi[e2],hi[e]]); } return loops; }
   function box(x0,x1,y0,y1,z0,z1){ return slab([[x0,y0],[x1,y0],[x1,y1],[x0,y1]],z0,z1); }
-  function ngonX(x0,x1,yc,zcc,r,m,phase){ var A=[], B=[], k;
-    for(k=0;k<m;k++){ var a=phase+2*Math.PI*k/m; A.push([x0, yc+r*Math.cos(a), zcc+r*Math.sin(a)]); B.push([x1, yc+r*Math.cos(a), zcc+r*Math.sin(a)]); }
-    var loops=[A,B]; for(k=0;k<m;k++){ var k2=(k+1)%m; loops.push([A[k],A[k2],B[k2],B[k]]); } return loops; }
-  var xn=Math.min(0.14*L,2.3*R), xt=0.70*L;
-  out.push({kind:'ac-body', loops:loft([ring(0,0.18*R,zc-0.1*R), ring(xn,R,zc), ring(xt,R,zc), ring(L,0.24*R,zc+0.6*R)]), crease:0.5, body:true,
-            win:{fl:2+n+(n-1), fr:2+n+(n/2-1), x0:xn+0.6, x1:xt-1.5, y:R*Math.cos(ph), zw:zc+0.08*R, zl:zc-0.12*R, fh:fh}});
+  function ngonX(x0,x1,yc,zcc,r,m,phase){ var Q=[]; for(var k=0;k<m;k++){ var a=phase+2*Math.PI*k/m; Q.push([yc+r*Math.cos(a), zcc+r*Math.sin(a)]); } return xslab(Q,x0,x1); }
+  /* a wheel: an m-gon in the x-z plane, axis along y, one vertex at the bottom */
+  function ngonY(y0,y1,xc,zcc,r,m){ var Q=[]; for(var k=0;k<m;k++){ var a=-Math.PI/2+2*Math.PI*k/m; Q.push([xc+r*Math.cos(a), zcc+r*Math.sin(a)]); } return yslab(Q,y0,y1); }
+  /* a cone along x: an m-gon base at xb, its tip at xp */
+  function coneX(xb,xp,yc,zcc,r,m,phase){ var B=[], k, loops; for(k=0;k<m;k++){ var a=phase+2*Math.PI*k/m; B.push([xb, yc+r*Math.cos(a), zcc+r*Math.sin(a)]); }
+    loops=[B]; for(k=0;k<m;k++) loops.push([[xp,yc,zcc], B[(k+1)%m], B[k]]); return loops; }
+  /* a blade in the y-z plane about (yc,zcc), along angle th from r0 to r1, w0 wide at the root and w1 at the tip */
+  function blade(x0,x1,yc,zcc,th,r0,r1,w0,w1){ var u=[Math.cos(th),Math.sin(th)], v=[-u[1],u[0]];
+    function P(r,s){ return [yc+u[0]*r+v[0]*s, zcc+u[1]*r+v[1]*s]; }
+    return xslab([P(r0,-w0/2),P(r1,-w1/2),P(r1,w1/2),P(r0,w0/2)],x0,x1); }
+  /* a w x w horizontal square at B swept by D (a parallelepiped) */
+  function sweep(B,D,w){ var h=w/2, lo=[[-h,-h],[h,-h],[h,h],[-h,h]].map(function(q){ return [B[0]+q[0],B[1]+q[1],B[2]]; }),
+    hi=lo.map(function(v){ return [v[0]+D[0],v[1]+D[1],v[2]+D[2]]; }), loops=[lo,hi], e;
+    for(e=0;e<4;e++){ var e2=(e+1)%4; loops.push([lo[e],lo[e2],hi[e2],hi[e]]); } return loops; }
+  /* the barrel's facet holding the point at angle a about its axis: outward normal (ny,nz) and offset, about (0,zc) */
+  function facet(a){ var st=2*Math.PI/n, k=Math.floor((a-ph)/st), am=ph+(k+0.5)*st; return {ny:Math.cos(am), nz:Math.sin(am), d:R*Math.cos(Math.PI/n)}; }
+  /* how far along D the square at B may run before its first corner reaches the facet's plane (1 = all of D) */
+  function reach(B,D,w,F){ var h=w/2, lam=1e18, nD=F.ny*D[1]+F.nz*D[2];
+    [[-h,-h],[h,-h],[h,h],[-h,h]].forEach(function(q){ var g=F.ny*(B[1]+q[1])+F.nz*(B[2]-zc)-F.d; lam=Math.min(lam, nD<0?g/-nD:1e18); });
+    return Math.min(1,lam); }
+  var xn=Math.min(0.14*L,2.3*R), xt=0.70*L, x6=xt+0.45*(L-xt);
+  var RG=[ring(0,0.16*R,zc-0.12*R), ring(0.22*xn,0.58*R,zc-0.07*R), ring(0.55*xn,0.86*R,zc-0.02*R), ring(xn,R,zc), ring(xt,R,zc), ring(x6,0.66*R,zc+0.27*R), ring(L,0.24*R,zc+0.6*R)];
+  /* the windscreen: along the middle of the two nose-segment facets either side of the top flat (facets 2 and 4) */
+  var ws=[2,4].map(function(e){ var a=RG[2], b=RG[3], e2=e+1;
+    function mid(r){ return [(r[e][0]+r[e2][0])/2,(r[e][1]+r[e2][1])/2,(r[e][2]+r[e2][2])/2]; }
+    var A=mid(a), B=mid(b); function at(x){ var s=(x-A[0])/(B[0]-A[0]); return [x, A[1]+s*(B[1]-A[1]), A[2]+s*(B[2]-A[2])]; }
+    return {f:2+2*n+e, a:at(0.6*xn), b:at(0.95*xn)}; });
+  out.push({kind:'ac-body', loops:loft(RG), crease:0.5, body:true,
+            win:{fl:2+3*n+(n-1), fr:2+3*n+(n/2-1), x0:xn+0.6, x1:xt-1.5, y:R*Math.cos(ph), zw:zc+0.08*R, zl:zc-0.12*R, fh:fh, ws:ws}});
   /* the wing: swept halves under a low wing's barrel, one straight tapered
      slab on a high wing's */
   var hs=span/2, cr=S.wing==='low'?0.20*L:0.13*L, ct=0.32*cr, sw=S.wing==='low'?Math.tan(27*Math.PI/180):Math.tan(3*Math.PI/180);
@@ -26039,6 +26072,10 @@ function makeAircraft(code){
   if(S.wing==='low'){
     [1,-1].forEach(function(sg){ var Q=[[xr,0],[xr+cr,0],[le(hs)+ct,sg*hs],[le(hs),sg*hs]];
       out.push({kind:'ac-wing', loops:slab(Q,zb-wt,zb)}); });
+    /* winglets: standing on the wing's top face inside each tip, leaning back by half their height */
+    var hw=Math.max(0.6,0.035*span), x0w=le(hs);
+    [1,-1].forEach(function(sg){ var Q=[[x0w,zb],[x0w+ct,zb],[x0w+hw/2+ct,zb+hw],[x0w+hw/2+0.5*ct,zb+hw]];
+      out.push({kind:'ac-winglet', loops:yslab(Q,sg>0?hs-0.08:-hs,sg>0?hs:-hs+0.08)}); });
   } else {
     var Q=[[le(-hs),-hs],[xr,0],[le(hs),hs],[le(hs)+ct,hs],[xr+cr,0],[le(-hs)+ct,-hs]];
     out.push({kind:'ac-wing', loops:slab(Q,zt,zt+wt)});
@@ -26056,25 +26093,46 @@ function makeAircraft(code){
   if(S.eng==='jet' || S.eng==='jet4'){
     var re=0.48*R, ln=Math.max(2.2,0.10*L), ys=S.eng==='jet4'?[0.30,0.58]:[0.33];
     ys.forEach(function(f){ [1,-1].forEach(function(sg){ var y=sg*f*hs, xa=le(Math.abs(y)-re)-0.08;
-      out.push({kind:'ac-engine', loops:ngonX(xa-ln,xa,y,zb,re,8,Math.PI/8), crease:0.8}); }); });
+      out.push({kind:'ac-engine', loops:ngonX(xa-ln,xa,y,zb,re,8,Math.PI/8), crease:0.8});
+      out.push({kind:'ac-intake', loops:ngonX(xa-ln-0.18,xa-ln,y,zb,1.06*re,8,Math.PI/8), crease:0.8}); }); });
   } else if(S.eng==='prop'){
-    var rp=0.42*R, lp=0.11*L;
-    [1,-1].forEach(function(sg){ var y=sg*0.30*hs, xa=le(Math.abs(y)-rp)-0.06;
-      out.push({kind:'ac-engine', loops:ngonX(xa-lp,xa,y,zt,rp,8,Math.PI/8), crease:0.8});
-      out.push({kind:'ac-prop', loops:ngonX(xa-lp-0.12,xa-lp-0.04,y,zt,1.75*R*0.62,8,0), crease:0.8}); });
+    /* a spinner on the nacelle's front face and four blades just ahead of where it is thinner than their roots */
+    var rp=0.42*R, lp=0.11*L, ls=1.2*rp, rb=1.75*R*0.62, db=0.15*ls+0.02;
+    [1,-1].forEach(function(sg){ var y=sg*0.30*hs, xa=le(Math.abs(y)-rp)-0.06, xf=xa-lp;
+      out.push({kind:'ac-engine', loops:ngonX(xf,xa,y,zt,rp,8,Math.PI/8), crease:0.8});
+      out.push({kind:'ac-spinner', loops:coneX(xf,xf-ls,y,zt,0.5*rp,8,Math.PI/8), crease:0.8});
+      for(var k=0;k<4;k++) out.push({kind:'ac-prop', loops:blade(xf-db-0.10,xf-db,y,zt,0.4+k*Math.PI/2,0.45*rp,rb,0.30,0.16)}); });
   } else {
-    out.push({kind:'ac-prop', loops:box(-0.12,-0.04,-0.06,0.06,zc-0.1*R-0.85,zc-0.1*R+0.85)});
+    var zs=zc-0.12*R;
+    out.push({kind:'ac-spinner', loops:coneX(0,-0.42,0,zs,0.16*R,8,ph), crease:0.8});
+    [1.2,1.2+Math.PI].forEach(function(th){ out.push({kind:'ac-prop', loops:blade(-0.14,-0.04,0,zs,th,0.10,0.88,0.18,0.10)}); });
   }
-  /* the gear: legs to the ground under a flat */
-  var gw=Math.min(0.3,fh*1.6);
+  /* the gear: legs to the wheels, wheels to the ground. On a low wing two
+     wheels beside each main leg, held under the wing's underside; on a high
+     wing one wheel a side on a diagonal leg from the barrel's underside, and
+     a strut from the barrel's side to the wing; a nose wheel under the nose leg */
+  var gw=Math.min(0.3,fh*1.6), rw=Math.max(0.22,Math.min(0.62,0.11*zc+0.10)), rn=0.85*rw;
   if(S.wing==='low'){
+    var rm=Math.min(rw,0.5*(zb-wt));
     [1,-1].forEach(function(sg){ var y=sg*(R+1.1), x=le(R+1.1)+0.45*cr;
-      out.push({kind:'ac-gear', loops:box(x-0.25,x+0.25,y-0.2,y+0.2,0,zb-wt)}); });
+      out.push({kind:'ac-gear', loops:box(x-0.25,x+0.25,y-0.2,y+0.2,rm,zb-wt)});
+      out.push({kind:'ac-wheel', loops:ngonY(y+0.2,y+0.52,x,rm,rm,8), crease:0.8});
+      out.push({kind:'ac-wheel', loops:ngonY(y-0.52,y-0.2,x,rm,rm,8), crease:0.8}); });
   } else {
-    var xg=xr+0.5*cr;
-    out.push({kind:'ac-gear', loops:box(xg-0.3,xg+0.3,-gw/2,gw/2,0,zb)});
+    var xg=xr+0.5*cr, wl=Math.max(0.14,0.12*R), xs=xr+0.45*cr;
+    [1,-1].forEach(function(sg){
+      var al=Math.atan2(-Math.sqrt(1-0.78*0.78),0.78), F=facet(sg>0?al:Math.PI-al);
+      var yt=sg*0.78*R, zf=zc+(F.d-F.ny*yt)/F.nz, yw=sg*(0.78*R+0.9*(zf-rw));
+      var B=[xg,yw-sg*(0.09+wl/2),rw], D=[0,yt-B[1],zf-B[2]], lam=reach(B,D,wl,F);
+      out.push({kind:'ac-gear', loops:sweep(B,[D[0]*lam,D[1]*lam,D[2]*lam],wl)});
+      out.push({kind:'ac-wheel', loops:ngonY(yw-0.09,yw+0.09,xg,rw,rw,8), crease:0.8});
+      /* the strut: its top square on the wing's underside at y = 0.55 hs, its foot stopped at the side facet */
+      var as=Math.atan2(-0.35,0.92), Fs=facet(sg>0?as:Math.PI-as), T=[xs,sg*0.55*hs,zt], S0=[xs,sg*0.92*R,zc-0.35*R];
+      var Du=[0,S0[1]-T[1],S0[2]-T[2]], mu=reach(T,Du,0.14,Fs);
+      out.push({kind:'ac-strut', loops:sweep(T,[Du[0]*mu,Du[1]*mu,Du[2]*mu],0.14)}); });
   }
-  out.push({kind:'ac-gear', loops:box(xn+0.3,xn+0.6,-gw/2,gw/2,0,zb)});
+  out.push({kind:'ac-gear', loops:box(xn+0.3,xn+0.6,-gw/2,gw/2,2*rn,zb)});
+  out.push({kind:'ac-wheel', loops:ngonY(-gw/2,gw/2,xn+0.45,rn,rn,8), crease:0.8});
   return {parts:out, spec:S, door:{x:xn+0.9, z:zc-0.35*R}, xr:xr, cr:cr, le:le, hs:hs, zb:zb, zt:zt};
 }
 /* THE AIRFIELD'S CONTENT (§2.3), from the site's own streams (salt 641 for
@@ -26207,7 +26265,9 @@ function siteTheme(K,SITE){
         [w.fl,w.fr].forEach(function(fi,sk){ var y=(sk===0?1:-1)*w.y;
           P.lines.push({a:L2W([w.x0,y,w.zl]), b:L2W([w.x1,y,w.zl]), f0:fi, f1:fi, col:liv, kind:'livery'});
           if(gapB(ac,nb)*0.9>=0.7) for(var x=w.x0;x<=w.x1;x+=0.9) P.lines.push({a:L2W([x,y,w.zw-0.25]), b:L2W([x,y,w.zw+0.25]), f0:fi, f1:fi, col:COLK, kind:'window'});
-        }); }
+        });
+        /* row 244: the windscreen, two livery lines on the nose segment's facets either side of the top */
+        (w.ws||[]).forEach(function(q){ P.lines.push({a:L2W(q.a), b:L2W(q.b), f0:q.f, f1:q.f, col:liv, kind:'windscreen'}); }); }
       P.ac=info.aircraft.length;
       own(P,C,pt.kind,col);
       rec.parts.push(info.recs.length-1);
