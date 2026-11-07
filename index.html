@@ -365,6 +365,15 @@
     #stat{flex:1 1 100%; order:9;}
   }
   .foot{display:flex; gap:10px; align-items:center; flex-wrap:wrap;}
+  /* row 221: the Scout bar under the canvas */
+  #scoutbar{margin:0 0 10px;}
+  #scoutbar .sbmodes{display:flex; gap:6px; flex-wrap:wrap; margin:0 0 6px;}
+  #scoutbar button.on{background:var(--accent); border-color:var(--accent); color:#12100e; font-weight:600;}
+  #scoutbar button.go{border-color:var(--accent);}
+  #scoutbar button:disabled{opacity:.45; cursor:not-allowed;}
+  #scoutbar .sbhelp{font-size:12px; color:var(--dim); margin:0 0 4px;}
+  #scoutbar .sbread{display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:2px 12px; font-size:12px; margin:0;}
+  #scoutbar .sbread dt{color:var(--dim); float:left; margin-right:6px;} #scoutbar .sbread dd{margin:0;}
   .penrow{display:flex; align-items:center; gap:6px; flex-wrap:wrap;
           grid-column:1/-1; margin:2px 0 4px;}
   .penlab{font-size:10px; letter-spacing:.14em; color:var(--dim);}
@@ -435,8 +444,10 @@
 <div class="app">
 <div class="pane-view">
 <div class="stage"><canvas id="cv"></canvas></div>
+<div id="scoutbar" hidden></div>
 <div class="foot">
   <button id="reroll">Reroll seed</button>
+  <button id="scout" hidden title="A live wireframe of the city to frame a view with the mouse or the keys: Isometric, Orbit or Fly. Render this view writes the camera knobs and draws it; Esc leaves.">Scout</button>
   <button id="dl">Download SVG</button>
   <input type="text" id="dlTag" placeholder="tag" maxlength="40" title="Optional. Added to the end of the next file name, lower-case, at most 20 characters. Not kept across reloads.">
   <span id="dlName" title="What the next Download SVG will be called. The recipe that made the drawing travels inside the file."></span>
@@ -445,7 +456,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v363</a> &mdash; The corridor camera lifted out of the draw, refactor only -- one function places the eye and fits the frame for the build and for Scout (queue row 221)</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v364</a> &mdash; Scout -- a live wireframe camera on the corridor engines (Isometric, Orbit, Fly), Render this view, View variations, and Camera placed (queue row 221)</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <section class="fold" id="fold_pick"><h2>Pick engine<span class="cnt"></span></h2>
@@ -3570,6 +3581,8 @@ var SPEC={
     ['cams','Camera along',0,100,1,0,[100,'%']],['camx','Camera side',-100,100,1,-100,[100,'%']],
     ['camz','Camera height',0.2,600,0.1,120,[1,' m']],['look','Look ahead',5,600,1,200,[1,' m']],['turn','Turn',-90,90,1,30,[1,'°']],
     ['pitch','Pitch',-89,45,0.5,-35,[1,'°']],['fov','Field of view',25,120,1,72,[1,'°']],
+    ['camabs','Camera placed',0,1,1,0],['eyex','Camera x',-6000,6000,1,0,[1,' m']],['eyey','Camera y',-6000,6000,1,0,[1,' m']],
+    ['hdg','Heading',0,359,1,0,[1,'°']],
     ['proj','Projection',0,1,1,1],['isoaz','Iso turn',-180,180,1,45,[1,'°']],['isoel','Iso tilt',10,89,1,30,[1,'°']],
     ['zoom','Iso zoom',10,800,1,100,[100,'%']],['panx','Iso pan across',-100,100,1,0,[100,'%']],['pany','Iso pan along',-100,100,1,0,[100,'%']],
     ['dnear','Solid detail to',2,80,1,18,[1,' m']],['dfar','Outline detail to',10,400,5,90,[1,' m']],
@@ -22848,6 +22861,9 @@ function buildTown(p){
   var THX=SITE?Object.assign({},THM,{frameCull:true, formTall:G.FORM?Math.max(1,Math.min(4,(isFinite(p.corez)?+p.corez:250)/100)):1}):THM;
   /* row 204 §A6: a close-up dresses what it looks at: at 450 m of dense city every lot dressed is 50,000 parts and minutes */
   if(FTGC){ var RMS=FK===2?110:60; THX=Object.assign({},THX,{massOut:function(L){ var c=townMid(L.poly); return Math.hypot(c[0]-FTGC[0],c[1]-FTGC[1])>RMS; }}); }
+  /* row 221: Scout's scene -- the same plan, the camera argument by townCamArg for whatever view it shows */
+  if(p.scoutScene){ var SCT=corridorDraw(p,plans,THX,Object.assign({},TCA.camera,{scene:true}));
+    SCT.camArg=function(q){ return townCamArg(q,G,SITE,FRM,WC,VR,VH).camera; }; return SCT; }
   var res=corridorDraw(p,plans,THX,TCA.camera);
   /* row 220: Parks can move only what reaches the sheet -- a block of its 40%
      ceiling with a lot drawn, or a park drawn. The knob panel reads `parkSeen`. */
@@ -39000,7 +39016,7 @@ function streetTheme(K){
    plan. STILL READ FROM THE FIRST PLAN ALONE, for row 95 to make per plan: the
    camera, the puddles and the front puddle, the kerbs and box stacks in render,
    wallOf, and the stat line's content counts. */
-function buildCorridor(p,THM){ return corridorDraw(p,[corridorPlan(p,THM,0)],THM,null); }
+function buildCorridor(p,THM){ return corridorDraw(p,[corridorPlan(p,THM,0)],THM,p.scoutScene?{scene:true}:null); }
 /* the knobs a theme pins or renames, read the same way by the plan and the draw */
 function corridorKnobs(p,THM){
   /* a theme PINS the knobs it has no use for (row 50): a market alley has no
@@ -39325,13 +39341,18 @@ function corridorCamera(p,PL,plans,THM,camera){
   /* ROW 95: a network's camera is placed by the network (camera.CE, camera.TG
      for the perspective eye; camera.O, camera.th for the isometric frame) */
   if(camera && camera.CE){ CE=camera.CE; TG=camera.TG; }
+  /* ROW 221: CAMERA PLACED. The eye at (Camera x, Camera y, Camera height) in the
+     plan's world frame, looking along Heading (0 = +x) before Pitch; Turn does
+     not apply. 0, or a knob the engine has not got: nothing here runs. */
+  var CABS=Math.round(isFinite(p.camabs)?+p.camabs:0)===1 && Math.round(isFinite(p.proj)?+p.proj:0)!==1;
+  if(CABS){ var HDG=(isFinite(p.hdg)?+p.hdg:0)*Math.PI/180; CE=[isFinite(p.eyex)?+p.eyex:0, isFinite(p.eyey)?+p.eyey:0, CAMZ]; TG=[CE[0]+Math.cos(HDG), CE[1]+Math.sin(HDG), CAMZ]; }
   var fx=TG[0]-CE[0], fy=TG[1]-CE[1], fl=Math.hypot(fx,fy)||1;
   fx/=fl; fy/=fl;
   /* ROW 72, TURN: the plan direction rotated after it is normalised and before
      FW is built. `Look ahead` still picks the base direction -- the street's
      tangent near the eye -- and Turn rotates from there, so on a bent street
      Turn 90 faces the facade opposite the eye. At 0 nothing runs. */
-  if(TURN!==0){ var tca=Math.cos(TURN), tsa=Math.sin(TURN), tgx=fx*tca-fy*tsa, tgy=fx*tsa+fy*tca; fx=tgx; fy=tgy; }
+  if(TURN!==0 && !CABS){ var tca=Math.cos(TURN), tsa=Math.sin(TURN), tgx=fx*tca-fy*tsa, tgy=fx*tsa+fy*tca; fx=tgx; fy=tgy; }
   var FW=[fx*Math.cos(PITCH), fy*Math.cos(PITCH), Math.sin(PITCH)];
   var RT=[FW[1], -FW[0], 0], rl=Math.hypot(RT[0],RT[1])||1;
   RT=[RT[0]/rl, RT[1]/rl, 0];
@@ -39364,6 +39385,7 @@ function corridorCamera(p,PL,plans,THM,camera){
      lens would draw a metre the size the parallel camera draws it: the kit's
      dist3, and the depth a theme's own size-on-the-sheet arithmetic reads from
      K.cam. At Projection 0 none of this runs and nothing reads it. */
+  var ISOAX=null;
   var ISO=Math.round(isFinite(p.proj)?+p.proj:0)===1, ISOS=0, D_EFF=0, ISOC=null, CEK=CE, SINEL=0, ISOZN=NEAR;
   if(ISO){
     var IAZ=(isFinite(p.isoaz)?+p.isoaz:45)*Math.PI/180, IEL=Math.max(10,Math.min(89,isFinite(p.isoel)?+p.isoel:30))*Math.PI/180;
@@ -39390,15 +39412,60 @@ function corridorCamera(p,PL,plans,THM,camera){
       [[FRk[0],FRk[1]],[FRk[2],FRk[1]],[FRk[2],FRk[3]],[FRk[0],FRk[3]]].forEach(function(q){ var dx=q[0]-ISOC[0], dy=q[1]-ISOC[1], zz;
         for(zz=0;zz<(camera.frameFlat?1:2);zz++){ var z=zz?ZFIT:0, xs=Math.abs(dx*RT[0]+dy*RT[1]), ys=Math.abs(dx*UP[0]+dy*UP[1]+z*UP[2]);
           if(xs>1e-12) SFIT=Math.min(SFIT,HW/xs); if(ys>1e-12) SFIT=Math.min(SFIT,HH/ys); } }); }
-    ISOS=SFIT*ZOOM;
+    ISOS=SFIT*ZOOM; ISOAX={Fc:Fc, along:thi-tlo, across:nhi-nlo, fit:SFIT};
     ISOC=[ISOC[0]+Fc[2]*PANY*(thi-tlo)-Fc[3]*PANX*(nhi-nlo), ISOC[1]+Fc[3]*PANY*(thi-tlo)+Fc[2]*PANX*(nhi-nlo), 0];
     CE=[ISOC[0]-FW[0]*1e5, ISOC[1]-FW[1]*1e5, ISOC[2]-FW[2]*1e5];
     D_EFF=FF*HW/ISOS;
     tally={C:CE, f:FW, r:RT, u:UP, F:FF, near:NEAR, pad:PAD, hw:HW, hh:HH,
                    iso:true, S:ISOS, fit:SFIT, O:ISOC, deff:D_EFF, zfit:ZFIT, az:IAZ, el:IEL};
   }
+  /* ROW 221: THE SCOUT VIEW'S PROJECTION LOOP, the same arithmetic as cam() and
+     scr() above over a flat array: S holds x,y,z per point; O gets, per point,
+     the camera's x, y, depth and the page x, y (page x, y undefined behind the
+     eye). Nothing in the build calls it. */
+  function batch(S,n,O){
+    var i, a, b, vx, vy, vz, cx, cy, cz;
+    for(i=0;i<n;i++){ a=3*i; b=5*i; vx=S[a]-CE[0]; vy=S[a+1]-CE[1]; vz=S[a+2]-CE[2];
+      cx=vx*RT[0]+vy*RT[1]+vz*RT[2]; cy=vx*UP[0]+vy*UP[1]+vz*UP[2]; cz=vx*FW[0]+vy*FW[1]+vz*FW[2];
+      O[b]=cx; O[b+1]=cy; O[b+2]=cz;
+      if(ISO){ O[b+3]=PGW/2+ISOS*cx; O[b+4]=PGH/2-ISOS*cy; }
+      else if(cz>1e-12){ O[b+3]=PGW/2+FF*cx/cz*HW; O[b+4]=PGH/2-FF*cy/cz*HW; } }
+  }
   return {sC:sC, CREACH:CREACH, CE:CE, TG:TG, fx:fx, fy:fy, FW:FW, RT:RT, UP:UP, FF:FF, HW:HW, HH:HH,
-          ISO:ISO, ISOS:ISOS, D_EFF:D_EFF, ISOC:ISOC, SINEL:SINEL, cam:cam, scr:scr, project:project, tally:tally};
+          ISO:ISO, ISOS:ISOS, D_EFF:D_EFF, ISOC:ISOC, SINEL:SINEL, cam:cam, scr:scr, project:project, tally:tally,
+          batch:batch, near:NEAR, isoAx:ISOAX, cabs:CABS};
+}
+/* ROW 221: THE SCENE'S EDGES. Every face edge of every part once (ends rounded
+   to 0.1 m, either direction), tagged with its container's kind; a container
+   with no part gives its plan outline at the ground. */
+function sceneEdges(conts){
+  /* an open-addressed hash on the twelve quantised ends (0.1 m), either direction */
+  var cap=1<<16, HK=new Int32Array(cap*6), HU=new Uint8Array(cap), used=0, S=[], K=[], KIND={}, NK=0, nparts=0;
+  function slot(T,U,c,a0,a1,a2,b0,b1,b2){
+    var h=(Math.imul(a0,73856093)^Math.imul(a1,19349663)^Math.imul(a2,83492791)^Math.imul(b0,2654435761|0)^Math.imul(b1,40503)^Math.imul(b2,2246822519|0))&(c-1);
+    for(;;){ if(!U[h]) return h; var o=6*h; if(T[o]===a0&&T[o+1]===a1&&T[o+2]===a2&&T[o+3]===b0&&T[o+4]===b1&&T[o+5]===b2) return -1-h; h=(h+1)&(c-1); }
+  }
+  function grow(){
+    var c2=cap*2, T2=new Int32Array(c2*6), U2=new Uint8Array(c2), i, o, h;
+    for(i=0;i<cap;i++) if(HU[i]){ o=6*i; h=slot(T2,U2,c2,HK[o],HK[o+1],HK[o+2],HK[o+3],HK[o+4],HK[o+5]); U2[h]=1; T2.set(HK.subarray(o,o+6),6*h); }
+    cap=c2; HK=T2; HU=U2;
+  }
+  function seg(a,b,k){
+    var a0=Math.round(a[0]*10), a1=Math.round(a[1]*10), a2=Math.round((a[2]||0)*10), b0=Math.round(b[0]*10), b1=Math.round(b[1]*10), b2=Math.round((b[2]||0)*10), t;
+    if(a0===b0 && a1===b1 && a2===b2) return;
+    if(a0>b0 || (a0===b0 && (a1>b1 || (a1===b1 && a2>b2)))){ t=a0; a0=b0; b0=t; t=a1; a1=b1; b1=t; t=a2; a2=b2; b2=t; }
+    var h=slot(HK,HU,cap,a0,a1,a2,b0,b1,b2); if(h<0) return;
+    HU[h]=1; var o=6*h; HK[o]=a0; HK[o+1]=a1; HK[o+2]=a2; HK[o+3]=b0; HK[o+4]=b1; HK[o+5]=b2;
+    S.push(a0/10,a1/10,a2/10,b0/10,b1/10,b2/10); K.push(k);
+    if(++used>cap*0.6) grow();
+  }
+  conts.forEach(function(C){
+    var kn=C.kind||'?'; if(!(kn in KIND)) KIND[kn]=NK++; var k=KIND[kn];
+    if(C.parts && C.parts.length){ C.parts.forEach(function(P){ nparts++; P.faces.forEach(function(f){ var pts=f.pts, i;
+      for(i=0;i<pts.length;i++) seg(pts[i],pts[(i+1)%pts.length],k); }); }); }
+    else if(C.poly){ var Q=C.poly, i; for(i=0;i<Q.length;i++) seg(Q[i],Q[(i+1)%Q.length],k); }
+  });
+  return {scene:true, segs:new Float32Array(S), kinds:new Uint8Array(K), KIND:KIND, n:K.length, conts:conts.length, parts:nparts};
 }
 function corridorDraw(p,plans,THM,camera){
   p=corridorKnobs(p,THM);
@@ -39437,6 +39504,12 @@ function corridorDraw(p,plans,THM,camera){
       FF=KCAM.FF, HW=KCAM.HW, HH=KCAM.HH, ISO=KCAM.ISO, ISOS=KCAM.ISOS, D_EFF=KCAM.D_EFF, ISOC=KCAM.ISOC, SINEL=KCAM.SINEL, ISOZN=NEAR;
   var cam=KCAM.cam, scr=KCAM.scr, project=KCAM.project;
   STRTTALLY.cam=KCAM.tally; STRTTALLY.project=project;
+  /* ROW 221: THE SCENE (camera.scene, Scout's corridorScene). Every part at one
+     detail level -- the outline band, the middle of Solid detail and Outline
+     detail -- whatever its distance, and the render stops before the frustum,
+     the order and the projection: it hands back the world-space edges. */
+  var SCENE=!!(camera && camera.scene), SCENED=0;
+  if(SCENE){ var SCN0=Math.max(2,isFinite(p.dnear)?+p.dnear:18); SCENED=(SCN0+Math.max(SCN0,isFinite(p.dfar)?+p.dfar:90))/2; }
   /* the eye's value on a separating axis whose normal has view component dn:
      at infinity, so the side the view comes from is first; an axis square to
      the view separates two prisms whose sheet ranges are disjoint, and returns
@@ -39549,7 +39622,7 @@ function corridorDraw(p,plans,THM,camera){
     for(e=0;e<Q.length;e++){ var e2=(e+1)%Q.length; loops.push([lo[e],lo[e2],hi[e2],hi[e]]); }
     return polyFromLoops(loops);
   }
-  function dist3(P){ if(ISO) return D_EFF; return Math.hypot(P[0]-CE[0],P[1]-CE[1],P[2]-CE[2]); }
+  function dist3(P){ if(SCENE) return SCENED; if(ISO) return D_EFF; return Math.hypot(P[0]-CE[0],P[1]-CE[1],P[2]-CE[2]); }
   /* ROW 200 §§3-4 (site-frame spec): THE CULL AND THE MASSING. A theme's frameCull,
      at the isometric camera only.
      THE CULL: a lot, street slab or junction whose prism (z up to the tallest a
@@ -39562,14 +39635,15 @@ function corridorDraw(p,plans,THM,camera){
      THM.frameCull absent, or Projection 0: nothing here runs. */
   STRTTALLY.culled=[]; STRTTALLY.massed=0; STRTTALLY.massedLots=[];
   var MASSED=null;
-  if(ISO && THM.frameCull){
+  /* row 221: Scout's scene (SCENE) masses every lot by this same rule and culls nothing */
+  if((ISO || SCENE) && THM.frameCull){
     var ZTOPC=Math.max(THM.zfit||30,FLOORS*4.6*(THM.formTall||1)+10), MMPM=ISOS*PAGEMM;
     var offSheet=function(Q){ var x0=1e18, x1=-1e18, y0=1e18, y1=-1e18;
       Q.forEach(function(q){ var dx=q[0]-ISOC[0], dy=q[1]-ISOC[1], x=(dx*RT[0]+dy*RT[1])*ISOS, y0k=(dx*UP[0]+dy*UP[1])*ISOS, y1k=(dx*UP[0]+dy*UP[1]+ZTOPC*UP[2])*ISOS;
         if(x<x0) x0=x; if(x>x1) x1=x; if(y0k<y0) y0=y0k; if(y1k<y0) y0=y1k; if(y0k>y1) y1=y0k; if(y1k>y1) y1=y1k; });
       return x0>HW || x1<-HW || y0>HH || y1<-HH; };
     var CULLK={lot:1, slab:1, junction:1, pjunction:1, field:1};
-    if(!p.nocull) plans.forEach(function(PLk){
+    if(!p.nocull && !SCENE) plans.forEach(function(PLk){
       var gone=new Set();
       PLk.conts.forEach(function(C){ if(CULLK[C.kind] && offSheet(C.poly)){ gone.add(C); STRTTALLY.culled.push({kind:C.kind, poly:C.poly}); } });
       if(!gone.size) return;
@@ -39591,7 +39665,7 @@ function corridorDraw(p,plans,THM,camera){
       var M={'1':(PLk.offLots?PLk.offLots['1']:[]).slice(),'-1':(PLk.offLots?PLk.offLots['-1']:[]).slice()};
       PLk.lots.forEach(function(L){ if(!PLk.P3 || L.culled) return;
         var A=PLk.P3(L.s0,L.side,PLk.HALFW,0), B=PLk.P3(L.s1,L.side,PLk.HALFW,0), dx=B[0]-A[0], dy=B[1]-A[1];
-        if(Math.hypot(dx*RT[0]+dy*RT[1],dx*UP[0]+dy*UP[1])*MMPM<2.0 || (THM.massOut && THM.massOut(L))){ L.massed=true; M[L.side].push(L); STRTTALLY.massed++; STRTTALLY.massedLots.push(L.poly); } });
+        if(SCENE || Math.hypot(dx*RT[0]+dy*RT[1],dx*UP[0]+dy*UP[1])*MMPM<2.0 || (THM.massOut && THM.massOut(L))){ L.massed=true; M[L.side].push(L); STRTTALLY.massed++; STRTTALLY.massedLots.push(L.poly); } });
       MASSED.set(PLk,M);
       /* A STREET WHOSE EVERY LOT IS MASSED HAS NOTHING ON IT EITHER: its slabs merge end to
          end into runs (a straight run between two gaps is still a convex container, one
@@ -40957,6 +41031,7 @@ function corridorDraw(p,plans,THM,camera){
       if(EYECLR) conts.forEach(function(C){ if(C.kind==='slab') C.parts=C.parts.filter(function(P){ return !(movable(P) && drop[key(P)]); }); });
     })();
 
+    if(SCENE) return sceneEdges(conts);
     var live=[], nparts=0;
     /* THE WHOLE STREET, before the frustum, the LOD cut or any mirror filter,
        for strtcheck.js L5: the gate mirrors it ITSELF, because a truth built
@@ -41465,6 +41540,7 @@ function corridorDraw(p,plans,THM,camera){
   var DN=Math.max(2,isFinite(p.dnear)?+p.dnear:18), DF=Math.max(DN,isFinite(p.dfar)?+p.dfar:90);
   var LODE=LODMM, tries=0, RR, npts0;
   function RSTEPMM(){ return Math.min(1.2,0.3*Math.pow(2,tries)); }
+  if(SCENE){ var SCN=render(LODE,DN,DF); SCN.plans=plans; SCN.THM=THM; SCN.p=p; SCN.camArg=function(){ return camera.base||null; }; return SCN; }
   for(;;){
     RR=render(LODE,DN,DF);
     npts0=0; RR.res.forEach(function(q){ npts0+=q.length; });
@@ -42308,6 +42384,8 @@ function paint(){
   /* the variations sheet builds twelve drawings into `cur` and the info
      globals; whatever is cached is not the drawing any more */
   if(VARI.on){ sizeIt(); BUILT=null; drawVariations(); return; }
+  /* row 221: Scout draws its wireframe and never builds */
+  if(SCOUT && SCOUT.on){ if(cv.width!==w*2 || cv.height!==w*2) sizeIt(); scoutDraw(); return; }
   var t0=performance.now(), rebuilt=false;
   var waiting=false;
   if(!BUILT || BUILT.gen!==BUILDGEN || (BUILT.draft && !DRAFT)){
@@ -43005,7 +43083,7 @@ var KGROUPS=[
   ['bld','Buildings','width pave lotmin lotmax alley archmin archdet stepb canti fire uvar'],
   ['life','Street life (close-ups)','glow shopv props signs neon lang cables sag cars graff dots pnear'],
   ['wet','Wet street','puddles pudsz ripple rvar wmk wglint hero hstr hrag hturn hshape'],
-  ['cam','Camera','proj sfocus ftgt panx pany cams camx camz look turn pitch fov'],
+  ['cam','Camera','proj sfocus ftgt panx pany cams camx camz look turn pitch fov camabs eyex eyey hdg'],
   ['ink','Ink and detail','hatch hatchmode sun dnear dfar dpen dsplit mono lod budg occ']
 ].map(function(g){ return [g[0],g[1],g[2].split(' ')]; });
 /* An Essentials knob un-starred goes home to this group. */
@@ -43058,6 +43136,11 @@ var KIDLE={town:[
   {keys:'layout', par:['form','river','rail','hwy','pline','site','archlots','zones'], why:'nothing Layout places: City form 0, no river, line, site, park or district',
    on:function(E){ return kR(E,'form')===1 || kR(E,'river')===1 || kR(E,'rail')===1 || kR(E,'hwy')===1 || kR(E,'pline')===1 || kR(E,'site')>0 || kParks() || (kR(E,'archlots')>0 && kR(E,'zones')>0); }},
   {keys:'cams camx camz look turn pitch', par:['proj'], why:'Projection 1', on:function(E){ return kR(E,'proj')===0; }},
+  /* row 221: Camera placed. The eye at Camera x, y looking along Heading; Camera along, side and Turn
+     then move only the puddles, which are laid out ahead of where the street camera would stand */
+  {keys:'camabs', par:['proj'], why:'Projection 1', on:function(E){ return kR(E,'proj')===0; }},
+  {keys:'eyex eyey hdg', par:['camabs'], why:'Camera placed 0', on:function(E){ return kR(E,'camabs')===1; }},
+  {keys:'cams camx turn', par:['camabs'], why:'Camera placed 1, with Puddles and Front puddle 0', on:function(E){ return kR(E,'camabs')!==1 || kR(E,'puddles')>0 || kR(E,'hero')>0; }},
   {keys:'isoaz isoel zoom panx pany', par:['proj'], why:'Projection 0', on:function(E){ return kR(E,'proj')===1; }},
   {keys:'sfocus', par:['proj','site'], why:'needs Projection 1 and a Site', on:function(E){ return kR(E,'proj')===1 && kR(E,'site')>0; }},
   {keys:'ftgt', par:['proj','site','form','sfocus'], why:'needs a Site, City form 1 and Focus 2 or 3', on:function(E){ return kR(E,'proj')===1 && kR(E,'site')>0 && kR(E,'form')===1 && kR(E,'sfocus')>=2; }},
@@ -43164,6 +43247,9 @@ function kpanelIdle(){
 }
 function mount(){
   var box=document.getElementById('sliders'); box.innerHTML='';
+  /* row 221: Scout is on the corridor engines, and leaves when the engine changes */
+  var scb=document.getElementById('scout'); if(scb) scb.hidden=KCORR.indexOf(mode)<0;
+  if(SCOUT && SCOUT.on && SCOUT.eng!==mode) scoutLeave();
   if(KCORR.indexOf(mode)>=0 && SPEC[mode]){ KPANEL=null; kBuild(box); kpanelIdle(); }
   else { KPANEL=null;
   SPEC[mode][1].forEach(function(sp){ mkRow(box,sp,'sl_',
@@ -44472,6 +44558,10 @@ var HELP={
     look:'Perspective only: how far ahead along the streets the camera aims, before Turn and Pitch.'+NR,
     turn:'Perspective only: turns the camera left (+) or right (−) from looking along the streets: 90 looks straight across them.'+NR,
     pitch:'Perspective only: tilts the camera, in degrees. Down to -89, nearly straight down on the city.'+NR,
+    camabs:'Perspective only: 1 puts the camera anywhere -- at Camera x, Camera y and Camera height, looking along Heading -- instead of along a street. Scout (Fly or Orbit) writes it.'+NR,
+    eyex:'With Camera placed 1: where the eye stands along the city, in metres from the start of the first street (the Scout readout shows it).'+NR,
+    eyey:'With Camera placed 1: where the eye stands across the city, in metres from the first street.'+NR,
+    hdg:'With Camera placed 1: the way the camera looks, in degrees: 0 along the streets, 90 across them toward the last street. Pitch tilts it.'+NR,
     zoom:'Isometric only: the scale. 100% fits every street and lot of the whole city, up to 40 m high, inside the drawable area; it does not move when the buildings grow. 200% doubles everything about the centre.',
     isoaz:'Isometric only: the turn of the view in degrees, from looking along the parallel streets. 45 looks diagonally across the grid, 0 straight down the streets, 90 straight down the cross streets.',
     panx:'Isometric only: moves the view across the streets, as a share of the city’s width. Use with Iso zoom.',
@@ -45316,6 +45406,316 @@ cv.addEventListener('pointercancel',dropPinch);
 function endDrag(){ if(!dragging)return; dragging=false; viewLock=false; sched(); }
 cv.addEventListener('pointerup',endDrag);
 cv.addEventListener('pointercancel',endDrag);
+/* ====================== ROW 221: SCOUT -- a live wireframe camera ==========
+   docs/specs/2026-11-04-town-knobs-scout-flythrough_v2.md Row B. On a corridor
+   engine, Scout shows the scene (corridorScene: every container's parts at one
+   detail level, world-space edges, no projection) as a wireframe redrawn every
+   frame the view moves, in three modes: Isometric, Orbit and Fly.
+   THE VIEW IS A SET OF CAMERA KNOB VALUES, snapped to their steps, and every
+   frame is projected by the build's own corridorCamera (and, on `town`, its
+   townCamArg) at those values -- Scout has no projection of its own. So what it
+   shows is what Render this view builds: Render writes the same values into the
+   engine's knobs and runs the normal build. Esc leaves without writing.
+   The scene is built once per knob state minus the camera knobs (SCOUT.builds
+   counts it); nothing Scout does writes STATE until Render. */
+var SCOUTCAM=['proj','isoaz','isoel','zoom','panx','pany','camabs','eyex','eyey','camz','hdg','pitch','fov','cams','camx','look','turn','sfocus','ftgt'];
+var SCOUTINK={lot:0, hangar:0, hlhouse:0, stnbld:0, slab:1, junction:1, park:1, field:1, forecourt:1,
+  rwy:2, twy:2, stand:2, wsock:2, fence:2, hwater:3, fwater:3, seawall:3, hquay:3, hpier:3, hslip:3, hberth:3, hbreakwater:3, hapron:3};
+var SCOUT={on:false, mode:'iso', scn:null, key:null, builds:0, C:null, V:null, dirty:true, raf:0, ptrs:{}, drag:null,
+           held:{}, speed:60, ms:0, last:0, vary:null, cams:null};
+/* a knob's value as the slider would hold it: clamped to its range, on its step */
+function scoutSnap(k,v){
+  var sp=specOf(SPEC[mode][1],k); if(!sp) return v;
+  var lo=sp[2], hi=sp[3], st=sp[4]||1;
+  v=Math.max(lo,Math.min(hi,v));
+  v=lo+Math.round((v-lo)/st)*st;
+  var dec=(String(st).split('.')[1]||'').length; return +v.toFixed(dec);
+}
+function scoutHas(k){ return !!specOf(SPEC[mode][1],k); }
+function scoutKey(){
+  var E=STATE.eng[mode], o={};
+  Object.keys(E).sort().forEach(function(k){ if(SCOUTCAM.indexOf(k)<0) o[k]=E[k]; });
+  return mode+'|'+seed+'|'+JSON.stringify(o);
+}
+/* corridorScene: the scene for the current knobs, built in this thread. The
+   build's globals the knob panel reads (STRTSTATS, STRTTALLY, STRTINFO) are put
+   back afterwards: the scene is not a drawing. */
+function corridorScene(){
+  var key=scoutKey();
+  if(SCOUT.scn && SCOUT.key===key) return SCOUT.scn;
+  var keep=[STRTSTATS,STRTTALLY,STRTINFO], R=null, t0=performance.now();
+  try{ setGeoCap(gvals());
+       R=ENG[mode](Object.assign({},vals(),{proj:0, camabs:0, puddles:0, hero:0, dots:0, pnear:0, scoutScene:1})); }
+  finally{ STRTSTATS=keep[0]; STRTTALLY=keep[1]; STRTINFO=keep[2]; }
+  if(!R || !R.scene) return null;
+  R.ms=performance.now()-t0; R.out=new Float64Array(R.n*10);
+  /* each container kind to one of four inks: buildings, ground, airfield, water (the prototype's
+     table; a kind it does not name is water by its name, else ground) */
+  var cls={}; Object.keys(R.KIND).forEach(function(kn){
+    cls[R.KIND[kn]]=(kn in SCOUTINK)?SCOUTINK[kn]:/water|river|chan|canal/i.test(kn)?3:1; });
+  R.cls=new Uint8Array(R.n); for(var i=0;i<R.n;i++) R.cls[i]=cls[R.kinds[i]];
+  SCOUT.builds++; SCOUT.scn=R; SCOUT.key=key;
+  return R;
+}
+/* the build's camera for a set of camera knob values */
+function scoutCamera(V){
+  var S=SCOUT.scn, pk=Object.assign({},S.p,V), PL=S.plans[0];
+  return corridorCamera(pk,Object.assign({},PL,corridorCamKnobs(pk)),S.plans,S.THM,S.camArg(pk));
+}
+/* ---- the view: a continuous state C per mode, snapped to knob values V ---- */
+function scoutValues(){
+  var C=SCOUT.C, V={};
+  if(SCOUT.mode==='iso'){
+    V.proj=1; V.isoaz=scoutSnap('isoaz',((C.az+180)%360+360)%360-180); V.isoel=scoutSnap('isoel',C.el);
+    V.zoom=scoutSnap('zoom',C.zoom); V.panx=scoutSnap('panx',C.panx); V.pany=scoutSnap('pany',C.pany);
+  } else {
+    var e=SCOUT.mode==='orbit'?scoutOrbitEye():C.eye;
+    V.proj=0; V.camabs=1; V.eyex=scoutSnap('eyex',e[0]); V.eyey=scoutSnap('eyey',e[1]); V.camz=scoutSnap('camz',e[2]);
+    V.hdg=scoutSnap('hdg',((C.hdg%360)+360)%360); V.pitch=scoutSnap('pitch',C.pitch); V.fov=scoutSnap('fov',C.fov);
+  }
+  return V;
+}
+function scoutOrbitEye(){
+  var C=SCOUT.C, h=C.hdg*Math.PI/180, el=-C.pitch*Math.PI/180;
+  return [C.tgt[0]-C.dist*Math.cos(el)*Math.cos(h), C.tgt[1]-C.dist*Math.cos(el)*Math.sin(h), C.tgt[2]+C.dist*Math.sin(el)];
+}
+/* the starting view: the knobs the engine holds now */
+function scoutStart(){
+  var E=STATE.eng[mode], K=scoutCamera({}), C={};
+  C.az=isFinite(E.isoaz)?+E.isoaz:45; C.el=isFinite(E.isoel)?+E.isoel:30; C.zoom=isFinite(E.zoom)?+E.zoom:100;
+  C.panx=+E.panx||0; C.pany=+E.pany||0;
+  var KI=scoutCamera({proj:1}), span=KI.HW/KI.ISOS;
+  C.tgt=[KI.ISOC[0],KI.ISOC[1],0];
+  /* the perspective camera the knobs hold: its eye, heading and pitch */
+  var KP=scoutCamera({proj:0});
+  C.eye=KP.CE.slice(); C.hdg=Math.atan2(KP.FW[1],KP.FW[0])*180/Math.PI; C.pitch=Math.asin(Math.max(-1,Math.min(1,KP.FW[2])))*180/Math.PI;
+  C.fov=isFinite(E.fov)?+E.fov:72; C.dist=span*KP.FF*1.1;
+  SCOUT.C=C; SCOUT.speed=Math.max(5,Math.min(400,span/8));
+  SCOUT.mode=(isFinite(E.proj)?+E.proj:0)===1 || !scoutHas('camabs')?'iso':'fly';
+}
+function scoutSetMode(m){
+  if(m!=='iso' && !scoutHas('camabs')) return;
+  var C=SCOUT.C, prev=SCOUT.mode;
+  if(prev==='iso' && m!=='iso'){
+    /* from the isometric view: look the same way, from as far as frames the same width */
+    var K=scoutCamera(scoutValues()), span=K.HW/K.ISOS, d=span*(1/Math.tan((C.fov*Math.PI/180)/2))*1.1;
+    C.hdg=Math.atan2(K.FW[1],K.FW[0])*180/Math.PI; C.pitch=Math.max(-89,Math.asin(K.FW[2])*180/Math.PI);
+    C.tgt=K.ISOC.slice(); C.dist=d;
+    if(m==='fly'){ var e=[K.ISOC[0]-K.FW[0]*d, K.ISOC[1]-K.FW[1]*d, K.ISOC[2]-K.FW[2]*d]; C.eye=e; }
+  } else if(prev==='orbit' && m==='fly'){ C.eye=scoutOrbitEye(); }
+  else if(prev==='fly' && m==='orbit'){
+    var h=C.hdg*Math.PI/180, p=C.pitch*Math.PI/180, f=[Math.cos(p)*Math.cos(h),Math.cos(p)*Math.sin(h),Math.sin(p)];
+    var t=f[2]<-0.05?Math.min(C.dist*2,-C.eye[2]/f[2]):C.dist; C.tgt=[C.eye[0]+f[0]*t,C.eye[1]+f[1]*t,Math.max(0,C.eye[2]+f[2]*t)]; C.dist=t;
+  }
+  if(m==='orbit') C.pitch=Math.min(-5,C.pitch);
+  SCOUT.mode=m; SCOUT.vary=null; scoutBar(); scoutKick();
+}
+/* ---- drawing ---- */
+function scoutInks(){
+  var cs=getComputedStyle(document.documentElement);
+  return ['#1a1a1a','#9a948a','#c0392b','#2f74c0'];
+}
+function scoutDrawView(V,x0,y0,w,h,thin){
+  var S=SCOUT.scn, K=scoutCamera(V), n=S.n*2, O=S.out, i;
+  K.batch(S.segs,n,O);
+  /* page units to this rectangle, the way paint() maps them (VIEW in the big view) */
+  var vs, vox, voy;
+  if(thin){ var sc=Math.min(w/PGW,h/PGH); vs=sc; vox=x0+(w-PGW*sc)/2; voy=y0+(h-PGH*sc)/2; }
+  else { vs=VIEW.s*W; vox=VIEW.ox*W; voy=VIEW.oy*H; }
+  var P=[new Path2D(),new Path2D(),new Path2D(),new Path2D()], NE=K.near, ISO=K.ISO, X1, Y1, X2, Y2, lim=8*Math.max(W,H);
+  for(i=0;i<S.n;i++){
+    var a=10*i, b=a+5, za=O[a+2], zb=O[b+2];
+    if(ISO){ X1=O[a+3]; Y1=O[a+4]; X2=O[b+3]; Y2=O[b+4]; }
+    else {
+      if(za<NE && zb<NE) continue;
+      if(za>=NE && zb>=NE){ X1=O[a+3]; Y1=O[a+4]; X2=O[b+3]; Y2=O[b+4]; }
+      else { var t=(NE-za)/(zb-za), c=[O[a]+(O[b]-O[a])*t, O[a+1]+(O[b+1]-O[a+1])*t, NE], q=K.scr(c);
+        if(za<NE){ X1=q[0]; Y1=q[1]; X2=O[b+3]; Y2=O[b+4]; } else { X1=O[a+3]; Y1=O[a+4]; X2=q[0]; Y2=q[1]; } }
+    }
+    X1=X1*vs+vox; Y1=Y1*vs+voy; X2=X2*vs+vox; Y2=Y2*vs+voy;
+    if((X1<x0&&X2<x0)||(X1>x0+w&&X2>x0+w)||(Y1<y0&&Y2<y0)||(Y1>y0+h&&Y2>y0+h)) continue;
+    if(Math.abs(X1)>lim||Math.abs(Y1)>lim||Math.abs(X2)>lim||Math.abs(Y2)>lim) continue;
+    var pp=P[S.cls[i]]; pp.moveTo(X1,Y1); pp.lineTo(X2,Y2);
+  }
+  var INK=scoutInks(), LW=thin?[0.8,0.6,0.9,0.8]:[1.2,0.9,1.4,1.2];
+  ctx.save(); ctx.beginPath(); ctx.rect(x0,y0,w,h); ctx.clip(); ctx.lineCap='round';
+  [1,3,2,0].forEach(function(g){ ctx.strokeStyle=INK[g]; ctx.lineWidth=LW[g]; ctx.globalAlpha=g===1?0.7:1; ctx.stroke(P[g]); });
+  ctx.restore(); ctx.globalAlpha=1;
+  return K;
+}
+function scoutDraw(){
+  var t0=performance.now();
+  ctx.setTransform(1,0,0,1,0,0); ctx.fillStyle='#fbf8f3'; ctx.fillRect(0,0,W,H);
+  if(SCOUT.key!==scoutKey()) corridorScene();
+  if(!SCOUT.scn){ return; }
+  if(SCOUT.vary){ scoutDrawVary(); SCOUT.ms=performance.now()-t0; scoutReadout(); return; }
+  /* the page, as the build fits it */
+  var vs=VIEW.s*W, vox=VIEW.ox*W, voy=VIEW.oy*H;
+  ctx.strokeStyle='#d9d2c6'; ctx.lineWidth=2; ctx.strokeRect(vox,voy,PGW*vs,PGH*vs);
+  SCOUT.V=scoutValues();
+  SCOUT.cams=scoutDrawView(SCOUT.V,0,0,W,H,false);
+  SCOUT.ms=performance.now()-t0;
+  scoutReadout();
+}
+/* ---- View variations: twelve views round this one ---- */
+function scoutVaryViews(){
+  var C=SCOUT.C, out=[], i;
+  function iso(da,de,zf){ var c=Object.assign({},C); c.az=C.az+da; c.el=Math.max(10,Math.min(89,C.el+de)); c.zoom=C.zoom*zf; return c; }
+  if(SCOUT.mode==='iso') out=[iso(-30,0,1),iso(-15,0,1),iso(15,0,1),iso(30,0,1),iso(0,-10,1),iso(0,10,1),iso(0,0,0.7),iso(0,0,1.4),
+                              iso(-15,-10,1),iso(15,-10,1),iso(-15,10,1),iso(15,10,1)];
+  else for(i=0;i<12;i++){ var c=Object.assign({},C); c.hdg=C.hdg+30*i; out.push(c); }
+  return out;
+}
+function scoutVaryStart(){
+  var t0=performance.now(), C0=SCOUT.C, L=scoutVaryViews();
+  SCOUT.vary={views:L, V:L.map(function(c){ SCOUT.C=c; var v=scoutValues(); SCOUT.C=C0; return v; })};
+  scoutPaintNow(); SCOUT.vary.ms=performance.now()-t0; scoutReadout();
+  return SCOUT.vary;
+}
+function scoutDrawVary(){
+  var VA=SCOUT.vary, cw=W/4, ch=H/3;
+  VA.V.forEach(function(V,i){ var x=(i%4)*cw, y=Math.floor(i/4)*ch;
+    scoutDrawView(V,x+4,y+4,cw-8,ch-8,true);
+    ctx.strokeStyle='#d9d2c6'; ctx.lineWidth=2; ctx.strokeRect(x+4,y+4,cw-8,ch-8); });
+}
+function scoutVaryPick(i){
+  var VA=SCOUT.vary; if(!VA || !VA.views[i]) return;
+  SCOUT.C=VA.views[i]; SCOUT.vary=null; scoutKick();
+}
+/* ---- the bar under the canvas: modes, the readout, Render, Variations ---- */
+function scoutBar(){
+  var b=document.getElementById('scoutbar'); if(!b) return;
+  b.hidden=!SCOUT.on; if(!SCOUT.on){ b.innerHTML=''; return; }
+  var abs=scoutHas('camabs');
+  b.innerHTML='<div class="sbmodes">'+
+    ['iso','orbit','fly'].map(function(m){ return '<button type="button" data-sm="'+m+'"'+(SCOUT.mode===m?' class="on"':'')+(m!=='iso'&&!abs?' disabled title="This engine has no Camera placed knob, so only an isometric view can be rendered."':'')+'>'+
+      {iso:'Isometric',orbit:'Orbit',fly:'Fly'}[m]+'</button>'; }).join('')+
+    '<button type="button" id="scoutRender" class="go">Render this view</button>'+
+    '<button type="button" id="scoutVary">View variations</button>'+
+    '<button type="button" id="scoutExit" title="Esc">Leave Scout</button></div>'+
+    '<div class="sbhelp" id="scoutHelp"></div><dl class="sbread" id="scoutRead"></dl>';
+  b.querySelectorAll('[data-sm]').forEach(function(x){ x.addEventListener('click',function(){ scoutSetMode(x.getAttribute('data-sm')); }); });
+  document.getElementById('scoutRender').addEventListener('click',scoutRender);
+  document.getElementById('scoutVary').addEventListener('click',function(){ if(SCOUT.vary){ SCOUT.vary=null; scoutKick(); } else scoutVaryStart(); });
+  document.getElementById('scoutExit').addEventListener('click',function(){ scoutLeave(); });
+  scoutReadout();
+}
+var SCOUTHELP={iso:'Drag turns and tilts. Shift-drag or right-drag pans. Wheel or pinch zooms.',
+  orbit:'Drag circles the target. Shift-drag pans. Wheel moves in and out.',
+  fly:'W A S D move, Q E down and up, drag looks, wheel sets the speed, Shift is four times as fast. One finger looks, two pinch.'};
+function scoutReadout(){
+  var r=document.getElementById('scoutRead'), h=document.getElementById('scoutHelp'); if(!r) return;
+  var S=SCOUT.scn, V=SCOUT.V||{}, lab={};
+  SPEC[mode][1].forEach(function(sp){ lab[sp[0]]=sp[1]; });
+  if(SCOUT.vary){ h.textContent='Twelve views round this one, drawn in '+Math.round(SCOUT.vary.ms||0)+' ms. Click one to take it.'; }
+  else h.textContent=SCOUTHELP[SCOUT.mode]+(S?' · '+S.n.toLocaleString()+' edges, '+Math.round(SCOUT.ms*10)/10+' ms a frame':'');
+  r.innerHTML=Object.keys(V).filter(scoutHas).map(function(k){ return '<dt>'+(lab[k]||k)+'</dt><dd>'+V[k]+'</dd>'; }).join('');
+}
+/* ---- on, off, render ---- */
+function scoutEnter(){
+  if(KCORR.indexOf(mode)<0) return false;
+  /* a big city takes seconds: say so, let the page paint it, then build */
+  if(!SCOUT.scn || SCOUT.key!==scoutKey()){ msg('Scout: building the scene\u2026'); SCOUT.pending=true;
+    setTimeout(function(){ SCOUT.pending=false; scoutGo(); },30); return true; }
+  return scoutGo();
+}
+function scoutGo(){
+  SCOUT.on=true; SCOUT.eng=mode;
+  var S=corridorScene();
+  if(!S){ SCOUT.on=false; msg('Scout: no scene from this engine'); return false; }
+  scoutStart(); SCOUT.vary=null; scoutBar(); scoutKick();
+  msg('Scout: '+S.n.toLocaleString()+' edges from '+S.conts+' containers and '+S.parts+' parts in '+Math.round(S.ms)+' ms');
+  return true;
+}
+function scoutLeave(){
+  if(!SCOUT.on) return;
+  SCOUT.on=false; SCOUT.vary=null; SCOUT.held={}; scoutBar();
+  if(SCOUT.raf){ cancelAnimationFrame(SCOUT.raf); SCOUT.raf=0; }
+  schedPaint();
+}
+function scoutRender(){
+  if(!SCOUT.on) return;
+  var V=scoutValues(), E=STATE.eng[mode];
+  Object.keys(V).forEach(function(k){ if(scoutHas(k)) E[k]=V[k]; });
+  scoutLeave(); mount();
+}
+/* ---- the frame loop: only while something moves ---- */
+function scoutPaintNow(){ if(!SCOUT.on) return; paint(); }
+function scoutKick(){ SCOUT.dirty=true; if(!SCOUT.raf && SCOUT.on) SCOUT.raf=requestAnimationFrame(scoutTick); }
+function scoutTick(ts){
+  SCOUT.raf=0; if(!SCOUT.on) return;
+  var dt=SCOUT.last?Math.min(0.1,(ts-SCOUT.last)/1000):0; SCOUT.last=ts;
+  var HL=SCOUT.held, moving=false;
+  if(SCOUT.mode==='fly' && !SCOUT.vary){
+    var C=SCOUT.C, sp=SCOUT.speed*(HL.shift?4:1)*dt, h=C.hdg*Math.PI/180, f=[Math.cos(h),Math.sin(h)], r=[Math.sin(h),-Math.cos(h)];
+    var mv=[ (HL.w?1:0)-(HL.s?1:0), (HL.d?1:0)-(HL.a?1:0), (HL.e?1:0)-(HL.q?1:0) ];
+    if(mv[0]||mv[1]||mv[2]){ moving=true;
+      C.eye=[C.eye[0]+(f[0]*mv[0]+r[0]*mv[1])*sp, C.eye[1]+(f[1]*mv[0]+r[1]*mv[1])*sp, Math.max(0.2,C.eye[2]+mv[2]*sp)]; SCOUT.dirty=true; }
+  }
+  if(SCOUT.dirty){ SCOUT.dirty=false; paint(); }
+  if(moving) SCOUT.raf=requestAnimationFrame(scoutTick); else SCOUT.last=0;
+}
+/* ---- input: on the canvas, ahead of the page's own pan and zoom ---- */
+function scoutPanIso(dx,dy){
+  var K=SCOUT.cams||scoutCamera(scoutValues()), C=SCOUT.C, A=K.isoAx; if(!A) return;
+  var m=1/(VIEW.s*(W/2)*K.ISOS), dxm=dx*m, dym=dy*m/Math.max(0.2,K.SINEL);
+  var hf=Math.hypot(K.FW[0],K.FW[1])||1, fw=[K.FW[0]/hf,K.FW[1]/hf];
+  var d=[-K.RT[0]*dxm+fw[0]*dym, -K.RT[1]*dxm+fw[1]*dym];
+  C.pany+=100*(d[0]*A.Fc[2]+d[1]*A.Fc[3])/(A.along||1);
+  C.panx+=100*(-d[0]*A.Fc[3]+d[1]*A.Fc[2])/(A.across||1);
+}
+function scoutPanOrbit(dx,dy){
+  var C=SCOUT.C, h=C.hdg*Math.PI/180, f=[Math.cos(h),Math.sin(h)], r=[Math.sin(h),-Math.cos(h)], m=C.dist/((W/2)*1.2);
+  C.tgt=[C.tgt[0]-r[0]*dx*m+f[0]*dy*m, C.tgt[1]-r[1]*dx*m+f[1]*dy*m, C.tgt[2]];
+}
+function scoutZoom(f){
+  var C=SCOUT.C;
+  if(SCOUT.mode==='iso') C.zoom=Math.max(10,Math.min(800,C.zoom/f));
+  else if(SCOUT.mode==='orbit') C.dist=Math.max(5,Math.min(20000,C.dist*f));
+  else SCOUT.speed=Math.max(1,Math.min(2000,SCOUT.speed/f));
+  scoutKick();
+}
+function scoutMove(dx,dy,pan){
+  var C=SCOUT.C;
+  if(SCOUT.mode==='fly'){ C.hdg-=dx*0.25; C.pitch=Math.max(-89,Math.min(45,C.pitch-dy*0.25)); }
+  else if(pan){ if(SCOUT.mode==='iso') scoutPanIso(dx,dy); else scoutPanOrbit(dx,dy); }
+  else if(SCOUT.mode==='iso'){ C.az+=dx*0.3; C.el=Math.max(10,Math.min(89,C.el+dy*0.25)); }
+  else { C.hdg-=dx*0.3; C.pitch=Math.max(-89,Math.min(-5,C.pitch-dy*0.25)); }
+  scoutKick();
+}
+function scoutInstall(){
+  function own(e){ if(!SCOUT.on) return false; e.stopImmediatePropagation(); e.preventDefault(); return true; }
+  cv.addEventListener('pointerdown',function(e){ if(!own(e)) return;
+    if(SCOUT.vary){ var r=cv.getBoundingClientRect(), i=Math.floor((e.clientX-r.left)/r.width*4)+4*Math.floor((e.clientY-r.top)/r.height*3); scoutVaryPick(i); return; }
+    try{ cv.setPointerCapture(e.pointerId); }catch(er){}
+    SCOUT.ptrs[e.pointerId]=[e.clientX,e.clientY]; SCOUT.drag={x:e.clientX, y:e.clientY, pan:e.shiftKey||e.button===2}; },true);
+  cv.addEventListener('pointermove',function(e){ if(!own(e)) return;
+    var P=SCOUT.ptrs, ids=Object.keys(P);
+    if(ids.length===2 && P[e.pointerId]){ var a=P[ids[0]], b=P[ids[1]], d0=Math.hypot(a[0]-b[0],a[1]-b[1]);
+      P[e.pointerId]=[e.clientX,e.clientY]; a=P[ids[0]]; b=P[ids[1]]; var d1=Math.hypot(a[0]-b[0],a[1]-b[1]);
+      if(d0>4 && d1>4) scoutZoom(d0/d1); return; }
+    if(P[e.pointerId]) P[e.pointerId]=[e.clientX,e.clientY];
+    var D=SCOUT.drag; if(!D) return;
+    var dx=e.clientX-D.x, dy=e.clientY-D.y; D.x=e.clientX; D.y=e.clientY;
+    scoutMove(dx,dy,D.pan); },true);
+  ['pointerup','pointercancel'].forEach(function(t){ cv.addEventListener(t,function(e){ if(!own(e)) return; delete SCOUT.ptrs[e.pointerId]; SCOUT.drag=null; },true); });
+  cv.addEventListener('wheel',function(e){ if(!own(e)) return; scoutZoom(Math.pow(1.0015,e.deltaY)); },{capture:true, passive:false});
+  cv.addEventListener('dblclick',function(e){ own(e); },true);
+  cv.addEventListener('contextmenu',function(e){ if(SCOUT.on) e.preventDefault(); });
+  document.addEventListener('keydown',function(e){
+    if(!SCOUT.on) return;
+    var t=e.target, tag=t&&t.tagName; if(tag==='INPUT'||tag==='TEXTAREA'||tag==='SELECT') return;
+    var k=(e.key||'').toLowerCase();
+    if(k==='escape'){ e.preventDefault(); scoutLeave(); return; }
+    if(k==='shift'){ SCOUT.held.shift=true; return; }
+    if('wasdqe'.indexOf(k)>=0 && k.length===1){ e.preventDefault(); SCOUT.held[k]=true; scoutKick(); }
+  });
+  document.addEventListener('keyup',function(e){ var k=(e.key||'').toLowerCase(); if(k==='shift') SCOUT.held.shift=false; else SCOUT.held[k]=false; });
+  window.addEventListener('blur',function(){ SCOUT.held={}; });
+  var btn=document.getElementById('scout');
+  if(btn) btn.addEventListener('click',function(){ if(SCOUT.on) scoutLeave(); else if(!SCOUT.pending) scoutEnter(); });
+}
+scoutInstall();
 
 /* INSTALL A TILE, FROM WHEREVER IT CAME. Returns the line to show. The three
    callers -- Load preset, Load tile, and the tile-maker handoff -- differ only
