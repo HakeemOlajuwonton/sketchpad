@@ -224,6 +224,7 @@
   .row .kpin.on{color:var(--accent); opacity:1;}
   .row.kpar label{font-weight:700; color:var(--ink);}
   .kidle{font-size:11.5px; color:var(--dim); opacity:.8; margin:2px 2px 6px; line-height:1.35;}
+  .kread{font-size:11.5px; color:var(--dim); margin:0 2px 6px; line-height:1.35;}
   /* Phone. The canvas used to sit BELOW every slider, so on a 412 px wide screen
      you were always looking at one or the other. It now leads, and sticks. */
   @media (max-width:820px){
@@ -461,7 +462,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v373</a> &mdash; engine real, part C -- the ground: opaque by prefix horizons over the ground rows, ridge rows outside the city with staggered starts, contours, motorway and rail viaducts, river channels, pens map blocks buildings ground water rail green</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v374</a> &mdash; Corridor city: Map scale -- a fixed scale on paper (1:500 to 1:8000, 1:1000 by default) so Site no longer shrinks everything; the page crops about Focus, and a readout says what the sheet shows</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <section class="fold" id="fold_pick"><h2>Pick engine<span class="cnt"></span></h2>
@@ -3637,6 +3638,8 @@ var SPEC={
     ['pitch','Pitch',-89,45,0.5,-35,[1,'°']],['fov','Field of view',25,120,1,72,[1,'°']],
     ['camabs','Camera placed',0,1,1,0],['eyex','Camera x',-6000,6000,1,0,[1,' m']],['eyey','Camera y',-6000,6000,1,0,[1,' m']],
     ['hdg','Heading',0,359,1,0,[1,'°']],
+    /* row 255 (docs/specs/2026-11-05-town-map-scale.md): a fixed map scale, 0 Fit */
+    ['mscale','Map scale',0,5,1,2],
     ['proj','Projection',0,1,1,1],['isoaz','Iso turn',-180,180,1,45,[1,'°']],['isoel','Iso tilt',10,89,1,30,[1,'°']],
     ['zoom','Iso zoom',10,800,1,100,[100,'%']],['panx','Iso pan across',-100,100,1,0,[100,'%']],['pany','Iso pan along',-100,100,1,0,[100,'%']],
     ['views','Views',0,3,1,0],['v2az','View 2 turn',-180,180,1,45,[1,'°']],['v2el','View 2 tilt',10,89,1,30,[1,'°']],['v2zoom','View 2 zoom',10,800,1,100,[100,'%']],
@@ -23924,8 +23927,20 @@ function buildTown(p){
   /* row 204: a pylon's plot stands in a field: the field is cut round it */
   if(PWL && WC) WC.cutSoft(function(q){ var ps=[q], hit=false; PWL.plan.conts.forEach(function(C){ var nx=[]; ps.forEach(function(r){ if(!WC.polyOverlap(r,C.poly)){ nx.push(r); return; } hit=true; townMinus(r,C.poly).forEach(function(m){ nx.push(m); }); }); ps=nx; }); return hit?ps.map(function(r){ return {poly:r}; }):null; });
   /* the camera argument: townCamArg (row 221), so the Scout view reads the same eye and frame */
+  /* row 255: with a Map scale the core is read first (townCamArg centres on it), and the page culls as Focus does */
+  var MSK=Math.max(0,Math.min(5,Math.round(isFinite(p.mscale)?+p.mscale:0)));
+  if(MSK) G.MCORE=townMapCore(p,plans,THM);
   var TCA=townCamArg(p,G,SITE,FRM,WC,VR,VH), FR=TCA.FR, FTGC=TCA.FTGC, FK=TCA.FK;
-  var THX=SITE?Object.assign({},THM,{frameCull:true, formTall:G.FORM?Math.max(1,Math.min(4,(isFinite(p.corez)?+p.corez:250)/100)):1}):THM;
+  /* row 255 §1.3: the drawing's world extent. With the whole city's frame (row 204) it is that frame: its
+     lines are laid past it and the view never reaches them, and a fixed scale does not build what is off
+     the page, so the frame is the one extent that is the same at every Map scale (the containers drawn at
+     Fit overhang it by a few metres, under 1%). Without one, every container of every plan, read before the draw (a
+     fixed scale builds no content off the page) */
+  var MEXT=[1e18,1e18,-1e18,-1e18];
+  if(WC && WC.ext) MEXT=WC.ext.slice(0,4);
+  else plans.forEach(function(PLk){ (PLk.conts||[]).forEach(function(C){ (C.poly||[]).forEach(function(q){
+    if(q[0]<MEXT[0]) MEXT[0]=q[0]; if(q[1]<MEXT[1]) MEXT[1]=q[1]; if(q[0]>MEXT[2]) MEXT[2]=q[0]; if(q[1]>MEXT[3]) MEXT[3]=q[1]; }); }); });
+  var THX=SITE||(MSK&&!p.scoutScene)?Object.assign({},THM,{frameCull:true, formTall:G.FORM?Math.max(1,Math.min(4,(isFinite(p.corez)?+p.corez:250)/100)):1}):THM;
   /* row 204 §A6: a close-up dresses what it looks at: at 450 m of dense city every lot dressed is 50,000 parts and minutes */
   if(FTGC){ var RMS=FK===2?110:60; THX=Object.assign({},THX,{massOut:function(L){ var c=townMid(L.poly); return Math.hypot(c[0]-FTGC[0],c[1]-FTGC[1])>RMS; }}); }
   /* row 221: Scout's scene -- the same plan, the camera argument by townCamArg for whatever view it shows */
@@ -23956,6 +23971,11 @@ function buildTown(p){
   STRTTALLY.town.blocks=BLK; STRTTALLY.town.parks=PKS?PKS.info:null; STRTTALLY.town.pline=PWL?PWL.info:null;
   STRTTALLY.town.site=SITE?SITE.info:null;
   STRTTALLY.town.frame=FR;
+  /* row 255 §1.3: what the Map scale readout says, from this build: the world extent (m), the
+     drawable box on the sheet (mm), and paper mm per world m at the camera's target */
+  (function(){ var CT=STRTTALLY.cam||{}, MM=CT.mmpm||0, WM=2*(CT.hw||0)*PAGEMM, HM=2*(CT.hh||0)*PAGEMM;
+    STRTTALLY.town.mscale={k:MSK, N:TOWNMSN[MSK], ext:[MEXT[2]-MEXT[0],MEXT[3]-MEXT[1]], box:MEXT, page:[WM,HM], mmpm:MM,
+      shows:MM>0?[WM/MM,HM/MM]:[0,0], fitN:MM>0?1000/MM:0, core:MSK?G.MCORE:null}; })();
   STRTTALLY.town.form=FRM?FRM.info:null;
   STRTTALLY.town.whole=WC?{ext:WC.ext, info:WC.info, X:WC.X, branches:(VB||[]).map(function(V){ return V.info; }), target:FTGC}:null;
   if(FRM && FRM.info.harbour) STRTINFO+=' · harbour on the shore, Scale '+FRM.info.harbour.TI+': '+FRM.info.harbour.info.boats.length+' boats, '+FRM.info.harbour.info.ships.length+' ships';
@@ -23998,7 +24018,28 @@ function townCamArg(p,G,SITE,FRM,WC,VR,VH){
   /* row 204 §A6: a close-up: 450 m or 150 m of plan on the target, fitted to the rectangle and never to what is in it */
   var FTG=Math.max(0,Math.min(5,Math.round(isFinite(p.ftgt)?+p.ftgt:0))), FTGC=null;
   if(FTG && FK>=2 && SITE && G.FORM){ FTGC=townTarget(FTG,VR,VH,WC,SITE,FRM); if(FTGC){ var HFT=FK===2?215:70; FR=[FTGC[0]-HFT,FTGC[1]-HFT,FTGC[0]+HFT,FTGC[1]+HFT]; } }
-  return {camera:{O:[G.NLEN/2,G.SPAN/2], th:0, CE:ce, TG:[ce[0]+LK,ce[1],CZ], frame:FR, frameFlat:!!FTGC}, FR:FR, FTGC:FTGC, FK:FK};
+  var cam0={O:[G.NLEN/2,G.SPAN/2], th:0, CE:ce, TG:[ce[0]+LK,ce[1],CZ], frame:FR, frameFlat:!!FTGC};
+  /* row 255: MAP SCALE. A fixed scale (N of 1:N) centred on Focus's rectangle, or at Focus 0
+     (and without a site, where Focus has no rectangle) on the city's core, G.MCORE. 0: nothing */
+  var MSN=TOWNMSN[Math.max(0,Math.min(5,Math.round(isFinite(p.mscale)?+p.mscale:0)))];
+  if(MSN) cam0.mscale={N:MSN, c:FR&&FK>0?[(FR[0]+FR[2])/2,(FR[1]+FR[3])/2]:(G.MCORE||[G.NLEN/2,G.SPAN/2])};
+  return {camera:cam0, FR:FR, FTGC:FTGC, FK:FK};
+}
+/* row 255: Map scale 0..5 -> N of 1:N (0 Fit) */
+var TOWNMSN=[0,500,1000,2000,4000,8000];
+/* row 255 §1.2: THE CITY'S CORE, the median (each axis) of the footprint centres of the buildings
+   taller than 6 m. Read off the plan before any content: a lot counts when its LEAST height does --
+   a shed (9-12 m), or a building whose fewest storeys (the content's own rule, with no canyon lift)
+   at the theme's lowest storey height clear 6 m. A parking lot has no building. None: null */
+function townMapCore(p,plans,THM){
+  var FL=Math.max(1,Math.round(+p.floors||9)), BH=THM.baseH?THM.baseH[0]:3.6, X=[], Y=[];
+  plans.forEach(function(PLk){ (PLk.lots||[]).forEach(function(L){
+    if(L.park || !L.poly) return;
+    var tall=L.shed?(L.shedZ||0)>6:Math.max(L.fm?2:1,Math.min(L.fm?40:1e9,Math.round(FL*(L.tower?1:0.45)*(L.fm||1))))*BH>6;
+    if(!tall || L.poly.length<3) return; var c=townMid(L.poly); if(isFinite(c[0]) && isFinite(c[1])){ X.push(c[0]); Y.push(c[1]); } }); });
+  if(!X.length) return null;
+  function med(A){ A.sort(function(a,b){ return a-b; }); var n=A.length; return n%2?A[(n-1)/2]:(A[n/2-1]+A[n/2])/2; }
+  return [med(X),med(Y)];
 }
 /* the junctions' own dressing (row 95 §4.2): each one's corner kerb lines on
    a road plate that hides nothing, and on each approach slab just outside it
@@ -40650,6 +40691,11 @@ function corridorCamera(p,PL,plans,THM,camera){
   var UP=[RT[1]*FW[2]-RT[2]*FW[1], RT[2]*FW[0]-RT[0]*FW[2], RT[0]*FW[1]-RT[1]*FW[0]];
   var FF=1/Math.tan(FOV/2);
   var HW=(PGW-2*PAD)/2, HH=(PGH-2*PAD)/2;
+  /* ROW 255: A MAP SCALE (camera.mscale = {N, c}). In perspective it is the lens: FF is set so a
+     metre at the target's depth (Look ahead along the heading, LOOK cos Pitch, at least 1 m) draws
+     1000/N mm on paper, and Field of view stops applying. The isometric half is below. Absent: nothing */
+  var MSCA=camera&&camera.mscale&&!(camera.tilt)?camera.mscale:null, MSDT=0;
+  if(MSCA && Math.round(isFinite(p.proj)?+p.proj:0)!==1){ MSDT=Math.max(1,LOOK*Math.cos(PITCH)); FF=(1000/MSCA.N)*MSDT/(HW*PAGEMM); }
   /* ROW 238: under camera.tilt, cam is TILT (below); null, as before */
   var TILT=null;
   function cam(P){
@@ -40744,6 +40790,13 @@ function corridorCamera(p,PL,plans,THM,camera){
           if(xs>1e-12) SFIT=Math.min(SFIT,HW/xs); if(ys>1e-12) SFIT=Math.min(SFIT,HH/ys); } }); }
     ISOS=SFIT*ZOOM; ISOAX={Fc:Fc, along:thi-tlo, across:nhi-nlo, fit:SFIT};
     ISOC=[ISOC[0]+Fc[2]*PANY*(thi-tlo)-Fc[3]*PANX*(nhi-nlo), ISOC[1]+Fc[3]*PANY*(thi-tlo)+Fc[2]*PANX*(nhi-nlo), 0];
+    /* ROW 255: A MAP SCALE IS NOT FITTED. 1000/N mm a metre on paper, times Iso zoom, about
+       camera.mscale.c; Iso pans move the centre by that share of the drawable box along the sheet's
+       own axes (across: its width, along: its height), so Pan across 50% moves everything half a
+       drawable width. The fit above still ran: ISOAX keeps it for whoever reads it */
+    if(MSCA && !TC){ ISOS=(1000/MSCA.N)/PAGEMM*ZOOM;
+      var UHl=Math.hypot(UP[0],UP[1])||1, MWX=PANX*2*HW/ISOS, MWY=PANY*2*HH/(ISOS*UHl);
+      ISOC=[MSCA.c[0]+RT[0]*MWX+UP[0]/UHl*MWY, MSCA.c[1]+RT[1]*MWX+UP[1]/UHl*MWY, 0]; }
     CE=[ISOC[0]-FW[0]*1e5, ISOC[1]-FW[1]*1e5, ISOC[2]-FW[2]*1e5];
     D_EFF=FF*HW/ISOS;
     tally={C:CE, f:FW, r:RT, u:UP, F:FF, near:NEAR, pad:PAD, hw:HW, hh:HH,
@@ -40772,6 +40825,9 @@ function corridorCamera(p,PL,plans,THM,camera){
       if(ISO){ O[b+3]=PGW/2+ISOS*cx; O[b+4]=PGH/2-ISOS*cy; }
       else if(cz>1e-12){ O[b+3]=PGW/2+FF*cx/cz*HW; O[b+4]=PGH/2-FF*cy/cz*HW; } }
   }
+  /* row 255: paper mm per world metre at the target -- the parallel scale, or the lens at the target's
+     depth (with no Map scale, LOOK cos Pitch as well) -- for the Map scale readout */
+  tally.mmpm=ISO?ISOS*PAGEMM:FF*HW*PAGEMM/(MSDT||Math.max(1,LOOK*Math.cos(PITCH))); tally.F=FF;
   return {sC:sC, CREACH:CREACH, CE:CE, TG:TG, fx:fx, fy:fy, FW:FW, RT:RT, UP:UP, FF:FF, HW:HW, HH:HH,
           ISO:ISO, ISOS:ISOS, D_EFF:D_EFF, ISOC:ISOC, SINEL:SINEL, cam:cam, scr:scr, project:project, tally:tally,
           batch:batch, near:NEAR, isoAx:ISOAX, cabs:CABS, tilt:TC, grow:grow};
@@ -44514,7 +44570,7 @@ var KGROUPS=[
   ['bld','Buildings','width pave lotmin lotmax alley archmin archdet stepb canti fire uvar'],
   ['life','Street life (close-ups)','glow shopv props signs neon lang cables sag cars graff dots pnear'],
   ['wet','Wet street','puddles pudsz ripple rvar wmk wglint hero hstr hrag hturn hshape'],
-  ['cam','Camera','proj sfocus ftgt panx pany cams camx camz look turn pitch fov camabs eyex eyey hdg views v2az v2el v2zoom v3az v3el v3zoom v4az v4el v4zoom'],
+  ['cam','Camera','proj mscale sfocus ftgt panx pany cams camx camz look turn pitch fov camabs eyex eyey hdg views v2az v2el v2zoom v3az v3el v3zoom v4az v4el v4zoom'],
   ['ink','Ink and detail','hatch hatchmode sun dnear dfar dpen dsplit mono lod budg occ']
 ].map(function(g){ return [g[0],g[1],g[2].split(' ')]; });
 /* An Essentials knob un-starred goes home to this group. */
@@ -44607,8 +44663,10 @@ var KIDLE={town:[
   {keys:'ripple', par:['puddles'], why:'no water and no puddle in view', on:function(E,S){ return kR(E,'puddles')>0 || !S || S.reflRuns===undefined || S.reflRuns>0; }},
   {keys:'rvar', par:['puddles','ripple'], why:'no reflection reaches the sheet, or Ripple 0', on:function(E,S){ return kR(E,'ripple')>0 && (!S || S.reflDrawn===undefined || S.reflDrawn>0); }},
   {keys:'budg', par:[], why:'the drawing is under the smallest budget (10k points)', on:function(E,S){ return !S || S.points===undefined || S.points>10000 || S.tries>0; }},
-  {keys:'look', par:[], why:'the town camera looks level along its street (Pitch tilts it), so how far ahead changes nothing', on:function(){ return false; }},
-  {keys:'dfar fov', par:['proj'], why:'every lot is a massed box at this scale', on:function(E,S){ return kR(E,'proj')===0 || kD(S); }},
+  {keys:'look', par:['proj','mscale'], why:'the town camera looks level along its street (Pitch tilts it), so how far ahead changes nothing without a Map scale', on:function(E){ return kR(E,'proj')===0 && kR(E,'mscale')>0; }},
+  {keys:'dfar', par:['proj'], why:'every lot is a massed box at this scale', on:function(E,S){ return kR(E,'proj')===0 || kD(S); }},
+  /* row 255: in perspective a Map scale sets the lens, so Field of view is not read */
+  {keys:'fov', par:['proj','mscale'], why:'every lot is a massed box at this scale, or a Map scale sets the lens', on:function(E,S){ return kR(E,'proj')===0?kR(E,'mscale')===0:kD(S); }},
   {keys:'fire glow uvar shopv props lang cables graff hatch hatchmode sun', par:['dnear'], why:'no dressed lot inside Solid detail', on:function(E,S){ return kN(S) && kD(S); }},
   {keys:'wmk wglint', par:['dnear','puddles'], why:'no dressed lot inside Solid detail, or Puddles 0', on:function(E,S){ return kN(S) && kD(S) && kR(E,'puddles')>0; }},
   {keys:'sag', par:['dnear','cables'], why:'no dressed lot inside Solid detail, or Cables 0', on:function(E,S){ return kN(S) && kD(S) && kR(E,'cables')>0; }},
@@ -44616,6 +44674,16 @@ var KIDLE={town:[
 ]};
 /* KIDLE-END */
 function kNear(){ return kN(STRTSTATS); }
+/* row 255 §1.3: "Drawing 1.35 x 2.16 km · page shows 0.229 x 0.305 km · 1:1000", every number from the
+   build's STRTTALLY.town.mscale (world extent; the drawable box over mm per metre); at Fit the scale
+   the fit came to, "fitted, about 1:7,140". Three significant figures, so it reads the build to 0.5% */
+function townSig(x){ if(!(x>0)) return '0'; var d=Math.max(0,2-Math.floor(Math.log(x)/Math.LN10)); return x.toFixed(d); }
+function townScaleText(M){
+  if(!M || !(M.mmpm>0)) return '';
+  var km=function(v){ return townSig(v/1000); };
+  return 'Drawing '+km(M.ext[0])+' × '+km(M.ext[1])+' km · page shows '+km(M.shows[0])+' × '+km(M.shows[1])+' km · '+
+    (M.N?'1:'+M.N.toLocaleString('en-US'):'fitted, about 1:'+Math.round(Number(M.fitN.toPrecision(3))).toLocaleString('en-US'));
+}
 /* key -> why, for every knob a rule calls idle at these values */
 function kIdleSet(eng,E,S){
   var out={};
@@ -44657,6 +44725,8 @@ function kBuild(box){
       });
       row.appendChild(pb);
       KPANEL.rows[k]=row;
+      /* row 255 §1.3: the Map scale readout, from the last build (townScaleText) */
+      if(eng==='town' && k==='mscale'){ var rd=document.createElement('div'); rd.className='kread'; rd.id='kread_mscale'; body.appendChild(rd); KPANEL.mread=rd; }
     });
     var idl=document.createElement('div'); idl.className='kidle'; body.appendChild(idl);
     KPANEL.groups.push({id:g.id, sec:sec, keys:g.keys, idle:idl});
@@ -44667,6 +44737,7 @@ function kBuild(box){
    holding the focus is never hidden under the hand that is moving it. */
 function kpanelIdle(){
   if(!KPANEL || KPANEL.eng!==mode || !STATE.eng[mode]) return;
+  if(KPANEL.mread) KPANEL.mread.textContent=townScaleText(typeof STRTTALLY!=='undefined'&&STRTTALLY&&STRTTALLY.town?STRTTALLY.town.mscale:null);
   var idle=kIdleSet(mode,STATE.eng[mode],STRTSTATS), act=document.activeElement, S=SPEC[mode][1];
   Object.keys(KPANEL.rows).forEach(function(k){
     var row=KPANEL.rows[k], hide=(k in idle) && !(act && row.contains(act));
@@ -46004,9 +46075,9 @@ var HELP={
     ixtype:'Where the highway crosses the access arterial. 0 a diamond: the highway goes over on a 7.5 m deck, four ramps to signals. 1 a cloverleaf: the arterial goes over, four 270 degree loops and four outer ramps, no signals. Needs the airfield and the highway.',
     ftgt:'At Focus 2 or 3, what the close-up looks at: 1 the interchange, 2 the central station, 3 the airport stands, 4 the port, 5 the power plant. Focus 2 fits 450 m of plan, Focus 3 fits 150 m. 0 is what Focus says on its own.',
     parks:'The share of the blocks that are parks instead of lots: a hedge or a fence round the edge, two paths across, trees, benches, and sometimes a pond or a swing. Layout picks which blocks.',
-    site:'Gives part of the city to an airfield (1): runways, taxiways, stands with aircraft, a terminal, hangars, behind a fence and a perimeter road, buildings near a runway held low. Or to a harbour (2): water below a quay, with a pier, a marina, fishing boats and a lighthouse, or ships at their berths. With a site there is no river, railway, highway or powerline.',
+    site:'Gives part of the city to an airfield (1): runways, taxiways, stands with aircraft, a terminal, hangars, behind a fence and a perimeter road, buildings near a runway held low. Or to a harbour (2): water below a quay, with a pier, a marina, fishing boats and a lighthouse, or ships at their berths. With a site there is no river, railway, highway or powerline. Its Scale sets the city’s length and block depth, so City length and Block depth stop applying; with Map scale on Fit the whole, larger drawing is shrunk to the sheet.',
     sitepct:'How much of the city the site takes, as a share of the whole plan (a harbour’s water; its Scale 3 apron is extra). The rest is the city, a strip or an L. Layout picks the edge or corner.',
-    tier:'The site’s size, which also sets the city’s length and block depth. Airfield: 2 an airstrip (900 m runway, one hangar, a windsock, no tower), 3 and up a regional airport (2,400 m runways, jet bridges, a tower). Harbour: 0 a pier and a dinghy, 1 a marina, 2 a fishing harbour with a lighthouse, 3 and up container berths.',
+    tier:'The site’s size, which also sets the city’s length and block depth. Airfield: 2 an airstrip (900 m runway, one hangar, a windsock, no tower), 3 and up a regional airport (2,400 m runways, jet bridges, a tower). Harbour: 0 a pier and a dinghy, 1 a marina, 2 a fishing harbour with a lighthouse, 3 and up container berths. With Map scale on Fit a bigger Scale makes everything smaller on the sheet; on a fixed Map scale things keep their size and the sheet shows less of the city.',
     sscale:'Multiplies the city’s length and block depth that the site’s Scale sets.',
     rwys:'How many parallel runways, where there is room: an airstrip has one, a regional airport up to two.',
     rwyhdg:'The compass bearing the runways point along, in degrees. It sets the numbers painted at each end: the bearing over ten, and that plus 18 at the far end.',
@@ -46037,17 +46108,18 @@ var HELP={
     cams:'Perspective only: where the camera stands along the city, as a share of City length.'+NR,
     camx:'Perspective only: the camera across the city: -100 stands on the first street, 100 on the last.'+NR,
     camz:'Perspective only: the camera height in metres, up to 600. 1.6 is standing in the street; 250 with Pitch -50 is a bird’s-eye view.'+NR,
-    look:'Perspective only: how far ahead along the streets the camera aims, before Turn and Pitch.'+NR,
+    look:'Perspective only, and only with a Map scale: how far ahead along the streets the target is, where the scale holds. Without one it changes nothing (the camera looks level along its street; Pitch tilts it).'+NR,
     turn:'Perspective only: turns the camera left (+) or right (−) from looking along the streets: 90 looks straight across them.'+NR,
     pitch:'Perspective only: tilts the camera, in degrees. Down to -89, nearly straight down on the city.'+NR,
     camabs:'Perspective only: 1 puts the camera anywhere -- at Camera x, Camera y and Camera height, looking along Heading -- instead of along a street. Scout (Fly or Orbit) writes it.'+NR,
     eyex:'With Camera placed 1: where the eye stands along the city, in metres from the start of the first street (the Scout readout shows it).'+NR,
     eyey:'With Camera placed 1: where the eye stands across the city, in metres from the first street.'+NR,
     hdg:'With Camera placed 1: the way the camera looks, in degrees: 0 along the streets, 90 across them toward the last street. Pitch tilts it.'+NR,
-    zoom:'Isometric only: the scale. 100% fits every street and lot of the whole city, up to 40 m high, inside the drawable area; it does not move when the buildings grow. 200% doubles everything about the centre.',
+    zoom:'Isometric only: the scale. 100% fits every street and lot of the whole city, up to 40 m high, inside the drawable area; it does not move when the buildings grow. 200% doubles everything about the centre. With a Map scale it multiplies that scale: 200% at 1:1000 draws at 1:500.',
+    mscale:'The scale on paper. 0 Fit shrinks the whole drawing to the sheet. 1 is 1:500, 2 1:1000 (a metre is a millimetre), 3 1:2000, 4 1:4000, 5 1:8000: things keep their size when Site or its Scale change and the sheet crops instead, centred on Focus’s rectangle (on the city’s core at Focus 0 or without a site). Perspective: the scale at the target Look ahead away, and Field of view stops applying. The line below says what the sheet shows.',
     isoaz:'Isometric only: the turn of the view in degrees, from looking along the parallel streets. 45 looks diagonally across the grid, 0 straight down the streets, 90 straight down the cross streets.',
-    panx:'Isometric only: moves the view across the streets, as a share of the city’s width. Use with Iso zoom.',
-    pany:'Isometric only: moves the view along the streets, as a share of the city’s length. Use with Iso zoom.'};
+    panx:'Isometric only: moves the view across the streets, as a share of the city’s width. Use with Iso zoom. With a Map scale it moves the view sideways on the sheet by that share of the drawable width: 50% is half a sheet.',
+    pany:'Isometric only: moves the view along the streets, as a share of the city’s length. Use with Iso zoom. With a Map scale it moves the view up the sheet by that share of the drawable height.'};
   SPEC.town[1].forEach(function(r){ var k=r[0]; HELP['town.'+k]=T[k]||HELP['town.'+k]||HELP['strt.'+k]; });
 })();
 
