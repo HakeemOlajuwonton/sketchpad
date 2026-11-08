@@ -163,6 +163,7 @@ body.touch.fly #pad{display:flex}
   <label class="ck" for="c-solid"><input type="checkbox" id="c-solid" checked> Solids: hide lines behind buildings, like the plot</label>
   <label class="ck" for="c-glow"><input type="checkbox" id="c-glow" checked> Glow (lines add up)</label>
   <label class="ck" for="c-height"><input type="checkbox" id="c-height" checked> Colour buildings by height</label>
+  <label class="ck" for="c-traffic"><input type="checkbox" id="c-traffic" checked> Traffic: cars drive, boats cruise and bob</label>
   <h2>Layers</h2>
   <div class="lay" id="layers"></div>
 
@@ -219,15 +220,20 @@ var THEMES={
   paper:{bg:[.953,.937,.902], f0:[.80,.78,.73], f1:[.985,.975,.95], cols:[[.1,.12,.14],[.55,.53,.49],[.7,.2,.16],[.16,.39,.6],[.78,.42,.1],[.75,.16,.13],[.2,.5,.27],[.16,.36,.7]], hi:[[.1,.12,.14],[.1,.12,.14],[.1,.12,.14],[.1,.12,.14]], glow:false},
   blue:{bg:[.05,.23,.42], f0:[.05,.21,.39], f1:[.11,.31,.53], cols:[[.92,.96,1],[.55,.7,.86],[1,.8,.55],[.6,.86,1],[1,.95,.6],[1,.92,.4],[.75,1,.8],[1,.75,.9]], hi:[[.92,.96,1],[.92,.96,1],[.92,.96,1],[.92,.96,1]], glow:false}};
 var theme='night';
-var opt={auto:true,ghost:false,solid:true,fov:70,speed:60,fog:.55,ink:.85,glow:true,height:true,spin:true,plot:false,trail:false,bars:true,caps:true,pace:1,tex:false};
+var opt={auto:true,ghost:false,solid:true,fov:70,speed:60,fog:.55,ink:.85,glow:true,height:true,spin:true,plot:false,trail:false,bars:true,caps:true,pace:1,tex:false,traffic:true};
 var mode='orbit';
 var C={tgt:[0,0,0], az:-125, el:28, dist:1500, ortho:1200, eye:[0,-800,200], yaw:90, pitch:-10};
 var dirty=true, idle=true, lastInput=0;
 
 /* ================= GL ================= */
-var VS='attribute vec3 aP;attribute float aL;uniform mat4 uM;uniform mat4 uObj;uniform float uS;uniform float uBias;uniform vec3 uE;uniform vec3 uC[8];uniform vec3 uH[4];uniform float uZ;uniform float uHeight;uniform vec2 uF;uniform float uOrtho;uniform vec3 uFwd;'+
+/* traffic (queue row 243) is posed on the GPU: uT holds two vec4 a vehicle, (x, y, z, yaw) and (pitch, roll), and a
+   vertex's slot is its z in hundreds of metres (slot k: z_local + 100 k, |z_local| < 50). uTr is 1 only for that draw. */
+var TDECL='uniform float uTr;uniform vec4 uT[84];mat3 tR(vec4 b,float yaw){float cy=cos(yaw),sy=sin(yaw),cp=cos(-b.x),sp=sin(-b.x),cr=cos(b.y),sr=sin(b.y);'+
+  'return mat3(cy*cp,sy*cp,-sp, cy*sp*sr-sy*cr,sy*sp*sr+cy*cr,cp*sr, cy*sp*cr+sy*sr,sy*sp*cr-cy*sr,cp*cr);}';
+var TPOS='vec3 p;mat3 R=mat3(uObj);if(uTr>0.5){float k=floor((aP.z+50.0)/100.0);int i=int(k)*2;vec4 a=uT[i];R=tR(uT[i+1],a.w);p=a.xyz+R*vec3(aP.xy,aP.z-100.0*k);}else{p=(uObj*vec4(aP*uS,1.0)).xyz;}';
+var VS=TDECL+'attribute vec3 aP;attribute float aL;uniform mat4 uM;uniform mat4 uObj;uniform float uS;uniform float uBias;uniform vec3 uE;uniform vec3 uC[8];uniform vec3 uH[4];uniform float uZ;uniform float uHeight;uniform vec2 uF;uniform float uOrtho;uniform vec3 uFwd;'+
 'varying vec3 vC;varying float vA;'+
-'void main(){vec3 p=(uObj*vec4(aP*uS,1.0)).xyz;gl_Position=uM*vec4(p,1.0);gl_Position.z-=uBias*gl_Position.w;int l=int(aL+0.5);vec3 c=uC[0];'+
+'void main(){'+TPOS+'gl_Position=uM*vec4(p,1.0);gl_Position.z-=uBias*gl_Position.w;int l=int(aL+0.5);vec3 c=uC[0];'+
 'for(int i=0;i<8;i++){if(i==l)c=uC[i];}'+
 'if(l==0&&uHeight>0.5){float h=clamp(p.z/uZ,0.0,1.0)*3.0;int k=int(floor(min(h,2.999)));float f=fract(min(h,2.999));vec3 a=uH[0],b=uH[1];'+
 'if(k==1){a=uH[1];b=uH[2];}if(k==2){a=uH[2];b=uH[3];}c=mix(a,b,f);}'+
@@ -239,7 +245,7 @@ function sh(t,s){var o=gl.createShader(t);gl.shaderSource(o,s);gl.compileShader(
 var PR=gl.createProgram();gl.attachShader(PR,sh(gl.VERTEX_SHADER,VS));gl.attachShader(PR,sh(gl.FRAGMENT_SHADER,FS));gl.linkProgram(PR);
 if(!gl.getProgramParameter(PR,gl.LINK_STATUS)){ $('load').textContent='WebGL could not start: '+gl.getProgramInfoLog(PR); return; }
 gl.useProgram(PR);
-var U={}; ['uM','uE','uC','uH','uZ','uHeight','uF','uOrtho','uFwd','uBg','uInk','uGlow','uObj','uS','uBias'].forEach(function(n){U[n]=gl.getUniformLocation(PR,n);});
+var U={}; ['uM','uE','uC','uH','uZ','uHeight','uF','uOrtho','uFwd','uBg','uInk','uGlow','uObj','uS','uBias','uT','uTr'].forEach(function(n){U[n]=gl.getUniformLocation(PR,n);});
 var aP=gl.getAttribLocation(PR,'aP'), aL=gl.getAttribLocation(PR,'aL');
 /* a full-screen quad for light trails */
 var QVS='attribute vec2 q;void main(){gl_Position=vec4(q,0.0,1.0);}', QFS='precision mediump float;uniform vec4 uQ;void main(){gl_FragColor=uQ;}';
@@ -247,13 +253,13 @@ var QP=gl.createProgram();gl.attachShader(QP,sh(gl.VERTEX_SHADER,QVS));gl.attach
 var qb=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,qb);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,1,-1,-1,1,1,1]),gl.STATIC_DRAW);
 var qLoc=gl.getAttribLocation(QP,'q'), qU=gl.getUniformLocation(QP,'uQ');
 /* solids: every face filled first, shaded by a fixed sun, so the lines behind them fail the depth test */
-var FVS='attribute vec3 aP;attribute vec3 aN;uniform mat4 uM;uniform mat4 uObj;uniform float uS;uniform vec3 uE;uniform vec3 uFwd;uniform vec2 uF;uniform float uOrtho;uniform vec3 uSun;varying float vL;varying float vA;'+
-'void main(){vec3 p=(uObj*vec4(aP*uS,1.0)).xyz;gl_Position=uM*vec4(p,1.0);vec3 n=normalize(mat3(uObj)*aN);vL=0.25+0.75*abs(dot(n,uSun));'+
+var FVS=TDECL+'attribute vec3 aP;attribute vec3 aN;uniform mat4 uM;uniform mat4 uObj;uniform float uS;uniform vec3 uE;uniform vec3 uFwd;uniform vec2 uF;uniform float uOrtho;uniform vec3 uSun;varying float vL;varying float vA;'+
+'void main(){'+TPOS+'gl_Position=uM*vec4(p,1.0);vec3 n=normalize(R*aN);vL=0.25+0.75*abs(dot(n,uSun));'+
 'float d=uOrtho>0.5?dot(p-uE,uFwd):distance(p,uE);float fog=clamp((d-uF.x)/max(1.0,uF.y-uF.x),0.0,1.0);vA=1.0-fog*0.92;}';
 var FFS='precision mediump float;varying float vL;varying float vA;uniform vec3 uBg;uniform vec3 uF0;uniform vec3 uF1;'+
 'void main(){gl_FragColor=vec4(mix(uBg,mix(uF0,uF1,vL),vA),1.0);}';
 var FP=gl.createProgram();gl.attachShader(FP,sh(gl.VERTEX_SHADER,FVS));gl.attachShader(FP,sh(gl.FRAGMENT_SHADER,FFS));gl.linkProgram(FP);
-var FU={}; ['uM','uE','uFwd','uF','uOrtho','uSun','uBg','uF0','uF1','uObj','uS'].forEach(function(n){FU[n]=gl.getUniformLocation(FP,n);});
+var FU={}; ['uM','uE','uFwd','uF','uOrtho','uSun','uBg','uF0','uF1','uObj','uS','uT','uTr'].forEach(function(n){FU[n]=gl.getUniformLocation(FP,n);});
 var fP=gl.getAttribLocation(FP,'aP'), fN=gl.getAttribLocation(FP,'aN');
 var SUN=norm([-0.45,-0.62,0.64]);
 /* PHONES: many give WebGL a 16-bit depth buffer (desktops 24). With 16 bits, polygon offset alone cannot keep a
@@ -330,15 +336,40 @@ function loadGeo(city,which,onProg){
   return Promise.all([fetchBin(f.file,onProg),faces]).then(function(r){ var g=upload(r[0],f.n); g.faces=r[1]; return cache[key]=g; });
 }
 
-/* ================= movers: aircraft drawn with their own pose ================= */
-/* Each city's planes come from <id>-movers.json in their own frame (nose along +x). They sit on their stands until a
-   flight moves one. POSES holds {i: which mover, m: its model matrix}; a mover can appear more than once (Ghost). */
+/* ================= movers: aircraft, cars and boats drawn with their own pose ================= */
+/* Each city's movers come from <id>-movers.json in their own frame (nose along +x). Planes sit on their stands until a
+   flight moves one; POSES holds {i: which mover, m: its model matrix}, and a plane can appear more than once (Ghost).
+   Cars and boats (queue row 243) move on their own clock TR.t: a street car along a line (wrapping at its end), a
+   highway car along a deck's centre line at its lane offset, a boat round a loop or bobbing where it is moored.
+   Space pauses them with the flight; Plotter frames steps them at 12 fps; Traffic off or the Vehicles layer off hides
+   them. TPOSES is recomputed every frame they move. */
 var ID4=new Float32Array([1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1]);
-var MOV=null, POSES=[], movCache={};
+var MOV=null, POSES=[], TPOSES=[], movCache={}, TR={t:0,acc:0,paused:false};
+function frac(x){ return x-Math.floor(x); }
+function pathAt(o,s){ var P=o.P,cum=o.cum,i=0; while(i<P.length-2&&cum[i+1]<s) i++;
+  var h=Math.max(1e-9,cum[i+1]-cum[i]),f=Math.max(0,Math.min(1,(s-cum[i])/h)),a=P[i],b=P[i+1];
+  return [a[0]+(b[0]-a[0])*f,a[1]+(b[1]-a[1])*f,a.length>2?a[2]+(b[2]-a[2])*f:0,(b[0]-a[0])/h,(b[1]-a[1])/h]; }
+/* x, y, z, yaw, pitch, roll of a car or boat at traffic time t (the builder's traffic.js posAt, mirrored) */
+function trafficAt(o,t){ var x,y,z,yaw,pi=0,ro=0,p=o.path;
+  if(p&&p.type==='line'){ var f=frac(o.phase+t*o.speed/o.len); x=p.a[0]+(p.b[0]-p.a[0])*f; y=p.a[1]+(p.b[1]-p.a[1])*f; z=p.z; yaw=o.yaw; }
+  else if(p){ var q=pathAt(o,o.len*frac(o.phase+t*o.speed/o.len)),off=p.off||0; x=q[0]-q[4]*off; y=q[1]+q[3]*off; z=q[2]; yaw=Math.atan2(q[4],q[3])/D2R; }
+  else { x=o.at[0]; y=o.at[1]; z=o.at[2]||0; yaw=o.th; }
+  if(o.bob){ var ph=o.bob.ph; z+=0.12*Math.sin(2*Math.PI*t/4.5+ph); ro=1.5*Math.sin(2*Math.PI*t/3.7+ph); pi=Math.sin(2*Math.PI*t/5.3+ph); }
+  return [x,y,z,yaw,pi,ro]; }
+/* the poses into uT: two vec4 a vehicle, in its batch slot; TPOSES lists the vehicles drawn */
+function trafficPoses(){ TPOSES=[]; if(!MOV||!opt.traffic||!MOV.traffic.length) return; var u=MOV.tb.u;
+  for(var k=0;k<MOV.traffic.length;k++){ var a=trafficAt(MOV.list[MOV.traffic[k]],TR.t), o=k*8; u[o]=a[0]; u[o+1]=a[1]; u[o+2]=a[2]; u[o+3]=a[3]*D2R; u[o+4]=a[4]*D2R; u[o+5]=a[5]*D2R; }
+  TPOSES=MOV.traffic; }
+function trafficDraw(UU,faces){ gl.uniform4fv(UU.uT,MOV.tb.u.subarray(0,TPOSES.length*8)); gl.uniform1f(UU.uTr,1);
+  if(faces){ gl.bindBuffer(gl.ARRAY_BUFFER,MOV.tb.fb); gl.vertexAttribPointer(fP,3,gl.FLOAT,false,0,0); gl.bindBuffer(gl.ARRAY_BUFFER,MOV.tb.nb); gl.vertexAttribPointer(fN,3,gl.FLOAT,false,0,0); gl.drawArrays(gl.TRIANGLES,0,MOV.tb.nf); }
+  else { gl.bindBuffer(gl.ARRAY_BUFFER,MOV.tb.eb); gl.vertexAttribPointer(aP,3,gl.FLOAT,false,0,0); gl.drawArrays(gl.LINES,0,MOV.tb.ne); }
+  gl.uniform1f(UU.uTr,0); }
+function inWater(x,y){ var W=MOV&&MOV.water||[]; for(var k=0;k<W.length;k++){ var P=W[k],c=false; for(var i=0,j=P.length-1;i<P.length;j=i++){ var a=P[i],b=P[j];
+  if((a[1]>y)!==(b[1]>y)&&x<(b[0]-a[0])*(y-a[1])/(b[1]-a[1])+a[0]) c=!c; } if(c) return true; } return false; }
 function poseM(x,y,z,yaw,pitch,roll){ var cy=Math.cos(yaw*D2R),sy=Math.sin(yaw*D2R),cp=Math.cos(-pitch*D2R),sp=Math.sin(-pitch*D2R),cr=Math.cos(roll*D2R),sr=Math.sin(roll*D2R);
   /* R = Rz(yaw) Ry(-pitch) Rx(roll): nose up for positive pitch, right wing down for positive roll; column-major */
   return new Float32Array([cy*cp,sy*cp,-sp,0, cy*sp*sr-sy*cr,sy*sp*sr+cy*cr,cp*sr,0, cy*sp*cr+sy*sr,sy*sp*cr-cy*sr,cp*cr,0, x,y,z,1]); }
-function parked(){ POSES=MOV?MOV.list.map(function(o,i){ return {i:i,m:poseM(o.at[0],o.at[1],0,o.th,0,0)}; }):[]; dirty=true; }
+function parked(){ POSES=MOV?MOV.planes.map(function(i){ var o=MOV.list[i]; return {i:i,m:poseM(o.at[0],o.at[1],0,o.th,0,0)}; }):[]; dirty=true; }
 function loadMovers(city){
   if(!city.movers){ MOV=null; parked(); return Promise.resolve(); }
   if(movCache[city.id]){ MOV=movCache[city.id]; parked(); return Promise.resolve(); }
@@ -350,9 +381,22 @@ function loadMovers(city){
       var eb=gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER,eb); gl.bufferData(gl.ARRAY_BUFFER,E,gl.STATIC_DRAW);
       var fb=gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER,fb); gl.bufferData(gl.ARRAY_BUFFER,F,gl.STATIC_DRAW);
       var nb=gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER,nb); gl.bufferData(gl.ARRAY_BUFFER,N,gl.STATIC_DRAW);
-      return {at:o.at,th:o.th,eb:eb,fb:fb,nb:nb,ne:o.E.length,nf:o.F.length};
+      var r={E:o.kind&&o.kind!=='plane'?E:null,F:o.kind&&o.kind!=='plane'?F:null,N:o.kind&&o.kind!=='plane'?N:null,kind:o.kind||'plane',at:o.at,th:o.th,eb:eb,fb:fb,nb:nb,ne:o.E.length,nf:o.F.length,path:o.path,speed:o.speed,phase:o.phase,bob:o.bob,moored:o.moored};
+      if(o.path&&o.path.type==='line'){ r.len=Math.hypot(o.path.b[0]-o.path.a[0],o.path.b[1]-o.path.a[1]); r.yaw=Math.atan2(o.path.b[1]-o.path.a[1],o.path.b[0]-o.path.a[0])/D2R; }
+      else if(o.path){ r.P=o.path.type==='loop'?o.path.pts.concat([o.path.pts[0]]):o.path.pts; r.cum=[0]; for(var k=1;k<r.P.length;k++) r.cum.push(r.cum[k-1]+Math.hypot(r.P[k][0]-r.P[k-1][0],r.P[k][1]-r.P[k-1][1])); r.len=r.cum[r.cum.length-1]; }
+      return r;
     });
-    movCache[city.id]={rwy:m.rwy,list:parts}; if(CITY===city){ MOV=movCache[city.id]; parked(); }
+    var planes=[],traffic=[]; parts.forEach(function(o,i){ (o.kind==='plane'?planes:traffic).push(i); });
+    /* the traffic is ONE static batch, two draw calls in all: each vehicle's vertices carry its slot in z (+100 m a
+       slot) and the shaders pose it from uT, so a frame uploads 84 vec4s and nothing else */
+    traffic=traffic.slice(0,42);
+    var ne=0,nf=0; traffic.forEach(function(i){ ne+=parts[i].E.length; nf+=parts[i].F.length; });
+    var TE=new Float32Array(ne),TF=new Float32Array(nf),TN=new Float32Array(nf),oe=0,of=0;
+    traffic.forEach(function(i,k){ var o=parts[i]; TE.set(o.E,oe); TF.set(o.F,of); TN.set(o.N,of);
+      for(var j=oe+2;j<oe+o.E.length;j+=3) TE[j]+=100*k; for(j=of+2;j<of+o.F.length;j+=3) TF[j]+=100*k; oe+=o.E.length; of+=o.F.length; });
+    var TB={eb:gl.createBuffer(),fb:gl.createBuffer(),nb:gl.createBuffer(),ne:ne/3,nf:nf/3,u:new Float32Array(84*4)};
+    [[TB.eb,TE],[TB.fb,TF],[TB.nb,TN]].forEach(function(b){ gl.bindBuffer(gl.ARRAY_BUFFER,b[0]); gl.bufferData(gl.ARRAY_BUFFER,b[1],gl.STATIC_DRAW); });
+    movCache[city.id]={rwy:m.rwy,list:parts,planes:planes,traffic:traffic,water:m.water||[],tb:TB}; if(CITY===city){ MOV=movCache[city.id]; parked(); }
   }).catch(function(){ MOV=null; parked(); });
 }
 function moverFaces(){ if(!MOV||!layOn[5]) return;
@@ -361,13 +405,16 @@ function moverFaces(){ if(!MOV||!layOn[5]) return;
     gl.bindBuffer(gl.ARRAY_BUFFER,o.fb); gl.vertexAttribPointer(fP,3,gl.FLOAT,false,0,0);
     gl.bindBuffer(gl.ARRAY_BUFFER,o.nb); gl.vertexAttribPointer(fN,3,gl.FLOAT,false,0,0);
     gl.uniformMatrix4fv(FU.uObj,false,P.m); gl.drawArrays(gl.TRIANGLES,0,o.nf*3); });
-  gl.uniformMatrix4fv(FU.uObj,false,ID4); gl.uniform1f(FU.uS,0.1); }
+  gl.uniformMatrix4fv(FU.uObj,false,ID4);
+  if(TPOSES.length) trafficDraw(FU,true);
+  gl.uniform1f(FU.uS,0.1); }
 function moverLines(){ if(!MOV||!layOn[5]) return;
   gl.disableVertexAttribArray(aL); gl.vertexAttrib1f(aL,5); gl.uniform1f(U.uS,1.0); gl.uniform1f(U.uHeight,0);
   POSES.forEach(function(P){ var o=MOV.list[P.i]; if(!o) return;
     gl.bindBuffer(gl.ARRAY_BUFFER,o.eb); gl.vertexAttribPointer(aP,3,gl.FLOAT,false,0,0);
     gl.uniformMatrix4fv(U.uObj,false,P.m); gl.drawArrays(gl.LINES,0,o.ne*2); });
-  gl.uniformMatrix4fv(U.uObj,false,ID4); gl.uniform1f(U.uS,0.1); gl.uniform1f(U.uHeight,opt.height?1:0); gl.enableVertexAttribArray(aL); }
+  gl.uniformMatrix4fv(U.uObj,false,ID4);
+  if(TPOSES.length) trafficDraw(U,false); gl.uniform1f(U.uS,0.1); gl.uniform1f(U.uHeight,opt.height?1:0); gl.enableVertexAttribArray(aL); }
 
 /* ================= maths ================= */
 function persp(fovy,asp,n,f){var t=1/Math.tan(fovy/2),d=1/(n-f);return [t/asp,0,0,0, 0,t,0,0, 0,0,(f+n)*d,-1, 0,0,2*f*n*d,0];}
@@ -402,6 +449,7 @@ function render(){
     gl.useProgram(PR); gl.clear(gl.DEPTH_BUFFER_BIT);
   } else { gl.clearColor(T.bg[0],T.bg[1],T.bg[2],1); gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT); }
   if(!GEO) return;
+  trafficPoses();
   var B=basis(), asp=W/H, S=SPAN(), P, V=lookAt(B.e,B.f,Math.abs(B.f[2])>0.999?[0,1,0]:[0,0,1]);
   if(mode==='iso') P=ortho(C.ortho*asp,C.ortho,1,S*8);
   else { /* PORTRAIT: hold a usable width -- the vertical angle opens as the screen narrows (to 108 deg at most) */
@@ -632,19 +680,19 @@ var playing=false, rt=0, stepAcc=0, capKey=-1, recAfter=false;
 function playRoute(r,fromRec){
   if(!r) return;
   if(r.kind==='takeoff'&&!(MOV&&MOV.rwy)){ toast('The plane is still loading'); return; }
-  ROUTE=r; prepRoute(r); rt=0; playing=true; capKey=-1; setMode('fly',true);
+  ROUTE=r; prepRoute(r); rt=0; playing=true; TR.paused=false; capKey=-1; setMode('fly',true);
   $('card').style.display='none';
   [].forEach.call(routesEl.children,function(b){ b.setAttribute('aria-pressed',String(CITY.routes[+b.dataset.i]===r)); });
   document.body.classList.toggle('bars',opt.bars);
   if(!opt.tex && !fromRec) setTex(true,true);
   applyRoute(); lastT=0;
 }
-function stopRoute(){ if(!ROUTE) return; playing=false; ROUTE=null; AIMD=0; parked(); document.body.classList.remove('bars'); $('prog').style.width='0'; showCap('');
+function stopRoute(){ if(!ROUTE) return; playing=false; TR.paused=false; ROUTE=null; AIMD=0; parked(); document.body.classList.remove('bars'); $('prog').style.width='0'; showCap('');
   [].forEach.call(routesEl.children,function(b){ b.setAttribute('aria-pressed','false'); }); if(rec) stopRec(); }
 var AIMD=0;
 function applyRoute(){ var q=sample(ROUTE,Math.min(1,rt)); C.eye=q.e; C.yaw=q.y; C.pitch=q.p; AIMD=q.dist||0; dirty=true;
   if(q.plane&&MOV){ var pm=function(P){ return poseM(P[0],P[1],P[2],P[3],P[4],P[5]); };
-    POSES=MOV.list.map(function(o,i){ return {i:i,m:i===0?pm(q.plane):poseM(o.at[0],o.at[1],0,o.th,0,0)}; });
+    POSES=MOV.planes.map(function(i){ var o=MOV.list[i]; return {i:i,m:i===0?pm(q.plane):poseM(o.at[0],o.at[1],0,o.th,0,0)}; });
     /* GHOST: a multiple exposure -- the plane where it was every 0.9 s, back to the start of its roll */
     /* GHOST: up to 12 more copies at equal time steps from the start of the roll to now, so the gaps grow as it speeds up */
     if(opt.ghost){ var T=Math.min(1,rt)*ROUTE.secs; if(T>12.5){ var n=Math.min(12,Math.floor((T-11.5)/0.6)), dtg=(T-11.5)/Math.max(1,n);
@@ -712,7 +760,7 @@ window.addEventListener('keydown',function(e){
   if('wasdqe'.indexOf(k)>=0||k.indexOf('arrow')===0){ held[k]=true; if(mode!=='fly') setMode('fly'); touchUser(); e.preventDefault(); return; }
   if(k==='shift'){ held.shift=true; return; }
   if(k>='1'&&k<='9'){ var r=CITY&&CITY.routes[+k-1]; if(r){ touchUser(); playRoute(r); } return; }
-  if(k===' '){ e.preventDefault(); if(ROUTE){ playing=!playing; if(playing) lastT=0; } else if(CITY) playRoute(CITY.routes[ri%CITY.routes.length]); return; }
+  if(k===' '){ e.preventDefault(); if(ROUTE){ playing=!playing; TR.paused=!playing; if(playing) lastT=0; } else if(CITY) playRoute(CITY.routes[ri%CITY.routes.length]); return; }
   if(k==='m'){ setMode(mode==='iso'?'orbit':mode==='orbit'?'fly':'iso'); return; }
   if(k==='t'){ setTex(!opt.tex); return; }
   if(k==='o'){ setSolid(!opt.solid); return; }
@@ -788,6 +836,7 @@ slider('s-fog',function(v){return v+'%';},function(v){opt.fog=v/100;});
 slider('s-ink',function(v){return v+'%';},function(v){opt.ink=v/100;});
 slider('s-len',function(v){return (v/100).toFixed(1)+'×';},function(v){opt.pace=v/100;});
 function check(id,key,after){ var c=$(id); c.checked=!!opt[key]; c.addEventListener('change',function(){ opt[key]=c.checked; dirty=true; if(after) after(); }); }
+check('c-traffic','traffic');
 check('c-solid','solid',function(){ $('b-sol').setAttribute('aria-pressed',String(opt.solid)); }); check('c-glow','glow'); check('c-height','height'); check('c-spin','spin'); check('c-plot','plot'); check('c-trail','trail');
 check('c-auto','auto'); check('c-ghost','ghost',function(){ setGhost(opt.ghost); }); check('c-bars','bars',function(){ document.body.classList.toggle('bars',opt.bars&&!!ROUTE); }); check('c-caps','caps',function(){ if(!opt.caps) showCap(''); });
 $('layers').innerHTML=LAYERS.map(function(n,i){ var c=THEMES.night.cols[i]; return '<label class="ck" for="l'+i+'"><input type="checkbox" id="l'+i+'" checked><i style="background:rgb('+c.map(function(v){return Math.round(v*255);}).join(',')+')"></i>'+n+'</label>'; }).join('');
@@ -835,6 +884,9 @@ function tick(ts){
     if(mv) dirty=true;
   }
   if(opt.spin&&mode!=='fly'&&!playing&&(idle||ts-lastInput>12000)){ C.az+=dt*3.2; dirty=true; }
+  /* traffic: its own clock; at Plotter frames it steps at 12 fps like a flight */
+  if(MOV&&MOV.traffic.length&&opt.traffic&&layOn[5]&&!TR.paused){
+    if(opt.plot){ TR.acc+=dt; if(TR.acc>=1/12){ TR.t+=TR.acc; TR.acc=0; dirty=true; } } else { TR.t+=dt; dirty=true; } }
   if(dirty||rec){ dirty=false; render(); hud(); if(rec) composite(); }
   requestAnimationFrame(tick);
 }
@@ -851,10 +903,19 @@ fetch('data/cities.json').then(function(r){ if(!r.ok) throw new Error('cities.js
   setCity(cid).then(function(){ if(h[1]){ var r=CITY.routes.filter(function(x){return x.id===h[1];})[0]; if(r){ playRoute(r); } } });
   requestAnimationFrame(tick);
 }).catch(function(e){ $('load').textContent='Could not load the cities: '+e.message; });
-window.__cc={state:function(){return {mode:mode,C:C,city:CITY&&CITY.id,tex:opt.tex,n:GEO&&GEO.n,frameMs:frameMs,routes:CITY&&CITY.routes.map(function(r){return r.id;})};},
-  probe:function(i){ var r=CITY.routes[i]; prepRoute(r); var R=GEO.faces&&GEO.faces.roof, lo=1e9, inside=0;
-    var pin=0; for(var j=0;j<=900;j++){ var q=sample(r,j/900); lo=Math.min(lo,q.e[2]); if(R){ var h=roofAt(R,q.e[0],q.e[1]); if(h>0&&q.e[2]<h+1) inside++;
-      if(q.plane){ var hp=roofAt(R,q.plane[0],q.plane[1]); if(hp>0&&q.plane[2]<hp) pin++; } } } return {id:r.id,lowest:+lo.toFixed(1),insideBuildings:inside,planeInside:pin,roofs:!!R}; },
+window.__cc={state:function(){return {mode:mode,C:C,city:CITY&&CITY.id,tex:opt.tex,n:GEO&&GEO.n,frameMs:frameMs,routes:CITY&&CITY.routes.map(function(r){return r.id;}),
+    traffic:{on:opt.traffic,n:MOV?MOV.traffic.length:0,t:TR.t,paused:TR.paused,drawn:TPOSES.length}};},
+  /* a flight sampled at 901 frames; the traffic is sampled at the same frames over the flight's length (row 243) */
+  probe:function(i){ var r=CITY.routes[i]; prepRoute(r); var R=GEO.faces&&GEO.faces.roof, lo=1e9, inside=0, len=r.secs*opt.pace;
+    var pin=0, cin=0, bin=0, bout=0, T=MOV?MOV.traffic:[]; for(var j=0;j<=900;j++){ var q=sample(r,j/900); lo=Math.min(lo,q.e[2]); if(R){ var h=roofAt(R,q.e[0],q.e[1]); if(h>0&&q.e[2]<h+1) inside++;
+      if(q.plane){ var hp=roofAt(R,q.plane[0],q.plane[1]); if(hp>0&&q.plane[2]<hp) pin++; } }
+      var ci=0, bi=0, bo=0; T.forEach(function(k){ var o=MOV.list[k], a=trafficAt(o,j/900*len), h2=R?roofAt(R,a[0],a[1]):0;
+        if(h2>0&&a[2]<h2){ if(o.kind==='car') ci=1; else bi=1; } if(o.kind==='boat'&&!inWater(a[0],a[1])) bo=1; }); cin+=ci; bin+=bi; bout+=bo; }
+    return {id:r.id,lowest:+lo.toFixed(1),insideBuildings:inside,planeInside:pin,carInside:cin,boatInside:bin,boatOutOfWater:bout,traffic:T.length,roofs:!!R}; },
+  traffic:function(on){ opt.traffic=!!on; $('c-traffic').checked=opt.traffic; dirty=true; render(); }, tt:function(t){ TR.t=t; TR.paused=true; dirty=true; render(); }, tgo:function(){ TR.paused=false; },
+  /* how many cars and boats are within d m of flight i's camera at u (0-1) and traffic time t, and in front of it */
+  tnear:function(i,u,t,d){ var r=CITY.routes[i]; prepRoute(r); var q=sample(r,u), n=0, f=q.tg?[q.tg[0]-q.e[0],q.tg[1]-q.e[1]]:[Math.cos((q.y||0)*D2R),Math.sin((q.y||0)*D2R)];
+    (MOV?MOV.traffic:[]).forEach(function(k){ var a=trafficAt(MOV.list[k],t), dx=a[0]-q.e[0], dy=a[1]-q.e[1]; if(Math.hypot(dx,dy,a[2]-q.e[2])<d&&dx*f[0]+dy*f[1]>0) n++; }); return n; },
   play:function(i){ playRoute(CITY.routes[i]); }, cam:function(){ return {eye:C.eye,yaw:C.yaw,pitch:C.pitch,poses:POSES.length,route:ROUTE&&ROUTE.id,mode:mode,playing:playing}; }, auto:function(on){ opt.auto=!!on; $('c-auto').checked=opt.auto; }, run:function(t){ rt=t; playing=true; lastT=0; }, ghost:function(on){ setGhost(on); }, key:function(k){ playing=false; rt=ROUTE._u[k]; applyRoute(); render(); }, at:function(t){ playing=false; rt=t; applyRoute(); render(); }, city:setCity, tex:setTex, theme:function(t){ $('t-'+t).click(); }, mode:setMode};
 })();
 </script>
