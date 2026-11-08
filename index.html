@@ -462,7 +462,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v375</a> &mdash; Corridor city: kit hooks for the takeoff ghost (an aircraft's parts through any frame, the main gear's station, an order between exposures, the kit's projection), refactor only</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v376</a> &mdash; Corridor city: Ghost -- an aircraft's takeoff as a multiple exposure, 2 to 12 copies down the runway and into the climb at equal steps of time</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <section class="fold" id="fold_pick"><h2>Pick engine<span class="cnt"></span></h2>
@@ -3607,6 +3607,8 @@ var SPEC={
     ['water','Water',0,3,1,0],['harb','Harbour',0,3,1,2],
     ['rwys','Runways',1,8,1,2],['rwyhdg','Runway heading',0,179,1,70,[1,'°']],['stands','Stands',0,100,1,60,[1,'%']],
     ['acmix','Aircraft size',0,100,1,40,[1,'%']],['tower','Tower',0,1,1,1],['hangars','Hangars',0,12,1,2],['gse','Ground vehicles',0,100,1,50,[1,'%']],
+    /* row 256 (docs/specs/2026-11-05-town-ghost-takeoff.md): a takeoff as a multiple exposure */
+    ['ghost','Ghost',0,12,1,0],['ghostt','Ghost after liftoff',0,15,1,6,[1,' s']],
     /* row 100 (spec §3): the harbour */
     ['berths','Berths',1,40,1,6],['vessels','Vessels',0,100,1,70,[1,'%']],['pierlen','Pier length',0,400,1,0,[1,' m']],['slips','Slip width',0,100,1,50],
     /* row 200 (site-frame spec §2): what the isometric view is fitted to */
@@ -26469,6 +26471,30 @@ var SITE_AC={
   E:{L:73.9, span:64.8, H:18.5, clr:7.5, R:3.1, zc:5.0, wing:'low', eng:'jet', cls:'wide-body twin'},
   F:{L:72.7, span:79.8, H:24.1, clr:7.5, R:3.25, zc:5.2, wing:'low', eng:'jet4', cls:'wide-body quad'}
 };
+/* ROW 256 §1.4: THE TAKEOFF, by ICAO code: acceleration (m/s²), rotation speed Vr (m/s), the pitch it
+   rotates to and the climb angle (degrees). Scout's Takeoff flight, written out so the gate can check it */
+var TOWNTO={A:[3.4,31,11,9], Cp:[2.8,50,11,8], C:[2.2,75,15,9], E:[1.9,82,15,8], F:[1.9,82,15,8]};
+/* the state t seconds after brake release, of the MAIN GEAR'S CONTACT POINT: X along the runway and h
+   above it (m), pitch th and flight path angle gam (rad), speed v (m/s), and tr = Vr/a. From rest
+   X = a t²/2 until v = Vr at tr. Then pitch rises at 7°/s to the table's value; the flight path angle
+   rises at 5°/s from when pitch passes 5° (5/7 s after tr) to the climb angle; speed grows at 0.4 a.
+   X and h are integrated at 1/60 s (the trapezoid on each step, the last step partial) */
+function townTakeoff(code,t){
+  var M=TOWNTO[code]||TOWNTO.C, a=M[0], Vr=M[1], D=Math.PI/180, thM=M[2]*D, gM=M[3]*D, tr=Vr/a;
+  if(t<=tr) return {X:a*t*t/2, h:0, th:0, gam:0, v:a*t, tr:tr};
+  function st(u){ return [Math.min(thM,7*D*u), Math.max(0,Math.min(gM,5*D*(u-5/7))), Vr+0.4*a*u]; }
+  var X=Vr*tr/2, h=0, u=0, T=t-tr, dt=1/60;
+  while(u<T-1e-12){ var du=Math.min(dt,T-u), s0=st(u), s1=st(u+du);
+    X+=du*(s0[2]*Math.cos(s0[1])+s1[2]*Math.cos(s1[1]))/2; h+=du*(s0[2]*Math.sin(s0[1])+s1[2]*Math.sin(s1[1]))/2; u+=du; }
+  var S=st(T); return {X:X, h:h, th:S[0], gam:S[1], v:S[2], tr:tr};
+}
+/* row 256: the Ghost line under its knob, from the build's record (info.ghost) */
+function townGhostText(G){
+  if(!G) return '';
+  if(G.none) return 'Ghost: '+G.none;
+  return 'Ghost: '+G.n+' copies of the '+G.code+' from stand '+(G.stand+1)+', last '+G.after.toFixed(1)+' s after liftoff'+
+    (G.why?' (cut from '+G.ask.toFixed(1)+' s: '+G.why+')':'');
+}
 /* ROW 203 (docs/specs/2026-11-02-town-city-form_v2.md): THE CITY AROUND A CORE.
    - townCore: the core, in the middle 40% of the extent, in the half away from a site's side.
    - townRho: density at a point, falling from the core with noise on salt 853 (Ragged edge).
@@ -27203,7 +27229,7 @@ function siteTheme(K,SITE){
   function own(P,C,kind,col,layer){ P.cont=C; P.kind=kind; P.col=col; P.layer=layer||'struct';
     P.lines.forEach(function(Ln){ if(!Ln.col) Ln.col=col; if(!Ln.kind) Ln.kind=kind; });
     C.parts.push(P);
-    info.recs.push({kind:kind, V:verts(P), F:P.faces.map(function(f){ return {n:f.n, d:f.d}; }), cont:{kind:C.kind, poly:C.poly}, ac:P.ac, br:P.br});
+    info.recs.push({kind:kind, V:verts(P), F:P.faces.map(function(f){ return {n:f.n, d:f.d}; }), cont:{kind:C.kind, poly:C.poly}, ac:P.ac, br:P.br, gh:P.ghost});
     return P; }
   function W3(a,b,z){ var q=M2(a,b); return [q[0],q[1],z]; }
   function solidL(loops){ return polyFromLoops(loops.map(function(l){ return l.map(function(q){ return W3(q[0],q[1],q[2]); }); })); }
@@ -27271,6 +27297,10 @@ function siteTheme(K,SITE){
     SITE.conts.forEach(function(C){ plate(C); });
     var rw=SITE.conts.filter(function(C){ return C.kind==='rwy'; }), tw=SITE.conts.filter(function(C){ return C.kind==='twy'; });
     rw.forEach(function(C,m){ runwayPaint(C); });
+    /* row 256 §1.2: the Ghost's aircraft is the one Focus 3 looks at, the first stand with one (frameOf) */
+    var GN=Math.round(isFinite(p.ghost)?+p.ghost:0), GHS=null; delete info.ghost;
+    if(GN>=2){ GHS=SITE.stands.filter(function(C){ return !!C.ac; })[0]||null;
+      if(!rw.length || !GHS){ info.ghost={none:!rw.length?'no runway on this airfield':'no aircraft on a stand'}; GHS=null; } }
     /* connectors: every 600 m and at both ends, on the strip nearest each taxiway */
     tw.forEach(function(C){
       var e=C.lr, pave=C.pave, bc=(e[2]+e[3])/2;
@@ -27294,9 +27324,10 @@ function siteTheme(K,SITE){
     SITE.stands.forEach(function(C){
       var e=C.lr, ac=(e[0]+e[1])/2, AC=C.ac?SITE_AC[C.ac]:null, nb=e[3]-6, stop=AC?nb-AC.L*0.14-0.5:e[3]-12;
       paint(C,ac,e[2],ac,e[3]-4,COLY,'stand'); paint(C,ac-3,stop,ac+3,stop,COLY,'stand');
-      if(!AC) return;
+      if(!AC || C===GHS) return;
       placeAircraft(C,C.ac,ac,nb,dn,df);
     });
+    if(GHS) ghostTakeoff(GHS,rw,Math.min(12,GN),dn);
     SITE.conts.forEach(function(C){
       if(C.kind==='term') terminal(C);
       else if(C.kind==='hangar') hangar(C);
@@ -27329,6 +27360,44 @@ function siteTheme(K,SITE){
       ix.push(info.recs.length-1);
     });
     return ix;
+  }
+  /* ROW 256: THE GHOST (docs/specs/2026-11-05-town-ghost-takeoff.md §1). The stand's aircraft on the runway
+     nearest its stand, lined up on the centre line with its tail on the threshold behind the stand, so the
+     run ahead passes the stand and is the longer one, heading down the runway; N copies at
+     t_k = k (tr + after) / (N - 1), each at townTakeoff's state: the main gear's contact point X along the
+     centre line and h up, the aircraft pitched th about it. Every copy is every part of the aircraft,
+     convex, owned by the runway's strip (whose container holds it: the run never leaves the strip) and
+     tagged with its index, so the kit draws a later copy over an earlier one (orderParts, row 256).
+     `after` is Ghost after liftoff, cut down in 0.1 s steps until the last copy lies inside the strip
+     and, when the copy at liftoff is on the sheet, not over its top edge; a runway shorter than
+     1.15 x the roll gets none. What was asked, what was drawn and why: info.ghost */
+  function ghostTakeoff(S,rw,N,dn){
+    var code=S.ac, A0=makeAircraft(code), L=A0.spec.L, xm=A0.xm, zc=A0.spec.zc, liv=LIV[S.liv%LIV.length];
+    var sa=(S.lr[0]+S.lr[1])/2, sb=(S.lr[2]+S.lr[3])/2;
+    var RC=rw.slice().sort(function(P,Q){ return Math.abs(P.rwy.bc-sb)-Math.abs(Q.rwy.bc-sb); })[0], r=RC.rwy;
+    var d=sa-r.a0<=r.a1-sa?1:-1, thr=d>0?r.a0:r.a1, aP0=thr+d*(L-xm), bc=r.bc;
+    /* the aircraft's own (x, y, z) at state st, to the field's (a, b, z) */
+    function field(st){ var c=Math.cos(st.th), sn=Math.sin(st.th);
+      return function(q){ var u=xm-q[0]; return [aP0+d*(st.X+u*c-q[2]*sn), bc+d*q[1], u*sn+q[2]*c+st.h]; }; }
+    function world(st){ var F=field(st); return function(q){ var f=F(q); return W3(f[0],f[1],f[2]); }; }
+    var VV=[]; A0.parts.forEach(function(pt){ pt.loops.forEach(function(l){ l.forEach(function(q){ VV.push(q); }); }); });
+    function inStrip(T){ var F=field(townTakeoff(code,T)); return VV.every(function(q){ var f=F(q); return f[0]>=RC.lr[0]+0.5 && f[0]<=RC.lr[1]-0.5; }); }
+    function topY(T){ var Wf=world(townTakeoff(code,T)), y=1e18;
+      for(var i=0;i<VV.length;i++){ var s=K.project(Wf(VV[i])); if(!s) return null; if(s[1]<y) y=s[1]; } return y; }
+    var tr=TOWNTO[code][1]/TOWNTO[code][0], ask=Math.max(0,Math.min(15,isFinite(p.ghostt)?+p.ghostt:6)), after=ask, why='';
+    var y0=topY(tr), onPage=y0!==null && y0>=K.PAD;
+    function fits(T){ if(!inStrip(T)) return 'the runway ends'; if(onPage){ var y=topY(T); if(y===null || y<K.PAD) return 'the top of the sheet'; } return ''; }
+    if(r.L<1.15*TOWNTO[code][0]*tr*tr/2){ after=0; why='the runway is shorter than 1.15 × the roll'; }
+    else { var w0=fits(tr+after); if(w0){ why=w0; while(after>0 && fits(tr+after)) after=Math.max(0,Math.round(after*10-1)/10); } }
+    var Tl=tr+after; while(Tl>0.1 && !inStrip(Tl)) Tl=Math.round(Tl*10-1)/10;
+    var o0=W3(aP0,bc,0), o1=W3(aP0+d,bc,0), rec={code:code, stand:S.slot, standPoly:S.poly, rwy:rw.indexOf(RC), strip:RC.poly, d:d, n:N, ask:ask,
+      after:Tl-tr, why:why, tr:tr, xm:xm, L:L, zc:zc, origin:o0, dir:[o1[0]-o0[0],o1[1]-o0[1],0], copies:[]};
+    for(var k=0;k<N;k++){
+      var t=k*Tl/(N-1), st=townTakeoff(code,t), Wf=world(st), nose=Wf([0,0,zc]), fa=field(st)([0,0,zc]);
+      var ix=acParts(RC,makeAircraft(code),Wf,liv,dist3(nose)<dn,function(){ return gapA(fa[0],bc)*0.9>=0.7; },{ghost:k});
+      rec.copies.push({k:k, t:t, X:st.X, h:st.h, th:st.th, gam:st.gam, v:st.v, nose:nose, parts:ix});
+    }
+    info.ghost=rec;
   }
   /* parked nose-in toward the terminal (+b), its axis along b */
   function placeAircraft(C,code,ac,nb,dn,df){
@@ -44580,7 +44649,7 @@ var KGROUPS=[
   ['ess','Essentials','layout form rows nlen site tier water rail hwy river floors archlots isoaz isoel zoom'],
   ['plan','City plan','sprawl corez rowsp xblk xwidth parks alleys zones'],
   ['lines','Lines that cross the city','rbend rwidth rdrop railbend railz trains ncar rstn hwybend hwyz hlanes ixtype pline'],
-  ['site','Airfield and harbour','sitepct sscale harb rwys rwyhdg stands acmix tower hangars gse berths vessels pierlen slips'],
+  ['site','Airfield and harbour','sitepct sscale harb rwys rwyhdg stands acmix tower hangars gse ghost ghostt berths vessels pierlen slips'],
   ['bld','Buildings','width pave lotmin lotmax alley archmin archdet stepb canti fire uvar'],
   ['life','Street life (close-ups)','glow shopv props signs neon lang cables sag cars graff dots pnear'],
   ['wet','Wet street','puddles pudsz ripple rvar wmk wglint hero hstr hrag hturn hshape'],
@@ -44664,6 +44733,9 @@ var KIDLE={town:[
   {keys:'ixtype', par:['hwy','form','site','nlen','rail','pline'], why:'only on the whole-city highway (a Site, City form 1)', on:function(E){ return kR(E,'hwy')===1 && kW(E); }},
   {keys:'sitepct tier sscale', par:['site'], why:'Site 0', on:function(E){ return kR(E,'site')>0; }},
   {keys:'stands hangars rwyhdg', par:['site'], why:'Site is not the airfield', on:function(E){ return kR(E,'site')===1; }},
+  /* row 256 */
+  {keys:'ghost', par:['site'], why:'Site is not the airfield', on:function(E){ return kR(E,'site')===1; }},
+  {keys:'ghostt', par:['site','ghost'], why:'Ghost is off', on:function(E){ return kR(E,'site')===1 && kR(E,'ghost')>=2; }},
   {keys:'rwys acmix tower gse', par:['site','tier'], why:'an airstrip (Scale 2 or less)', on:function(E){ return kR(E,'site')===1 && kR(E,'tier')>=3; }},
   {keys:'berths vessels pierlen slips', par:['site','form','tier'], why:'no harbour site (or City form\'s Scale 0-1 shore harbour)', on:function(E){ return kR(E,'site')===2 && (kR(E,'form')===0 || kR(E,'tier')>=2); }},
   {keys:'archmin archdet zones', par:['archlots'], why:'Iso buildings 0', on:function(E){ return kR(E,'archlots')>0; }},
@@ -44741,6 +44813,8 @@ function kBuild(box){
       KPANEL.rows[k]=row;
       /* row 255 §1.3: the Map scale readout, from the last build (townScaleText) */
       if(eng==='town' && k==='mscale'){ var rd=document.createElement('div'); rd.className='kread'; rd.id='kread_mscale'; body.appendChild(rd); KPANEL.mread=rd; }
+      /* row 256 §1.6: the Ghost line, from the last build (townGhostText) */
+      if(eng==='town' && k==='ghostt'){ var rg=document.createElement('div'); rg.className='kread'; rg.id='kread_ghost'; body.appendChild(rg); KPANEL.gread=rg; }
     });
     var idl=document.createElement('div'); idl.className='kidle'; body.appendChild(idl);
     KPANEL.groups.push({id:g.id, sec:sec, keys:g.keys, idle:idl});
@@ -44752,6 +44826,7 @@ function kBuild(box){
 function kpanelIdle(){
   if(!KPANEL || KPANEL.eng!==mode || !STATE.eng[mode]) return;
   if(KPANEL.mread) KPANEL.mread.textContent=townScaleText(typeof STRTTALLY!=='undefined'&&STRTTALLY&&STRTTALLY.town?STRTTALLY.town.mscale:null);
+  if(KPANEL.gread) KPANEL.gread.textContent=townGhostText(typeof STRTTALLY!=='undefined'&&STRTTALLY&&STRTTALLY.town&&STRTTALLY.town.site?STRTTALLY.town.site.ghost:null);
   var idle=kIdleSet(mode,STATE.eng[mode],STRTSTATS), act=document.activeElement, S=SPEC[mode][1];
   Object.keys(KPANEL.rows).forEach(function(k){
     var row=KPANEL.rows[k], hide=(k in idle) && !(act && row.contains(act));
@@ -46100,6 +46175,8 @@ var HELP={
     tower:'A control tower beside the terminal. An airstrip never has one.',
     hangars:'How many hangars stand beside the stands (an airstrip has one to four).',
     gse:'The share of ground vehicles round each parked aircraft: a pushback tractor, a fuel truck, a tug and its baggage carts.',
+    ghost:'A takeoff as a multiple exposure, with an airfield. The aircraft Focus 3 looks at (the first stand with one) leaves its stand and is drawn this many times down the nearest runway and into the climb, at equal steps of time, so the copies spread out as it speeds up. A later copy is drawn over an earlier one. 0 and 1 are off.',
+    ghostt:'How far into the climb the last Ghost copy is, in seconds after the aircraft reaches its rotation speed. It is cut short where the runway ends, or where the copy would leave the top of the sheet; the line below says what was drawn.',
     berths:'How many berths a harbour has along its quay, where there is room: fishing boats at Scale 2, container ships at Scale 3; a marina has twice as many slips.',
     vessels:'The share of a harbour’s berths and slips with a boat or a ship in them.',
     pierlen:'How long the pier is, in metres (Scale 0). 0 is 12 m.',
