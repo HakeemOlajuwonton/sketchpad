@@ -462,7 +462,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v374</a> &mdash; Corridor city: Map scale -- a fixed scale on paper (1:500 to 1:8000, 1:1000 by default) so Site no longer shrinks everything; the page crops about Focus, and a readout says what the sheet shows</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v375</a> &mdash; Corridor city: kit hooks for the takeoff ghost (an aircraft's parts through any frame, the main gear's station, an order between exposures, the kit's projection), refactor only</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <section class="fold" id="fold_pick"><h2>Pick engine<span class="cnt"></span></h2>
@@ -27188,7 +27188,8 @@ function makeAircraft(code){
   }
   out.push({kind:'ac-gear', loops:box(xn+0.3,xn+0.6,-gw/2,gw/2,2*rn,zb)});
   out.push({kind:'ac-wheel', loops:ngonY(-gw/2,gw/2,xn+0.45,rn,rn,8), crease:0.8});
-  return {parts:out, spec:S, door:{x:xn+0.9, z:zc-0.35*R}, xr:xr, cr:cr, le:le, hs:hs, zb:zb, zt:zt};
+  /* row 256: xm, the main wheels' station along x (their lowest vertex touches z = 0 there), the pivot of a rotation */
+  return {parts:out, spec:S, door:{x:xn+0.9, z:zc-0.35*R}, xr:xr, cr:cr, le:le, hs:hs, zb:zb, zt:zt, xm:S.wing==='low'?le(R+1.1)+0.45*cr:xr+0.5*cr};
 }
 /* THE AIRFIELD'S CONTENT (§2.3), from the site's own streams (salt 641 for
    the dressing, 631 for which aircraft stands where). Paint is ground lines
@@ -27307,11 +27308,11 @@ function siteTheme(K,SITE){
       else if(C.kind==='stub'){ var e2=C.lr; paint(C,e2[0],e2[2],e2[1],e2[2],COLK,'kerb'); }
     });
   }
-  /* parked nose-in toward the terminal (+b), its axis along b */
-  function placeAircraft(C,code,ac,nb,dn,df){
-    var A=makeAircraft(code), e=C.lr, liv=LIV[C.liv%LIV.length], near=dist3(W3(ac,nb,3))<dn, rec={code:code, span:A.spec.span, L:A.spec.L, clr:A.spec.clr,
-      cont:C.poly, contW:e[1]-e[0], axis:[M2(ac,nb),M2(ac,nb-A.spec.L)], parts:[]};
-    function L2W(q){ return W3(ac-q[1],nb-q[0],q[2]); }
+  /* ROW 256: AN AIRCRAFT'S PARTS through a frame map L2W (its own x y z to the world), owned by C, each tagged
+     with `tag` before it is owned; the livery and windows when `near`, the window ticks when ticks() says the
+     sheet holds them. The rec indices of its parts, in order. Lifted from placeAircraft (refactor only) */
+  function acParts(C,A,L2W,liv,near,ticks,tag){
+    var ix=[];
     A.parts.forEach(function(pt){
       var P=polyFromLoops(pt.loops.map(function(l){ return l.map(L2W); }));
       if(pt.crease) P.crease=pt.crease;
@@ -27319,14 +27320,22 @@ function siteTheme(K,SITE){
       if(pt.win && near){ var w=pt.win;
         [w.fl,w.fr].forEach(function(fi,sk){ var y=(sk===0?1:-1)*w.y;
           P.lines.push({a:L2W([w.x0,y,w.zl]), b:L2W([w.x1,y,w.zl]), f0:fi, f1:fi, col:liv, kind:'livery'});
-          if(gapB(ac,nb)*0.9>=0.7) for(var x=w.x0;x<=w.x1;x+=0.9) P.lines.push({a:L2W([x,y,w.zw-0.25]), b:L2W([x,y,w.zw+0.25]), f0:fi, f1:fi, col:COLK, kind:'window'});
+          if(ticks()) for(var x=w.x0;x<=w.x1;x+=0.9) P.lines.push({a:L2W([x,y,w.zw-0.25]), b:L2W([x,y,w.zw+0.25]), f0:fi, f1:fi, col:COLK, kind:'window'});
         });
         /* row 244: the windscreen, two livery lines on the nose segment's facets either side of the top */
         (w.ws||[]).forEach(function(q){ P.lines.push({a:L2W(q.a), b:L2W(q.b), f0:q.f, f1:q.f, col:liv, kind:'windscreen'}); }); }
-      P.ac=info.aircraft.length;
+      for(var tk in tag) P[tk]=tag[tk];
       own(P,C,pt.kind,col);
-      rec.parts.push(info.recs.length-1);
+      ix.push(info.recs.length-1);
     });
+    return ix;
+  }
+  /* parked nose-in toward the terminal (+b), its axis along b */
+  function placeAircraft(C,code,ac,nb,dn,df){
+    var A=makeAircraft(code), e=C.lr, liv=LIV[C.liv%LIV.length], near=dist3(W3(ac,nb,3))<dn, rec={code:code, span:A.spec.span, L:A.spec.L, clr:A.spec.clr,
+      cont:C.poly, contW:e[1]-e[0], axis:[M2(ac,nb),M2(ac,nb-A.spec.L)], parts:[]};
+    function L2W(q){ return W3(ac-q[1],nb-q[0],q[2]); }
+    rec.parts=acParts(C,A,L2W,liv,near,function(){ return gapB(ac,nb)*0.9>=0.7; },{ac:info.aircraft.length});
     info.aircraft.push(rec);
     /* the jet bridge, for a jet at a stand with a terminal behind it */
     var TC=SITE.conts.filter(function(Q){ return Q.kind==='term'; })[0];
@@ -42584,6 +42593,11 @@ function corridorDraw(p,plans,THM,camera){
              then every separating plane agrees -- the same argument that makes
              the container level exact. */
           if(!PS[a].sil || !PS[b].sil || !polyOverlap(PS[a].sil,PS[b].sil)) continue;
+          /* ROW 256: EXPOSURES. Parts of two different exposures of one thing (P.ghost, its index) are
+             not ordered by depth: they may stand in the same space, and a multiple exposure draws the
+             later over the earlier. The higher index goes first, so it hides. One exposure's own parts,
+             and every untagged part, as before */
+          if(PS[a].ghost!==undefined && PS[b].ghost!==undefined && PS[a].ghost!==PS[b].ghost){ pe.push(PS[a].ghost>PS[b].ghost?[a,b]:[b,a]); continue; }
           var r=partSep(PS[a],PS[b]);
           /* two parts whose silhouettes overlap and that no face plane
              separates INTERPENETRATE -- the layout's promise is broken, and
@@ -43103,7 +43117,7 @@ function corridorDraw(p,plans,THM,camera){
   function facesEye(f){ return (HOLD||[KCAM]).some(function(Kc){ var E=Kc.CE; return f.n[0]*E[0]+f.n[1]*E[1]+f.n[2]*E[2]-f.d>1e-9; }); }
   /* and the sheet's across direction at P -- held, the nearest frame's */
   function rtAt(P){ return HOLD?holdK(P).RT:RT; }
-  function KIT(PL){ var K={planRef:PL, facesEye:facesEye, rtAt:rtAt, massedAt:MASSED&&MASSED.get(PL)?function(sd,s){ return MASSED.get(PL)[sd].some(function(L){ return s>=L.s0-1 && s<=L.s1+1; }); }:null, sGaps:PL.sGaps, hasGap:PL.hasGap, slabPieces:slabPieces, bbHit:bbHit, MINSP:0.7, FW:FW, UP:UP, PAD:PAD, NS:PL.NS, THM:PL.theme||THM, P3:PL.P3, add3:add3, addCable:addCable, cam:camK, dist3:dist3, drawOn:drawOn, faceC:faceC, faceIx:faceIx, frame:PL.frame, hitsAny:hitsAny, inConv:inConv, lateral:PL.lateral, mmPerM:mmPerM, paperGap:paperGap, para:para, polyFromLoops:polyFromLoops, prism:prism, prismN:prismN, splitPart:splitPart, sub:PL.sub, surf:surf, vec:vec, verts:verts, wallOf:wallOf, wp:wp, CANTI:PL.CANTI, CANYON:PL.CANYON, CE:CE, FF:FF, FLOORS:PL.FLOORS, HALFW:PL.HALFW, HW:HW, KERB:PL.KERB, KOFF:PL.KOFF, LEN:PL.LEN, NEAR:NEAR, PBACK:PL.PBACK, RT:RT, SALT_BLD:PL.SALT_BLD, STEPB:PL.STEPB, ZUP:ZUP, cables:cables, conts:conts, lots:PL.lots, slabsBySide:PL.slabsBySide, p:p};
+  function KIT(PL){ var K={planRef:PL, facesEye:facesEye, rtAt:rtAt, massedAt:MASSED&&MASSED.get(PL)?function(sd,s){ return MASSED.get(PL)[sd].some(function(L){ return s>=L.s0-1 && s<=L.s1+1; }); }:null, sGaps:PL.sGaps, hasGap:PL.hasGap, slabPieces:slabPieces, bbHit:bbHit, MINSP:0.7, FW:FW, UP:UP, PAD:PAD, NS:PL.NS, THM:PL.theme||THM, P3:PL.P3, add3:add3, addCable:addCable, cam:camK, dist3:dist3, project:project, drawOn:drawOn, faceC:faceC, faceIx:faceIx, frame:PL.frame, hitsAny:hitsAny, inConv:inConv, lateral:PL.lateral, mmPerM:mmPerM, paperGap:paperGap, para:para, polyFromLoops:polyFromLoops, prism:prism, prismN:prismN, splitPart:splitPart, sub:PL.sub, surf:surf, vec:vec, verts:verts, wallOf:wallOf, wp:wp, CANTI:PL.CANTI, CANYON:PL.CANYON, CE:CE, FF:FF, FLOORS:PL.FLOORS, HALFW:PL.HALFW, HW:HW, KERB:PL.KERB, KOFF:PL.KOFF, LEN:PL.LEN, NEAR:NEAR, PBACK:PL.PBACK, RT:RT, SALT_BLD:PL.SALT_BLD, STEPB:PL.STEPB, ZUP:ZUP, cables:cables, conts:conts, lots:PL.lots, slabsBySide:PL.slabsBySide, p:p};
     /* row 96: a plan with a theme of its own reads its own knobs and cables */
     if(PL.theme){ K.p=PL.p; K.addCable=PL.addCable||addCable; K.cables=PL.cables||cables; }
     return K; }
