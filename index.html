@@ -462,7 +462,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v378</a> &mdash; Corridor city: trains on a massed deck stand on it -- at the sheet scale where a viaduct is massed it has no ballast or rails, and the train stood 0.6 m above the bare deck; now on the deck's own top. Row 298</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v379</a> &mdash; Corridor city: a site's first view looks at the aircraft -- at a Map scale, Focus 1 on an airfield now centres on the tightest three stands, where the middle of the site was grass; and the stat line no longer prints undefined or NaN. Row 307, part 1</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <section class="fold" id="fold_pick"><h2>Pick engine<span class="cnt"></span></h2>
@@ -23994,7 +23994,7 @@ function buildTown(p){
     if(I.raised>0) STRTINFO+=', raised '+I.raised.toFixed(1)+' m to '+V.z.toFixed(1)+' m to clear the '+(V.RAIL?'highway':'railway'); });
   if(PKS){ var PKI=PKS.info; STRTINFO+=' · '+PKI.parks.length+' park'+(PKI.parks.length===1?'':'s')+' ('+PKI.pieces+' piece'+(PKI.pieces===1?'':'s')+', '+PKI.trees.length+' trees, '+PKI.lots+' lots'+(PKI.riverLots?' and '+PKI.riverLots+' canal house'+(PKI.riverLots===1?'':'s'):'')+' cleared)'; }
   if(SITE && SITE.harbour){ var HI=SITE.info;
-    STRTINFO+=' · harbour, Scale '+HI.tier+': water '+Math.round(100*HI.water/HI.netArea)+'% of the city, '+HI.boats.length+' boat'+(HI.boats.length===1?'':'s')+', '+HI.ships.length+' ship'+(HI.ships.length===1?'':'s')+(HI.lighthouse?', a lighthouse':'')+'; '+HI.inside+' lots inside removed, '+HI.met+' cut back ('+HI.split+' split, '+HI.dropped+' too small dropped)'+(HI.left.length?'; left out: '+HI.left.join(', '):''); }
+    STRTINFO+=' · harbour, Scale '+HI.tier+': '+(isFinite(HI.water/HI.netArea)?'water '+Math.round(100*HI.water/HI.netArea)+'% of the city, ':'')+HI.boats.length+' boat'+(HI.boats.length===1?'':'s')+', '+HI.ships.length+' ship'+(HI.ships.length===1?'':'s')+(HI.lighthouse?', a lighthouse':'')+'; '+HI.inside+' lots inside removed, '+HI.met+' cut back ('+HI.split+' split, '+HI.dropped+' too small dropped)'+(HI.left.length?'; left out: '+HI.left.join(', '):''); }
   else if(SITE){ var SI=SITE.info, nr=SI.runways.length;
     STRTINFO+=' · airfield, Scale '+SI.tier+': '+Math.round(100*SI.area/SI.netArea)+'% of the city, '+(nr?nr+' runway'+(nr>1?'s':'')+' '+Math.round(SI.runways[0].L)+' m':'no runway')+', '+
       SI.aircraft.length+' aircraft, '+SI.hangars+' hangar'+(SI.hangars===1?'':'s')+(SI.tower?', a tower':'')+'; '+SI.inside+' lots inside removed, '+SI.met+' cut back ('+SI.split+' split, '+SI.dropped+' too small dropped), '+
@@ -24028,7 +24028,9 @@ function townCamArg(p,G,SITE,FRM,WC,VR,VH){
   /* row 255: MAP SCALE. A fixed scale (N of 1:N) centred on Focus's rectangle, or at Focus 0
      (and without a site, where Focus has no rectangle) on the city's core, G.MCORE. 0: nothing */
   var MSN=TOWNMSN[Math.max(0,Math.min(5,Math.round(isFinite(p.mscale)?+p.mscale:0)))];
-  if(MSN) cam0.mscale={N:MSN, c:FR&&FK>0?[(FR[0]+FR[2])/2,(FR[1]+FR[3])/2]:(G.MCORE||[G.NLEN/2,G.SPAN/2])};
+  /* row 307: Focus 1 at a Map scale looks at the tightest three aircraft on their stands. The middle of an airfield's rectangle is grass */
+  var AIM307=MSN&&FK===1&&SITE&&SITE.standsAim&&!FTGC?SITE.standsAim():null;
+  if(MSN) cam0.mscale={N:MSN, c:AIM307||(FR&&FK>0?[(FR[0]+FR[2])/2,(FR[1]+FR[3])/2]:(G.MCORE||[G.NLEN/2,G.SPAN/2]))};
   return {camera:cam0, FR:FR, FTGC:FTGC, FK:FK};
 }
 /* row 255: Map scale 0..5 -> N of 1:N (0 Fit) */
@@ -26692,7 +26694,7 @@ function townForm(p,G,plans,J,BLK,SITE){
           townCarve(G,grid,BS.meets,info,'site',900000,LOTMIN,bbox2);
           out.forEach(function(PLa){ var gone=new Set(); PLa.lots.forEach(function(L){ if(BS.meets(L.poly)) gone.add(L); }); if(gone.size){ PLa.lots=PLa.lots.filter(function(L){ return !gone.has(L); }); PLa.conts=PLa.conts.filter(function(C){ return !gone.has(C); }); } });
           out.push(PS); info.spur={from:QB, to:PA9, L:L9, hw:HW9, plan:510}; BAND=(function(B0,B1){ return {meets:function(Q){ return B0.meets(Q)||B1.meets(Q); }}; })(BAND,BS); } }
-      if(WK===4){ SITE.frameOf=function(k){ if(k===1) return townGrow(townBbox(HPOLY.concat([[core[0],core[1]]])),0.3); if(k===2) return townGrow(townBbox(HPOLY),0.08); if(k===3){ var fr=hinfo; return townGrow(townBbox(HPOLY),-0.4); } return null; }; SITE.aim=FP(QL/2,DP+AD/2+1); SITE.rect=townBbox(HPOLY); SITE.top=SITE.top; hinfo.netArea=1; hinfo.water=QL*DP; hinfo.inside=0; hinfo.met=0; hinfo.split=0; hinfo.dropped=0; }
+      if(WK===4){ SITE.frameOf=function(k){ if(k===1) return townGrow(townBbox(HPOLY.concat([[core[0],core[1]]])),0.3); if(k===2) return townGrow(townBbox(HPOLY),0.08); if(k===3){ var fr=hinfo; return townGrow(townBbox(HPOLY),-0.4); } return null; }; SITE.aim=FP(QL/2,DP+AD/2+1); SITE.rect=townBbox(HPOLY); SITE.top=SITE.top; hinfo.water=QL*DP; hinfo.inside=0; hinfo.met=0; hinfo.split=0; hinfo.dropped=0; }
     }
   }
   /* §5: the harbour site's quay road along the built shore */
@@ -26837,7 +26839,7 @@ function townSite(p,G,plans,J,BLK,KIND){
   if(KIND===2){ FW=0; }
   var D0a=KIND===2&&TI>=3?(TI>=4?HARB_APRON4:HARB_APRON):0, D0=KIND===2?D0a+RD:0;
   var HDG=Math.max(0,Math.min(179,isFinite(p.rwyhdg)?+p.rwyhdg:70));
-  var info={tier:TI, pct:PCT, box:BX, netArea:A, met:0, kept:0, split:0, dropped:0, low:0, capped:0, slabsGone:0, slabsCut:0, juncGone:0,
+  var info={tier:TI, pct:PCT, box:BX, netArea:A, inside:0, met:0, kept:0, split:0, dropped:0, low:0, capped:0, slabsGone:0, slabsCut:0, juncGone:0,
             runways:[], aircraft:[], bridges:[], recs:[], strips:[], conts:[], hangars:0, tower:null, windsock:0, left:[], hdg:HDG};
   var RWN=TI===2?1:TI>=4?Math.max(2,Math.min(8,Math.round(isFinite(p.rwys)?+p.rwys:2))):Math.max(1,Math.min(2,Math.round(isFinite(p.rwys)?+p.rwys:2)));
   /* row 101: of a hub's runways this many are crosswinds (salt 617) */
@@ -27083,6 +27085,10 @@ function townSite(p,G,plans,J,BLK,KIND){
   if(ROT) SITE.aim=TA?townMid(TA.poly):M2(LA/2,LB);
   /* row 200 §2: Focus 1 the site, 2 terminal + stands + the runway abeam them, 3 one
      aircraft and its bridge, each a plan rectangle */
+  /* row 307: the middle of the tightest three stands holding an aircraft (fewer: of what there is), or null */
+  SITE.standsAim=function(){ var A=stands.filter(function(C){ return !!C.ac; }).map(function(C){ return townMid(C.poly); }); if(!A.length) return null;
+    var best=null, bd=1e18; A.forEach(function(c){ var o=A.slice().sort(function(u,v){ return Math.hypot(u[0]-c[0],u[1]-c[1])-Math.hypot(v[0]-c[0],v[1]-c[1]); }).slice(0,3), r=Math.hypot(o[o.length-1][0]-c[0],o[o.length-1][1]-c[1]); if(r<bd){ bd=r; best=o; } });
+    return townMid(best); };
   SITE.frameOf=function(k){
     if(k===1){ var UA=conts.filter(function(C){ return C.kind!=='pjunction' && C.kind!=='fence'; }); if(!UA.length) return townGrow(R,0.08);
       var bu=townBbox([].concat.apply([],UA.map(function(C){ return C.poly; }))); return townGrow(bu,0.08); }
