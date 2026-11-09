@@ -28,6 +28,13 @@
 /* against the paper-contrast spec's "Blueprint unchanged": --dim read 3.69:1 on Blueprint's #0d3a6b, so .stats and #hud could not reach
    the 4.5:1 the same spec asks for (bits2ink's row 296 takes the same one variable) */
 :root[data-theme="blue"]{--dim:#aab4c2}
+/* the title card's scrim: the look's background behind the text, fading out at its top and right so the city reads around it. It sits on the card, so it hides with it */
+:root{--scrim:7,9,13}
+:root[data-theme="paper"]{--scrim:243,239,230}
+:root[data-theme="blue"]{--scrim:13,58,107}
+#card::before{content:"";position:absolute;z-index:-1;pointer-events:none;left:-70px;right:-160px;top:-70px;bottom:-34px;background:rgb(var(--scrim));opacity:.82;
+  -webkit-mask-image:linear-gradient(to right,#000 58%,transparent 96%),linear-gradient(to top,#000 62%,transparent);-webkit-mask-composite:source-in;
+  mask-image:linear-gradient(to right,#000 58%,transparent 96%),linear-gradient(to top,#000 62%,transparent);mask-composite:intersect}
 html,body{height:100%;margin:0;background:var(--bg);color:var(--fg);font-family:var(--body);font-size:14px;overflow:hidden;-webkit-tap-highlight-color:transparent}
 #gl{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none;outline:none;cursor:grab}
 #gl:active{cursor:grabbing}
@@ -532,6 +539,8 @@ function stats(){
 function setCity(id,keepView){
   var c=META.cities.filter(function(x){return x.id===id;})[0]||META.cities[0];
   CITY=c; stopRoute();
+  /* a scene opens at its own field of view (cities.json viewDeg); the viewer can move it after */
+  if(c.viewDeg){ var sf=$('s-fov'); sf.value=c.viewDeg; sf.dispatchEvent(new Event('input')); }
   [].forEach.call(document.querySelectorAll('#cities .btn'),function(b){b.setAttribute('aria-pressed',String(b.dataset.id===c.id));});
   $('blurb').textContent=c.blurb;
   buildRoutes(); MOV=null; POSES=[]; loadMovers(c);
