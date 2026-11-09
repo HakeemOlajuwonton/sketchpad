@@ -16,6 +16,18 @@
   --display:"Big Shoulders Display","Arial Narrow",sans-serif; --body:"Atkinson Hyperlegible",system-ui,sans-serif; --mono:"JetBrains Mono",ui-monospace,monospace;
   color-scheme:dark;
 }
+:root[data-theme="paper"]{
+  --bg:#f3efe6; --fg:#1d2228; --dim:#5b6470; --line:#cfc7b8; --panel:rgba(250,247,240,.92);
+  --accent:#c2185b; --accent2:#0b7285; color-scheme:light;
+}
+/* not on a pressed or hot button: this rule outranks theirs, and would leave their cream or white text on a clear background */
+:root[data-theme="paper"] .btn:not([aria-pressed="true"]):not(.hot){background:rgba(29,34,40,.05)}
+:root[data-theme="paper"] .btn.hot{color:#fff}
+:root[data-theme="paper"] #card p{color:#3b4048}
+:root[data-theme="paper"] #cap{text-shadow:0 1px 14px rgba(243,239,230,.95)}
+/* against the paper-contrast spec's "Blueprint unchanged": --dim read 3.69:1 on Blueprint's #0d3a6b, so .stats and #hud could not reach
+   the 4.5:1 the same spec asks for (bits2ink's row 296 takes the same one variable) */
+:root[data-theme="blue"]{--dim:#aab4c2}
 html,body{height:100%;margin:0;background:var(--bg);color:var(--fg);font-family:var(--body);font-size:14px;overflow:hidden;-webkit-tap-highlight-color:transparent}
 #gl{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none;outline:none;cursor:grab}
 #gl:active{cursor:grabbing}
@@ -173,7 +185,7 @@ body.touch.fly #pad{display:flex}
   <label class="ck" for="c-trail"><input type="checkbox" id="c-trail"> Light trails</label>
   <label class="ck" for="c-bars"><input type="checkbox" id="c-bars" checked> Cinema bars during flights</label>
   <label class="ck" for="c-caps"><input type="checkbox" id="c-caps" checked> Captions</label>
-  <label class="ck" for="c-auto"><input type="checkbox" id="c-auto" checked> Play the next flight when one ends</label>
+  <label class="ck" for="c-auto"><input type="checkbox" id="c-auto" checked> Play the remaining flights when one ends</label>
   <label class="ck" for="c-ghost"><input type="checkbox" id="c-ghost"> Ghost: the takeoff as a multiple exposure</label>
 
   <h2>Your own flight</h2>
@@ -530,6 +542,8 @@ function setCity(id,keepView){
     if(!opt.tex) prefetchDetail();
   }).catch(function(e){ $('load').textContent='Could not load '+c.name+': '+e.message; });
 }
+/* opening a scene (its button, the N key): any flight stops, the scene is framed in Orbit, its title card is up */
+function openScene(id){ setMode('orbit',true); idle=true; lastInput=0; $('card').style.display=''; return setCity(id); }
 function frameCity(){
   var S=SPAN(); C.tgt=GEO.core.slice(); C.dist=S*0.55; C.ortho=S*0.5; C.el=24; C.az=-125;
 }
@@ -679,7 +693,9 @@ function sample(r,t){
 var playing=false, rt=0, stepAcc=0, capKey=-1, recAfter=false;
 function playRoute(r,fromRec){
   if(!r) return;
-  if(r.kind==='takeoff'&&!(MOV&&MOV.rwy)){ toast('The plane is still loading'); return; }
+  /* a flight whose plane has not arrived waits for it and plays, unless the viewer moved on; 30 s, then back to the card */
+  if(r.kind==='takeoff'&&!(MOV&&MOV.rwy)){ var cw=CITY, li=lastInput, wn=0; toast('The plane is still loading');
+    (function wt(){ if(CITY!==cw||lastInput!==li||(ROUTE&&playing)) return; if(MOV&&MOV.rwy){ playRoute(r,fromRec); return; } if(++wn<120){ setTimeout(wt,250); return; } setMode('orbit',true); stopRoute(); idle=true; lastInput=0; $('card').style.display=''; })(); return; }
   ROUTE=r; prepRoute(r); rt=0; playing=true; TR.paused=false; capKey=-1; setMode('fly',true);
   $('card').style.display='none';
   [].forEach.call(routesEl.children,function(b){ b.setAttribute('aria-pressed',String(CITY.routes[+b.dataset.i]===r)); });
@@ -700,15 +716,15 @@ function applyRoute(){ var q=sample(ROUTE,Math.min(1,rt)); C.eye=q.e; C.yaw=q.y;
   if(opt.caps){ var k=q.k; for(var j=k;j>=0;j--) if(ROUTE.keys[j].c){ k=j; break; }
     if(k!==capKey){ capKey=k; showCap(ROUTE.keys[k]&&ROUTE.keys[k].c||''); } }
   $('prog').style.width=(Math.min(1,rt)*100)+'%'; }
-/* THE END OF A FLIGHT: hold the last view a moment, then play the next flight (Film > Play the next flight, on by
-   default; touching the screen stops it) or ease into Orbit around what the camera was looking at, with the title
-   card back. A recording stops instead. */
+/* THE END OF A FLIGHT: hold the last view a moment, then play the next flight (Film > Play the remaining flights, on by
+   default; touching the screen stops it), or, after the last one, ease into Orbit around what the camera was looking at
+   with the title card back. A recording stops instead. */
 function endFlight(r){
   if(recAfter){ setTimeout(stopRec,600); return; }
   setTimeout(function(){
     if(playing||ROUTE!==r||rt<1) return;           /* the viewer took over, or another flight started */
     var i=CITY.routes.indexOf(r);
-    if(opt.auto&&i>=0){ ri=i+1; playRoute(CITY.routes[(i+1)%CITY.routes.length]); return; }
+    if(opt.auto&&i>=0){ ri=i+1; if(i+1<CITY.routes.length){ playRoute(CITY.routes[i+1]); return; } }
     setMode('orbit',true); stopRoute(); idle=true; lastInput=0; $('card').style.display=''; showCap('');
   },1400);
 }
@@ -765,7 +781,7 @@ window.addEventListener('keydown',function(e){
   if(k==='t'){ setTex(!opt.tex); return; }
   if(k==='o'){ setSolid(!opt.solid); return; }
   if(k==='g'){ setGhost(!opt.ghost); return; }
-  if(k==='n'){ var i=META.cities.indexOf(CITY); setCity(META.cities[(i+1)%META.cities.length].id); return; }
+  if(k==='n'){ var i=META.cities.indexOf(CITY); openScene(META.cities[(i+1)%META.cities.length].id); return; }
   if(k==='k'){ addKey(); return; }
   if(k==='p'){ photo(); return; }
   if(k==='r'){ recordRoute(); return; }
@@ -826,7 +842,7 @@ $('b-more').onclick=function(){ var o=!drawer.classList.contains('open'); drawer
 $('close').onclick=function(){ drawer.classList.remove('open'); $('b-more').setAttribute('aria-expanded','false'); };
 ['iso','orbit','fly'].forEach(function(m){ $('m-'+m).onclick=function(){ touchUser(); setMode(m); }; });
 ['night','paper','blue'].forEach(function(t){ $('t-'+t).onclick=function(){ theme=t; ['night','paper','blue'].forEach(function(x){ $('t-'+x).setAttribute('aria-pressed',String(x===t)); });
-  document.documentElement.style.colorScheme=t==='paper'?'light':'dark'; dirty=true; }; });
+  document.documentElement.style.colorScheme=t==='paper'?'light':'dark'; document.documentElement.setAttribute('data-theme',t); dirty=true; }; });
 function slider(id,fmt,set){ var s=$(id), o=$('o'+id.slice(1)); var f=function(){ set(+s.value); o.textContent=fmt(+s.value); dirty=true; }; s.addEventListener('input',f); f(); return f; }
 slider('s-fov',function(v){return v+'°';},function(v){opt.fov=v;});
 function speedOf(v){ return Math.round(3*Math.pow(10,v/40)); }
@@ -897,7 +913,7 @@ size();
 fetch('data/cities.json').then(function(r){ if(!r.ok) throw new Error('cities.json '+r.status); return r.json(); }).then(function(m){
   META=m; $('ver').textContent='drawn by Plotter Sketchpad '+m.version;
   $('cities').innerHTML=m.cities.map(function(c){ return '<button class="btn" data-id="'+c.id+'" aria-pressed="false">'+c.name+'</button>'; }).join('');
-  $('cities').addEventListener('click',function(e){ var b=e.target.closest('[data-id]'); if(b){ touchUser(); setCity(b.dataset.id); } });
+  $('cities').addEventListener('click',function(e){ var b=e.target.closest('[data-id]'); if(b){ openScene(b.dataset.id); } });
   var h=(location.hash||'').slice(1).split('/'), cid=h[0]||m.cities[0].id;
   saveMine();
   setCity(cid).then(function(){ if(h[1]){ var r=CITY.routes.filter(function(x){return x.id===h[1];})[0]; if(r){ playRoute(r); } } });
