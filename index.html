@@ -462,7 +462,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v379</a> &mdash; Corridor city: a site's first view looks at the aircraft -- at a Map scale, Focus 1 on an airfield now centres on the tightest three stands, where the middle of the site was grass; and the stat line no longer prints undefined or NaN. Row 307, part 1</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v380</a> &mdash; Corridor city: Site share holds at every City form -- at City form 1 an airfield and a harbour are the share of the city you asked for, up from 2 to 38 percent; the stat line says how many aircraft were built and how many drawn; a corner harbour's water no longer runs over its own perimeter road. Row 307, part 2</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <section class="fold" id="fold_pick"><h2>Pick engine<span class="cnt"></span></h2>
@@ -23997,7 +23997,7 @@ function buildTown(p){
     STRTINFO+=' · harbour, Scale '+HI.tier+': '+(isFinite(HI.water/HI.netArea)?'water '+Math.round(100*HI.water/HI.netArea)+'% of the city, ':'')+HI.boats.length+' boat'+(HI.boats.length===1?'':'s')+', '+HI.ships.length+' ship'+(HI.ships.length===1?'':'s')+(HI.lighthouse?', a lighthouse':'')+'; '+HI.inside+' lots inside removed, '+HI.met+' cut back ('+HI.split+' split, '+HI.dropped+' too small dropped)'+(HI.left.length?'; left out: '+HI.left.join(', '):''); }
   else if(SITE){ var SI=SITE.info, nr=SI.runways.length;
     STRTINFO+=' · airfield, Scale '+SI.tier+': '+Math.round(100*SI.area/SI.netArea)+'% of the city, '+(nr?nr+' runway'+(nr>1?'s':'')+' '+Math.round(SI.runways[0].L)+' m':'no runway')+', '+
-      SI.aircraft.length+' aircraft, '+SI.hangars+' hangar'+(SI.hangars===1?'':'s')+(SI.tower?', a tower':'')+'; '+SI.inside+' lots inside removed, '+SI.met+' cut back ('+SI.split+' split, '+SI.dropped+' too small dropped), '+
+      SI.aircraft.length+' aircraft ('+(STRTTALLY.acDrawn||0)+' drawn), '+SI.hangars+' hangar'+(SI.hangars===1?'':'s')+(SI.tower?', a tower':'')+'; '+SI.inside+' lots inside removed, '+SI.met+' cut back ('+SI.split+' split, '+SI.dropped+' too small dropped), '+
       SI.capped+' held under the 7:1 surface, '+SI.low+' too close for a storey dropped'+(SI.left.length?'; left out: '+SI.left.join(', '):''); }
   /* row 101 (spec §4): the site's count line */
   if(SITE){ var INKM=0; res.forEach(function(q){ for(var e=1;e<q.length;e++) INKM+=Math.hypot(q[e][0]-q[e-1][0],q[e][1]-q[e-1][1]); });
@@ -26651,6 +26651,8 @@ function townForm(p,G,plans,J,BLK,SITE){
   var OUT=SITE&&SITE.outline;
   var HBF=null, HRK=WK===4?-1:Math.max(0,Math.min(3,Math.round(isFinite(p.harb)?+p.harb:2))), HFRAME=null, HPOLY=null;
   if(WK && HRK!==0){ var TIh=WK===4?SITE.TI:HRK, SZ=WK===4?[[60,40],[320,0],[360,0],[600,0],[1300,0]][TIh]:[null,[320,60],[360,90],[900,260]][TIh], QL=SZ[0], AD=SZ[1]||(TIh>=4?HARB_APRON4:TIh>=3?50:0), DP=[60,160,220,300,420][TIh];
+    /* row 307: a harbour site on the shore is the share of the network that Site share asks for: the quay grows as far as the shore allows, the basin takes the rest */
+    if(WK===4){ var AT307=SITE.info.netArea*SITE.info.pct; SITE.info.minArea=QL*DP; if(AT307>QL*DP){ var QK307=Math.sqrt(AT307/(QL*DP)); QL=Math.max(QL,Math.min(QL*QK307,BOX[2]-BOX[0]-120)); DP=AT307/QL; } }
     var AQ=ALINE?[ALINE.a[0]+(ALINE.b[0]-ALINE.a[0])*(WK===2?0.52:0.5),ALINE.a[1]+(ALINE.b[1]-ALINE.a[1])*(WK===2?0.52:0.5)]:core, SP=null, sd2=1e18;
     /* the shore point: nearest the arterial's middle, or the core; at a harbour site the farthest stretch from it */
     var LBX=rot?townBbox(OUT):BOX, xa=Math.min(BOX[0],LBX[0])-400, xb=Math.max(BOX[2],LBX[2])+400, ya=Math.min(BOX[1],LBX[1])-400, yb=Math.max(BOX[3],LBX[3])+400, xq, yq;
@@ -26860,7 +26862,8 @@ function townSite(p,G,plans,J,BLK,KIND){
   var ROT=null, FOUT=null;
   if(G.FORM && KIND===1){ var RS7=townSub(0,LAY,SALT_SITE), uE7=RS7(), uC7=RS7(), top7=uE7<0.5, GAP7=TI>=3?Math.max(300,0.12*G.NLEN):Math.max(120,0.12*G.NLEN);
     var TH7=HDG*Math.PI/180, Ax=[Math.cos(TH7),Math.sin(TH7)], Bx=[-Ax[1],Ax[0]];
-    var LA7=NEEDA+6+(TI>=4&&XWN?2*HUB_XWROOM:0), LB7=Math.max(sum(bandsOf(RWN))+(TI>=4?HUB_ZW-HUB_ZMIN:0)+(TI>=3?30:12)+6,NEEDB*PCT/0.5);
+    /* row 307: the airfield is the share of the network that Site share asks for; the Scale's own runway and bands are the floor */
+    var LA7=NEEDA+6+(TI>=4&&XWN?2*HUB_XWROOM:0), MINB7=sum(bandsOf(RWN))+(TI>=4?HUB_ZW-HUB_ZMIN:0)+(TI>=3?30:12)+6, LB7=Math.max(MINB7,townWaterKind(p)?NEEDB*PCT/0.5:PCT*A/LA7); info.minArea=LA7*MINB7;
     /* ROW 204 §A4: with the lines on, the gap grows with the airfield's outline L x W: a hub does not sit on the city */
     if(townWholeOn(p)) GAP7=Math.max(300,0.12*G.NLEN,0.35*Math.max(LA7,LB7)+0.4*Math.min(LA7,LB7));
     var HX7=(Math.abs(Ax[0])*LA7+Math.abs(Bx[0])*LB7)/2, HY7=(Math.abs(Ax[1])*LA7+Math.abs(Bx[1])*LB7)/2;
@@ -26910,7 +26913,7 @@ function townSite(p,G,plans,J,BLK,KIND){
   if(mode!==0) for(k=0;k<cands.length;k++){ var hk=top?BX[3]-cands[k]:cands[k]-BX[1]; if(hk>D0 && PCT*A/(hk-D0)>=Math.min(W,NEEDW)-1e-9){ pick=cands[k]; break; } }
   yE=pick;
   h=top?BX[3]-yE:yE-BX[1];
-  w=mode===0?W:Math.min(W,PCT*A/(h-D0));
+  w=mode===0?W:Math.min(W,PCT*A/(h-D0)+(KIND===2?RD:0));
   var xE=null;
   if(w<W-1e-6){
     /* the nearest free lattice line clear of the cross streets that keeps
@@ -27571,7 +27574,7 @@ function siteTheme(K,SITE){
     var liv=LIV[C.liv%LIV.length], R=AC.R, hs=AC.span/2, id=info.aircraft.length, rec={code:C.ac, span:AC.span, L:AC.L, clr:AC.clr, cont:C.poly, contW:e[3]-e[2], parts:[]};
     var A0=XY(0,0), A1=XY(AC.L,0); rec.axis=[M2(A0[0],A0[1]),M2(A1[0],A1[1])];
     function fbox(x0,x1,y0,y1,z0,z1){ var q=[XY(x0,y0),XY(x1,y0),XY(x1,y1),XY(x0,y1)].map(function(u){ return M2(u[0],u[1]); }); return prismN(q,z0,z1); }
-    function push(P,kind,col){ P.ac=id; own(P,C,kind,col); rec.parts.push(info.recs.length-1); }
+    function push(P,kind,col){ P.ac=id; P.nolod=true; own(P,C,kind,col); rec.parts.push(info.recs.length-1); }
     if(gapA((e[0]+e[1])/2,bc)*2*R<0.7){
       /* FAR: the prism stands on the wing's top, which stands on nothing */
       var zb=AC.zc-R, xr=0.38*AC.L, cr=0.20*AC.L;
@@ -27721,7 +27724,7 @@ function townHarbour(o){
   var BERTHS=Math.max(1,Math.min(40,Math.round(isFinite(p.berths)?+p.berths:6))), VES=Math.max(0,Math.min(100,isFinite(p.vessels)?+p.vessels:70))/100;
   var PIERL=Math.max(0,Math.min(400,isFinite(p.pierlen)?+p.pierlen:0)), SLIPW=Math.max(0,Math.min(100,isFinite(p.slips)?+p.slips:50))/100;
   /* the water: the rectangle less the apron on its landward side */
-  var RDq=o.RDq||0, Wr=[R[0], top?R[1]+D0+RDq:R[1], R[2], top?R[3]:R[3]-D0-RDq], LA=Wr[2]-Wr[0], LB=Wr[3]-Wr[1];
+  var RDq=o.RDq||0, Wr=[R[0]+(mode>0?RDq:0), top?R[1]+D0+RDq:R[1], R[2]-(mode<0?RDq:0), top?R[3]:R[3]-D0-RDq], LA=Wr[2]-Wr[0], LB=Wr[3]-Wr[1];
   var xq=mode<0?'hi':mode>0?'lo':null;
   /* row 203 §5b: on a shore, in a frame of its own: a along the quay, +b toward the land */
   var FRH=o.frame||null;
@@ -43250,7 +43253,7 @@ function corridorDraw(p,plans,THM,camera){
         STRTTALLY.parts.push({faces:P.faces.map(function(fc){ return {n:fc.n, d:fc.d}; }),
                               V:verts(P), cont:C.kind, split:P.split||0, hides:P.hides!==false,
                               kind:P.kind||'', seeThru:!!P.seeThru, cidx:cidx, layer:P.layer||'struct',
-                              sign:P.sign===undefined?-1:P.sign, cable:P.cable, car:P.car, trn:P.trn, tcar:P.tcar, cut:!!P.cut, cpart:P.cpart, wh:P.wh, ab:P.ab, sk:P.sk, nside:P.nside, truck:P.truck, gant:P.gant, pk:P.pk, crease:P.crease, via:P.via});
+                              sign:P.sign===undefined?-1:P.sign, cable:P.cable, car:P.car, trn:P.trn, tcar:P.tcar, cut:!!P.cut, cpart:P.cpart, wh:P.wh, ab:P.ab, sk:P.sk, nside:P.nside, truck:P.truck, gant:P.gant, pk:P.pk, crease:P.crease, via:P.via, ac:P.ac});
         STRTTALLY.sil.push(P.sil);
         if(P.sil && P.hides!==false) occl.push(P.gapless?gapIn(P.sil):P.sil);
         if(P.sil && P.hides!==false) occlB.push(P.body);
@@ -43365,9 +43368,12 @@ function corridorDraw(p,plans,THM,camera){
      container, which is marked `drawn` (containers are built fresh each build;
      `town` reads the marks for its parks), and its line (`via`). A camera down
      a street sees no railway and no park. */
-  var viaDrawn={};
+  var viaDrawn={}, acDrawn={};
   res.forEach(function(q){ if(q.kind==='refl' || q.part===undefined) return; var P=committed[q.part]; if(!P) return;
+    if(P.ac!==undefined) acDrawn[P.ac]=1;
     if(P.cont) P.cont.drawn=true; if(P.via) viaDrawn[P.via]=(viaDrawn[P.via]||0)+1; });
+  /* row 307: how many aircraft reach the sheet, for the stat line */
+  STRTTALLY.acDrawn=Object.keys(acDrawn).length;
   STRTSTATS={lots:lots.length, dropped:dropped, pushed:pushed, conts:live.length, solidConts:solidConts, dressed:dressed, reflDrawn:reflDrawn,
              railSeen:viaDrawn.rail||0,
              parts:committed.length, paths:res.length, points:npts,
