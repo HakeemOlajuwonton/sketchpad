@@ -462,7 +462,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v376</a> &mdash; Corridor city: Ghost -- an aircraft's takeoff as a multiple exposure, 2 to 12 copies down the runway and into the climb at equal steps of time</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v377</a> &mdash; Corridor city: the hub -- Scale 4 on Site, a 6 km city: an airfield of parallel runway pairs and crosswinds past their ends, a terminal with concourse fingers and wide bodies at their stands, or a harbour of two basins round a mole, 400 m ships, gantries and container yards; the stat line counts the aircraft, vessels, paths and ink</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <section class="fold" id="fold_pick"><h2>Pick engine<span class="cnt"></span></h2>
@@ -23942,7 +23942,8 @@ function buildTown(p){
   if(WC && WC.ext) MEXT=WC.ext.slice(0,4);
   else plans.forEach(function(PLk){ (PLk.conts||[]).forEach(function(C){ (C.poly||[]).forEach(function(q){
     if(q[0]<MEXT[0]) MEXT[0]=q[0]; if(q[1]<MEXT[1]) MEXT[1]=q[1]; if(q[0]>MEXT[2]) MEXT[2]=q[0]; if(q[1]>MEXT[3]) MEXT[3]=q[1]; }); }); });
-  var THX=SITE||(MSK&&!p.scoutScene)?Object.assign({},THM,{frameCull:true, formTall:G.FORM?Math.max(1,Math.min(4,(isFinite(p.corez)?+p.corez:250)/100)):1}):THM;
+  /* row 101: a hub's 6 km city is culled and massed in perspective too (perspCull), or one build ran 849 s and past 8 GB */
+  var THX=SITE||(MSK&&!p.scoutScene)?Object.assign({},THM,{frameCull:true, perspCull:!!(SITE&&SITE.info.tier>=4), formTall:G.FORM?Math.max(1,Math.min(4,(isFinite(p.corez)?+p.corez:250)/100)):1}):THM;
   /* row 204 §A6: a close-up dresses what it looks at: at 450 m of dense city every lot dressed is 50,000 parts and minutes */
   if(FTGC){ var RMS=FK===2?110:60; THX=Object.assign({},THX,{massOut:function(L){ var c=townMid(L.poly); return Math.hypot(c[0]-FTGC[0],c[1]-FTGC[1])>RMS; }}); }
   /* row 221: Scout's scene -- the same plan, the camera argument by townCamArg for whatever view it shows */
@@ -23998,6 +23999,9 @@ function buildTown(p){
     STRTINFO+=' · airfield, Scale '+SI.tier+': '+Math.round(100*SI.area/SI.netArea)+'% of the city, '+(nr?nr+' runway'+(nr>1?'s':'')+' '+Math.round(SI.runways[0].L)+' m':'no runway')+', '+
       SI.aircraft.length+' aircraft, '+SI.hangars+' hangar'+(SI.hangars===1?'':'s')+(SI.tower?', a tower':'')+'; '+SI.inside+' lots inside removed, '+SI.met+' cut back ('+SI.split+' split, '+SI.dropped+' too small dropped), '+
       SI.capped+' held under the 7:1 surface, '+SI.low+' too close for a storey dropped'+(SI.left.length?'; left out: '+SI.left.join(', '):''); }
+  /* row 101 (spec §4): the site's count line */
+  if(SITE){ var INKM=0; res.forEach(function(q){ for(var e=1;e<q.length;e++) INKM+=Math.hypot(q[e][0]-q[e-1][0],q[e][1]-q[e-1][1]); });
+    STRTINFO+=' · site tier '+SITE.info.tier+' · '+(SITE.harbour?0:SITE.info.aircraft.length)+' aircraft · '+(SITE.harbour?SITE.info.boats.length+SITE.info.ships.length:0)+' vessels · paths '+res.length+' · ink '+(INKM*PAGEMM/1000).toFixed(1)+' m'; }
   if(PWL){ var WI=PWL.info, hz=WI.heights.length?Math.max.apply(null,WI.heights):0;
     STRTINFO+=' · powerline: '+WI.plots.length+' pylons ('+WI.pylMoved+' moved, '+WI.pylDropped+' dropped), '+WI.met+' lots carved ('+WI.split+' split, '+WI.dropped+' too small dropped'+(WI.riverLots?', '+WI.riverLots+' canal house'+(WI.riverLots===1?'':'s')+' dropped':'')+')'+
       (WI.raised?', '+WI.raised+' raised to clear what is under it (lowest crossarm up to '+hz.toFixed(1)+' m)':''); }
@@ -26460,7 +26464,8 @@ var SITE_TIERS=[
   {nlen:220, rowsp:60},
   {nlen:1200, rowsp:120, rwyL:900, rwyW:20, strip:30, margin:40, twyW:20, twyPave:7.5, slots:4, codes:['A'], sw:17, standD:16, termD:0},
   {nlen:3000, rowsp:200, rwyL:2400, rwyW:45, strip:75, margin:60, twyW:44, twyPave:15, slots:8, codes:['Cp','C'], sw:45, standD:52, termD:42},
-  {nlen:6000, rowsp:240}
+  /* row 101 (spec §4): the hub. Its field is townHub's, not the bands below */
+  {nlen:6000, rowsp:240, rwyL:3700, rwyW:60, strip:75, margin:60, twyW:90, twyPave:25, codes:['C','E','F'], termD:70}
 ];
 /* the catalogue, by ICAO code (spec §2.3): length x span x height, wingtip
    clearance, fuselage radius, wing and engines */
@@ -26642,7 +26647,7 @@ function townForm(p,G,plans,J,BLK,SITE){
   /* ---- §5b: THE HARBOUR on the shore, in a frame: a along the quay, +b to the land ---- */
   var OUT=SITE&&SITE.outline;
   var HBF=null, HRK=WK===4?-1:Math.max(0,Math.min(3,Math.round(isFinite(p.harb)?+p.harb:2))), HFRAME=null, HPOLY=null;
-  if(WK && HRK!==0){ var TIh=WK===4?SITE.TI:HRK, SZ=WK===4?[[60,40],[320,0],[360,0],[600,0]][TIh]:[null,[320,60],[360,90],[900,260]][TIh], QL=SZ[0], AD=SZ[1]||(TIh>=3?50:0), DP=[60,160,220,300][TIh];
+  if(WK && HRK!==0){ var TIh=WK===4?SITE.TI:HRK, SZ=WK===4?[[60,40],[320,0],[360,0],[600,0],[1300,0]][TIh]:[null,[320,60],[360,90],[900,260]][TIh], QL=SZ[0], AD=SZ[1]||(TIh>=4?HARB_APRON4:TIh>=3?50:0), DP=[60,160,220,300,420][TIh];
     var AQ=ALINE?[ALINE.a[0]+(ALINE.b[0]-ALINE.a[0])*(WK===2?0.52:0.5),ALINE.a[1]+(ALINE.b[1]-ALINE.a[1])*(WK===2?0.52:0.5)]:core, SP=null, sd2=1e18;
     /* the shore point: nearest the arterial's middle, or the core; at a harbour site the farthest stretch from it */
     var LBX=rot?townBbox(OUT):BOX, xa=Math.min(BOX[0],LBX[0])-400, xb=Math.max(BOX[2],LBX[2])+400, ya=Math.min(BOX[1],LBX[1])-400, yb=Math.max(BOX[3],LBX[3])+400, xq, yq;
@@ -26816,7 +26821,7 @@ function fieldTheme(K,FS,info){
 }
 function townSiteKind(p){ var s=Math.round(isFinite(p.site)?+p.site:0); return s===1||s===2?s:0; }
 /* an airfield is Scale 2-3, a harbour 0-3 (Scale 4, the hub, is row 101's) */
-function townSiteTier(p,kind){ return Math.max(kind===2?0:2,Math.min(3,Math.round(isFinite(p.tier)?+p.tier:2))); }
+function townSiteTier(p,kind){ return Math.max(kind===2?0:2,Math.min(4,Math.round(isFinite(p.tier)?+p.tier:2))); }
 /* a runway's two designators: the +x end lands on the heading, the far end +18 */
 function siteDesig(h){ var n=Math.round(h/10); if(n<=0) n=36; var f=n+18; if(f>36) f-=36; return [n,f]; }
 function townSite(p,G,plans,J,BLK,KIND){
@@ -26829,26 +26834,30 @@ function townSite(p,G,plans,J,BLK,KIND){
      apron (D0) landward of its water, which Site share does not count */
   /* row 200 §9: it has a quay road, which Site share does not count either */
   if(KIND===2){ FW=0; }
-  var D0a=KIND===2&&TI>=3?HARB_APRON:0, D0=KIND===2?D0a+RD:0;
+  var D0a=KIND===2&&TI>=3?(TI>=4?HARB_APRON4:HARB_APRON):0, D0=KIND===2?D0a+RD:0;
   var HDG=Math.max(0,Math.min(179,isFinite(p.rwyhdg)?+p.rwyhdg:70));
   var info={tier:TI, pct:PCT, box:BX, netArea:A, met:0, kept:0, split:0, dropped:0, low:0, capped:0, slabsGone:0, slabsCut:0, juncGone:0,
             runways:[], aircraft:[], bridges:[], recs:[], strips:[], conts:[], hangars:0, tower:null, windsock:0, left:[], hdg:HDG};
-  var RWN=TI===2?1:Math.max(1,Math.min(2,Math.round(isFinite(p.rwys)?+p.rwys:2)));
+  var RWN=TI===2?1:TI>=4?Math.max(2,Math.min(8,Math.round(isFinite(p.rwys)?+p.rwys:2))):Math.max(1,Math.min(2,Math.round(isFinite(p.rwys)?+p.rwys:2)));
+  /* row 101: of a hub's runways this many are crosswinds (salt 617) */
+  var XWN=0, RRW=null;
+  if(TI>=4 && KIND===1){ RRW=townSub(LAY,TI,SALT_RWY); var uXW=RRW(); XWN=RWN<=2?0:RWN===3?1:uXW<0.5?1:2; RWN-=XWN; }
   function bandsOf(nr){
     var b=[{k:'rwy', w:2*T.strip}, {k:'twy', w:T.twyW}];
+    if(TI>=4){ for(var m=1;m<nr;m++) b=b.concat([{k:'rwy', w:2*T.strip}, {k:'twy', w:T.twyW}]); b.push({k:'hubz', w:HUB_ZMIN}); return b; }
     if(nr===2) b=b.concat([{k:'rwy', w:2*T.strip}, {k:'twy', w:T.twyW}]);
     b.push({k:'stand', w:T.standD}); if(T.termD) b.push({k:'term', w:T.termD});
     return b;
   }
   function sum(b){ return b.reduce(function(s,e){ return s+e.w; },0); }
-  var NEEDA=KIND===2?HARB_NEED[TI][0]:T.rwyL+2*T.margin, NEEDB=KIND===2?HARB_NEED[TI][1]+D0:sum(bandsOf(RWN))+RD+FW+10;
+  var NEEDA=KIND===2?(TI>=4?HARB_NEED4[0]:HARB_NEED[TI][0]):T.rwyL+2*T.margin, NEEDB=KIND===2?(TI>=4?HARB_NEED4[1]:HARB_NEED[TI][1])+D0:sum(bandsOf(RWN))+RD+FW+10;
   /* ROW 203 §4: WITH City form THE AIRFIELD IS NOT CUT FROM THE GRID. It lies beyond a gap on the side
      Layout picks, an oriented rectangle whose long axis is Runway heading off the streets, its terminal
      side (+b) toward the city's core. M2 below is that frame; every band, stand and paint is laid in it. */
   var ROT=null, FOUT=null;
   if(G.FORM && KIND===1){ var RS7=townSub(0,LAY,SALT_SITE), uE7=RS7(), uC7=RS7(), top7=uE7<0.5, GAP7=TI>=3?Math.max(300,0.12*G.NLEN):Math.max(120,0.12*G.NLEN);
     var TH7=HDG*Math.PI/180, Ax=[Math.cos(TH7),Math.sin(TH7)], Bx=[-Ax[1],Ax[0]];
-    var LA7=NEEDA+6, LB7=Math.max(sum(bandsOf(RWN))+(TI>=3?30:12)+6,NEEDB*PCT/0.5);
+    var LA7=NEEDA+6+(TI>=4&&XWN?2*HUB_XWROOM:0), LB7=Math.max(sum(bandsOf(RWN))+(TI>=4?HUB_ZW-HUB_ZMIN:0)+(TI>=3?30:12)+6,NEEDB*PCT/0.5);
     /* ROW 204 §A4: with the lines on, the gap grows with the airfield's outline L x W: a hub does not sit on the city */
     if(townWholeOn(p)) GAP7=Math.max(300,0.12*G.NLEN,0.35*Math.max(LA7,LB7)+0.4*Math.min(LA7,LB7));
     var HX7=(Math.abs(Ax[0])*LA7+Math.abs(Bx[0])*LB7)/2, HY7=(Math.abs(Ax[1])*LA7+Math.abs(Bx[1])*LB7)/2;
@@ -26980,7 +26989,10 @@ function townSite(p,G,plans,J,BLK,KIND){
   function M2(a,b){ if(ROT) return [ROT.o[0]+ROT.a[0]*a+ROT.b[0]*b, ROT.o[1]+ROT.a[1]*a+ROT.b[1]*b]; return [U[0]+a, top?U[3]-b:U[1]+b]; }
   function lrect(a0,a1,b0,b1){ return [M2(a0,b0),M2(a1,b0),M2(a1,b1),M2(a0,b1)]; }
   info.field=U; info.LA=LA; info.LB=LB;
-  var nr=RWN, bands;
+  var nr=RWN, bands, stands=[], HUBZ=null;
+  FIELD: {
+  if(TI>=4){ HUBZ=townHub({p:p, T:T, LA:LA, LB:LB, LBI:ROT?LB-1:LB, B0:ROT?1:0, RWN:RWN, XWN:XWN, RRW:RRW, HDG:HDG, top:top, LAY:LAY, TI:TI, info:info, cont:cont, lrect:lrect, M2:M2, stands:stands});
+    var BS=HUBZ.BS, b0=HUBZ.b0, s0=HUBZ.s0, NS=1, SW=HUBZ.TW, SA=HUBZ.SA, SB=HUBZ.SB, FOREB=30; break FIELD; }
   for(;;){ bands=bandsOf(nr); if(sum(bands)<=LB || nr===1) break; nr--; }
   while(sum(bands)>LB && bands.length>1){ info.left.push(bands.pop().k); }
   var half=T.strip;
@@ -27007,7 +27019,6 @@ function townSite(p,G,plans,J,BLK,KIND){
     var tb=BS.twy[0];
     if(tb) cont('twy',lrect(aS-8,aS+8,tb.b0,tb.b1),{lr:[aS-8,aS+8,tb.b0,tb.b1], conn:true, pave:T.twyPave});
   } else BS.twy.forEach(function(e){ cont('twy',lrect(SA+20,SB-20,e.b0,e.b1),{lr:[SA+20,SB-20,e.b0,e.b1], pave:T.twyPave}); });
-  var stands=[];
   if(BS.stand) for(i=0;i<NS;i++){ var C=cont('stand',lrect(s0+i*SW,s0+(i+1)*SW,BS.stand.b0,BS.stand.b1),{lr:[s0+i*SW,s0+(i+1)*SW,BS.stand.b0,BS.stand.b1], slot:i}); stands.push(C); }
   if(BS.term) cont('term',lrect(s0,s0+NS*SW,BS.term.b0,BS.term.b1),{lr:[s0,s0+NS*SW,BS.term.b0,BS.term.b1]});
   /* hangars beyond the stands, the tower beyond the terminal, a windsock by the first threshold */
@@ -27026,6 +27037,7 @@ function townSite(p,G,plans,J,BLK,KIND){
   if(BS.twy[0]){ var wa=aC-rL/2+150, wb=BS.twy[BS.twy.length-1];
     if(TI>=3) wb=BS.stand||null;
     if(wb && wa+8<s0-2) cont('wsock',lrect(wa,wa+8,wb.b0+2,wb.b0+10),{lr:[wa,wa+8,wb.b0+2,wb.b0+10]}); }
+  }
   /* ---- row 200 §9: the forecourt, and every street that meets the road through a gate ---- */
   var LBI=ROT?LB-1:LB, FB0=LBI-FOREB, FA0=Math.max(ROT?1:0,s0-60), FA1=Math.min(ROT?LA-1:LA,s0+NS*SW+60), FORE=(BS.stand||BS.term)&&FB0>=b0-1e-6?cont('forecourt',lrect(FA0,FA1,FB0,LBI),{lr:[FA0,FA1,FB0,LBI]}):null, nearFore=[];
   function gateAt(F,c0,c1){ if(F) F.gaps.push([c0,c1]); info.gates.push({c:(c0+c1)/2}); }
@@ -27039,7 +27051,8 @@ function townSite(p,G,plans,J,BLK,KIND){
   /* ---- what the stands hold: from the site's own streams ---- */
   var RA=townSub(LAY,TI,SALT_AC), STP=Math.max(0,Math.min(100,isFinite(p.stands)?+p.stands:60))/100;
   var MIX=Math.max(0,Math.min(100,isFinite(p.acmix)?+p.acmix:40))/100;
-  stands.forEach(function(C,m){ var uO=RA(), uK=RA(), uL=RA();
+  /* row 101: a hub's stands roll their own in townHub, a stand measured after its aircraft */
+  if(!HUBZ) stands.forEach(function(C,m){ var uO=RA(), uK=RA(), uL=RA();
     C.ac=uO<STP?(T.codes.length>1&&uK<MIX?T.codes[1]:T.codes[0]):null; C.liv=Math.floor(uL*6); });
   /* ---- the lots near a strip: under d/7 ---- */
   function pdist(P,Q){
@@ -27074,15 +27087,112 @@ function townSite(p,G,plans,J,BLK,KIND){
       var bu=townBbox([].concat.apply([],UA.map(function(C){ return C.poly; }))); return townGrow(bu,0.08); }
     var C2=conts.filter(function(C){ return C.kind==='stand' || C.kind==='term'; });
     if(k===2 && C2.length){ var B2=townBbox([].concat.apply([],C2.map(function(C){ return C.poly; })));
-      var RW=conts.filter(function(C){ return C.kind==='rwy'; }).slice(-1)[0];
+      var RW=conts.filter(function(C){ return C.kind==='rwy' && !C.rwy.xf; }).slice(-1)[0];
       if(RW){ var br=townBbox(RW.poly); B2=[B2[0],Math.min(B2[1],br[1]),B2[2],Math.max(B2[3],br[3])]; }
       return townGrow(B2,0.05); }
     if(k===3 && stands.length){ var S3=stands.filter(function(C){ return !!C.ac; })[0]||stands[0], B3=townBbox(S3.poly), TC=conts.filter(function(C){ return C.kind==='term'; })[0];
+      /* row 101: a hub's stand is out on a finger, nowhere near the terminal: its aircraft alone
+         (nose 6 m off the finger's face), or the stand when it has none */
+      if(S3.hub){ var AC3=S3.ac?SITE_AC[S3.ac]:null, f3=S3.hub.face, d3=S3.hub.sd;
+        return townGrow(AC3?townBbox(lrect(Math.min(f3+d3*6,f3+d3*(6+AC3.L)),Math.max(f3+d3*6,f3+d3*(6+AC3.L)),S3.lr[2],S3.lr[3])):B3,0.1); }
       if(TC){ var bt=townBbox(TC.poly); B3=[B3[0],Math.min(B3[1],bt[3]>B3[3]?B3[1]:bt[1]-0),B3[2],Math.max(B3[3],bt[1]<B3[1]?B3[3]:B3[3])]; }
       return townGrow(B3,0.1); }
     return k>0?townGrow(R,0.08):null;
   };
   return SITE;
+}
+/* ROW 101 (spec §4): THE HUB'S FIELD. Runways airside first, each with its
+   taxiway landward of it, then a zone holding the terminal against the
+   forecourt and, out from it toward the runways, concourse fingers (salt 641):
+   each with a row of stands on both sides, an aircraft nose-in to the finger. A
+   stand is one container, its width its code's span plus twice the wingtip
+   clearance, chosen (salt 631) before the next stand is measured. Parallel
+   runways come as pairs numbered like a real hub's (07L/07R, then 08L/08R: the
+   next pair a designator on), each 3,000 to 3,700 m and 45 or 60 m wide (salt
+   617). A crosswind lies past the parallels' ends at 30 to 60 degrees and
+   crosses nothing. What does not fit is left out and named on the stat line.
+   Returns what townSite reads after the bands: the zone's span (forecourt and
+   gates) and the bands it filled. */
+/* HUB_ZW: the zone City form 1 gives a hub (fingers of about 400 m), HUB_ZMIN the least that holds a terminal */
+var HUB_ZW=520, HUB_ZMIN=190, HUB_FW=24, HUB_SD=88, HUB_PITCH=240, HUB_LANE=60, HUB_XWROOM=1250;
+function townHub(o){
+  var p=o.p, T=o.T, LA=o.LA, LB=o.LB, info=o.info, cont=o.cont, lrect=o.lrect, M2=o.M2, stands=o.stands, RR=o.RRW, LAY=o.LAY, TI=o.TI, HDG=o.HDG, top=o.top;
+  var nr=o.RWN, i, B0=o.B0, ZB1=o.LBI-30;
+  var R0={BS:{rwy:[], twy:[]}, b0:B0, s0:LA/2, TW:0, SA:0, SB:LA};
+  function need(n){ return n*(2*T.strip+T.twyW)+HUB_ZMIN; }
+  while(nr>1 && need(nr)>ZB1-B0) nr--;
+  if(nr<o.RWN) info.left.push((o.RWN-nr)+' parallel runway'+(o.RWN-nr>1?'s':''));
+  var aC=LA/2, ROLL=[], b0=B0;
+  for(i=0;i<nr;i++){ var uL=RR(), uW=RR(); ROLL.push({L:Math.min(3000+700*uL,LA-2*T.margin), W:uW<0.5?45:60}); }
+  if(!(2*T.strip+T.twyW<=ZB1-B0) || ROLL[0].L<1200){ info.left=['runway']; return R0; }
+  var Lmax=Math.max.apply(null,ROLL.map(function(r){ return r.L; })), SA=Math.max(0,aC-Lmax/2-T.margin), SB=Math.min(LA,aC+Lmax/2+T.margin), twys=[];
+  ROLL.forEach(function(Rk,m){
+    var e0=b0, e1=b0+2*T.strip, a0=aC-Rk.L/2, a1=aC+Rk.L/2, pr=Math.floor(m/2);
+    var side=nr>1&&(m<nr-1||m%2===1)?((m%2===0)===!top?'R':'L'):'', des=siteDesig(HDG+10*pr);
+    var C=cont('rwy',lrect(SA,SB,e0,e1),{lr:[SA,SB,e0,e1]});
+    C.rwy={a0:a0, a1:a1, bc:(e0+e1)/2, W:Rk.W, half:T.strip, L:Rk.L, des:des, side:side};
+    info.strips.push(C.poly);
+    info.runways.push({L:Rk.L, W:Rk.W, half:T.strip, hdg:HDG+10*pr, des:des, side:side, strip:C.poly, a0:a0, a1:a1, bc:C.rwy.bc});
+    R0.BS.rwy.push({b0:e0, b1:e1, w:e1-e0});
+    b0=e1;
+    if(b0+T.twyW<=ZB1){ var Cw=cont('twy',lrect(SA+20,SB-20,b0,b0+T.twyW),{lr:[SA+20,SB-20,b0,b0+T.twyW], pave:T.twyPave}); twys.push(Cw); R0.BS.twy.push({b0:b0, b1:b0+T.twyW, w:T.twyW}); b0+=T.twyW; }
+  });
+  R0.SA=SA; R0.SB=SB; R0.b0=b0;
+  /* ---- the crosswinds, past the parallels' ends ---- */
+  var zones=[[0,SA-30],[SB+30,LA]];
+  for(i=0;i<o.XWN;i++){
+    var uA=RR(), TH=(30+30*uA)*Math.PI/180, Z=zones[i], ZL=Z[1]-Z[0], ct=Math.cos(TH), st=Math.sin(TH), H=T.strip;
+    var Lx=Math.floor(Math.min(3000,(ZL-2*H*st)/ct,(ZB1-B0-2*H*ct)/st)/100)*100;
+    if(!(Lx>=1200)){ info.left.push('crosswind'); continue; }
+    (function(ca,cb,ct,st,Lx,H,sg,TH){
+      var XF=function(u,v){ return [ca+u*ct-sg*v*st, cb+sg*u*st+v*ct]; };
+      function W(u,v){ var q=XF(u,v); return M2(q[0],q[1]); }
+      var C=cont('rwy',[W(-Lx/2,-H),W(Lx/2,-H),W(Lx/2,H),W(-Lx/2,H)],{lr:[0,0,-1e9,-1e9], xw:true});
+      /* the bearing: +b turns away from +a clockwise on a top site, against it on a bottom one */
+      var hd=HDG+(top?1:-1)*sg*TH*180/Math.PI, hn=((hd%360)+360)%360, des=siteDesig(hn);
+      C.rwy={a0:-Lx/2, a1:Lx/2, bc:0, W:45, half:H, L:Lx, des:des, side:'', xf:XF};
+      info.strips.push(C.poly);
+      info.runways.push({L:Lx, W:45, half:H, hdg:hn, des:des, side:'', strip:C.poly, a0:-Lx/2, a1:Lx/2, bc:0, xw:true});
+      /* the taxiway reaches it along the first parallel taxiway's band, stopping short of the strip */
+      var Tw=twys[0]; if(!Tw) return;
+      var bl=Tw.lr[2], bh=Tw.lr[3], qs=[XF(-Lx/2,-H),XF(Lx/2,-H),XF(Lx/2,H),XF(-Lx/2,H)], lim=sg>0?-1e18:1e18;
+      [bl,bh].forEach(function(bq){ for(var e=0;e<4;e++){ var A=qs[e], B=qs[(e+1)%4]; if((A[1]-bq)*(B[1]-bq)>0 || A[1]===B[1]) continue;
+        var x=A[0]+(B[0]-A[0])*(bq-A[1])/(B[1]-A[1]); lim=sg>0?Math.max(lim,x):Math.min(lim,x); } });
+      qs.forEach(function(q){ if(q[1]>=bl && q[1]<=bh) lim=sg>0?Math.max(lim,q[0]):Math.min(lim,q[0]); });
+      if(sg>0 && lim>-1e17 && SA+20-lim-4>60) cont('twy',lrect(lim+4,SA+20,bl,bh),{lr:[lim+4,SA+20,bl,bh], pave:T.twyPave, link:true});
+      if(sg<0 && lim<1e17 && lim-4-(SB-20)>60) cont('twy',lrect(SB-20,lim-4,bl,bh),{lr:[SB-20,lim-4,bl,bh], pave:T.twyPave, link:true});
+    })((Z[0]+Z[1])/2,(B0+ZB1)/2,ct,st,Lx,H,i===0?1:-1,TH);
+  }
+  /* ---- the zone: terminal, fingers, stands ---- */
+  var zb0=b0, zb1=ZB1, RDp=townSub(LAY,TI,SALT_AFD+3), RA=townSub(LAY,TI,SALT_AC);
+  var STP=Math.max(0,Math.min(100,isFinite(p.stands)?+p.stands:60))/100, MIX=Math.max(0,Math.min(100,isFinite(p.acmix)?+p.acmix:40))/100;
+  if(zb1-zb0<HUB_ZMIN){ info.left.push('terminal'); return R0; }
+  var FLEN=zb1-zb0-T.termD-HUB_LANE, AV=SB-SA-240, NFmax=Math.max(1,Math.floor(AV*0.7/HUB_PITCH));
+  var uF=RDp(), NF=Math.max(Math.min(2,NFmax),Math.min(10,Math.floor(NFmax*(0.5+0.5*uF)))), TW=NF*HUB_PITCH, t0=aC-TW/2;
+  cont('term',lrect(t0,t0+TW,zb1-T.termD,zb1),{lr:[t0,t0+TW,zb1-T.termD,zb1]});
+  R0.BS.term={b0:zb1-T.termD, b1:zb1, w:T.termD}; R0.BS.stand={b0:zb0, b1:zb1-T.termD, w:zb1-T.termD-zb0}; R0.s0=t0; R0.TW=TW;
+  for(i=0;i<NF;i++){
+    var fa0=t0+i*HUB_PITCH+(HUB_PITCH-HUB_FW)/2, fa1=fa0+HUB_FW, fb1=zb1-T.termD, fb0=fb1-FLEN;
+    cont('finger',lrect(fa0,fa1,fb0,fb1),{lr:[fa0,fa1,fb0,fb1]});
+    [1,-1].forEach(function(sd){
+      var y=fb0;
+      for(;;){
+        var uO=RA(), uK=RA(), uS=RA(), uLv=RA();
+        var code=uK<MIX?(uS<0.35?'F':'E'):'C', AC=SITE_AC[code], W=AC.span+2*AC.clr;
+        if(y+W>fb1-1e-6){ code='C'; AC=SITE_AC.C; W=AC.span+2*AC.clr; if(y+W>fb1-1e-6) break; }
+        var a0=sd>0?fa1:fa0-HUB_SD, a1=sd>0?fa1+HUB_SD:fa0;
+        var C=cont('stand',lrect(a0,a1,y,y+W),{lr:[a0,a1,y,y+W], slot:stands.length, hub:{sd:sd, face:sd>0?fa1:fa0}});
+        C.ac=uO<STP?code:null; C.liv=Math.floor(uLv*6);
+        stands.push(C); y+=W;
+      }
+    });
+  }
+  /* hangars beyond the terminal, the tower and the windsock before it */
+  var NH=Math.max(0,Math.min(12,Math.round(isFinite(p.hangars)?+p.hangars:2)));
+  for(i=0;i<NH;i++){ var ha=t0+TW+20+i*64; if(ha+60>SB-2) break; cont('hangar',lrect(ha,ha+60,zb1-52,zb1-2),{lr:[ha,ha+60,zb1-52,zb1-2]}); info.hangars++; }
+  if(Math.round(isFinite(p.tower)?+p.tower:1)===1 && t0-54>SA) cont('tower',lrect(t0-54,t0-40,zb1-T.termD/2-7,zb1-T.termD/2+7),{lr:[t0-54,t0-40,zb1-T.termD/2-7,zb1-T.termD/2+7]});
+  if(t0-100>SA+2) cont('wsock',lrect(t0-100,t0-92,zb0+2,zb0+10),{lr:[t0-100,t0-92,zb0+2,zb0+10]});
+  return R0;
 }
 /* a rectangle grown by a share of each of its sides, half at each end */
 function townGrow(B,f){ var mx=f/2*(B[2]-B[0]), my=f/2*(B[3]-B[1]); return [B[0]-mx,B[1]-my,B[2]+mx,B[3]+my]; }
@@ -27231,7 +27341,9 @@ function siteTheme(K,SITE){
     C.parts.push(P);
     info.recs.push({kind:kind, V:verts(P), F:P.faces.map(function(f){ return {n:f.n, d:f.d}; }), cont:{kind:C.kind, poly:C.poly}, ac:P.ac, br:P.br, gh:P.ghost});
     return P; }
-  function W3(a,b,z){ var q=M2(a,b); return [q[0],q[1],z]; }
+  /* row 101: a crosswind's paint is laid in its own frame (XF, along it and across) */
+  var XF=null;
+  function W3(a,b,z){ if(XF){ var t=XF(a,b); a=t[0]; b=t[1]; } var q=M2(a,b); return [q[0],q[1],z]; }
   function solidL(loops){ return polyFromLoops(loops.map(function(l){ return l.map(function(q){ return W3(q[0],q[1],q[2]); }); })); }
   function lbox(a0,a1,b0,b1,z0,z1){ return prismN([M2(a0,b0),M2(a1,b0),M2(a1,b1),M2(a0,b1)],z0,z1); }
   function lngon(ac,bc,r,m,ph,z0,z1){ var Q=[]; for(var k=0;k<m;k++){ var t=ph+2*Math.PI*k/m; Q.push(M2(ac+r*Math.cos(t),bc+r*Math.sin(t))); } return prismN(Q,z0,z1); }
@@ -27296,7 +27408,7 @@ function siteTheme(K,SITE){
     var RD=townSub(SITE.LAY,TI,SALT_AFD);
     SITE.conts.forEach(function(C){ plate(C); });
     var rw=SITE.conts.filter(function(C){ return C.kind==='rwy'; }), tw=SITE.conts.filter(function(C){ return C.kind==='twy'; });
-    rw.forEach(function(C,m){ runwayPaint(C); });
+    rw.forEach(function(C,m){ XF=C.rwy.xf||null; runwayPaint(C); XF=null; });
     /* row 256 §1.2: the Ghost's aircraft is the one Focus 3 looks at, the first stand with one (frameOf) */
     var GN=Math.round(isFinite(p.ghost)?+p.ghost:0), GHS=null; delete info.ghost;
     if(GN>=2){ GHS=SITE.stands.filter(function(C){ return !!C.ac; })[0]||null;
@@ -27316,12 +27428,13 @@ function siteTheme(K,SITE){
       /* the blue edge lights, every 15 m both sides, where 15 m is 0.7 mm on the sheet */
       if(gapA((e[0]+e[1])/2,bc)*15>=0.7) for(var x=e[0]+12;x<=e[1]-12;x+=15) [-1,1].forEach(function(sg){ var bq=bc+sg*(pave/2+1.2);
         paint(C,x-0.4,bq,x+0.4,bq,COLB,'edgelight'); paint(C,x,bq-0.4,x,bq+0.4,COLB,'edgelight'); });
-      if(S){ var r=S.rwy, xs=[r.a0+30,r.a1-30], n=Math.floor((r.a1-r.a0-60)/600);
+      if(S && !C.link){ var r=S.rwy, xs=[r.a0+30,r.a1-30], n=Math.floor((r.a1-r.a0-60)/600);
         for(var q=1;q<n;q++) xs.push(r.a0+30+q*(r.a1-r.a0-60)/n);
         xs.forEach(function(x){ connector(S,x,pave); paint(C,x,e[2],x,bc,COLY,'twycl'); }); }
     });
     /* the stands: lead-in line and stop bar */
     SITE.stands.forEach(function(C){
+      if(C.hub){ standHub(C,dn,df,C===GHS); return; }
       var e=C.lr, ac=(e[0]+e[1])/2, AC=C.ac?SITE_AC[C.ac]:null, nb=e[3]-6, stop=AC?nb-AC.L*0.14-0.5:e[3]-12;
       paint(C,ac,e[2],ac,e[3]-4,COLY,'stand'); paint(C,ac-3,stop,ac+3,stop,COLY,'stand');
       if(!AC || C===GHS) return;
@@ -27330,6 +27443,7 @@ function siteTheme(K,SITE){
     if(GHS) ghostTakeoff(GHS,rw,Math.min(12,GN),dn);
     SITE.conts.forEach(function(C){
       if(C.kind==='term') terminal(C);
+      else if(C.kind==='finger') finger(C);
       else if(C.kind==='hangar') hangar(C);
       else if(C.kind==='tower') tower(C);
       else if(C.kind==='wsock') windsock(C,RD);
@@ -27374,7 +27488,7 @@ function siteTheme(K,SITE){
   function ghostTakeoff(S,rw,N,dn){
     var code=S.ac, A0=makeAircraft(code), L=A0.spec.L, xm=A0.xm, zc=A0.spec.zc, liv=LIV[S.liv%LIV.length];
     var sa=(S.lr[0]+S.lr[1])/2, sb=(S.lr[2]+S.lr[3])/2;
-    var RC=rw.slice().sort(function(P,Q){ return Math.abs(P.rwy.bc-sb)-Math.abs(Q.rwy.bc-sb); })[0], r=RC.rwy;
+    var RC=rw.filter(function(P){ return !P.rwy.xf; }).sort(function(P,Q){ return Math.abs(P.rwy.bc-sb)-Math.abs(Q.rwy.bc-sb); })[0], r=RC.rwy;
     var d=sa-r.a0<=r.a1-sa?1:-1, thr=d>0?r.a0:r.a1, aP0=thr+d*(L-xm), bc=r.bc;
     /* the aircraft's own (x, y, z) at state st, to the field's (a, b, z) */
     function field(st){ var c=Math.cos(st.th), sn=Math.sin(st.th);
@@ -27433,6 +27547,62 @@ function siteTheme(K,SITE){
         own(lbox(xr,xr+1.6,bq-2.4,bq,0,1.4),C,'gse',COLK);
         for(var k=0;k<2;k++){ var bk=bq-2.9-k*3.0; own(lbox(xr,xr+1.6,bk-2.6,bk,0,1.3),C,'gse',COLK); } }
     }
+  }
+  /* ROW 101: A HUB'S STAND. An aircraft nose-in to the finger, its axis along a,
+     6 m off the face. Under the paper-gap limit (the fuselage's width 0.7 mm on
+     the sheet) it is ONE fuselage prism and ONE wing slab, touching, with no
+     gear, windows or bridge: 2 parts in place of 15 or more. Near enough to read
+     it is the catalogue's aircraft (acParts), as at Scale 3, with a jet bridge
+     from a rotunda in the finger's setback, split at the face. `ghost`: its
+     aircraft is the Ghost's, so the stand keeps its paint and nothing else */
+  function standHub(C,dn,df,ghost){
+    var e=C.lr, sd=C.hub.sd, fc=C.hub.face, bc=(e[2]+e[3])/2, a0=fc+sd*6, AC=C.ac?SITE_AC[C.ac]:null, stop=AC?AC.L*0.14+0.5:10;
+    function XY(x,y){ return [a0+sd*x, bc+sd*y]; }
+    paint(C,fc,bc,fc+sd*(HUB_SD-2),bc,COLY,'stand');
+    var sb=XY(stop,0); paint(C,sb[0],bc-3,sb[0],bc+3,COLY,'stand');
+    if(!AC || ghost) return;
+    var liv=LIV[C.liv%LIV.length], R=AC.R, hs=AC.span/2, id=info.aircraft.length, rec={code:C.ac, span:AC.span, L:AC.L, clr:AC.clr, cont:C.poly, contW:e[3]-e[2], parts:[]};
+    var A0=XY(0,0), A1=XY(AC.L,0); rec.axis=[M2(A0[0],A0[1]),M2(A1[0],A1[1])];
+    function fbox(x0,x1,y0,y1,z0,z1){ var q=[XY(x0,y0),XY(x1,y0),XY(x1,y1),XY(x0,y1)].map(function(u){ return M2(u[0],u[1]); }); return prismN(q,z0,z1); }
+    function push(P,kind,col){ P.ac=id; own(P,C,kind,col); rec.parts.push(info.recs.length-1); }
+    if(gapA((e[0]+e[1])/2,bc)*2*R<0.7){
+      /* FAR: the prism stands on the wing's top, which stands on nothing */
+      var zb=AC.zc-R, xr=0.38*AC.L, cr=0.20*AC.L;
+      push(fbox(0,AC.L,-R,R,zb,AC.zc+R),'ac-far',COLK);
+      push(fbox(xr,xr+cr,-hs,hs,zb-0.3,zb),'ac-farwing',liv);
+      rec.far=true; info.aircraft.push(rec); return;
+    }
+    var A=makeAircraft(C.ac), near=dist3(W3(a0,bc,3))<dn;
+    function L2W(q){ var u=XY(q[0],q[1]); return W3(u[0],u[1],q[2]); }
+    rec.parts=acParts(C,A,L2W,liv,near,function(){ return gapA(a0,bc)*0.9>=0.7; },{ac:id});
+    info.aircraft.push(rec);
+    /* the jet bridge: a rotunda in the finger's setback, a tunnel beside the nose to the forward door */
+    var FG=SITE.conts.filter(function(Q){ return Q.kind==='finger' && (Q.lr[0]===fc||Q.lr[1]===fc); })[0];
+    if(FG){
+      var y0=R+0.45, ym=y0+1.25, z0=A.door.z, z1=z0+2.4, rD=1.8;
+      var cc=XY(-8,ym), col=lngon(cc[0],cc[1],0.7,8,Math.PI/8,0,z0-0.2), drum=lngon(cc[0],cc[1],rD,8,Math.PI/8,z0-0.2,z1+0.3);
+      col.crease=0.8; drum.crease=0.8; own(col,FG,'jb-column',COLK); own(drum,FG,'jb-rotunda',COLK);
+      var xs=-8+rD*Math.cos(Math.PI/8), tun=fbox(xs,A.door.x,y0,y0+2.5,z0,z1), q0=M2(fc,0), q1=M2(fc+1,0), Fn=[q1[0]-q0[0],q1[1]-q0[1],0], dd=Fn[0]*q0[0]+Fn[1]*q0[1];
+      var brec={pieces:[]};
+      splitPart(tun,Fn,dd).forEach(function(Hh){ if(!Hh.faces.length || verts(Hh).length<4) return;
+        var V=verts(Hh), c=[0,0]; V.forEach(function(v){ c[0]+=v[0]/V.length; c[1]+=v[1]/V.length; });
+        var CC=K.inConv(FG.poly,c)?FG:C;
+        for(var key in tun) if(!(key in Hh) && key!=='bb3') Hh[key]=tun[key];
+        Hh.br=info.bridges.length; own(Hh,CC,'jetbridge',COLK);
+        brec.pieces.push({V:verts(Hh), cont:CC.poly, ck:CC.kind}); });
+      brec.face={n:Fn, d:dd}; info.bridges.push(brec);
+    }
+    /* a pushback tractor ahead of the nose and a fuel truck past the wingtip, each its own roll */
+    var RG=townSub(SITE.LAY*64+C.slot,TI,SALT_AFD+2), u1=RG(), u2=RG(), xw=A.xr+A.cr+1;
+    if(u1<GSE) own(fbox(-4.6,-0.6,-1.2,1.2,0,1.5),C,'gse',COLK);
+    if(u2<GSE && hs+0.9+2.5<(e[3]-e[2])/2-0.3) own(fbox(xw-2,xw+1,hs+0.9,hs+3.4,0,3.0),C,'gse',COLO);
+  }
+  /* ROW 101: a concourse finger, a glazed box in its container, 4 m set back each side for the rotundas */
+  function finger(C){
+    var e=C.lr, P=lbox(e[0]+4,e[1]-4,e[2],e[3],0,9);
+    for(var f=2;f<P.faces.length;f++){ var pts=P.faces[f].pts, lo=pts.filter(function(q){ return q[2]<1e-6; });
+      if(lo.length===2) P.lines.push({a:[lo[0][0],lo[0][1],4.5], b:[lo[1][0],lo[1][1],4.5], f0:f, f1:f}); }
+    own(P,C,'concourse',COLK);
   }
   function terminal(C){
     var e=C.lr, b0=e[2]+6, b1=e[3]-6, P=lbox(e[0]+2,e[1]-2,b0,b1,0,11);
@@ -27499,7 +27669,8 @@ function siteTheme(K,SITE){
     /* the fence's runs between its gates */
     GP.forEach(function(g){ if(g[0]>at) RU.push([at,g[0]]); at=Math.max(at,g[1]); }); if(at<a1) RU.push([at,a1]);
     P.lines=[]; RU.forEach(function(u){ P.lines.push({a:pt(u[0],Z), b:pt(u[1],Z), f0:0, f1:0}); P.lines.push({a:pt(u[0],0.15), b:pt(u[1],0.15), f0:0, f1:0}); });
-    for(var s=Math.ceil(a0/3)*3;s<=a1+1e-9;s+=3) if(!GP.some(function(g){ return s>g[0]&&s<g[1]; })) P.lines.push({a:pt(s,0), b:pt(s,Z), f0:0, f1:0});
+    /* row 101: on a hub's sheet 3 m is under 0.7 mm and the posts plot as one black band */
+    if(TI<4 || paperGap(pt((a0+a1)/2,0),lx?[1,0,0]:[0,1,0],[0,0,1])*3>=0.7) for(var s=Math.ceil(a0/3)*3;s<=a1+1e-9;s+=3) if(!GP.some(function(g){ return s>g[0]&&s<g[1]; })) P.lines.push({a:pt(s,0), b:pt(s,Z), f0:0, f1:0});
     P.hides=false; P.seeThru=true; own(P,C,'sitefence',COLK,'furn');
   }
   function junction(C){
@@ -27531,10 +27702,12 @@ function siteTheme(K,SITE){
    Every number is the harbour's own: Site 0 and Site 1 are row 99's drawing. */
 var SALT_HARB=643, SALT_VES=647, SALT_PIER=659;
 var HARB_NEED=[[30,25],[80,60],[200,90],[380,120]], HARB_APRON=50, HARB_QUAY=0.5;
+/* row 101: the hub's needs, its apron holding a yard behind the gantries */
+var HARB_NEED4=[1200,150], HARB_APRON4=120, HARB_CHAN=80, HARB_MOLE=80;
 /* the harbour's ripple is held to 1.25 x Ripple (row 65's clamp on harb) */
 var HRIP=1.25;
 /* ship classes (spec §3, tier 3): length, beam, freeboard */
-var HARB_SHIPS=[[150,23,7],[294,32,9]];
+var HARB_SHIPS=[[150,23,7],[294,32,9],[400,59,11]];
 function townHarbour(o){
   var p=o.p, R=o.R, top=o.top, mode=o.mode, TI=o.TI, info=o.info, bbox2=o.bbox2, LAY=o.LAY, D0=o.D0;
   var RDp=Math.max(0.5,Math.min(6,isFinite(p.rdrop)?+p.rdrop:2.5)), QW=HARB_QUAY;
@@ -27594,6 +27767,21 @@ function townHarbour(o){
     if(LB>40){ var bwb=Math.max(6,B1-200); feat('breakwater',A0+2,bw1,bwb,bwb+14); feat('lhouse',bw1,bw1+12,bwb+1,bwb+13);
       if(bwb+14<B1-30) feat('breakwater',A0+2,A0+16,bwb+14,B1-1,{root:true}); }
     else info.left.push('breakwater (no room)');
+  } else if(TI>=4){
+    /* the hub (row 101): two basins, a mole of land between them and a channel
+       joining them round its seaward end; berths along the landward quay of
+       both, each basin's first ship the 400 m class. Too little water for the
+       mole and a berth's depth on either side: one basin */
+    var aM=(A0+A1)/2, TWO=B1>=HARB_CHAN+2*69 && A1-A0>=1000, RG4=[[A0+20,TWO?aM-HARB_MOLE/2-20:A1-20]];
+    if(TWO){ RG4.push([aM+HARB_MOLE/2+20,A1-20]); feat('mole',aM-HARB_MOLE/2,aM+HARB_MOLE/2,HARB_CHAN,B1,{land:true}); }
+    else info.left.push('second basin');
+    var n4=0, first=[true,true];
+    RG4.forEach(function(rg,bi){ var a4=rg[0], cap4=bi===0&&RG4.length>1?Math.ceil(BERTHS/2):BERTHS;
+      for(;n4<cap4;n4++){ var u4=RV(), uc4=RV(), ud4=RV(), SC4=HARB_SHIPS[first[bi]?2:uc4<0.5?0:1], L4=SC4[0], B4=SC4[1];
+        if(a4+L4+20>rg[1] || B4+10>B1-HARB_CHAN-10){ if(first[bi]){ first[bi]=false; SC4=HARB_SHIPS[1]; L4=SC4[0]; B4=SC4[1]; if(a4+L4+20>rg[1] || B4+10>B1-HARB_CHAN-10) break; } else break; }
+        feat('berth',a4,a4+L4+20,B1-B4-10,B1,{ship:u4<VES||(FRH&&n4<2)?{L:L4, B:B4, Fb:SC4[2], bow:ud4<0.5?1:-1}:null}); a4+=L4+20+10; first[bi]=false; } });
+    if(!n4) info.left.push('berths (no room)');
+    info.basins=TWO?2:1;
   } else {
     /* tier 3: berths along the quay, a ship in each; the apron behind */
     var a3=A0+20, n3=0;
@@ -27605,7 +27793,7 @@ function townHarbour(o){
   /* ---- the containers: features, the water between them, the quay strips ---- */
   var conts=[], apr=[];
   function cont(kind,Q,extra,list){ var C=Object.assign({kind:kind, poly:Q, bb:bbox2(Q), parts:[]},extra||{}); (list||conts).push(C); return C; }
-  F.forEach(function(f){ f.C=cont('h'+f.kind,lrect(f.lr[0],f.lr[1],f.lr[2],f.lr[3]),{water:true, ripMax:HRIP, lr:f.lr, feat:f}); });
+  F.forEach(function(f){ f.C=f.land?cont('hquay',lrect(f.lr[0],f.lr[1],f.lr[2],f.lr[3]),{quay:'m', lr:f.lr, feat:f}):cont('h'+f.kind,lrect(f.lr[0],f.lr[1],f.lr[2],f.lr[3]),{water:true, ripMax:HRIP, lr:f.lr, feat:f}); });
   var rest=[lrect(A0,A1,0,B1)];
   F.forEach(function(f){ var Q=f.C.poly, nx=[]; rest.forEach(function(P){ var X=townIntersect(P,Q); if(!X.length || townArea(X)<1e-6){ nx.push(P); return; }
     townMinus(P,Q).forEach(function(q){ if(townArea(q)>0.01) nx.push(q); }); }); rest=nx; });
@@ -27751,6 +27939,7 @@ function townHarbourTheme(K,HB){
         /* row 200 §9: the railway's freight spur along the quay */
         if(HB.spurX!==undefined && C.quay==='b'){ var bq=townBbox(C.poly), yq=(bq[1]+bq[3])/2; [-0.6,0.6].forEach(function(o){ var x0q=Math.max(bq[0],HB.spurX-120), x1q=Math.min(bq[2],HB.spurX+120); if(x1q>x0q) Pq.lines.push({a:[x0q,yq,0], b:[x1q,yq,0], f0:1, f1:1, kind:'spur'}); }); }
         own(Pq,C,'quaywall',COLK);
+        if(C.quay==='m') moleYard(C);
         return;
       }
       /* the canal's wave dashes on the water, the plate hiding nothing */
@@ -27772,6 +27961,7 @@ function townHarbourTheme(K,HB){
       else if(f.kind==='breakwater') breakwater(C,lr);
       else if(f.kind==='lhouse') lighthouse(C,lr);
       else if(f.kind==='berth' && f.ship) ship(C,f,dn);
+      if(f.kind==='berth' && TI>=4 && f.apron && !HB.FRH) yard(f);
     });
     /* §5b: a container port: seven gantries across the quay, stacks behind them */
     if(HB.FRH && TI>=3){ var BE=HB.F.filter(function(f){ return f.kind==='berth' && f.apron; }), g, RY=townSub(HB.LAY,TI,SALT_VES+2);
@@ -27863,6 +28053,15 @@ function townHarbourTheme(K,HB){
     info.ships.push({L:S.L, B:S.B, cont:C.poly});
     if(f.apron && !HB.FRH) [ -S.L/4, S.L/4 ].forEach(function(xg){ gantry(f,ac+xg); });
   }
+  /* ROW 101: A YARD. Container stacks in rows behind the gantries, on an apron
+     (street level) or down the mole; a stack is one box, 2-5 high, with its
+     own paint (salt 647) */
+  function stacks(C,a0,a1,b0,b1,R){
+    for(var bq=b0;bq+2.5<=b1;bq+=8) for(var aq=a0;aq+12.5<=a1;aq+=13.5){ var u=R(), uc=R(); if(u<0.15) continue;
+      own(lbox(aq,aq+12.5,bq,bq+2.5,0,2.6*(2+Math.floor(u*4))),C,'ystack',[COLB,COLR,COLO,COLK][Math.floor(uc*4)]); }
+  }
+  function yard(f){ stacks(f.apron,f.lr[0]+4,f.lr[1]-4,HB.LB+44,HB.LB+HARB_APRON4-4,townSub(HB.LAY*97+Math.round(f.lr[0]),TI,SALT_VES+2)); }
+  function moleYard(C){ var lr=C.lr; stacks(C,lr[0]+8,lr[1]-8,lr[2]+10,lr[3]-6,townSub(HB.LAY,TI,SALT_VES+3)); }
   function gantry(f,ag){
     var Ap=f.apron, Q=Ap.poly, bA=townBbox(Q), top=HB.top;
     /* the apron in field b (beyond LB, landward) */
@@ -41138,13 +41337,24 @@ function corridorDraw(p,plans,THM,camera){
      is keyed on its own index, so what stays draws what it drew.
      THE MASSING: a lot whose frontage is under 2.0 mm on the sheet is its envelope
      boxes, with nothing on them and no car, pole or cable in front.
-     THM.frameCull absent, or Projection 0: nothing here runs. */
+     THM.frameCull absent, or Projection 0: nothing here runs.
+     ROW 101: AND IN PERSPECTIVE WHEN THM.perspCull (a hub, Site Scale 4): the same two rules
+     through the lens. A container is culled when its prism's corners are all behind the near
+     plane, or all in front of it and off one side of the sheet; one that straddles the near
+     plane is kept. A lot is massed when its frontage, projected, is under 2.0 mm. */
   STRTTALLY.culled=[]; STRTTALLY.massed=0; STRTTALLY.massedLots=[];
   var MASSED=null;
+  var PCULL=!ISO && !SCENE && !!THM.frameCull && !!THM.perspCull;
   /* row 221: Scout's scene (SCENE) masses every lot by this same rule and culls nothing */
-  if((ISO || SCENE) && THM.frameCull){
+  if((ISO || SCENE || PCULL) && THM.frameCull){
     var ZTOPC=Math.max(THM.zfit||30,FLOORS*4.6*(THM.formTall||1)+10), MMPM=ISOS*PAGEMM;
-    var offSheet=function(Q){ var x0=1e18, x1=-1e18, y0=1e18, y1=-1e18;
+    var frontMM=function(A,B){ var ca=cam(A), cb=cam(B); if(ca[2]<=NEAR || cb[2]<=NEAR) return 1e9;
+      var qa=scr(ca), qb=scr(cb); return Math.hypot(qb[0]-qa[0],qb[1]-qa[1])*PAGEMM; };
+    var offSheet=PCULL?function(Q){ var x0=1e18, x1=-1e18, y0=1e18, y1=-1e18, nb=0, nt=0;
+      Q.forEach(function(q){ [0,ZTOPC].forEach(function(z){ var c=cam([q[0],q[1],z]); nt++; if(c[2]<=NEAR){ nb++; return; }
+        var u=scr(c); if(u[0]<x0) x0=u[0]; if(u[0]>x1) x1=u[0]; if(u[1]<y0) y0=u[1]; if(u[1]>y1) y1=u[1]; }); });
+      if(nb===nt) return true; if(nb) return false;
+      return x1<0 || x0>PGW || y1<0 || y0>PGH; }:function(Q){ var x0=1e18, x1=-1e18, y0=1e18, y1=-1e18;
       Q.forEach(function(q){ var dx=q[0]-ISOC[0], dy=q[1]-ISOC[1], x=(dx*RT[0]+dy*RT[1])*ISOS, y0k=(dx*UP[0]+dy*UP[1])*ISOS, y1k=(dx*UP[0]+dy*UP[1]+ZTOPC*UP[2])*ISOS;
         if(x<x0) x0=x; if(x>x1) x1=x; if(y0k<y0) y0=y0k; if(y1k<y0) y0=y1k; if(y0k>y1) y1=y0k; if(y1k>y1) y1=y1k; });
       return x0>HW || x1<-HW || y0>HH || y1<-HH; };
@@ -41171,14 +41381,14 @@ function corridorDraw(p,plans,THM,camera){
       var M={'1':(PLk.offLots?PLk.offLots['1']:[]).slice(),'-1':(PLk.offLots?PLk.offLots['-1']:[]).slice()};
       PLk.lots.forEach(function(L){ if(!PLk.P3 || L.culled) return;
         var A=PLk.P3(L.s0,L.side,PLk.HALFW,0), B=PLk.P3(L.s1,L.side,PLk.HALFW,0), dx=B[0]-A[0], dy=B[1]-A[1];
-        if(SCENE || Math.hypot(dx*RT[0]+dy*RT[1],dx*UP[0]+dy*UP[1])*MMPM<2.0 || (THM.massOut && THM.massOut(L))){ L.massed=true; M[L.side].push(L); STRTTALLY.massed++; STRTTALLY.massedLots.push(L.poly); } });
+        if(SCENE || (PCULL?frontMM([A[0],A[1],0],[B[0],B[1],0]):Math.hypot(dx*RT[0]+dy*RT[1],dx*UP[0]+dy*UP[1])*MMPM)<2.0 || (THM.massOut && THM.massOut(L))){ L.massed=true; M[L.side].push(L); STRTTALLY.massed++; STRTTALLY.massedLots.push(L.poly); } });
       MASSED.set(PLk,M);
       /* A STREET WHOSE EVERY LOT IS MASSED HAS NOTHING ON IT EITHER: its slabs merge end to
          end into runs (a straight run between two gaps is still a convex container, one
          where it was hundreds), a plate with the kerb's edge line and on one side the
          centreline, and its content is not made at all (bareContent) */
       var LV=PLk.lots.filter(function(L){ return !L.culled; }), LM=LV.filter(function(L){ return L.massed; }).length;
-      if(!PLk.P3 || (PLk.ix>=200 && PLk.ix<400) || LM<0.8*LV.length || (!LV.length && MMPM*10>=2.0)) return;
+      if(!PLk.P3 || (PLk.ix>=200 && PLk.ix<400) || LM<0.8*LV.length || (!LV.length && (PCULL || MMPM*10>=2.0))) return;
       PLk.bare=true;
       var gone2=new Set();
       [1,-1].forEach(function(sd){
@@ -46166,9 +46376,9 @@ var HELP={
     parks:'The share of the blocks that are parks instead of lots: a hedge or a fence round the edge, two paths across, trees, benches, and sometimes a pond or a swing. Layout picks which blocks.',
     site:'Gives part of the city to an airfield (1): runways, taxiways, stands with aircraft, a terminal, hangars, behind a fence and a perimeter road, buildings near a runway held low. Or to a harbour (2): water below a quay, with a pier, a marina, fishing boats and a lighthouse, or ships at their berths. With a site there is no river, railway, highway or powerline. Its Scale sets the city’s length and block depth, so City length and Block depth stop applying; with Map scale on Fit the whole, larger drawing is shrunk to the sheet.',
     sitepct:'How much of the city the site takes, as a share of the whole plan (a harbour’s water; its Scale 3 apron is extra). The rest is the city, a strip or an L. Layout picks the edge or corner.',
-    tier:'The site’s size, which also sets the city’s length and block depth. Airfield: 2 an airstrip (900 m runway, one hangar, a windsock, no tower), 3 and up a regional airport (2,400 m runways, jet bridges, a tower). Harbour: 0 a pier and a dinghy, 1 a marina, 2 a fishing harbour with a lighthouse, 3 and up container berths. With Map scale on Fit a bigger Scale makes everything smaller on the sheet; on a fixed Map scale things keep their size and the sheet shows less of the city.',
+    tier:'The site’s size, which also sets the city’s length and block depth. Airfield: 2 an airstrip (900 m runway, one hangar, a windsock, no tower), 3 a regional airport (2,400 m runways, jet bridges, a tower), 4 a hub (3,000 to 3,700 m runways, concourses, wide bodies). Harbour: 0 a pier and a dinghy, 1 a marina, 2 a fishing harbour with a lighthouse, 3 container berths, 4 two basins with 400 m ships and container yards. With Map scale on Fit a bigger Scale makes everything smaller on the sheet; on a fixed Map scale things keep their size and the sheet shows less of the city.',
     sscale:'Multiplies the city’s length and block depth that the site’s Scale sets.',
-    rwys:'How many parallel runways, where there is room: an airstrip has one, a regional airport up to two.',
+    rwys:'How many runways, where there is room: an airstrip has one, a regional airport up to two parallel, a hub 2 to 8: parallel pairs, plus crosswinds at 30 to 60 degrees past their ends when there are three or more.',
     rwyhdg:'The compass bearing the runways point along, in degrees. It sets the numbers painted at each end: the bearing over ten, and that plus 18 at the far end.',
     stands:'The share of the aircraft stands with an aircraft parked on them.',
     acmix:'How many of the parked aircraft are the larger type: jets rather than turboprops at a regional airport.',
