@@ -462,7 +462,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v377</a> &mdash; Corridor city: the hub -- Scale 4 on Site, a 6 km city: an airfield of parallel runway pairs and crosswinds past their ends, a terminal with concourse fingers and wide bodies at their stands, or a harbour of two basins round a mole, 400 m ships, gantries and container yards; the stat line counts the aircraft, vessels, paths and ink</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v378</a> &mdash; Corridor city: trains on a massed deck stand on it -- at the sheet scale where a viaduct is massed it has no ballast or rails, and the train stood 0.6 m above the bare deck; now on the deck's own top. Row 298</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <section class="fold" id="fold_pick"><h2>Pick engine<span class="cnt"></span></h2>
@@ -25560,7 +25560,8 @@ function viaductTheme(K,VD){
         /* the bogie centres 2.85 m in from the ends, on the arc; the body is
            their chord, the car's own length long */
         var ba=cr.a+2.85, bb=cr.b-2.85, A=X(ba,oc,0), B=X(bb,oc,0), dx=B[0]-A[0], dy=B[1]-A[1], L=Math.hypot(dx,dy), u=[dx/L,dy/L,0], n=[-u[1],u[0],0];
-        var LFc=LFT?LFT(cr.a):0, RTc=RT+LFc, FRT=T.tag==='freight';
+        /* row 298: a massed deck (FARVK) has no ballast or rails, so the train stands on the deck's own top */
+        var LFc=LFT?LFT(cr.a):0, RTc=(FARVK?BZ:RT)+LFc, FRT=T.tag==='freight';
         var m=[(A[0]+B[0])/2,(A[1]+B[1])/2], hl=9.75, hw=1.475, zb=RTc+0.95, zt=FRT?RTc+1.35:RTc+3.65;
         var o=[m[0]-u[0]*hl-n[0]*hw, m[1]-u[1]*hl-n[1]*hw, zb];
         var Bd=para(o,[u[0]*2*hl,u[1]*2*hl,0],[n[0]*2*hw,n[1]*2*hw,0],[0,0,zt-zb]);
