@@ -90,6 +90,8 @@ kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-b
 .seg button{flex:1;background:transparent;border:0;padding:8px 4px;cursor:pointer;font-size:12.5px}
 .seg button[aria-pressed="true"]{background:var(--fg);color:var(--bg)}
 .sl{display:grid;grid-template-columns:96px 1fr 48px;gap:8px;align-items:center;font-size:12.5px;margin:6px 0}
+.sl select{background:transparent;color:inherit;border:1px solid var(--line);border-radius:8px;padding:4px 6px;font:inherit}
+.sl option{color:#111;background:#fff}
 .sl output{font-family:var(--mono);font-size:11px;color:var(--dim);text-align:right;font-variant-numeric:tabular-nums}
 input[type=range]{width:100%;accent-color:var(--accent)}
 .ck{display:flex;gap:8px;align-items:center;font-size:13px;margin:6px 0;cursor:pointer}
@@ -139,6 +141,7 @@ body.touch.fly #pad{display:flex}
       <button class="btn" id="b-tex" aria-pressed="false" title="Facades, signs, cars, planes, boats and trees (T)">Textures</button>
       <button class="btn" id="b-sol" aria-pressed="true" title="Hide lines behind solids, like the plot (O)">Solids</button>
       <button class="btn wide" id="b-photo" title="Save a picture (P)">Photo</button>
+      <button class="btn wide" id="b-svg" title="Save this view as an SVG a pen plotter can draw (V)">SVG</button>
       <button class="btn wide" id="b-rec" title="Record the current route as a video (R)">Record</button>
       <button class="btn" id="b-more" aria-expanded="false" aria-controls="drawer">Controls</button>
     </div>
@@ -201,7 +204,9 @@ body.touch.fly #pad{display:flex}
   <p class="note" id="k-n"></p>
 
   <h2>Share</h2>
-  <div class="row2"><button class="btn" id="b-link">Copy link</button><button class="btn" id="b-photo2">Photo</button><button class="btn" id="b-rec2">Record flight</button><button class="btn" id="b-help">Keys</button></div>
+  <div class="row2"><button class="btn" id="b-link">Copy link</button><button class="btn" id="b-photo2">Photo</button><button class="btn" id="b-rec2">Record flight</button><button class="btn" id="b-svg2">SVG</button><button class="btn" id="b-help">Keys</button></div>
+  <label class="sl" for="s-paper">SVG paper <select id="s-paper"><option value="9x12">9×12 in</option><option value="11x14">11×14 in</option><option value="a4">A4</option><option value="a3">A3</option><option value="letter">Letter</option></select><span></span></label>
+  <p class="note">SVG saves what is on screen as lines a pen plotter can draw, the hidden ones removed, one layer per kind.</p>
   <p class="note" style="margin-top:14px">Made with <a href="../" target="_blank" rel="noopener">Plotter Sketchpad</a>, a generative line-art bench for pen plotters. The cities are its Corridor City engine; this page draws the same lines live instead of on paper.</p>
 </aside>
 
@@ -218,6 +223,7 @@ body.touch.fly #pad{display:flex}
     <dt><kbd>N</kbd></dt><dd>Next city</dd>
     <dt><kbd>K</kbd></dt><dd>Add this view to your flight</dd>
     <dt><kbd>P</kbd> · <kbd>R</kbd></dt><dd>Photo · record the current flight</dd>
+    <dt><kbd>V</kbd></dt><dd>Save the view as a plottable SVG</dd>
     <dt><kbd>H</kbd> · <kbd>F</kbd></dt><dd>Hide the interface · full screen</dd>
   </dl>
   <p class="note" style="margin-top:12px">Click anywhere to close.</p>
@@ -312,7 +318,7 @@ function upload(buf,n){
   for(i=0;i<n*6;i+=3){for(var a=0;a<3;a++){var v=pos[i+a]/10;if(v<mn[a])mn[a]=v;if(v>mx[a])mx[a]=v;}}
   var core=[0,0,0],nc=0; for(i=0;i<cnt[0]*2;i++){ var z=pos[i*3+2]/10; if(z>6){ core[0]+=pos[i*3]/10; core[1]+=pos[i*3+1]/10; nc++; } }
   core=nc?[core[0]/nc,core[1]/nc,0]:[(mn[0]+mx[0])/2,(mn[1]+mx[1])/2,0];
-  return {pb:pb,lb:lb,n:n,start:start,cnt:cnt,mn:mn,mx:mx,core:core};
+  return {pb:pb,lb:lb,n:n,start:start,cnt:cnt,mn:mn,mx:mx,core:core,pos:pos};
 }
 function uploadFaces(buf,n){
   var I=new Int16Array(buf,0,n*9), L=new Uint8Array(buf,n*18,n), cnt=[0,0,0,0,0,0,0,0], i, j;
@@ -326,7 +332,7 @@ function uploadFaces(buf,n){
     for(j=0;j<3;j++){ nor[k*9+j*3]=Math.round(nx/l*127); nor[k*9+j*3+1]=Math.round(ny/l*127); nor[k*9+j*3+2]=Math.round(nz/l*127); } }
   var pb=gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER,pb); gl.bufferData(gl.ARRAY_BUFFER,pos,gl.STATIC_DRAW);
   var nb=gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER,nb); gl.bufferData(gl.ARRAY_BUFFER,nor,gl.STATIC_DRAW);
-  return {pb:pb,nb:nb,n:n,start:start,cnt:cnt,roof:roofMap(pos,start[0],cnt[0])};
+  return {pb:pb,nb:nb,n:n,start:start,cnt:cnt,roof:roofMap(pos,start[0],cnt[0]),pos:pos};
 }
 /* ROOFS: the highest building over every 1.5 m cell, from the building triangles (layer 0). A flight is lifted
    over them. Decks are left out on purpose: the street flights pass under the viaducts. */
@@ -400,7 +406,7 @@ function loadMovers(city){
       var eb=gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER,eb); gl.bufferData(gl.ARRAY_BUFFER,E,gl.STATIC_DRAW);
       var fb=gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER,fb); gl.bufferData(gl.ARRAY_BUFFER,F,gl.STATIC_DRAW);
       var nb=gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER,nb); gl.bufferData(gl.ARRAY_BUFFER,N,gl.STATIC_DRAW);
-      var r={E:o.kind&&o.kind!=='plane'?E:null,F:o.kind&&o.kind!=='plane'?F:null,N:o.kind&&o.kind!=='plane'?N:null,kind:o.kind||'plane',at:o.at,th:o.th,eb:eb,fb:fb,nb:nb,ne:o.E.length,nf:o.F.length,path:o.path,speed:o.speed,phase:o.phase,bob:o.bob,moored:o.moored};
+      var r={E:o.kind&&o.kind!=='plane'?E:null,F:o.kind&&o.kind!=='plane'?F:null,N:o.kind&&o.kind!=='plane'?N:null,kind:o.kind||'plane',lE:E,lF:F,at:o.at,th:o.th,eb:eb,fb:fb,nb:nb,ne:o.E.length,nf:o.F.length,path:o.path,speed:o.speed,phase:o.phase,bob:o.bob,moored:o.moored};
       if(o.path&&o.path.type==='line'){ r.len=Math.hypot(o.path.b[0]-o.path.a[0],o.path.b[1]-o.path.a[1]); r.yaw=Math.atan2(o.path.b[1]-o.path.a[1],o.path.b[0]-o.path.a[0])/D2R; }
       else if(o.path){ r.P=o.path.type==='loop'?o.path.pts.concat([o.path.pts[0]]):o.path.pts; r.cum=[0]; for(var k=1;k<r.P.length;k++) r.cum.push(r.cum[k-1]+Math.hypot(r.P[k][0]-r.P[k-1][0],r.P[k][1]-r.P[k-1][1])); r.len=r.cum[r.cum.length-1]; }
       return r;
@@ -793,6 +799,7 @@ window.addEventListener('keydown',function(e){
   if(k==='n'){ var i=META.cities.indexOf(CITY); openScene(META.cities[(i+1)%META.cities.length].id); return; }
   if(k==='k'){ addKey(); return; }
   if(k==='p'){ photo(); return; }
+  if(k==='v'){ svgButton(); return; }
   if(k==='r'){ recordRoute(); return; }
   if(k==='h'){ document.body.classList.toggle('hideui'); return; }
   if(k==='f'){ fullscreen(); return; }
@@ -845,6 +852,253 @@ function recordRoute(){
 }
 function stopRec(){ recAfter=false; if(rec&&rec.state!=='inactive') rec.stop(); }
 
+/* ================= SVG: the view as a file a pen plotter can draw (queue row 319) ================= */
+/* Visibility comes from the GPU. The view is frozen (camera, poses, layers) and the solids of the layers that are on are
+   rendered once into an offscreen framebuffer 4096 px on the long side. Each pixel holds which face is nearest there:
+   a 24-bit face number in RGB. Every line of an on layer is then clipped to the view (near plane first, so nothing
+   behind the eye is projected), projected, and walked at 0.5 px steps. At each step the faces named by the 3 x 3 pixels
+   round it are tested exactly against the ray from the eye to the step's point: the face of the step's own pixel as its
+   plane (the compare against the face under the step, made exact), the faces of all nine as triangles. The step is
+   kept unless one of them meets the ray nearer than the point by more than SVGBIAS of its depth. Kept steps make runs, gaps of one step are
+   closed, runs that meet end to end within 0.25 px are joined into polylines, and pieces under 0.3 mm on the paper are
+   dropped.
+   Why faces and not packed depth: at 4096 px a pixel of a whole-city view is about 0.7 m, and a face seen at a grazing
+   angle changes depth by more than that across one pixel. Depth compared at pixel centres drew 11.6 % of Bay City's
+   orbit view where it is hidden (truth harness svgcheck.mjs), 85 % of it behind a face less than two pixels' worth of
+   depth in front (parapets, deck edges). Testing the faces themselves leaves only what no pixel centre sees.
+   SVGBIAS was set on the truth harness: the smallest share of depth that keeps a line lying on its own face (edges and
+   faces are both stored to the decimetre). */
+var PAPERS=[{id:'9x12',name:'9×12 in',w:228.6,h:304.8},{id:'11x14',name:'11×14 in',w:279.4,h:355.6},{id:'a4',name:'A4',w:210,h:297},{id:'a3',name:'A3',w:297,h:420},{id:'letter',name:'Letter',w:215.9,h:279.4}];
+var SVGLONG=4096, SVGBIAS=0.0001, SVGGRAZE=0.3, SVGON=0.01, SVGSTEP=0.5, SVGJOIN=0.25, SVGMINMM=0.3, SVGMARGIN=10, SVGPEN=0.3;
+var SVGIDS=['buildings','streets','airfield','water','decks','vehicles','trees','signs'];
+var SVGLAST=null, svgBusy=false, FPROG=null, DU={}, dAP=-1, dAI=-1;
+function faceProgram(){
+  if(FPROG) return FPROG;
+  var hp=gl.getShaderPrecisionFormat(gl.FRAGMENT_SHADER,gl.HIGH_FLOAT);
+  if(!hp||hp.precision<23) throw new Error('this browser’s WebGL cannot number the faces (no highp)');
+  var vs=TDECL+'attribute vec3 aP;attribute float aI;uniform mat4 uM;uniform mat4 uObj;uniform float uS;varying highp float vI;'+
+    'void main(){'+TPOS+'gl_Position=uM*vec4(p,1.0);vI=aI;}';
+  var fs='precision highp float;varying highp float vI;uniform float uBase;'+
+    'void main(){float v=floor(vI+0.5)+uBase;float r=floor(v/65536.0);float g=floor((v-r*65536.0)/256.0);float b=v-r*65536.0-g*256.0;'+
+    'gl_FragColor=vec4(r,g,b,255.0)/255.0;}';
+  var p=gl.createProgram(); gl.attachShader(p,sh(gl.VERTEX_SHADER,vs)); gl.attachShader(p,sh(gl.FRAGMENT_SHADER,fs)); gl.linkProgram(p);
+  if(!gl.getProgramParameter(p,gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p));
+  ['uM','uObj','uS','uBase','uT','uTr'].forEach(function(n){ DU[n]=gl.getUniformLocation(p,n); });
+  dAP=gl.getAttribLocation(p,'aP'); dAI=gl.getAttribLocation(p,'aI'); FPROG=p; return p;
+}
+/* a buffer numbering each triangle's three vertices 1..n (a triangle's number is on all three) */
+function triIds(n){ var a=new Float32Array(n*3); for(var i=0;i<n;i++) a[i*3]=a[i*3+1]=a[i*3+2]=i+1; var b=gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER,b); gl.bufferData(gl.ARRAY_BUFFER,a,gl.STATIC_DRAW); return b; }
+/* the view as it is now: camera, projection, the movers where they stand, the layers that are on */
+function freezeView(){
+  var B=basis(), asp=W/H, S=SPAN(), V=lookAt(B.e,B.f,Math.abs(B.f[2])>0.999?[0,1,0]:[0,0,1]), P, nearP, farP, iso=mode==='iso';
+  if(iso){ nearP=1; farP=S*8; P=ortho(C.ortho*asp,C.ortho,nearP,farP); }
+  else { var vf=opt.fov*D2R; if(asp<1) vf=Math.min(108*D2R,2*Math.atan(Math.tan(vf/2)*Math.pow(1/asp,0.75)));
+    nearP=Math.max(0.5,Math.min(300,0.2*Math.max(0,B.e[2]-(GEO.faces&&GEO.faces.roof?roofAt(GEO.faces.roof,B.e[0],B.e[1]):0))));
+    farP=S*10; P=persp(vf,asp,nearP,farP); }
+  trafficPoses();
+  var planes=POSES.map(function(p){ return {i:p.i,m:Array.prototype.slice.call(p.m)}; });
+  var traffic=TPOSES.map(function(k){ var a=trafficAt(MOV.list[k],TR.t); return {i:k,a:a}; });
+  return {e:B.e.slice(),f:B.f.slice(),iso:iso,M:mul(P,V),near:nearP,far:farP,asp:asp,W:W,H:H,planes:MOV&&layOn[5]?planes:[],traffic:MOV&&layOn[5]?traffic:[],lay:layOn.slice(),theme:theme};
+}
+function svgRot(yaw,pitch,roll){ /* the vehicles' pose rotation, column-major, angles in degrees */
+  var cy=Math.cos(yaw*D2R),sy=Math.sin(yaw*D2R),cp=Math.cos(-pitch*D2R),sp=Math.sin(-pitch*D2R),cr=Math.cos(roll*D2R),sr=Math.sin(roll*D2R);
+  return [cy*cp,sy*cp,-sp, cy*sp*sr-sy*cr,sy*sp*sr+cy*cr,cp*sr, cy*sp*cr+sy*sr,sy*sp*cr-cy*sr,cp*cr]; }
+/* the face pass: returns {id: Uint32Array of face numbers per pixel (0 = none), w, h, tri(id) -> 9 world coordinates} */
+function facePass(Z){
+  var prog=faceProgram(), maxRB=gl.getParameter(gl.MAX_RENDERBUFFER_SIZE), maxTex=gl.getParameter(gl.MAX_TEXTURE_SIZE), vp=gl.getParameter(gl.MAX_VIEWPORT_DIMS);
+  var L=Math.min(SVGLONG,maxRB,maxTex,vp[0],vp[1]), fw=Z.asp>=1?L:Math.max(1,Math.round(L*Z.asp)), fh=Z.asp>=1?Math.max(1,Math.round(L/Z.asp)):L;
+  var tex=gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D,tex); gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,fw,fh,0,gl.RGBA,gl.UNSIGNED_BYTE,null);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.NEAREST); gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.NEAREST);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
+  var fb=gl.createFramebuffer(); gl.bindFramebuffer(gl.FRAMEBUFFER,fb); gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,tex,0);
+  var rb=gl.createRenderbuffer(); gl.bindRenderbuffer(gl.RENDERBUFFER,rb); gl.renderbufferStorage(gl.RENDERBUFFER,gl.DEPTH_STENCIL,fw,fh);
+  gl.framebufferRenderbuffer(gl.FRAMEBUFFER,gl.DEPTH_STENCIL_ATTACHMENT,gl.RENDERBUFFER,rb);
+  if(gl.checkFramebufferStatus(gl.FRAMEBUFFER)!==gl.FRAMEBUFFER_COMPLETE){ /* 16-bit depth is the floor WebGL1 promises */
+    gl.framebufferRenderbuffer(gl.FRAMEBUFFER,gl.DEPTH_STENCIL_ATTACHMENT,gl.RENDERBUFFER,null);
+    gl.renderbufferStorage(gl.RENDERBUFFER,gl.DEPTH_COMPONENT16,fw,fh); gl.framebufferRenderbuffer(gl.FRAMEBUFFER,gl.DEPTH_ATTACHMENT,gl.RENDERBUFFER,rb); }
+  gl.viewport(0,0,fw,fh); gl.disable(gl.BLEND); gl.enable(gl.DEPTH_TEST); gl.depthFunc(gl.LESS); gl.depthMask(true);
+  gl.clearColor(0,0,0,0); gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
+  gl.useProgram(prog); gl.uniformMatrix4fv(DU.uM,false,new Float32Array(Z.M)); gl.uniform1f(DU.uTr,0);
+  gl.enableVertexAttribArray(dAP); gl.enableVertexAttribArray(dAI);
+  /* face numbers: the build's faces 1..n in the order the page keeps them, then each plane as posed, then the traffic */
+  var F=GEO.faces, ranges=[], base=0;
+  if(!F.idb) F.idb=triIds(F.n);
+  gl.uniformMatrix4fv(DU.uObj,false,ID4); gl.uniform1f(DU.uS,0.1); gl.uniform1f(DU.uBase,0);
+  gl.bindBuffer(gl.ARRAY_BUFFER,F.pb); gl.vertexAttribPointer(dAP,3,gl.SHORT,false,0,0);
+  gl.bindBuffer(gl.ARRAY_BUFFER,F.idb); gl.vertexAttribPointer(dAI,1,gl.FLOAT,false,0,0);
+  for(var l=0;l<8;l++) if(Z.lay[l]&&F.cnt[l]) gl.drawArrays(gl.TRIANGLES,F.start[l]*3,F.cnt[l]*3);
+  ranges.push({b:0,n:F.n,kind:'city'}); base=F.n;
+  if(MOV&&Z.lay[5]){ gl.uniform1f(DU.uS,1.0);
+    Z.planes.forEach(function(P){ var o=MOV.list[P.i]; if(!o) return; if(!o.idb) o.idb=triIds(o.nf);
+      gl.bindBuffer(gl.ARRAY_BUFFER,o.fb); gl.vertexAttribPointer(dAP,3,gl.FLOAT,false,0,0); gl.bindBuffer(gl.ARRAY_BUFFER,o.idb); gl.vertexAttribPointer(dAI,1,gl.FLOAT,false,0,0);
+      gl.uniformMatrix4fv(DU.uObj,false,new Float32Array(P.m)); gl.uniform1f(DU.uBase,base); gl.drawArrays(gl.TRIANGLES,0,o.nf*3);
+      ranges.push({b:base,n:o.nf,kind:'plane',F:o.lF,m:P.m}); base+=o.nf; });
+    gl.uniformMatrix4fv(DU.uObj,false,ID4);
+    if(Z.traffic.length){ var u=new Float32Array(84*4), map=[]; Z.traffic.forEach(function(t,k){ var a=t.a,o=k*8; u[o]=a[0]; u[o+1]=a[1]; u[o+2]=a[2]; u[o+3]=a[3]*D2R; u[o+4]=a[4]*D2R; u[o+5]=a[5]*D2R;
+        var mv=MOV.list[t.i], R=svgRot(a[3],a[4],a[5]); for(var j=0;j<mv.F.length/9;j++) map.push([mv.F,j,a,R]); });
+      if(!MOV.tb.idb) MOV.tb.idb=triIds(MOV.tb.nf/3);
+      gl.uniform4fv(DU.uT,u); gl.uniform1f(DU.uTr,1); gl.uniform1f(DU.uBase,base);
+      gl.bindBuffer(gl.ARRAY_BUFFER,MOV.tb.fb); gl.vertexAttribPointer(dAP,3,gl.FLOAT,false,0,0); gl.bindBuffer(gl.ARRAY_BUFFER,MOV.tb.idb); gl.vertexAttribPointer(dAI,1,gl.FLOAT,false,0,0);
+      gl.drawArrays(gl.TRIANGLES,0,MOV.tb.nf); gl.uniform1f(DU.uTr,0);
+      ranges.push({b:base,n:map.length,kind:'traffic',map:map}); base+=map.length; } }
+  var px=new Uint8Array(fw*fh*4); gl.readPixels(0,0,fw,fh,gl.RGBA,gl.UNSIGNED_BYTE,px);
+  gl.disableVertexAttribArray(dAP); gl.disableVertexAttribArray(dAI); gl.bindFramebuffer(gl.FRAMEBUFFER,null); gl.deleteFramebuffer(fb); gl.deleteRenderbuffer(rb); gl.deleteTexture(tex);
+  gl.useProgram(PR); gl.viewport(0,0,cv.width,cv.height); dirty=true;
+  var id=new Uint32Array(fw*fh); for(var i=0,j=0;i<id.length;i++,j+=4) id[i]=px[j]*65536+px[j+1]*256+px[j+2];
+  var pos=F.pos, out=new Float64Array(9);
+  function tri(n){ /* face number n (1-based) -> its corners in world metres */
+    var k=n-1;
+    for(var r=0;r<ranges.length;r++){ var R0=ranges[r]; if(k<R0.b||k>=R0.b+R0.n) continue; var j=k-R0.b, q;
+      if(R0.kind==='city'){ for(q=0;q<9;q++) out[q]=pos[j*9+q]/10; return out; }
+      if(R0.kind==='plane'){ var m=R0.m, A=R0.F; for(q=0;q<3;q++){ var x=A[j*9+q*3],y=A[j*9+q*3+1],z=A[j*9+q*3+2];
+          out[q*3]=m[0]*x+m[4]*y+m[8]*z+m[12]; out[q*3+1]=m[1]*x+m[5]*y+m[9]*z+m[13]; out[q*3+2]=m[2]*x+m[6]*y+m[10]*z+m[14]; } return out; }
+      var t=R0.map[j], Fl=t[0], i0=t[1]*9, a=t[2], Rm=t[3]; for(q=0;q<3;q++){ var x2=Fl[i0+q*3],y2=Fl[i0+q*3+1],z2=Fl[i0+q*3+2];
+        out[q*3]=a[0]+Rm[0]*x2+Rm[3]*y2+Rm[6]*z2; out[q*3+1]=a[1]+Rm[1]*x2+Rm[4]*y2+Rm[7]*z2; out[q*3+2]=a[2]+Rm[2]*x2+Rm[5]*y2+Rm[8]*z2; } return out; }
+    return null; }
+  return {id:id,w:fw,h:fh,L:L,prec:'highp',tri:tri,faces:base};
+}
+/* every edge of the on layers, in world metres: static ones from the build, movers posed as frozen */
+function svgEdges(Z,each){
+  var G=GEO, i;
+  for(var l=0;l<8;l++){ if(!Z.lay[l]||!G.cnt[l]) continue; var pos=G.pos, a=G.start[l]*6, b=(G.start[l]+G.cnt[l])*6;
+    for(i=a;i<b;i+=6) each(pos[i]/10,pos[i+1]/10,pos[i+2]/10,pos[i+3]/10,pos[i+4]/10,pos[i+5]/10,l); }
+  if(!MOV||!Z.lay[5]) return;
+  Z.planes.forEach(function(P){ var o=MOV.list[P.i], E=o&&o.lE, m=P.m; if(!E) return;
+    for(var j=0;j<E.length;j+=6){ var x0=E[j],y0=E[j+1],z0=E[j+2],x1=E[j+3],y1=E[j+4],z1=E[j+5];
+      each(m[0]*x0+m[4]*y0+m[8]*z0+m[12],m[1]*x0+m[5]*y0+m[9]*z0+m[13],m[2]*x0+m[6]*y0+m[10]*z0+m[14],
+           m[0]*x1+m[4]*y1+m[8]*z1+m[12],m[1]*x1+m[5]*y1+m[9]*z1+m[13],m[2]*x1+m[6]*y1+m[10]*z1+m[14],5); } });
+  Z.traffic.forEach(function(t){ var o=MOV.list[t.i], E=o&&o.E, a=t.a, R=svgRot(a[3],a[4],a[5]); if(!E) return;
+    for(var j=0;j<E.length;j+=6){ var x0=E[j],y0=E[j+1],z0=E[j+2],x1=E[j+3],y1=E[j+4],z1=E[j+5];
+      each(a[0]+R[0]*x0+R[3]*y0+R[6]*z0,a[1]+R[1]*x0+R[4]*y0+R[7]*z0,a[2]+R[2]*x0+R[5]*y0+R[8]*z0,
+           a[0]+R[0]*x1+R[3]*y1+R[6]*z1,a[1]+R[1]*x1+R[4]*y1+R[7]*z1,a[2]+R[2]*x1+R[5]*y1+R[8]*z1,5); } });
+}
+/* clip to the view: first the near plane (and the far one) on view depth, so nothing behind the eye is projected, then
+   the projected segment to the framebuffer's rectangle. Each returns the kept parameter range or null. */
+function svgNear(da,db,n,f){ var t0=0,t1=1;
+  if(da<n&&db<n) return null; if(da<n) t0=(n-da)/(db-da); else if(db<n) t1=(n-da)/(db-da);
+  if(da>f&&db>f) return null; if(da>f) t0=Math.max(t0,(f-da)/(db-da)); else if(db>f) t1=Math.min(t1,(f-da)/(db-da));
+  return t0<=t1?[t0,t1]:null; }
+function svgRect(ax,ay,bx,by,w,h){ var t0=0,t1=1,dx=bx-ax,dy=by-ay,P=[-dx,dx,-dy,dy],Q=[ax,w-ax,ay,h-ay];
+  for(var k=0;k<4;k++){ if(P[k]===0){ if(Q[k]<0) return null; continue; } var r=Q[k]/P[k]; if(P[k]<0){ if(r>t1) return null; if(r>t0) t0=r; } else { if(r<t0) return null; if(r<t1) t1=r; } }
+  return [t0,t1]; }
+/* is p on the plane of face T (within SVGON metres)? Such a face cannot hide it, and its ray test is ill-conditioned
+   when the eye is near that plane too */
+function svgOn(T,p){ var e1x=T[3]-T[0],e1y=T[4]-T[1],e1z=T[5]-T[2],e2x=T[6]-T[0],e2y=T[7]-T[1],e2z=T[8]-T[2], nx=e1y*e2z-e1z*e2y, ny=e1z*e2x-e1x*e2z, nz=e1x*e2y-e1y*e2x, l=Math.hypot(nx,ny,nz);
+  return !l||Math.abs(nx*(p[0]-T[0])+ny*(p[1]-T[1])+nz*(p[2]-T[2]))<SVGON*l; }
+/* does face n hide point p? The ray from o (the eye, or p's foot on the eye plane in Isometric) to p meets the
+   triangle at fraction t of the way; it hides p when tmin < t < 1 - bias (tmin is the near plane: what is nearer is
+   not in the view, on screen or here). */
+function svgHides(T,o,p,bias,tmin){ if(svgOn(T,p)) return false;
+  var e1x=T[3]-T[0],e1y=T[4]-T[1],e1z=T[5]-T[2],e2x=T[6]-T[0],e2y=T[7]-T[1],e2z=T[8]-T[2], dx=p[0]-o[0],dy=p[1]-o[1],dz=p[2]-o[2];
+  var px=dy*e2z-dz*e2y, py=dz*e2x-dx*e2z, pz=dx*e2y-dy*e2x, det=e1x*px+e1y*py+e1z*pz; if(det>-1e-12&&det<1e-12) return false;
+  var iv=1/det, sx=o[0]-T[0], sy=o[1]-T[1], sz=o[2]-T[2], u=(sx*px+sy*py+sz*pz)*iv; if(u<0||u>1) return false;
+  var qx=sy*e1z-sz*e1y, qy=sz*e1x-sx*e1z, qz=sx*e1y-sy*e1x, v=(dx*qx+dy*qy+dz*qz)*iv; if(v<0||u+v>1) return false;
+  var t=(e2x*qx+e2y*qy+e2z*qz)*iv; return t>tmin&&t<1-bias; }
+/* the build's faces that share an edge with each face (three a face, -1 for none), found once a city: a surface is
+   often a strip of triangles thinner than a pixel, and the one the ray crosses may sit beside the one a pixel names */
+function svgAdj(F){
+  if(F.adj) return F.adj; var pos=F.pos, n=F.n, adj=new Int32Array(n*3).fill(-1), M=new Map(), i, k;
+  function vk(j){ return ((pos[j]+32768)*65536+(pos[j+1]+32768))*65536+(pos[j+2]+32768); }
+  for(i=0;i<n;i++) for(k=0;k<3;k++){ var a=vk(i*9+k*3), b=vk(i*9+((k+1)%3)*3), key=a<b?a+'_'+b:b+'_'+a, o=M.get(key);
+    if(o===undefined) M.set(key,i*3+k); else if(o>=0){ adj[i*3+k]=(o/3|0)+1; if(adj[o]<0) adj[o]=i+1; } }
+  return F.adj=adj; }
+/* does the plane of face n hide p? Only for a face seen at a grazing angle (the ray within asin(SVGGRAZE) of its plane):
+   there a pixel holds many small faces of one surface, and its centre may name a different one from the face the ray
+   crosses. Extending a face seen squarely would hide what lies just past its outline. */
+function svgPlaneHides(T,o,p,bias,tmin){ if(svgOn(T,p)) return false;
+  var e1x=T[3]-T[0],e1y=T[4]-T[1],e1z=T[5]-T[2],e2x=T[6]-T[0],e2y=T[7]-T[1],e2z=T[8]-T[2], nx=e1y*e2z-e1z*e2y, ny=e1z*e2x-e1x*e2z, nz=e1x*e2y-e1y*e2x;
+  var dx=p[0]-o[0],dy=p[1]-o[1],dz=p[2]-o[2], den=nx*dx+ny*dy+nz*dz; if(den>-1e-12&&den<1e-12) return false;
+  if(Math.abs(den)>SVGGRAZE*Math.hypot(nx,ny,nz)*Math.hypot(dx,dy,dz)) return false; /* only a face seen at a grazing angle */
+  var t=(nx*(T[0]-o[0])+ny*(T[1]-o[1])+nz*(T[2]-o[2]))/den; return t>tmin&&t<1-bias; }
+function svgRuns(Z,D,keepWorld){
+  var M=Z.M, fw=D.w, fh=D.h, ids=D.id, bias=SVGBIAS, runs=[], world=keepWorld?[]:null, e=Z.e, f=Z.f, persp=!Z.iso, nE=0;
+  var cache=new Map(), seen=new Int32Array(9), pt=[0,0,0], org=[0,0,0], adj=svgAdj(GEO.faces), nCity=GEO.faces.n;
+  function face(n){ var T=cache.get(n); if(!T){ var t=D.tri(n); T=t?Array.prototype.slice.call(t):null; cache.set(n,T); } return T; }
+  function hidden(sx,sy,p,dp){ var ix=Math.min(fw-1,Math.floor(sx)), iy=Math.min(fh-1,Math.floor(sy)), ns=0;
+    if(persp){ org=e; } else { org=[p[0]-f[0]*dp,p[1]-f[1]*dp,p[2]-f[2]*dp]; }
+    var tmin=Z.near/dp, c0=ids[iy*fw+ix], T0=c0?face(c0):null; if(T0&&svgPlaneHides(T0,org,p,bias,tmin)) return true;
+    for(var dy=-1;dy<=1;dy++){ var y=iy+dy; if(y<0||y>=fh) continue; for(var dx=-1;dx<=1;dx++){ var x=ix+dx; if(x<0||x>=fw) continue; var n=ids[y*fw+x]; if(!n) continue;
+      var dup=false; for(var k=0;k<ns;k++) if(seen[k]===n){ dup=true; break; } if(dup) continue; seen[ns++]=n;
+      var T=face(n); if(T&&svgHides(T,org,p,bias,tmin)) return true;
+      if(adj&&n<=nCity) for(var a=0;a<3;a++){ var m=adj[(n-1)*3+a]; if(m>0){ var U=face(m); if(U&&svgHides(U,org,p,bias,tmin)) return true; } } } }
+    return false; }
+  svgEdges(Z,function(x0,y0,z0,x1,y1,z1,l){ nE++;
+    var d0=(x0-e[0])*f[0]+(y0-e[1])*f[1]+(z0-e[2])*f[2], d1=(x1-e[0])*f[0]+(y1-e[1])*f[1]+(z1-e[2])*f[2];
+    var c=svgNear(d0,d1,Z.near,Z.far); if(!c) return;
+    var t0=c[0], t1=c[1], P0=[x0+(x1-x0)*t0,y0+(y1-y0)*t0,z0+(z1-z0)*t0], P1=[x0+(x1-x0)*t1,y0+(y1-y0)*t1,z0+(z1-z0)*t1];
+    var da=d0+(d1-d0)*t0, db=d0+(d1-d0)*t1;
+    var aw=M[3]*P0[0]+M[7]*P0[1]+M[11]*P0[2]+M[15], bw=M[3]*P1[0]+M[7]*P1[1]+M[11]*P1[2]+M[15];
+    var ax=((M[0]*P0[0]+M[4]*P0[1]+M[8]*P0[2]+M[12])/aw*0.5+0.5)*fw, ay=((M[1]*P0[0]+M[5]*P0[1]+M[9]*P0[2]+M[13])/aw*0.5+0.5)*fh;
+    var bx=((M[0]*P1[0]+M[4]*P1[1]+M[8]*P1[2]+M[12])/bw*0.5+0.5)*fw, by=((M[1]*P1[0]+M[5]*P1[1]+M[9]*P1[2]+M[13])/bw*0.5+0.5)*fh;
+    var sc=svgRect(ax,ay,bx,by,fw,fh); if(!sc) return;
+    var s0=sc[0], s1=sc[1], n=Math.max(1,Math.ceil(Math.hypot(bx-ax,by-ay)*(s1-s0)/SVGSTEP)), run=-1, last=-1, gap=0;
+    function wAt(s){ return persp?s*da/((1-s)*db+s*da):s; }
+    function emit(k0,k1){ var u0=s0+(s1-s0)*k0/n, u1=s0+(s1-s0)*k1/n; runs.push(ax+(bx-ax)*u0,ay+(by-ay)*u0,ax+(bx-ax)*u1,ay+(by-ay)*u1,l);
+      if(world){ var w0=wAt(u0), w1=wAt(u1);
+        world.push(P0[0]+(P1[0]-P0[0])*w0,P0[1]+(P1[1]-P0[1])*w0,P0[2]+(P1[2]-P0[2])*w0,P0[0]+(P1[0]-P0[0])*w1,P0[1]+(P1[1]-P0[1])*w1,P0[2]+(P1[2]-P0[2])*w1); } }
+    for(var k=0;k<=n;k++){ var s=s0+(s1-s0)*k/n, w=wAt(s); pt[0]=P0[0]+(P1[0]-P0[0])*w; pt[1]=P0[1]+(P1[1]-P0[1])*w; pt[2]=P0[2]+(P1[2]-P0[2])*w;
+      var vis=!hidden(ax+(bx-ax)*s,ay+(by-ay)*s,pt,da+(db-da)*w);
+      if(vis){ if(run<0) run=k; last=k; gap=0; }
+      else if(run>=0){ gap++; if(gap>1){ emit(run,last); run=-1; } } }
+    if(run>=0) emit(run,last);
+  });
+  return {r:runs,w:world,edges:nE};
+}
+/* runs that meet end to end become polylines; returns [{l, pts:[x,y,...], runs:[i,...]}] */
+function svgJoin(R){
+  var r=R.r, n=r.length/5, Q=1/SVGJOIN, map=new Map(), used=new Uint8Array(n), out=[];
+  function key(x,y){ return Math.round(x*Q)*131072+Math.round(y*Q); }
+  for(var i=0;i<n;i++) for(var en=0;en<2;en++){ var k=key(r[i*5+en*2],r[i*5+en*2+1]), L=map.get(k); if(!L) map.set(k,L=[]); L.push(i*2+en); }
+  function find(x,y,l){ var cx=Math.round(x*Q), cy=Math.round(y*Q);
+    for(var dx=-1;dx<=1;dx++) for(var dy=-1;dy<=1;dy++){ var L=map.get((cx+dx)*131072+cy+dy); if(!L) continue;
+      for(var j=0;j<L.length;j++){ var q=L[j], ri=q>>1; if(used[ri]||r[ri*5+4]!==l) continue; var o=ri*5+(q&1)*2;
+        if(Math.abs(r[o]-x)<=SVGJOIN&&Math.abs(r[o+1]-y)<=SVGJOIN) return q; } }
+    return -1; }
+  for(i=0;i<n;i++){ if(used[i]) continue; used[i]=1; var l=r[i*5+4], pts=[r[i*5],r[i*5+1],r[i*5+2],r[i*5+3]], ids=[i], q;
+    while((q=find(pts[pts.length-2],pts[pts.length-1],l))>=0){ var ri=q>>1, o=ri*5+(1-(q&1))*2; used[ri]=1; ids.push(ri); pts.push(r[o],r[o+1]); }
+    var head=[]; while((q=find(pts[0],pts[1],l))>=0){ ri=q>>1; o=ri*5+(1-(q&1))*2; used[ri]=1; ids.push(ri); pts.unshift(r[o],r[o+1]); }
+    out.push({l:l,pts:pts,runs:ids}); }
+  return out;
+}
+function svgHex(c){ return '#'+c.map(function(v){ var h=Math.round(Math.max(0,Math.min(1,v))*255).toString(16); return h.length<2?'0'+h:h; }).join(''); }
+/* the polylines onto the paper: fitted with a margin, portrait or landscape as the window is, pieces under 0.3 mm dropped */
+function svgWrite(Z,D,lines,paperId){
+  var pp=PAPERS.filter(function(p){ return p.id===paperId; })[0]||PAPERS[0], land=Z.W>=Z.H, pw=land?Math.max(pp.w,pp.h):Math.min(pp.w,pp.h), ph=land?Math.min(pp.w,pp.h):Math.max(pp.w,pp.h);
+  var x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;
+  lines.forEach(function(L){ for(var j=0;j<L.pts.length;j+=2){ var x=L.pts[j], y=D.h-L.pts[j+1]; if(x<x0)x0=x; if(x>x1)x1=x; if(y<y0)y0=y; if(y>y1)y1=y; } });
+  if(x0>x1){ x0=0;y0=0;x1=D.w;y1=D.h; }
+  var aw=pw-2*SVGMARGIN, ah=ph-2*SVGMARGIN, s=Math.min(aw/Math.max(1e-6,x1-x0),ah/Math.max(1e-6,y1-y0)), ox=SVGMARGIN+(aw-(x1-x0)*s)/2-x0*s, oy=SVGMARGIN+(ah-(y1-y0)*s)/2-y0*s;
+  var cols=(Z.theme==='blue'?THEMES.blue:THEMES.paper).cols, groups=[], N=0, ink=0, kept=[];
+  for(var l=0;l<8;l++){ if(!Z.lay[l]) continue; var body=[];
+    lines.forEach(function(L){ if(L.l!==l) return; var len=0, d='';
+      for(var j=0;j<L.pts.length;j+=2){ var x=L.pts[j]*s+ox, y=(D.h-L.pts[j+1])*s+oy; if(j){ var px=L.pts[j-2]*s+ox, py=(D.h-L.pts[j-1])*s+oy; len+=Math.hypot(x-px,y-py); }
+        d+=(j?(j===2?'L':' '):'M')+x.toFixed(2)+' '+y.toFixed(2); }
+      if(len<SVGMINMM) return; body.push('<path d="'+d+'"/>'); N++; ink+=len; kept.push(L); });
+    groups.push('<g id="'+SVGIDS[l]+'" inkscape:label="'+LAYERS[l]+'" inkscape:groupmode="layer" fill="none" stroke="'+svgHex(cols[l])+'" stroke-width="'+SVGPEN+'" stroke-linecap="round" stroke-linejoin="round">\n'+body.join('\n')+(body.length?'\n':'')+'</g>'); }
+  var svg='<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape" width="'+pw+'mm" height="'+ph+'mm" viewBox="0 0 '+pw+' '+ph+'">\n'+groups.join('\n')+'\n</svg>\n';
+  return {svg:svg,n:N,ink:ink/1000,paper:pp,kept:kept,mm:[pw,ph],scale:s};
+}
+function exportSVG(o){
+  o=o||{}; if(!GEO||!CITY) return Promise.reject(new Error('no city yet'));
+  if(svgBusy) return Promise.reject(new Error('an export is already running')); svgBusy=true;
+  var t0=performance.now(), was={playing:playing,paused:TR.paused}; playing=false; TR.paused=true;
+  toast('Exporting the view…');
+  var ready=opt.tex&&GEO.faces?Promise.resolve():setTex(true,true);
+  return ready.then(function(){ return new Promise(function(res){ requestAnimationFrame(function(){ setTimeout(res,30); }); }); }).then(function(){
+    if(!GEO.faces) throw new Error('the solids did not load');
+    var Z=freezeView(), D=facePass(Z); SVGLAST={Z:Z,D:D}; var R=svgRuns(Z,D,!!o.world), lines=svgJoin(R), out=svgWrite(Z,D,lines,o.paper||$('s-paper').value);
+    var ms=performance.now()-t0, small=D.L<SVGLONG?' (depth at '+D.L+' px, the most this browser allows)':'';
+    var msg='SVG saved: '+out.n.toLocaleString()+' lines, '+out.ink.toFixed(1)+' m of ink on '+out.paper.name+small;
+    if(!o.noSave) save(new Blob([out.svg],{type:'image/svg+xml'}),'corridor-city-'+CITY.id+'.svg');
+    toast(msg);
+    var ret={svg:out.svg,msg:msg,n:out.n,ink:out.ink,paper:out.paper.id,mm:out.mm,fb:[D.w,D.h],prec:D.prec,ms:Math.round(ms),edges:R.edges,runs:R.r.length/5,
+      cam:{e:Z.e,f:Z.f,iso:Z.iso,M:Z.M,near:Z.near,far:Z.far,lay:Z.lay}};
+    if(o.world){ var W=[]; out.kept.forEach(function(L){ L.runs.forEach(function(i){ W.push(R.w.slice(i*6,i*6+6).concat([R.r[i*5+4]])); }); }); ret.world=W; }
+    return ret;
+  }).finally(function(){ svgBusy=false; playing=was.playing; TR.paused=was.paused; lastT=0; dirty=true; });
+}
+function svgButton(){ exportSVG().catch(function(e){ toast('SVG failed: '+e.message); }); }
+
 /* ================= controls ================= */
 var drawer=$('drawer');
 $('b-more').onclick=function(){ var o=!drawer.classList.contains('open'); drawer.classList.toggle('open',o); this.setAttribute('aria-expanded',String(o)); };
@@ -873,6 +1127,7 @@ function setGhost(on){ opt.ghost=!!on; $('c-ghost').checked=opt.ghost; if(ROUTE&
 function setSolid(on){ opt.solid=on; $('c-solid').checked=on; $('b-sol').setAttribute('aria-pressed',String(on)); dirty=true; if(on&&!opt.tex) setTex(true); }
 $('b-sol').onclick=function(){ setSolid(!opt.solid); };
 $('b-photo').onclick=photo; $('b-photo2').onclick=photo;
+$('b-svg').onclick=svgButton; $('b-svg2').onclick=svgButton;
 $('b-rec').onclick=recordRoute; $('b-rec2').onclick=recordRoute;
 $('b-help').onclick=function(){ $('help').classList.add('on'); };
 $('help').onclick=function(){ $('help').classList.remove('on'); };
@@ -941,7 +1196,12 @@ window.__cc={state:function(){return {mode:mode,C:C,city:CITY&&CITY.id,tex:opt.t
   /* how many cars and boats are within d m of flight i's camera at u (0-1) and traffic time t, and in front of it */
   tnear:function(i,u,t,d){ var r=CITY.routes[i]; prepRoute(r); var q=sample(r,u), n=0, f=q.tg?[q.tg[0]-q.e[0],q.tg[1]-q.e[1]]:[Math.cos((q.y||0)*D2R),Math.sin((q.y||0)*D2R)];
     (MOV?MOV.traffic:[]).forEach(function(k){ var a=trafficAt(MOV.list[k],t), dx=a[0]-q.e[0], dy=a[1]-q.e[1]; if(Math.hypot(dx,dy,a[2]-q.e[2])<d&&dx*f[0]+dy*f[1]>0) n++; }); return n; },
-  play:function(i){ playRoute(CITY.routes[i]); }, cam:function(){ return {eye:C.eye,yaw:C.yaw,pitch:C.pitch,poses:POSES.length,route:ROUTE&&ROUTE.id,mode:mode,playing:playing}; }, auto:function(on){ opt.auto=!!on; $('c-auto').checked=opt.auto; }, run:function(t){ rt=t; playing=true; lastT=0; }, ghost:function(on){ setGhost(on); }, key:function(k){ playing=false; rt=ROUTE._u[k]; applyRoute(); render(); }, at:function(t){ playing=false; rt=t; applyRoute(); render(); }, city:setCity, tex:setTex, theme:function(t){ $('t-'+t).click(); }, mode:setMode};
+  play:function(i){ playRoute(CITY.routes[i]); }, cam:function(){ return {eye:C.eye,yaw:C.yaw,pitch:C.pitch,poses:POSES.length,route:ROUTE&&ROUTE.id,mode:mode,playing:playing}; }, auto:function(on){ opt.auto=!!on; $('c-auto').checked=opt.auto; }, run:function(t){ rt=t; playing=true; lastT=0; }, ghost:function(on){ setGhost(on); }, key:function(k){ playing=false; rt=ROUTE._u[k]; applyRoute(); render(); }, at:function(t){ playing=false; rt=t; applyRoute(); render(); }, city:setCity, tex:setTex, theme:function(t){ $('t-'+t).click(); },
+  svg:exportSVG, svgposes:function(){ trafficPoses(); return {planes:POSES.map(function(p){ return {i:p.i,m:Array.prototype.slice.call(p.m)}; }),traffic:TPOSES.map(function(k){ return {i:k,a:trafficAt(MOV.list[k],TR.t)}; }),lay:layOn.slice()}; },
+  frame:function(){ stopRoute(); frameCity(); dirty=true; render(); },
+  svgdbg:function(pts){ var Z=SVGLAST.Z,D=SVGLAST.D,M=Z.M; return pts.map(function(p){ var w=M[3]*p[0]+M[7]*p[1]+M[11]*p[2]+M[15], sx=((M[0]*p[0]+M[4]*p[1]+M[8]*p[2]+M[12])/w*0.5+0.5)*D.w, sy=((M[1]*p[0]+M[5]*p[1]+M[9]*p[2]+M[13])/w*0.5+0.5)*D.h, ix=Math.floor(sx), iy=Math.floor(sy), n=[];
+    for(var dy=-1;dy<=1;dy++) for(var dx=-1;dx<=1;dx++) n.push(D.id[(iy+dy)*D.w+ix+dx]||0); return {sx:+sx.toFixed(2),sy:+sy.toFixed(2),ids:n,tris:n.filter(function(v,i,a){ return v&&a.indexOf(v)===i; }).map(function(v){ return Array.prototype.map.call(D.tri(v),function(c){ return +c.toFixed(2); }); })}; }); },
+  layer:function(i,on){ $('l'+i).checked=!!on; layOn[i]=on?1:0; dirty=true; }, mode:setMode};
 })();
 </script>
 </body>
