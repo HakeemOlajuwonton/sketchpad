@@ -462,7 +462,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v380</a> &mdash; Corridor city: Site share holds at every City form -- at City form 1 an airfield and a harbour are the share of the city you asked for, up from 2 to 38 percent; the stat line says how many aircraft were built and how many drawn; a corner harbour's water no longer runs over its own perimeter road. Row 307, part 2</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v381</a> &mdash; Corridor city: Site share holds with Water on -- at Water 1 to 3 an airfield is the share asked for too, the harbour spur bridges the water instead of running a road over it, and the airport branch no longer doubles back at its start; a twin propeller's blades stand clear of their spinner. Rows 316, 317</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <section class="fold" id="fold_pick"><h2>Pick engine<span class="cnt"></span></h2>
@@ -24834,6 +24834,10 @@ function townRailBranches(p,G,plans,J,RIV,VR,WC){
       if(v && Math.hypot(v[0]-ch[i][0],v[1]-ch[i][1])>30){ VIA.splice(i,0,v); ins=true; } } if(!ins) break; } })();
     /* a waypoint straight on past the next one is a line run out into the field and doubled back: no fillet fits it */
     (function(){ for(var i=VIA.length-1;i>=0;i--){ var ch=[st[0]].concat(VIA,[Pv]), A=ch[i], B=ch[i+1], E=ch[i+2], same=Math.hypot(E[0]-B[0],E[1]-B[1])<1, tn=Math.abs(townAngWrap(Math.atan2(E[1]-B[1],E[0]-B[0])-Math.atan2(B[1]-A[1],B[0]-A[0]))); if(same||tn>2.6) VIA.splice(i,1); } })();
+    /* row 316: a waypoint at the start is no waypoint. Routed round the harbour, the first waypoint (its corner) can lie 18 m
+       from where the branch leaves the mainline (tier 2, water 3, harbour 1, seed 7): 18 m out, then a 108 degree turn no
+       fillet fits. Then the branch starts for the next waypoint instead, by the same clearStart rules */
+    (function(){ for(var it=0;it<3 && VIA.length && Math.hypot(VIA[0][0]-st[0][0],VIA[0][1]-st[0][1])<60;it++){ var nx=VIA.length>1?VIA[1]:Pv, m2=clearStart(nx); if(m2<0) break; VIA.shift(); sm=m2; st=startFrom(sm,nx); } })();
     var cS=fence((aNear+aFar)/2,off), hS=Math.atan2(Pe[1]-Pv[1],Pe[0]-Pv[0]), sv=(-Math.sin(hS)*nB[0]+Math.cos(hS)*nB[1])>=0?1:-1;
     var Qb=[fence(aNear+sgA*0,off+KOb+7.4),fence(aFar,off+KOb+7.4),fence(aFar,off+KOb+7.4+40),fence(aNear+sgA*0,off+KOb+7.4+40)]; if(VR.band.meets(Qb)) Qb=null;
     var flat=null, BRa={ix:302, pts:[st[0]].concat(VIA,[Pv,Pe]), R:150, startTop:VR.topAt(st[1]), sta:{c:cS, h:hS, sv:sv, PLAT:PLAT, PW:7, PW2:7, KO:6, DB:40, Qb:Qb, Qp:null, oneSide:true, bldH:10, air:true, lb:13.4, D:53.4, art:-1, along:false}, MODE:1,
@@ -26688,14 +26692,33 @@ function townForm(p,G,plans,J,BLK,SITE){
         var INH=function(q){ var sg0=0; for(var e=0;e<4;e++){ var A=HPOLY[e], B=HPOLY[(e+1)%4], c=(B[0]-A[0])*(q[1]-A[1])-(B[1]-A[1])*(q[0]-A[0]); if(c>1e-9) sg0|=1; else if(c<-1e-9) sg0|=2; } return sg0!==3; }, tq=0; for(tq=0;tq<1;tq+=0.002){ if(!INH([QB[0]+(PA9[0]-QB[0])*tq,QB[1]+(PA9[1]-QB[1])*tq])) break; }
         var L90=Math.hypot(PA9[0]-QB[0],PA9[1]-QB[1]); QB=[QB[0]+(PA9[0]-QB[0])*tq+(PA9[0]-QB[0])/L90*2,QB[1]+(PA9[1]-QB[1])*tq+(PA9[1]-QB[1])/L90*2];
         var L9=Math.hypot(PA9[0]-QB[0],PA9[1]-QB[1]), HW9=G.WID*0.9+0.3;
-        if(L9>HW9+12){ var h9=Math.atan2(PA9[1]-QB[1],PA9[0]-QB[0]), PS=corridorPlan(Object.assign({},p,{len:L9-HW9-0.5, bend:0, width:G.XW}),STHEMES.town,510,{line:{x:QB[0],y:QB[1],h:h9}, noLots:true});
-          var BS=townBand(PS.conts.filter(function(C){ return C.kind==='slab'; }),polyOverlap,bbox2,bbHit);
+        if(L9>HW9+12){ var h9=Math.atan2(PA9[1]-QB[1],PA9[0]-QB[0]), LEN9=L9-HW9-0.5, ux9=Math.cos(h9), uy9=Math.sin(h9);
+          /* row 316: a ground road never crosses the water. Where the spur's line is wet (Water 2, harbour 2, seed 7 at the
+             share-sized airfield: 412 m of the bay) it is a bridge like the arterial's (§5b), its own plan in the bridge range
+             (390 on), and the dry stretches stay plan 510 (more than one: 560 on). A stretch under 12 m joins the one before it.
+             A dry line is one plan 510, as before */
+          var RUN9=[], XW9=G.XW||7, PV9=isFinite(p.pave)?+p.pave:2.5;
+          if(WAT) for(var t9b=0;t9b<=LEN9;t9b+=4){ var q9=[QB[0]+ux9*t9b,QB[1]+uy9*t9b], w9=[-XW9/2-PV9,0,XW9/2+PV9].some(function(o){ return WAT(q9[0]-uy9*o,q9[1]+ux9*o)>-6; });
+            if(!RUN9.length||RUN9[RUN9.length-1].wet!==w9) RUN9.push({wet:w9, a:t9b}); }
+          if(!RUN9.length) RUN9.push({wet:false, a:0});
+          RUN9.forEach(function(r,k){ r.b=k+1<RUN9.length?RUN9[k+1].a:LEN9; });
+          for(var k9=RUN9.length-1;k9>0;k9--) if(RUN9[k9].b-RUN9[k9].a<12){ RUN9[k9-1].b=RUN9[k9].b; RUN9.splice(k9,1); }
+          if(RUN9.length>1 && RUN9[0].b-RUN9[0].a<12){ RUN9[1].a=0; RUN9.shift(); }
+          for(k9=RUN9.length-1;k9>0;k9--) if(RUN9[k9].wet===RUN9[k9-1].wet){ RUN9[k9-1].b=RUN9[k9].b; RUN9.splice(k9,1); }
+          var SPP=[], nB9=0, nD9=0, SPB=info.spurBridges=[];
+          RUN9.forEach(function(r){ var hk9={line:{x:QB[0]+ux9*r.a, y:QB[1]+uy9*r.a, h:h9}, noLots:true}, ix9;
+            if(r.wet){ ix9=390+(nB9++); hk9.theme=Object.assign({},STHEMES.town,{content:function(K){ return bridgeTheme(K,RDw); }}); SPB.push([r.a,r.b]); }
+            else ix9=nD9++?558+2*nD9:510;
+            var PL9=corridorPlan(Object.assign({},p,{len:r.b-r.a, bend:0, width:G.XW}),r.wet?hk9.theme:STHEMES.town,ix9,hk9);
+            if(r.wet){ PL9.bridge=true; PL9.conts.forEach(function(C){ C.bare=true; C.bridge=true; }); } SPP.push(PL9); });
+          var PS=SPP[0];
+          var BS=townBand([].concat.apply([],SPP.map(function(P9){ return P9.conts.filter(function(C){ return C.kind==='slab'; }); })),polyOverlap,bbox2,bbHit);
           grid.forEach(function(PL){ var gapAdd={'1':[],'-1':[]}; PL.conts=PL.conts.filter(function(C){ if(C.kind!=='slab' || !BS.meets(C.poly)) return true; gapAdd[C.side].push([C.s0,C.s1]); var cell=PL.slabsBySide[C.side].indexOf(C); if(cell>=0) delete PL.slabsBySide[C.side][cell]; return false; });
             if(gapAdd['1'].length||gapAdd['-1'].length){ var SG=Array.isArray(PL.sGaps)?{'1':PL.sGaps.slice(),'-1':PL.sGaps.slice()}:{'1':(PL.sGaps['1']||[]).slice(),'-1':(PL.sGaps['-1']||[]).slice()}; SG['1']=SG['1'].concat(gapAdd['1']); SG['-1']=SG['-1'].concat(gapAdd['-1']); PL.sGaps=SG; PL.hasGap=true; } });
           for(k=J.length-1;k>=0;k--) if(BS.meets(J[k].poly)) J.splice(k,1);
           townCarve(G,grid,BS.meets,info,'site',900000,LOTMIN,bbox2);
           out.forEach(function(PLa){ var gone=new Set(); PLa.lots.forEach(function(L){ if(BS.meets(L.poly)) gone.add(L); }); if(gone.size){ PLa.lots=PLa.lots.filter(function(L){ return !gone.has(L); }); PLa.conts=PLa.conts.filter(function(C){ return !gone.has(C); }); } });
-          out.push(PS); info.spur={from:QB, to:PA9, L:L9, hw:HW9, plan:510}; BAND=(function(B0,B1){ return {meets:function(Q){ return B0.meets(Q)||B1.meets(Q); }}; })(BAND,BS); } }
+          SPP.forEach(function(P9){ out.push(P9); }); info.spur={from:QB, to:PA9, L:L9, hw:HW9, plan:510}; BAND=(function(B0,B1){ return {meets:function(Q){ return B0.meets(Q)||B1.meets(Q); }}; })(BAND,BS); } }
       if(WK===4){ SITE.frameOf=function(k){ if(k===1) return townGrow(townBbox(HPOLY.concat([[core[0],core[1]]])),0.3); if(k===2) return townGrow(townBbox(HPOLY),0.08); if(k===3){ var fr=hinfo; return townGrow(townBbox(HPOLY),-0.4); } return null; }; SITE.aim=FP(QL/2,DP+AD/2+1); SITE.rect=townBbox(HPOLY); SITE.top=SITE.top; hinfo.water=QL*DP; hinfo.inside=0; hinfo.met=0; hinfo.split=0; hinfo.dropped=0; }
     }
   }
@@ -26862,8 +26885,9 @@ function townSite(p,G,plans,J,BLK,KIND){
   var ROT=null, FOUT=null;
   if(G.FORM && KIND===1){ var RS7=townSub(0,LAY,SALT_SITE), uE7=RS7(), uC7=RS7(), top7=uE7<0.5, GAP7=TI>=3?Math.max(300,0.12*G.NLEN):Math.max(120,0.12*G.NLEN);
     var TH7=HDG*Math.PI/180, Ax=[Math.cos(TH7),Math.sin(TH7)], Bx=[-Ax[1],Ax[0]];
-    /* row 307: the airfield is the share of the network that Site share asks for; the Scale's own runway and bands are the floor */
-    var LA7=NEEDA+6+(TI>=4&&XWN?2*HUB_XWROOM:0), MINB7=sum(bandsOf(RWN))+(TI>=4?HUB_ZW-HUB_ZMIN:0)+(TI>=3?30:12)+6, LB7=Math.max(MINB7,townWaterKind(p)?NEEDB*PCT/0.5:PCT*A/LA7); info.minArea=LA7*MINB7;
+    /* row 307: the airfield is the share of the network that Site share asks for; the Scale's own runway and bands are the floor.
+       Row 316: with Water 1-3 too (v380 kept NEEDB*PCT/0.5 there) */
+    var LA7=NEEDA+6+(TI>=4&&XWN?2*HUB_XWROOM:0), MINB7=sum(bandsOf(RWN))+(TI>=4?HUB_ZW-HUB_ZMIN:0)+(TI>=3?30:12)+6, LB7=Math.max(MINB7,PCT*A/LA7); info.minArea=LA7*MINB7;
     /* ROW 204 §A4: with the lines on, the gap grows with the airfield's outline L x W: a hub does not sit on the city */
     if(townWholeOn(p)) GAP7=Math.max(300,0.12*G.NLEN,0.35*Math.max(LA7,LB7)+0.4*Math.min(LA7,LB7));
     var HX7=(Math.abs(Ax[0])*LA7+Math.abs(Bx[0])*LB7)/2, HY7=(Math.abs(Ax[1])*LA7+Math.abs(Bx[1])*LB7)/2;
@@ -27302,11 +27326,15 @@ function makeAircraft(code){
     [1,-1].forEach(function(sg){ var y=sg*0.30*hs, xa=le(Math.abs(y)-rp)-0.06, xf=xa-lp;
       out.push({kind:'ac-engine', loops:ngonX(xf,xa,y,zt,rp,8,Math.PI/8), crease:0.8});
       out.push({kind:'ac-spinner', loops:coneX(xf,xf-ls,y,zt,0.5*rp,8,Math.PI/8), crease:0.8});
-      for(var k=0;k<4;k++) out.push({kind:'ac-prop', loops:blade(xf-db-0.10,xf-db,y,zt,0.4+k*Math.PI/2,0.45*rp,rb,0.30,0.16)}); });
+      /* row 317: the roots stand 1 cm past the spinner's BASE circumradius. At 0.45 rp they cleared the cone where they stand
+         but not its 0.5 rp base, and then no face plane of either part separates them (it takes a plane along the cone's
+         slant), so their order was undecided: 12 pairs on Site 1 Scale 3's stands. Past it the root face plane separates */
+      for(var k=0;k<4;k++) out.push({kind:'ac-prop', loops:blade(xf-db-0.10,xf-db,y,zt,0.4+k*Math.PI/2,0.5*rp+0.01,rb,0.30,0.16)}); });
   } else {
     var zs=zc-0.12*R;
     out.push({kind:'ac-spinner', loops:coneX(0,-0.42,0,zs,0.16*R,8,ph), crease:0.8});
-    [1.2,1.2+Math.PI].forEach(function(th){ out.push({kind:'ac-prop', loops:blade(-0.14,-0.04,0,zs,th,0.10,0.88,0.18,0.10)}); });
+    var rb0=Math.max(0.10,0.16*R+0.01); /* row 317: past the spinner's base, as the twin's above */
+    [1.2,1.2+Math.PI].forEach(function(th){ out.push({kind:'ac-prop', loops:blade(-0.14,-0.04,0,zs,th,rb0,0.88,0.18,0.10)}); });
   }
   /* the gear: legs to the wheels, wheels to the ground. On a low wing two
      wheels beside each main leg, held under the wing's underside; on a high
@@ -42822,11 +42850,12 @@ function corridorDraw(p,plans,THM,camera){
       C.key=cz[2];
       live.push(C); nparts+=C.parts.length;
     });
-    var cedges=[], unsep=0;
+    var cedges=[], unsep=0, unsepC=[];
     for(i=0;i<live.length;i++) for(j=i+1;j<live.length;j++){
       if(!arcsMeet(live[i].arc,live[j].arc)) continue;
       var rr=planSep(live[i],live[j]);
-      if(rr===null){ unsep++; continue; }
+      /* row 317: and which containers, so a gate can name them */
+      if(rr===null){ unsep++; unsepC.push([live[i].kind||'',live[j].kind||'']); continue; }
       if(rr===1) cedges.push([i,j]); else if(rr===-1) cedges.push([j,i]);
     }
     var KO=kahn(live.length,cedges,live.map(function(C){ return C.key; }));
@@ -43298,7 +43327,7 @@ function corridorDraw(p,plans,THM,camera){
     STRTTALLY.hfaces=STRTTALLY.hfaces.map(function(h){ return {part:committed.indexOf(h.part), f:h.f, sp:h.sp, c:h.c}; })
                                      .filter(function(h){ return h.part>=0; });
     return {res:res, committed:committed, live:live, cycles:cycles, ccycles:ccycles,
-            splits:splits, unsep:unsep, unsepParts:unsepParts, farz:FARZ,
+            splits:splits, unsep:unsep, unsepC:unsepC, unsepParts:unsepParts, farz:FARZ,
             rcycles:cycles-rc0, rsplits:splits-rs0, runsep:unsepParts-ru0,
             npud:pudVis.length, nmirror:mcommitted.length, nrefl:nrefl, nwm:nwm};
   }
@@ -43332,7 +43361,7 @@ function corridorDraw(p,plans,THM,camera){
     tries++;
   }
   var res=RR.res, committed=RR.committed, live=RR.live;
-  var cycles=RR.cycles, ccycles=RR.ccycles, splits=RR.splits, unsep=RR.unsep;
+  var cycles=RR.cycles, ccycles=RR.ccycles, splits=RR.splits, unsep=RR.unsep; STRTTALLY.unsepConts=RR.unsepC||[];
   var penup0=0, penup1=0;
   /* ROW 84: COLOUR ONLY IN THE WATER. Everything but a kept reflection plots
      black -- the puddle rims too. 1 keeps the FRONT puddle's reflection, found
