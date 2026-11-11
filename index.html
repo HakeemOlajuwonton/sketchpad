@@ -462,7 +462,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v381</a> &mdash; Corridor city: Site share holds with Water on -- at Water 1 to 3 an airfield is the share asked for too, the harbour spur bridges the water instead of running a road over it, and the airport branch no longer doubles back at its start; a twin propeller's blades stand clear of their spinner. Rows 316, 317</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v382</a> &mdash; Corridor city: every wall gets something to draw -- in the solid band, windows on every storey of the side and back walls, mullions on ribbon storeys, a lift overrun or tank on every flat roof of 200 m2 or more. Row 326</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <section class="fold" id="fold_pick"><h2>Pick engine<span class="cnt"></span></h2>
@@ -38994,6 +38994,7 @@ function streetTheme(K){
     var PROPOCC=[];
     STRTTALLY.bld.push({side:L.side, idx:L.idx, top:'', esc:hasEsc, eligible:escB>=0});
     var BREC=STRTTALLY.bld[STRTTALLY.bld.length-1];
+    var LTOP326=L.blocks.reduce(function(m,B){ return Math.max(m,B.z1); },0); BREC.topZ=LTOP326; BREC.shopN=0; BREC.lot=L;
     /* ROW 53: a canal house's window heads are ARCHED, round or pointed, in
        8-12 segments -- one shape a building, from its own substream */
     var ARCHP=false, ARCHN=0;
@@ -39094,7 +39095,7 @@ function streetTheme(K){
         if(extra) for(var k in extra) Pq[k]=extra[k];
         L.parts.push(Pq); return Pq;
       }
-      function elem(kind,cen,band){ STRTTALLY.elems.push({kind:kind, c:cen, band:band}); }
+      function elem(kind,cen,band){ STRTTALLY.elems.push({kind:kind, c:cen, band:band}); if(kind==='shop' && band==='solid') BREC.shopN++; }
       function bandAt(P){ var d=dist3(P); return d<dn?'solid':d<df?'outline':''; }
       /* ---- ROW 73: THE SHOP TYPES. Lines on the wall at every band the bay
          is drawn in; the things that stand off it (awning, food case, counter,
@@ -39518,6 +39519,11 @@ function streetTheme(K){
               line(wp(F,ra,wy0,0),wp(F,rb,wy0,0),COL_K,'win'); line(wp(F,ra,wy1,0),wp(F,rb,wy1,0),COL_K,'win');
               line(wp(F,ra,wy0,0),wp(F,ra,wy1,0),COL_K,'win');
               if(rw2) line(wp(F,rb,wy0,0),wp(F,rb,wy1,0),COL_K,'win');
+              /* row 326: a ribbon is a strip of curtain wall, and a bay can be 4.6 m wide; on the corridor city, near,
+                 a mullion at most 2.9 m from the next (the bay line above is the first) */
+              if(K.ENG==='town' && band==='solid'){ var rspan=(rw2?rb:u1)-ra, nmu=Math.max(1,Math.ceil(rspan/2.9-1e-9));
+                for(var jm=1;jm<nmu;jm++){ var um=ra+rspan*jm/nmu; line(wp(F,um,wy0,0),wp(F,um,wy1,0),COL_K,'mullion'); }
+                STRTTALLY.ribbons.push({idx:L.idx, side:L.side, top:LTOP326, sp:rspan/nmu, A:F.A, t:F.t, n:F.n, u0:ra, u1:ra+rspan, z0:wy0, z1:wy1, part:BP}); }
               if(litz) hlines(ra+0.05,rb-0.05,wy0+0.05,wy1-0.05,0.18,COL_GLOW,'glow');
             }
             STRTTALLY.upr.push({kind:ZT, band:band});
@@ -39663,6 +39669,32 @@ function streetTheme(K){
           if(bandAt(gc)) graffiti(L,BP,FR,fk,0.3,Wr-0.3,B.z0+0.4,Math.min(B.z0+3.0,L.baseTop-0.2),'return',(L.idx*16+bi)*64+60+fk);
         }
       });
+      /* ROW 326: EVERY WALL GETS SOMETHING TO DRAW, on the corridor city only and in the solid band only. The returns
+         above dress the storeys over the base and only on a face toward the camera, and the back face carries nothing
+         but floor lines, so a wall Scout flies past (it builds at one azimuth) read as a blank storey 20 m wide. Here a
+         return's base storey, a return facing away, and the back face get one opening per bay of at most 3.1 m on every
+         storey (outlines, as the returns' own; a door in the base's middle bay). No number is drawn, so no substream
+         moves; a face toward the camera keeps exactly what it had above its base */
+      if(K.ENG==='town') [3,4,5].forEach(function(fk){
+        var fc=BP.faces[fk]; if(!fc) return;
+        var q0=fc.pts[0], q1=fc.pts[1], tx=q1[0]-q0[0], ty=q1[1]-q0[1], Wr=Math.hypot(tx,ty);
+        if(Wr<2.5) return;
+        var seen=fk!==4 && K.facesEye(fc), FR={A:[q0[0],q0[1],0], t:[tx/Wr,ty/Wr,0], n:[fc.n[0],fc.n[1],0], W:Wr};
+        var nr=Math.max(1,Math.round(Wr/3.1)), rw=Wr/nr, mid=Math.floor(nr/2);
+        B.storeys.forEach(function(S){
+          if(seen && !S.base) return;
+          for(var rc=0;rc<nr;rc++){
+            var ucr=(rc+0.5)*rw, cen3=wp(FR,ucr,(S.z0+S.z1)/2,0);
+            if(bandAt(cen3)!=='solid') continue;
+            var door=S.base && rc===mid, x0=door?ucr-Math.min(0.55,rw*0.3):ucr-rw*0.3, x1=door?ucr+Math.min(0.55,rw*0.3):ucr+rw*0.3,
+                y0=door?S.z0:S.z0+(S.base?1.0:0.9), y1=door?Math.min(S.z1-0.3,S.z0+2.3):S.z1-(S.base?0.6:0.45);
+            if(y1-y0<0.4) continue;
+            var cr=[wp(FR,x0,y0,0),wp(FR,x1,y0,0),wp(FR,x1,y1,0),wp(FR,x0,y1,0)];
+            for(var e=0;e<4;e++) if(!(door && e===0)) BP.lines.push({a:cr[e],b:cr[(e+1)%4],f0:fk,f1:fk,col:COL_K,kind:door?'door':'win'});
+            elem(door?'wdoor':'wall326',cen3,'solid');
+          }
+        });
+      });
       /* §5.5 the tone hatch: diagonal lines on every wall facing away from
          the light, generated on the wall plane so they foreshorten with it;
          the returns (the canyon's side walls) half again as dense */
@@ -39719,7 +39751,16 @@ function streetTheme(K){
       solid2(prismN([lerp(A0,A1,0),lerp(A0,A1,f),lerp(B0,B1,f),lerp(B0,B1,0)],zt,zt+h),'parapet');
       solid2(prismN([lerp(A0,A1,1-f),lerp(A0,A1,1),lerp(B0,B1,1),lerp(B0,B1,1-f)],zt,zt+h),'parapet');
     }
-    if(type==='flat') parapet(1.0);
+    if(type==='flat'){ parapet(1.0);
+      /* ROW 326: a flat roof of 200 m2 or more carries something -- a lift overrun or a water tank, on the corridor city,
+         near. Chosen and placed from numbers this lot already drew (topV), so no substream moves */
+      var qr=wp(FT,FT.W/2,zt,-dep/2); BREC.roofA=FT.W*dep; BREC.roofObj=0; BREC.roofNear=dist3(qr)<dn;
+      if(K.ENG==='town' && FT.W*dep>=200 && FT.W>2.5 && dep>2.5 && BREC.roofNear){
+        var h5=Math.min(1.4,0.15*Math.min(FT.W,dep)), cu5=FT.W*(0.35+0.3*topV[8]), cv5=-dep*(0.35+0.3*topV[9]), o5=function(du,dv){ return wp(FT,cu5+du,zt,cv5+dv); };
+        if(topV[5]<0.5) solid2(para(o5(-h5,h5),vec(FT,'t',2*h5),vec(FT,'n',-2*h5),vec(FT,'z',3.0)),'bulkhead');
+        else { var Qt5=[], ct5=o5(0,0); for(var k5=0;k5<8;k5++){ var an5=TAU*(k5+0.5)/8; Qt5.push([ct5[0]+Math.cos(an5)*h5*0.93, ct5[1]+Math.sin(an5)*h5*0.93]); } solid2(prismN(Qt5,zt,zt+2.6),'tank'); }
+        BREC.roofObj=1; }
+    }
     else if(type==='crown'){
       var nt=2+(topV[0]<0.5?0:1), z=zt;
       for(var ti=1;ti<=nt;ti++){
@@ -42062,7 +42103,7 @@ function corridorDraw(p,plans,THM,camera){
   });
   plans.forEach(function(PLk){
     /* row 200: a bare street's theme still plans its lots' buildings (L.blocks); its cars, poles and cables are not kept */
-    var n0=conts.length, KK=KIT(PLk); if(PLk.bare) KK.addCable=function(){};
+    var n0=conts.length, KK=KIT(PLk); KK.ENG=THM.key; if(PLk.bare) KK.addCable=function(){};
     /* row 200: a reaching corridor wholly off the sheet has nothing to make */
     var ct=!PLk.conts.length && PLk.ix>=200 && PLk.ix<300 && THM.frameCull?bareContent(PLk):(PLk.theme||THM).content(KK);
     /* the few lots on it still over 2 mm keep their theme's dress */
@@ -42574,7 +42615,7 @@ function corridorDraw(p,plans,THM,camera){
     STRTTALLY.mirrorSkip=THM.mirrorSkip||[]; STRTTALLY.pudMinMM=THM.pudMinMM||0;
     STRTTALLY.elems=[]; STRTTALLY.bld=[]; STRTTALLY.hfaces=[];
     STRTTALLY.signs=[]; STRTTALLY.graff=[]; STRTTALLY.cars=[]; STRTTALLY.upr=[]; STRTTALLY.urows=[]; STRTTALLY.unsepPairs=[];
-    STRTTALLY.shops=[]; STRTTALLY.props=[];
+    STRTTALLY.shops=[]; STRTTALLY.props=[]; STRTTALLY.ribbons=[];
     conts.forEach(function(C){ C.parts=[]; });
     lots.forEach(function(L){
       var P3=PLof(L).P3;
