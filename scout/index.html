@@ -358,7 +358,7 @@ function loadGeo(city,which,onProg){
   var key=city.id+'-'+which; if(cache[key]) return Promise.resolve(cache[key]);
   var f=city[which];
   var faces=(which==='detail'&&city.faces)?fetchBin(city.faces.file).then(function(b){ return uploadFaces(b,city.faces.n); }).catch(function(){ return null; }):Promise.resolve(null);
-  return Promise.all([fetchBin(f.file,onProg),faces]).then(function(r){ var g=upload(r[0],f.n); g.faces=r[1]; return cache[key]=g; });
+  return Promise.all([fetchBin(f.file,onProg),faces]).then(function(r){ var g=upload(r[0],f.n); g.faces=r[1]; g.fac=f.facade||0; return cache[key]=g; });
 }
 
 /* ================= movers: aircraft, cars and boats drawn with their own pose ================= */
@@ -870,6 +870,20 @@ function stopRec(){ recAfter=false; if(rec&&rec.state!=='inactive') rec.stop(); 
    faces are both stored to the decimetre). */
 var PAPERS=[{id:'9x12',name:'9×12 in',w:228.6,h:304.8},{id:'11x14',name:'11×14 in',w:279.4,h:355.6},{id:'a4',name:'A4',w:210,h:297},{id:'a3',name:'A3',w:297,h:420},{id:'letter',name:'Letter',w:215.9,h:279.4}];
 var SVGLONG=4096, SVGBIAS=0.0001, SVGGRAZE=0.3, SVGON=0.01, SVGSTEP=0.5, SVGJOIN=0.25, SVGMINMM=0.3, SVGMARGIN=10, SVGPEN=0.3;
+/* Facade lines (queue row 333): the lines a building carries on its walls -- windows, floor lines, sills, louvres -- are
+   drawn only where a SVGSTOREY-metre storey is at least SVGFACMM on the paper. Below that a facade is pen widths of ink
+   with nothing legible in it, and on the face buffer its lines are a pixel or two apart and from the walls that hide them.
+   The scale is the paper's fit of the whole face buffer (the drawing is fitted to its ink, which lies inside the buffer,
+   so on the sheet a kept storey is at least that size). Tested at every 0.5 px step, so in a perspective view a facade
+   keeps its lines up to the depth where its storeys get too small. The build writes these lines last in the buildings
+   layer and cities.json counts them (detail.facade).
+   Any other line of the build (not a mover) is drawn only up to the depth where its own length is SVGPARTMM on the paper:
+   a whole-city view of Bay or Freeway is otherwise thousands of sub-millimetre stubs (rails, sign posts, roof kit) that
+   the face buffer cannot tell from the face behind them. And a face of the build whose least height is under SVGFACEMM on
+   the paper is left out of the face buffer (it keeps its number, so nothing else moves): a sliver that thin is narrower
+   than a pixel and hides the lines behind it only by the luck of where it lands. svgcheck.mjs's truth reads the same
+   three sets. */
+var SVGSTOREY=3, SVGFACMM=1.0, SVGPARTMM=0.6, SVGFACEMM=0.05;
 var SVGIDS=['buildings','streets','airfield','water','decks','vehicles','trees','signs'];
 var SVGLAST=null, svgBusy=false, FPROG=null, DU={}, dAP=-1, dAI=-1;
 function faceProgram(){
@@ -898,15 +912,18 @@ function freezeView(){
   trafficPoses();
   var planes=POSES.map(function(p){ return {i:p.i,m:Array.prototype.slice.call(p.m)}; });
   var traffic=TPOSES.map(function(k){ var a=trafficAt(MOV.list[k],TR.t); return {i:k,a:a}; });
-  return {e:B.e.slice(),f:B.f.slice(),iso:iso,M:mul(P,V),near:nearP,far:farP,asp:asp,W:W,H:H,planes:MOV&&layOn[5]?planes:[],traffic:MOV&&layOn[5]?traffic:[],lay:layOn.slice(),theme:theme};
+  return {e:B.e.slice(),f:B.f.slice(),iso:iso,M:mul(P,V),ky:P[5],near:nearP,far:farP,asp:asp,W:W,H:H,planes:MOV&&layOn[5]?planes:[],traffic:MOV&&layOn[5]?traffic:[],lay:layOn.slice(),theme:theme};
 }
 function svgRot(yaw,pitch,roll){ /* the vehicles' pose rotation, column-major, angles in degrees */
   var cy=Math.cos(yaw*D2R),sy=Math.sin(yaw*D2R),cp=Math.cos(-pitch*D2R),sp=Math.sin(-pitch*D2R),cr=Math.cos(roll*D2R),sr=Math.sin(roll*D2R);
   return [cy*cp,sy*cp,-sp, cy*sp*sr-sy*cr,sy*sp*sr+cy*cr,cp*sr, cy*sp*cr+sy*sr,sy*sp*cr-cy*sr,cp*cr]; }
 /* the face pass: returns {id: Uint32Array of face numbers per pixel (0 = none), w, h, tri(id) -> 9 world coordinates} */
+/* the face buffer's size for this view: SVGLONG on the long side, or the most the context allows; [w, h, long side] */
+function svgFbSize(Z){ var maxRB=gl.getParameter(gl.MAX_RENDERBUFFER_SIZE), maxTex=gl.getParameter(gl.MAX_TEXTURE_SIZE), vp=gl.getParameter(gl.MAX_VIEWPORT_DIMS);
+  var L=Math.min(Z.long||SVGLONG,maxRB,maxTex,vp[0],vp[1]); return [Z.asp>=1?L:Math.max(1,Math.round(L*Z.asp)), Z.asp>=1?Math.max(1,Math.round(L/Z.asp)):L, L]; }
 function facePass(Z){
-  var prog=faceProgram(), maxRB=gl.getParameter(gl.MAX_RENDERBUFFER_SIZE), maxTex=gl.getParameter(gl.MAX_TEXTURE_SIZE), vp=gl.getParameter(gl.MAX_VIEWPORT_DIMS);
-  var L=Math.min(SVGLONG,maxRB,maxTex,vp[0],vp[1]), fw=Z.asp>=1?L:Math.max(1,Math.round(L*Z.asp)), fh=Z.asp>=1?Math.max(1,Math.round(L/Z.asp)):L;
+  var prog=faceProgram();
+  var S0=svgFbSize(Z), L=S0[2], fw=S0[0], fh=S0[1];
   var tex=gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D,tex); gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,fw,fh,0,gl.RGBA,gl.UNSIGNED_BYTE,null);
   gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.NEAREST); gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.NEAREST);
   gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
@@ -926,7 +943,18 @@ function facePass(Z){
   gl.uniformMatrix4fv(DU.uObj,false,ID4); gl.uniform1f(DU.uS,0.1); gl.uniform1f(DU.uBase,0);
   gl.bindBuffer(gl.ARRAY_BUFFER,F.pb); gl.vertexAttribPointer(dAP,3,gl.SHORT,false,0,0);
   gl.bindBuffer(gl.ARRAY_BUFFER,F.idb); gl.vertexAttribPointer(dAI,1,gl.FLOAT,false,0,0);
-  for(var l=0;l<8;l++) if(Z.lay[l]&&F.cnt[l]) gl.drawArrays(gl.TRIANGLES,F.start[l]*3,F.cnt[l]*3);
+  var thin=null, tmpB=[];
+  if(Z.lod&&Z.lod.face>0){ /* row 333: the build's faces thinner than lod.face mm on the sheet are left out; the rest keep their numbers */
+    var pos0=F.pos, kp=[], kid=[], e=Z.e, f=Z.f, k=Z.lod.k; thin=new Uint8Array(F.n);
+    for(var l1=0;l1<8;l1++){ if(!Z.lay[l1]||!F.cnt[l1]) continue; for(var t=F.start[l1];t<F.start[l1]+F.cnt[l1];t++){ var b=t*9;
+      var ax=(pos0[b+3]-pos0[b])/10,ay=(pos0[b+4]-pos0[b+1])/10,az=(pos0[b+5]-pos0[b+2])/10,bx=(pos0[b+6]-pos0[b])/10,by=(pos0[b+7]-pos0[b+1])/10,bz=(pos0[b+8]-pos0[b+2])/10;
+      var cx=ay*bz-az*by,cy=az*bx-ax*bz,cz=ax*by-ay*bx,A2=Math.hypot(cx,cy,cz),Lm=Math.max(Math.hypot(ax,ay,az),Math.hypot(bx,by,bz),Math.hypot(bx-ax,by-ay,bz-az)),alt=Lm?A2/Lm:0;
+      var d=((pos0[b]+pos0[b+3]+pos0[b+6])/30-e[0])*f[0]+((pos0[b+1]+pos0[b+4]+pos0[b+7])/30-e[1])*f[1]+((pos0[b+2]+pos0[b+5]+pos0[b+8])/30-e[2])*f[2];
+      if(alt*k/(Z.iso?1:Math.max(1e-6,d))>=Z.lod.face||(!Z.iso&&d<=0)){ for(var q=0;q<9;q++) kp.push(pos0[b+q]); kid.push(t+1,t+1,t+1); } else thin[t]=1; } }
+    var kb=gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER,kb); gl.bufferData(gl.ARRAY_BUFFER,new Int16Array(kp),gl.STATIC_DRAW); gl.vertexAttribPointer(dAP,3,gl.SHORT,false,0,0);
+    var ib=gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER,ib); gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(kid),gl.STATIC_DRAW); gl.vertexAttribPointer(dAI,1,gl.FLOAT,false,0,0);
+    gl.drawArrays(gl.TRIANGLES,0,kid.length); tmpB.push(kb,ib); }
+  else for(var l=0;l<8;l++) if(Z.lay[l]&&F.cnt[l]) gl.drawArrays(gl.TRIANGLES,F.start[l]*3,F.cnt[l]*3);
   ranges.push({b:0,n:F.n,kind:'city'}); base=F.n;
   if(MOV&&Z.lay[5]){ gl.uniform1f(DU.uS,1.0);
     Z.planes.forEach(function(P){ var o=MOV.list[P.i]; if(!o) return; if(!o.idb) o.idb=triIds(o.nf);
@@ -942,7 +970,7 @@ function facePass(Z){
       gl.drawArrays(gl.TRIANGLES,0,MOV.tb.nf); gl.uniform1f(DU.uTr,0);
       ranges.push({b:base,n:map.length,kind:'traffic',map:map}); base+=map.length; } }
   var px=new Uint8Array(fw*fh*4); gl.readPixels(0,0,fw,fh,gl.RGBA,gl.UNSIGNED_BYTE,px);
-  gl.disableVertexAttribArray(dAP); gl.disableVertexAttribArray(dAI); gl.bindFramebuffer(gl.FRAMEBUFFER,null); gl.deleteFramebuffer(fb); gl.deleteRenderbuffer(rb); gl.deleteTexture(tex);
+  gl.disableVertexAttribArray(dAP); gl.disableVertexAttribArray(dAI); gl.bindFramebuffer(gl.FRAMEBUFFER,null); gl.deleteFramebuffer(fb); gl.deleteRenderbuffer(rb); gl.deleteTexture(tex); tmpB.forEach(function(b){ gl.deleteBuffer(b); });
   gl.useProgram(PR); gl.viewport(0,0,cv.width,cv.height); dirty=true;
   var id=new Uint32Array(fw*fh); for(var i=0,j=0;i<id.length;i++,j+=4) id[i]=px[j]*65536+px[j+1]*256+px[j+2];
   var pos=F.pos, out=new Float64Array(9);
@@ -955,22 +983,22 @@ function facePass(Z){
       var t=R0.map[j], Fl=t[0], i0=t[1]*9, a=t[2], Rm=t[3]; for(q=0;q<3;q++){ var x2=Fl[i0+q*3],y2=Fl[i0+q*3+1],z2=Fl[i0+q*3+2];
         out[q*3]=a[0]+Rm[0]*x2+Rm[3]*y2+Rm[6]*z2; out[q*3+1]=a[1]+Rm[1]*x2+Rm[4]*y2+Rm[7]*z2; out[q*3+2]=a[2]+Rm[2]*x2+Rm[5]*y2+Rm[8]*z2; } return out; }
     return null; }
-  return {id:id,w:fw,h:fh,L:L,prec:'highp',tri:tri,faces:base};
+  return {id:id,w:fw,h:fh,L:L,prec:'highp',tri:tri,faces:base,thin:thin,nThin:thin?thin.reduce(function(a,v){ return a+v; },0):0};
 }
 /* every edge of the on layers, in world metres: static ones from the build, movers posed as frozen */
 function svgEdges(Z,each){
   var G=GEO, i;
-  for(var l=0;l<8;l++){ if(!Z.lay[l]||!G.cnt[l]) continue; var pos=G.pos, a=G.start[l]*6, b=(G.start[l]+G.cnt[l])*6;
-    for(i=a;i<b;i+=6) each(pos[i]/10,pos[i+1]/10,pos[i+2]/10,pos[i+3]/10,pos[i+4]/10,pos[i+5]/10,l); }
+  for(var l=0;l<8;l++){ if(!Z.lay[l]||!G.cnt[l]) continue; var pos=G.pos, a=G.start[l]*6, b=(G.start[l]+G.cnt[l])*6, fa=l===0?b-(G.fac||0)*6:b;
+    for(i=a;i<b;i+=6) each(pos[i]/10,pos[i+1]/10,pos[i+2]/10,pos[i+3]/10,pos[i+4]/10,pos[i+5]/10,l,i>=fa); }
   if(!MOV||!Z.lay[5]) return;
   Z.planes.forEach(function(P){ var o=MOV.list[P.i], E=o&&o.lE, m=P.m; if(!E) return;
     for(var j=0;j<E.length;j+=6){ var x0=E[j],y0=E[j+1],z0=E[j+2],x1=E[j+3],y1=E[j+4],z1=E[j+5];
       each(m[0]*x0+m[4]*y0+m[8]*z0+m[12],m[1]*x0+m[5]*y0+m[9]*z0+m[13],m[2]*x0+m[6]*y0+m[10]*z0+m[14],
-           m[0]*x1+m[4]*y1+m[8]*z1+m[12],m[1]*x1+m[5]*y1+m[9]*z1+m[13],m[2]*x1+m[6]*y1+m[10]*z1+m[14],5); } });
+           m[0]*x1+m[4]*y1+m[8]*z1+m[12],m[1]*x1+m[5]*y1+m[9]*z1+m[13],m[2]*x1+m[6]*y1+m[10]*z1+m[14],5,false,true); } });
   Z.traffic.forEach(function(t){ var o=MOV.list[t.i], E=o&&o.E, a=t.a, R=svgRot(a[3],a[4],a[5]); if(!E) return;
     for(var j=0;j<E.length;j+=6){ var x0=E[j],y0=E[j+1],z0=E[j+2],x1=E[j+3],y1=E[j+4],z1=E[j+5];
       each(a[0]+R[0]*x0+R[3]*y0+R[6]*z0,a[1]+R[1]*x0+R[4]*y0+R[7]*z0,a[2]+R[2]*x0+R[5]*y0+R[8]*z0,
-           a[0]+R[0]*x1+R[3]*y1+R[6]*z1,a[1]+R[1]*x1+R[4]*y1+R[7]*z1,a[2]+R[2]*x1+R[5]*y1+R[8]*z1,5); } });
+           a[0]+R[0]*x1+R[3]*y1+R[6]*z1,a[1]+R[1]*x1+R[4]*y1+R[7]*z1,a[2]+R[2]*x1+R[5]*y1+R[8]*z1,5,false,true); } });
 }
 /* clip to the view: first the near plane (and the far one) on view depth, so nothing behind the eye is projected, then
    the projected segment to the framebuffer's rectangle. Each returns the kept parameter range or null. */
@@ -1010,9 +1038,14 @@ function svgPlaneHides(T,o,p,bias,tmin){ if(svgOn(T,p)) return false;
   var dx=p[0]-o[0],dy=p[1]-o[1],dz=p[2]-o[2], den=nx*dx+ny*dy+nz*dz; if(den>-1e-12&&den<1e-12) return false;
   if(Math.abs(den)>SVGGRAZE*Math.hypot(nx,ny,nz)*Math.hypot(dx,dy,dz)) return false; /* only a face seen at a grazing angle */
   var t=(nx*(T[0]-o[0])+ny*(T[1]-o[1])+nz*(T[2]-o[2]))/den; return t>tmin&&t<1-bias; }
-function svgRuns(Z,D,keepWorld){
-  var M=Z.M, fw=D.w, fh=D.h, ids=D.id, bias=SVGBIAS, runs=[], world=keepWorld?[]:null, e=Z.e, f=Z.f, persp=!Z.iso, nE=0;
-  var cache=new Map(), seen=new Int32Array(9), pt=[0,0,0], org=[0,0,0], adj=svgAdj(GEO.faces), nCity=GEO.faces.n;
+/* the facade lines' level of detail on paper P: mm on the sheet per metre at view depth d is k/d (k in Isometric) */
+function svgLod(Z,D,paperId){ var pp=svgPaper(paperId), land=Z.W>=Z.H, pw=land?Math.max(pp.w,pp.h):Math.min(pp.w,pp.h), ph=land?Math.min(pp.w,pp.h):Math.max(pp.w,pp.h);
+  var mmpx=Math.min((pw-2*SVGMARGIN)/D.w,(ph-2*SVGMARGIN)/D.h); return {k:Z.ky*D.h/2*mmpx, iso:Z.iso, mmpx:mmpx, min:SVGFACMM/SVGSTOREY, storey:SVGSTOREY, mm:SVGFACMM, part:SVGPARTMM, face:SVGFACEMM}; }
+function svgPaper(id){ return PAPERS.filter(function(p){ return p.id===id; })[0]||PAPERS[0]; }
+function svgRuns(Z,D,keepWorld,lod){
+  var M=Z.M, fw=D.w, fh=D.h, ids=D.id, bias=SVGBIAS, runs=[], world=keepWorld?[]:null, e=Z.e, f=Z.f, persp=!Z.iso, nE=0, nF=0, nFk=0, nS=0;
+  var dMax=lod?(lod.iso?(lod.k>=lod.min?Infinity:-Infinity):lod.k/lod.min):Infinity; /* a facade line is drawn nearer than this depth */
+  var cache=new Map(), seen=new Int32Array(9), pt=[0,0,0], org=[0,0,0], adj=svgAdj(GEO.faces), nCity=GEO.faces.n, thin=D.thin;
   function face(n){ var T=cache.get(n); if(!T){ var t=D.tri(n); T=t?Array.prototype.slice.call(t):null; cache.set(n,T); } return T; }
   function hidden(sx,sy,p,dp){ var ix=Math.min(fw-1,Math.floor(sx)), iy=Math.min(fh-1,Math.floor(sy)), ns=0;
     if(persp){ org=e; } else { org=[p[0]-f[0]*dp,p[1]-f[1]*dp,p[2]-f[2]*dp]; }
@@ -1020,11 +1053,13 @@ function svgRuns(Z,D,keepWorld){
     for(var dy=-1;dy<=1;dy++){ var y=iy+dy; if(y<0||y>=fh) continue; for(var dx=-1;dx<=1;dx++){ var x=ix+dx; if(x<0||x>=fw) continue; var n=ids[y*fw+x]; if(!n) continue;
       var dup=false; for(var k=0;k<ns;k++) if(seen[k]===n){ dup=true; break; } if(dup) continue; seen[ns++]=n;
       var T=face(n); if(T&&svgHides(T,org,p,bias,tmin)) return true;
-      if(adj&&n<=nCity) for(var a=0;a<3;a++){ var m=adj[(n-1)*3+a]; if(m>0){ var U=face(m); if(U&&svgHides(U,org,p,bias,tmin)) return true; } } } }
+      if(adj&&n<=nCity) for(var a=0;a<3;a++){ var m=adj[(n-1)*3+a]; if(m>0&&!(thin&&thin[m-1])){ var U=face(m); if(U&&svgHides(U,org,p,bias,tmin)) return true; } } } }
     return false; }
-  svgEdges(Z,function(x0,y0,z0,x1,y1,z1,l){ nE++;
+  svgEdges(Z,function(x0,y0,z0,x1,y1,z1,l,fac,mov){ nE++;
     var d0=(x0-e[0])*f[0]+(y0-e[1])*f[1]+(z0-e[2])*f[2], d1=(x1-e[0])*f[0]+(y1-e[1])*f[1]+(z1-e[2])*f[2];
-    var c=svgNear(d0,d1,Z.near,Z.far); if(!c) return;
+    var far=fac?dMax:Z.far; if(fac){ nF++; if(Math.min(d0,d1)>=far) return; nFk++; }
+    if(lod&&!mov){ var Lk=Math.hypot(x1-x0,y1-y0,z1-z0)*lod.k, dE=lod.iso?(Lk>=lod.part?Infinity:-Infinity):Lk/lod.part; if(dE<far) far=dE; if(Math.min(d0,d1)>=far){ nS++; return; } }
+    var c=svgNear(d0,d1,Z.near,Math.min(Z.far,far)); if(!c) return;
     var t0=c[0], t1=c[1], P0=[x0+(x1-x0)*t0,y0+(y1-y0)*t0,z0+(z1-z0)*t0], P1=[x0+(x1-x0)*t1,y0+(y1-y0)*t1,z0+(z1-z0)*t1];
     var da=d0+(d1-d0)*t0, db=d0+(d1-d0)*t1;
     var aw=M[3]*P0[0]+M[7]*P0[1]+M[11]*P0[2]+M[15], bw=M[3]*P1[0]+M[7]*P1[1]+M[11]*P1[2]+M[15];
@@ -1042,7 +1077,7 @@ function svgRuns(Z,D,keepWorld){
       else if(run>=0){ gap++; if(gap>1){ emit(run,last); run=-1; } } }
     if(run>=0) emit(run,last);
   });
-  return {r:runs,w:world,edges:nE};
+  return {r:runs,w:world,edges:nE,fac:nF,facNear:nFk,dMax:dMax,small:nS};
 }
 /* runs that meet end to end become polylines; returns [{l, pts:[x,y,...], runs:[i,...]}] */
 function svgJoin(R){
@@ -1063,7 +1098,7 @@ function svgJoin(R){
 function svgHex(c){ return '#'+c.map(function(v){ var h=Math.round(Math.max(0,Math.min(1,v))*255).toString(16); return h.length<2?'0'+h:h; }).join(''); }
 /* the polylines onto the paper: fitted with a margin, portrait or landscape as the window is, pieces under 0.3 mm dropped */
 function svgWrite(Z,D,lines,paperId){
-  var pp=PAPERS.filter(function(p){ return p.id===paperId; })[0]||PAPERS[0], land=Z.W>=Z.H, pw=land?Math.max(pp.w,pp.h):Math.min(pp.w,pp.h), ph=land?Math.min(pp.w,pp.h):Math.max(pp.w,pp.h);
+  var pp=svgPaper(paperId), land=Z.W>=Z.H, pw=land?Math.max(pp.w,pp.h):Math.min(pp.w,pp.h), ph=land?Math.min(pp.w,pp.h):Math.max(pp.w,pp.h);
   var x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;
   lines.forEach(function(L){ for(var j=0;j<L.pts.length;j+=2){ var x=L.pts[j], y=D.h-L.pts[j+1]; if(x<x0)x0=x; if(x>x1)x1=x; if(y<y0)y0=y; if(y>y1)y1=y; } });
   if(x0>x1){ x0=0;y0=0;x1=D.w;y1=D.h; }
@@ -1086,12 +1121,17 @@ function exportSVG(o){
   var ready=opt.tex&&GEO.faces?Promise.resolve():setTex(true,true);
   return ready.then(function(){ return new Promise(function(res){ requestAnimationFrame(function(){ setTimeout(res,30); }); }); }).then(function(){
     if(!GEO.faces) throw new Error('the solids did not load');
-    var Z=freezeView(), D=facePass(Z); SVGLAST={Z:Z,D:D}; var R=svgRuns(Z,D,!!o.world), lines=svgJoin(R), out=svgWrite(Z,D,lines,o.paper||$('s-paper').value);
+    var paper=o.paper||$('s-paper').value, Z=freezeView(); if(o.long) Z.long=o.long;
+    var fbs=svgFbSize(Z), lod=svgLod(Z,{w:fbs[0],h:fbs[1]},paper); if(o.part!=null) lod.part=o.part; if(o.facmm!=null) lod.min=o.facmm/SVGSTOREY; if(o.face!=null) lod.face=o.face;
+    if(!o.nolod) Z.lod=lod; var D=facePass(Z); SVGLAST={Z:Z,D:D};
+    var R=svgRuns(Z,D,!!o.world,o.nolod?null:lod), lines=svgJoin(R), out=svgWrite(Z,D,lines,paper);
     var ms=performance.now()-t0, small=D.L<SVGLONG?' (depth at '+D.L+' px, the most this browser allows)':'';
-    var msg='SVG saved: '+out.n.toLocaleString()+' lines, '+out.ink.toFixed(1)+' m of ink on '+out.paper.name+small;
+    /* the level of detail, said in the toast: what was left out, in the paper's millimetres */
+    var fac=o.nolod?'':'; detail under '+lod.part+' mm on the paper left out'+(!R.fac||R.dMax===Infinity?'':R.facNear?', windows and floor lines only where a storey is '+SVGFACMM+' mm or more':', and windows and floor lines (a storey is under '+SVGFACMM+' mm)');
+    var msg='SVG saved: '+out.n.toLocaleString()+' lines, '+out.ink.toFixed(1)+' m of ink on '+out.paper.name+fac+small;
     if(!o.noSave) save(new Blob([out.svg],{type:'image/svg+xml'}),'corridor-city-'+CITY.id+'.svg');
     toast(msg);
-    var ret={svg:out.svg,msg:msg,n:out.n,ink:out.ink,paper:out.paper.id,mm:out.mm,fb:[D.w,D.h],prec:D.prec,ms:Math.round(ms),edges:R.edges,runs:R.r.length/5,
+    var ret={svg:out.svg,msg:msg,n:out.n,ink:out.ink,paper:out.paper.id,mm:out.mm,fb:[D.w,D.h],prec:D.prec,ms:Math.round(ms),edges:R.edges,runs:R.r.length/5,lod:o.nolod?null:lod,thin:D.nThin,fac:{n:R.fac,near:R.facNear,dMax:R.dMax,small:R.small},
       cam:{e:Z.e,f:Z.f,iso:Z.iso,M:Z.M,near:Z.near,far:Z.far,lay:Z.lay}};
     if(o.world){ var W=[]; out.kept.forEach(function(L){ L.runs.forEach(function(i){ W.push(R.w.slice(i*6,i*6+6).concat([R.r[i*5+4]])); }); }); ret.world=W; }
     return ret;
