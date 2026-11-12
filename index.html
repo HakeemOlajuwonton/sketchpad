@@ -462,7 +462,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v382</a> &mdash; Corridor city: every wall gets something to draw -- in the solid band, windows on every storey of the side and back walls, mullions on ribbon storeys, a lift overrun or tank on every flat roof of 200 m2 or more. Row 326</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v383</a> &mdash; Corridor city: Site 3, a thermal power plant -- coal, gas or nuclear on the airfield's carve: cooling towers as stacked frusta on the hyperboloid, stacks with red aviation bands, boilers, turbine halls, coal yard with conveyor galleries cut at each face, CCGT blocks, reactors, switchyard (queue row 114)</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <section class="fold" id="fold_pick"><h2>Pick engine<span class="cnt"></span></h2>
@@ -3601,7 +3601,7 @@ var SPEC={
     /* row 98 (spec §7): parks and a powerline */
     ['parks','Parks',0,40,1,10,[100,'%']],['pline','Powerline',0,1,1,0],
     /* row 99 (spec §2.1): a site, and the airfield */
-    ['site','Site',0,2,1,0],['sitepct','Site share',10,90,1,50,[1,'%']],['tier','Scale',0,4,1,2],['sscale','Site scale',50,200,1,100,[1,'%']],
+    ['site','Site',0,3,1,0],['sitepct','Site share',10,90,1,50,[1,'%']],['tier','Scale',0,4,1,2],['sscale','Site scale',50,200,1,100,[1,'%']],
     /* row 203 (city-form spec §1) */
     ['form','City form',0,1,1,1],['sprawl','Ragged edge',0,100,1,45,[1,'%']],['corez','Core height',100,400,10,250,[1,'%']],
     ['water','Water',0,3,1,0],['harb','Harbour',0,3,1,2],
@@ -3611,6 +3611,10 @@ var SPEC={
     ['ghost','Ghost',0,12,1,0],['ghostt','Ghost after liftoff',0,15,1,6,[1,' s']],
     /* row 100 (spec §3): the harbour */
     ['berths','Berths',1,40,1,6],['vessels','Vessels',0,100,1,70,[1,'%']],['pierlen','Pier length',0,400,1,0,[1,' m']],['slips','Slip width',0,100,1,50],
+    /* row 114 (town-power spec §1.1): Site 3, a thermal power plant. `plumes`, not §1.1's `steam`: a market
+       row on this engine is drawn by the Night market's content, which reads p.steam for its own stalls */
+    ['ptype','Plant',0,3,1,0],['punits','Units',1,6,1,2],['towers','Cooling towers',0,6,1,2],['pstack','Stacks',0,4,1,1],
+    ['coalyard','Coal yard',0,100,1,60,[1,'%']],['plumes','Plumes',0,100,1,40,[1,'%']],
     /* row 200 (site-frame spec §2): what the isometric view is fitted to */
     ['sfocus','Focus',0,3,1,1],['ftgt','Focus on',0,5,1,0],
     ['width','Road width',4,24,0.5,9,[1,' m']],['pave','Pavement',0,6,0.25,2.5,[1,' m']],
@@ -23853,7 +23857,7 @@ function buildTown(p){
   /* row 99: with a site, its Scale sets the city's length and block depth */
   var SK=townSiteKind(p);
   if(SK){ var STI=SITE_TIERS[townSiteTier(p,SK)], SSC=Math.max(50,Math.min(200,isFinite(p.sscale)?+p.sscale:100))/100;
-    var NL1=Math.round(STI.nlen*SSC), RS1=Math.min(240,STI.rowsp*SSC);
+    var NL1=Math.round((SK===3?PLANT_TYPES.nlen[townSiteTier(p,SK)]:STI.nlen)*SSC), RS1=Math.min(240,STI.rowsp*SSC);
     /* row 200 §1: a near-square plan. The tier set length and block depth and left Rows at
        its knob, so a site's city was 5:1 and drew as a needle */
     p=Object.assign({},p,{nlen:NL1, rowsp:RS1, rows:Math.min(16,Math.max(Math.round(isFinite(p.rows)?+p.rows:4),Math.round(0.6*NL1/RS1)+1))}); }
@@ -23995,6 +23999,11 @@ function buildTown(p){
   if(PKS){ var PKI=PKS.info; STRTINFO+=' · '+PKI.parks.length+' park'+(PKI.parks.length===1?'':'s')+' ('+PKI.pieces+' piece'+(PKI.pieces===1?'':'s')+', '+PKI.trees.length+' trees, '+PKI.lots+' lots'+(PKI.riverLots?' and '+PKI.riverLots+' canal house'+(PKI.riverLots===1?'':'s'):'')+' cleared)'; }
   if(SITE && SITE.harbour){ var HI=SITE.info;
     STRTINFO+=' · harbour, Scale '+HI.tier+': '+(isFinite(HI.water/HI.netArea)?'water '+Math.round(100*HI.water/HI.netArea)+'% of the city, ':'')+HI.boats.length+' boat'+(HI.boats.length===1?'':'s')+', '+HI.ships.length+' ship'+(HI.ships.length===1?'':'s')+(HI.lighthouse?', a lighthouse':'')+'; '+HI.inside+' lots inside removed, '+HI.met+' cut back ('+HI.split+' split, '+HI.dropped+' too small dropped)'+(HI.left.length?'; left out: '+HI.left.join(', '):''); }
+  else if(SITE && SITE.plant){ var PI=SITE.info.plant, PS=function(n,w){ return n+' '+w+(n===1?'':'s'); };
+    STRTINFO+=' · power plant, '+PI.type+', Scale '+PI.tier+': '+Math.round(100*SITE.info.area/SITE.info.netArea)+'% of the city, '+PS(PI.units,PI.type==='gas'?'gas turbine':'unit')+
+      (PI.type==='nuclear'?' ('+PS(PI.domes,'dome')+')':PI.type==='gas'?(PI.hrsg?', '+PS(PI.hrsg,'HRSG'):', a peaker')+(PI.halls?', '+PS(PI.halls,'steam turbine hall'):''):'')+(PI.stacks?', '+PS(PI.stacks,'stack'):'')+', '+
+      (PI.towers?PS(PI.towers,'cooling tower')+(PI.forced?' (no river, so one is forced)':''):PI.mech?PS(PI.mech,'mech-draft bank'):PI.type==='gas'&&!PI.hrsg?'no cooling (a peaker)':'river cooling')+(PI.type==='coal'?', a coal yard':'')+
+      '; '+SITE.info.inside+' lots inside removed'+(PI.left.length?'; left out: '+PI.left.join(', '):''); }
   else if(SITE){ var SI=SITE.info, nr=SI.runways.length;
     STRTINFO+=' · airfield, Scale '+SI.tier+': '+Math.round(100*SI.area/SI.netArea)+'% of the city, '+(nr?nr+' runway'+(nr>1?'s':'')+' '+Math.round(SI.runways[0].L)+' m':'no runway')+', '+
       SI.aircraft.length+' aircraft ('+(STRTTALLY.acDrawn||0)+' drawn), '+SI.hangars+' hangar'+(SI.hangars===1?'':'s')+(SI.tower?', a tower':'')+'; '+SI.inside+' lots inside removed, '+SI.met+' cut back ('+SI.split+' split, '+SI.dropped+' too small dropped), '+
@@ -24550,6 +24559,7 @@ var SALT_RAIL=557, SALT_HWY=563, SALT_GANTRY=599;
 function townWholeOn(p){
   if(!(isFinite(p.form)&&Math.round(+p.form)===1)) return false;
   var s=Math.round(isFinite(p.site)?+p.site:0), n=isFinite(p.nlen)?+p.nlen:320;
+  if(s===3) return false;
   if(!((s===1||s===2)||n>=1000)) return false;
   return Math.round(isFinite(p.rail)?+p.rail:1)===1 || Math.round(isFinite(p.hwy)?+p.hwy:0)===1 || Math.round(isFinite(p.pline)?+p.pline:0)===1;
 }
@@ -26847,9 +26857,95 @@ function fieldTheme(K,FS,info){
   }
   return {dress:function(){}, signsFor:function(){}, furnish:furnish, cars:[], dots:[], poles:[]};
 }
-function townSiteKind(p){ var s=Math.round(isFinite(p.site)?+p.site:0); return s===1||s===2?s:0; }
+/* ROW 114 (docs/specs/2026-10-12-town-power_v3.md §1): A THERMAL POWER PLANT, Site 3. The site is the
+   airfield's carve (rows 99-101: a rectangle on the grid, or at City form 1 one beyond a gap off the
+   streets, Runway heading 0), fence and forecourt; inside it, in place of runway bands, the plant's
+   rows from the far side toward the forecourt: cooling towers, mech-draft cells, the coal yard, the
+   stacks, precipitators, boilers, turbine halls (coal); combined-cycle blocks and their steam turbine
+   halls (gas); reactors and turbine halls (nuclear); then the switchyard and the offices. Each row is
+   a set of containers in the site's own (a, b) frame and every part stands in one of them, the
+   conveyor galleries cut at each container face they cross. PLANT_TYPES is §1.2's ladder: a knob
+   (Units, Cooling towers, Stacks) asks for a count and the Scale's row is its ceiling. */
+var PLANT_TYPES={nlen:[0,800,1500,2400,3500],
+  coal:[null,{units:1,boiler:45,stacks:1,stackH:120,towers:0,towerH:0,mech:1},{units:2,boiler:70,stacks:1,stackH:200,towers:2,towerH:115,mech:0},
+        {units:4,boiler:90,stacks:2,stackH:250,towers:4,towerH:150,mech:0},{units:6,boiler:95,stacks:3,stackH:300,towers:6,towerH:165,mech:0}],
+  gas:[null,{units:1,hrsg:0,stackH:30,steam:0,towers:0,towerH:0,mech:0},{units:1,hrsg:1,stackH:60,steam:1,towers:0,towerH:0,mech:1},
+       {units:2,hrsg:1,stackH:60,steam:1,towers:2,towerH:110,mech:0},{units:6,hrsg:1,stackH:60,steam:2,towers:4,towerH:110,mech:0}],
+  nuclear:[null,null,{units:1,dome:60,towers:2,towerH:150,mech:0},{units:2,dome:60,towers:4,towerH:165,mech:0},{units:4,dome:60,towers:6,towerH:170,mech:0}]};
+var SALT_PLANT=667, SALT_PVAR=671;
+var PLANTK={ptower:1, pmech:1, pyard:1, pstk:1, pprecip:1, pconvc:1, pboil:1, pturb:1, pccgt:1, preact:1, pswitch:1, padmin:1};
+/* Plant 3 (hydro) is row 115's: until then it draws nuclear's neighbour, gas, no -- it clamps to 2 (§1.1) */
+function townPlantType(p){ return Math.max(0,Math.min(2,Math.round(isFinite(p.ptype)?+p.ptype:0))); }
+function townPlantPlan(p,TI){
+  var PT=townPlantType(p), NM=['coal','gas','nuclear'][PT], T=PLANT_TYPES[NM][TI];
+  function kn(k,lo,hi,d){ return Math.max(lo,Math.min(hi,Math.round(isFinite(p[k])?+p[k]:d))); }
+  var units=Math.min(kn('punits',1,6,2),T.units), towers=Math.min(kn('towers',0,6,2),T.towers), forced=false;
+  /* §1.3: with no river (River 0, or City form's water in its place) and no towers a steam plant still
+     needs cooling: one tower where its Scale has towers (the stat line says so); else the Scale's cells */
+  var river=Math.round(isFinite(p.river)?+p.river:1)===1 && townWaterKind(p)===0;
+  if(!towers && !river && T.towers>0){ towers=1; forced=true; }
+  var stacks=NM==='coal'?Math.max(1,Math.min(kn('pstack',0,4,1),T.stacks,units)):NM==='gas'?units:0;
+  var hrsg=NM==='gas'&&T.hrsg?units:0, halls=NM==='gas'?(T.steam?Math.min(T.steam,Math.ceil(units/3)):0):units;
+  var mech=T.mech?Math.max(1,Math.ceil(units/2)):0, domes=NM==='nuclear'?units:0;
+  var H=T.towerH, rb=0.4*H, TD=2*rb+12, rs=NM==='coal'?Math.max(4,0.055*T.stackH):3.5;
+  var WU=NM==='coal'?72:NM==='gas'?40:120, mainA=units*WU, bands=[];
+  if(towers) bands.push({k:'ptowers', w:TD}, {k:'gap', w:10});
+  if(mech) bands.push({k:'pmech', w:26}, {k:'gap', w:8});
+  if(NM==='coal') bands.push({k:'pyard', w:60+12*TI}, {k:'pstkrow', w:2*rs+8}, {k:'pprecip', w:40}, {k:'pboil', w:52}, {k:'pturb', w:38});
+  if(NM==='gas') bands.push({k:'pccgt', w:hrsg?2*rs+60:34}, {k:'gap', w:6}, halls?{k:'psteam', w:34}:{k:'gap', w:0});
+  if(NM==='nuclear') bands.push({k:'preact', w:64}, {k:'pturb', w:42});
+  bands.push({k:'gap', w:10}, {k:'pswitch', w:70});
+  var needA=Math.max(mainA, towers*(TD+8), 260)+80;
+  return {NM:NM, PT:PT, TI:TI, T:T, units:units, towers:towers, forced:forced, stacks:stacks, hrsg:hrsg, halls:halls, mech:mech, domes:domes,
+          rb:rb, TD:TD, rs:rs, WU:WU, mainA:mainA, needA:needA, bands:bands, river:river,
+          coal:NM==='coal'?Math.max(0,Math.min(100,isFinite(p.coalyard)?+p.coalyard:60))/100:0};
+}
+function townPlantLayout(PL,o){
+  var LA=o.LA, LB=o.LB, LBI=o.LBI, B0=o.B0, cont=o.cont, lrect=o.lrect, FOREB=PL.TI>=3?30:12;
+  var info={type:PL.NM, tier:PL.TI, units:PL.units, towers:PL.towers, forced:PL.forced, stacks:PL.stacks, hrsg:PL.hrsg, halls:PL.halls,
+            mech:PL.mech, domes:PL.domes, river:PL.river, left:[], conts:[], towerGeo:[], conv:[], plumes:0, piles:0};
+  var bands=PL.bands.map(function(e){ return {k:e.k, w:e.w}; });
+  function used(){ return bands.reduce(function(s,e){ return s+e.w; },0)+FOREB+B0; }
+  /* what the field cannot hold is left out from the far side and named; a row the plant needs is never dropped */
+  while(used()>LB && (bands[0].k==='ptowers'||bands[0].k==='gap') && !(bands[0].k==='ptowers' && !PL.river)){ var dk=bands.shift().k; if(dk!=='gap') info.left.push(dk==='ptowers'?'cooling towers':'mech-draft cells'); }
+  if(info.left.indexOf('cooling towers')>=0) info.towers=0;
+    var b=Math.max(B0,LBI-FOREB-bands.reduce(function(s,e){ return s+e.w; },0)), BD={};
+  bands.forEach(function(e){ e.b0=b; e.b1=b+e.w; b+=e.w; if(e.k!=='gap') BD[e.k]=e; });
+  var a0=Math.max(1+B0,(LA-PL.mainA)/2), aC=LA/2, i, k;
+  function C(kind,a1,a2,band,extra){ var c=cont(kind,lrect(a1,a2,band.b0,band.b1),Object.assign({lr:[a1,a2,band.b0,band.b1]},extra||{})); info.conts.push({kind:c.kind, poly:c.poly, lr:c.lr}); return c; }
+  if(BD.ptowers){ var NT=info.towers, TW=PL.TD+8, ta=aC-NT*TW/2;
+    for(i=0;i<NT;i++) C('ptower',ta+i*TW+4,ta+i*TW+4+PL.TD,BD.ptowers,{tw:{H:PL.T.towerH, rb:PL.rb, i:i}}); }
+  if(BD.pmech){ var MW=Math.min(70,PL.mainA/info.mech-6);
+    for(i=0;i<info.mech;i++) C('pmech',a0+i*(MW+6),a0+i*(MW+6)+MW,BD.pmech); }
+  var U=[];
+  for(i=0;i<PL.units;i++) U.push(a0+i*PL.WU);
+  if(PL.NM==='coal'){
+    var Y=C('pyard',a0,a0+PL.mainA,BD.pyard,{coal:PL.coal}), per=Math.ceil(PL.units/PL.stacks);
+    U.forEach(function(ua,m){
+      var lane=[ua+44,ua+56], Bo=C('pboil',ua+2,ua+70,BD.pboil,{lane:lane, BH:PL.T.boiler});
+      C('pturb',ua+2,ua+70,BD.pturb,{TH:28+3*PL.TI});
+      C('pprecip',ua+2,ua+42,BD.pprecip);
+      if(m%per===0){ var sc=ua+22, hs=PL.rs+3; C('pstk',sc-hs,sc+hs,BD.pstkrow,{st:{H:PL.T.stackH, rs:PL.rs}}); }
+      /* the conveyor lane: one container from the yard's face to the boiler row's, so a gallery crosses two faces */
+      var Cv=cont('pconvc',lrect(lane[0],lane[1],BD.pyard.b1,BD.pboil.b0),{lr:[lane[0],lane[1],BD.pyard.b1,BD.pboil.b0]}); info.conts.push({kind:Cv.kind, poly:Cv.poly, lr:Cv.lr});
+      Cv.conv={yard:Y, boil:Bo, a:(lane[0]+lane[1])/2};
+    });
+  }
+  if(PL.NM==='gas'){
+    U.forEach(function(ua){ C('pccgt',ua+2,ua+PL.WU-2,BD.pccgt,{hrsg:!!PL.hrsg, st:{H:PL.T.stackH, rs:PL.rs}}); });
+    if(BD.psteam){ var per2=Math.ceil(PL.units/PL.halls); for(i=0;i<PL.halls;i++){ var u0=U[i*per2], u1=U[Math.min(PL.units,(i+1)*per2)-1]+PL.WU;
+      C('pturb',u0+2,u1-2,BD.psteam,{TH:22+2*PL.TI}); } }
+  }
+  if(PL.NM==='nuclear') U.forEach(function(ua){ C('preact',ua+2,ua+PL.WU-2,BD.preact,{R:22, Hc:PL.T.dome-22}); C('pturb',ua+2,ua+PL.WU-2,BD.pturb,{TH:34+2*PL.TI}); });
+  var SWA=Math.min(180,Math.max(120,0.55*PL.mainA)), sa0=a0, ad0=a0+SWA+12, ad1=Math.min(LA-2,ad0+110);
+  C('pswitch',sa0,sa0+SWA,BD.pswitch,{n:Math.max(2,PL.units)});
+  if(ad1-ad0>=60) C('padmin',ad0,ad1,BD.pswitch);
+  return {BS:{rwy:[], twy:[], term:{k:'term', w:1, b0:LBI-FOREB-1, b1:LBI-FOREB}}, b0:LBI-FOREB, s0:a0+60, SW:Math.max(0,PL.mainA-120), info:info, BD:BD, PL:PL, FOREB:FOREB};
+}
+function townSiteKind(p){ var s=Math.round(isFinite(p.site)?+p.site:0); return s===1||s===2||s===3?s:0; }
 /* an airfield is Scale 2-3, a harbour 0-3 (Scale 4, the hub, is row 101's) */
-function townSiteTier(p,kind){ return Math.max(kind===2?0:2,Math.min(4,Math.round(isFinite(p.tier)?+p.tier:2))); }
+function townSiteTier(p,kind){ if(kind===3) return Math.max(townPlantType(p)===2?2:1,Math.min(4,Math.round(isFinite(p.tier)?+p.tier:2)));
+  return Math.max(kind===2?0:2,Math.min(4,Math.round(isFinite(p.tier)?+p.tier:2))); }
 /* a runway's two designators: the +x end lands on the heading, the far end +18 */
 function siteDesig(h){ var n=Math.round(h/10); if(n<=0) n=36; var f=n+18; if(f>36) f-=36; return [n,f]; }
 function townSite(p,G,plans,J,BLK,KIND){
@@ -26863,7 +26959,9 @@ function townSite(p,G,plans,J,BLK,KIND){
   /* row 200 §9: it has a quay road, which Site share does not count either */
   if(KIND===2){ FW=0; }
   var D0a=KIND===2&&TI>=3?(TI>=4?HARB_APRON4:HARB_APRON):0, D0=KIND===2?D0a+RD:0;
-  var HDG=Math.max(0,Math.min(179,isFinite(p.rwyhdg)?+p.rwyhdg:70));
+  var HDG=KIND===3?0:Math.max(0,Math.min(179,isFinite(p.rwyhdg)?+p.rwyhdg:70));
+  /* row 114: a power plant's rows, from its type, Scale and knobs (townPlantPlan) */
+  var PLN=KIND===3?townPlantPlan(p,TI):null;
   var info={tier:TI, pct:PCT, box:BX, netArea:A, inside:0, met:0, kept:0, split:0, dropped:0, low:0, capped:0, slabsGone:0, slabsCut:0, juncGone:0,
             runways:[], aircraft:[], bridges:[], recs:[], strips:[], conts:[], hangars:0, tower:null, windsock:0, left:[], hdg:HDG};
   var RWN=TI===2?1:TI>=4?Math.max(2,Math.min(8,Math.round(isFinite(p.rwys)?+p.rwys:2))):Math.max(1,Math.min(2,Math.round(isFinite(p.rwys)?+p.rwys:2)));
@@ -26871,6 +26969,7 @@ function townSite(p,G,plans,J,BLK,KIND){
   var XWN=0, RRW=null;
   if(TI>=4 && KIND===1){ RRW=townSub(LAY,TI,SALT_RWY); var uXW=RRW(); XWN=RWN<=2?0:RWN===3?1:uXW<0.5?1:2; RWN-=XWN; }
   function bandsOf(nr){
+    if(PLN) return PLN.bands.map(function(e){ return {k:e.k, w:e.w}; });
     var b=[{k:'rwy', w:2*T.strip}, {k:'twy', w:T.twyW}];
     if(TI>=4){ for(var m=1;m<nr;m++) b=b.concat([{k:'rwy', w:2*T.strip}, {k:'twy', w:T.twyW}]); b.push({k:'hubz', w:HUB_ZMIN}); return b; }
     if(nr===2) b=b.concat([{k:'rwy', w:2*T.strip}, {k:'twy', w:T.twyW}]);
@@ -26878,16 +26977,16 @@ function townSite(p,G,plans,J,BLK,KIND){
     return b;
   }
   function sum(b){ return b.reduce(function(s,e){ return s+e.w; },0); }
-  var NEEDA=KIND===2?(TI>=4?HARB_NEED4[0]:HARB_NEED[TI][0]):T.rwyL+2*T.margin, NEEDB=KIND===2?(TI>=4?HARB_NEED4[1]:HARB_NEED[TI][1])+D0:sum(bandsOf(RWN))+RD+FW+10;
+  var NEEDA=KIND===2?(TI>=4?HARB_NEED4[0]:HARB_NEED[TI][0]):PLN?PLN.needA:T.rwyL+2*T.margin, NEEDB=KIND===2?(TI>=4?HARB_NEED4[1]:HARB_NEED[TI][1])+D0:sum(bandsOf(RWN))+RD+FW+10;
   /* ROW 203 §4: WITH City form THE AIRFIELD IS NOT CUT FROM THE GRID. It lies beyond a gap on the side
      Layout picks, an oriented rectangle whose long axis is Runway heading off the streets, its terminal
      side (+b) toward the city's core. M2 below is that frame; every band, stand and paint is laid in it. */
   var ROT=null, FOUT=null;
-  if(G.FORM && KIND===1){ var RS7=townSub(0,LAY,SALT_SITE), uE7=RS7(), uC7=RS7(), top7=uE7<0.5, GAP7=TI>=3?Math.max(300,0.12*G.NLEN):Math.max(120,0.12*G.NLEN);
+  if(G.FORM && (KIND===1||KIND===3)){ var RS7=townSub(0,LAY,SALT_SITE), uE7=RS7(), uC7=RS7(), top7=uE7<0.5, GAP7=TI>=3?Math.max(300,0.12*G.NLEN):Math.max(120,0.12*G.NLEN);
     var TH7=HDG*Math.PI/180, Ax=[Math.cos(TH7),Math.sin(TH7)], Bx=[-Ax[1],Ax[0]];
     /* row 307: the airfield is the share of the network that Site share asks for; the Scale's own runway and bands are the floor.
        Row 316: with Water 1-3 too (v380 kept NEEDB*PCT/0.5 there) */
-    var LA7=NEEDA+6+(TI>=4&&XWN?2*HUB_XWROOM:0), MINB7=sum(bandsOf(RWN))+(TI>=4?HUB_ZW-HUB_ZMIN:0)+(TI>=3?30:12)+6, LB7=Math.max(MINB7,PCT*A/LA7); info.minArea=LA7*MINB7;
+    var LA7=PLN?Math.max(NEEDA+6,Math.sqrt(PCT*A*1.6)):NEEDA+6+(TI>=4&&XWN?2*HUB_XWROOM:0), MINB7=sum(bandsOf(RWN))+(TI>=4&&!PLN?HUB_ZW-HUB_ZMIN:0)+(TI>=3?30:12)+6, LB7=Math.max(MINB7,PCT*A/LA7); info.minArea=LA7*MINB7;
     /* ROW 204 §A4: with the lines on, the gap grows with the airfield's outline L x W: a hub does not sit on the city */
     if(townWholeOn(p)) GAP7=Math.max(300,0.12*G.NLEN,0.35*Math.max(LA7,LB7)+0.4*Math.min(LA7,LB7));
     var HX7=(Math.abs(Ax[0])*LA7+Math.abs(Bx[0])*LB7)/2, HY7=(Math.abs(Ax[1])*LA7+Math.abs(Bx[1])*LB7)/2;
@@ -26993,7 +27092,7 @@ function townSite(p,G,plans,J,BLK,KIND){
   pplans.push(corridorPlan(Object.assign({},p,{len:hx[1]-hx[0], bend:0, width:G.XW}),STHEMES.town,400,
     {line:{x:hx[0], y:(yR[0]+yR[1])/2, h:0}, sGaps:hg, noLots:true}));
   /* row 200 §9: the fence has a gate where each street meets the road (a harbour has no fence) */
-  FENCEX=KIND===1?cont('fence',rect(hx[0],yF[0],hx[1],yF[1]),{along:'x', gaps:[]}):null;
+  FENCEX=KIND!==2?cont('fence',rect(hx[0],yF[0],hx[1],yF[1]),{along:'x', gaps:[]}):null;
   if(xE!==null){
     for(j=0;j<G.ROWS;j++){ var v=G.VY[j];
       if(v-G.KRS[j]<vy[0]+1e-6 || v+G.KRS[j]>vy[1]-1e-6) continue;
@@ -27002,7 +27101,7 @@ function townSite(p,G,plans,J,BLK,KIND){
     pplans.push(corridorPlan(Object.assign({},p,{len:vy[1]-vy[0], bend:0, width:G.XW}),STHEMES.town,401,
       {line:{x:(xR[0]+xR[1])/2, y:vy[0], h:Math.PI/2}, sGaps:vg, noLots:true}));
     cont('pjunction',rect(xR[0],yR[0],xR[1],yR[1]),{road:2, corner:true});
-    FENCEY=KIND===1?cont('fence',rect(xF[0],top?yE+RD+FW:BX[1],xF[1],top?BX[3]:yE-RD-FW),{along:'y', gaps:[]}):null;
+    FENCEY=KIND!==2?cont('fence',rect(xF[0],top?yE+RD+FW:BX[1],xF[1],top?BX[3]:yE-RD-FW),{along:'y', gaps:[]}):null;
   }
   info.gates=[]; info.meets=hg.length+vg.length;
   if(KIND===2) { var HRB=townHarbour({p:p, G:G, R:R, top:top, mode:mode, xE:xE, yE:yE, TI:TI, info:info, bbox2:bbox2, LAY:LAY, D0:D0a, RDq:RD, pconts:conts,
@@ -27021,6 +27120,9 @@ function townSite(p,G,plans,J,BLK,KIND){
   info.field=U; info.LA=LA; info.LB=LB;
   var nr=RWN, bands, stands=[], HUBZ=null;
   FIELD: {
+  /* row 114: a plant's rows in place of the runways, against the forecourt like the airfield's bands */
+  if(PLN){ var PLY=townPlantLayout(PLN,{LA:LA, LB:LB, B0:ROT?1:0, LBI:ROT?LB-1:LB, cont:cont, lrect:lrect});
+    var BS=PLY.BS, b0=PLY.b0, s0=PLY.s0, NS=1, SW=PLY.SW, FOREB=PLY.FOREB; break FIELD; }
   if(TI>=4){ HUBZ=townHub({p:p, T:T, LA:LA, LB:LB, LBI:ROT?LB-1:LB, B0:ROT?1:0, RWN:RWN, XWN:XWN, RRW:RRW, HDG:HDG, top:top, LAY:LAY, TI:TI, info:info, cont:cont, lrect:lrect, M2:M2, stands:stands});
     var BS=HUBZ.BS, b0=HUBZ.b0, s0=HUBZ.s0, NS=1, SW=HUBZ.TW, SA=HUBZ.SA, SB=HUBZ.SB, FOREB=30; break FIELD; }
   for(;;){ bands=bandsOf(nr); if(sum(bands)<=LB || nr===1) break; nr--; }
@@ -27061,7 +27163,7 @@ function townSite(p,G,plans,J,BLK,KIND){
   }
   /* the tower: beside the terminal, 14 m square; never on an airstrip (VFR) */
   var TB=BS.term||BS.stand;
-  if(TB && TI>=3 && Math.round(isFinite(p.tower)?+p.tower:1)===1){
+  if(TB && !PLN && TI>=3 && Math.round(isFinite(p.tower)?+p.tower:1)===1){
     var ta=s0-40-14, tb0=TB.b0+(TB.w-14)/2; if(ta>SA) cont('tower',lrect(ta,ta+14,tb0,tb0+14),{lr:[ta,ta+14,tb0,tb0+14]});
   }
   if(BS.twy[0]){ var wa=aC-rL/2+150, wb=BS.twy[BS.twy.length-1];
@@ -27103,6 +27205,7 @@ function townSite(p,G,plans,J,BLK,KIND){
   info.conts=conts.map(function(C){ return {kind:C.kind, poly:C.poly, lr:C.lr, ac:C.ac||null, slot:C.slot}; });
   var SITE={info:info, conts:conts, M2:M2, T:T, TI:TI, top:top, U:U, stands:stands, LAY:LAY, p:p,
             blocksOut:BLK.filter(function(b){ return !(b.rect[0]<R[2] && b.rect[2]>R[0] && b.rect[1]<R[3] && b.rect[3]>R[1]); })};
+  if(PLN){ SITE.plant=PLY; info.plant=PLY.info; }
   SITE.plan={ix:-1, p:p, theme:{key:'town', content:function(K){ return siteTheme(K,SITE); }}, sGaps:[], hasGap:false, Z0:0,
              conts:conts, lots:[], slabsBySide:{'1':[],'-1':[]}, dropped:0, pushed:0};
   SITE.plans=pplans.concat([SITE.plan]);
@@ -27113,10 +27216,18 @@ function townSite(p,G,plans,J,BLK,KIND){
   /* row 200 §2: Focus 1 the site, 2 terminal + stands + the runway abeam them, 3 one
      aircraft and its bridge, each a plan rectangle */
   /* row 307: the middle of the tightest three stands holding an aircraft (fewer: of what there is), or null */
-  SITE.standsAim=function(){ var A=stands.filter(function(C){ return !!C.ac; }).map(function(C){ return townMid(C.poly); }); if(!A.length) return null;
+  SITE.standsAim=function(){
+    /* row 114: a plant's middle is its switchyard; Focus 1 at a Map scale looks at its first unit's stack, dome or HRSG beside the nearest cooling tower */
+    if(PLN){ var U1=conts.filter(function(C){ return C.kind==='pstk'||C.kind==='preact'||C.kind==='pccgt'||C.kind==='pboil'; })[0]; if(!U1) return null;
+      var u=townMid(U1.poly), TW=conts.filter(function(C){ return C.kind==='ptower'; }).sort(function(x,y){ var a=townMid(x.poly), b=townMid(y.poly); return Math.hypot(a[0]-u[0],a[1]-u[1])-Math.hypot(b[0]-u[0],b[1]-u[1]); })[0];
+      return TW?townMid([u,townMid(TW.poly)]):u; }
+    var A=stands.filter(function(C){ return !!C.ac; }).map(function(C){ return townMid(C.poly); }); if(!A.length) return null;
     var best=null, bd=1e18; A.forEach(function(c){ var o=A.slice().sort(function(u,v){ return Math.hypot(u[0]-c[0],u[1]-c[1])-Math.hypot(v[0]-c[0],v[1]-c[1]); }).slice(0,3), r=Math.hypot(o[o.length-1][0]-c[0],o[o.length-1][1]-c[1]); if(r<bd){ bd=r; best=o; } });
     return townMid(best); };
   SITE.frameOf=function(k){
+    /* row 114: Focus 2 the plant's rows without its towers, Focus 3 one cooling tower */
+    if(PLN && k>=2){ var PK=conts.filter(function(C){ return k===3?C.kind==='ptower':PLANTK[C.kind] && C.kind!=='ptower'; }).slice(0,k===3?1:1e9);
+      if(PK.length) return townGrow(townBbox([].concat.apply([],PK.map(function(C){ return C.poly; }))),k===3?0.15:0.05); }
     if(k===1){ var UA=conts.filter(function(C){ return C.kind!=='pjunction' && C.kind!=='fence'; }); if(!UA.length) return townGrow(R,0.08);
       var bu=townBbox([].concat.apply([],UA.map(function(C){ return C.poly; }))); return townGrow(bu,0.08); }
     var C2=conts.filter(function(C){ return C.kind==='stand' || C.kind==='term'; });
@@ -27441,8 +27552,163 @@ function siteTheme(K,SITE){
     paint(C,a-pave/2,bP,a-pave/2,bS,COLK,'twyedge'); paint(C,a+pave/2,bP,a+pave/2,bS,COLK,'twyedge');
     [10,10.9].forEach(function(o){ paint(C,a-pave/2,bS-o,a+pave/2,bS-o,COLY,'hold'); });
   }
+  /* ROW 114: THE PLANT'S PARTS, one container at a time (townPlantLayout). Concrete and steel are paper
+     with black edges, coal is black hatch, the stack's aviation bands red, transformers blue (§1.6) */
+  var COLR='#d42a2a', PRV=SITE.plant?townSub(SITE.LAY,TI,SALT_PVAR):null, PLUME=Math.max(0,Math.min(100,isFinite(p.plumes)?+p.plumes:40))/100;
+  var SUNA=(isFinite(p.sun)?+p.sun:300)*Math.PI/180, SUN=[Math.cos(SUNA),Math.sin(SUNA)];
+  function ring(ac,bc,r,m,ph,z){ var R=[]; for(var k=0;k<m;k++){ var t=ph+2*Math.PI*k/m; R.push([ac+r*Math.cos(t),bc+r*Math.sin(t),z]); } return R; }
+  function lfrus(ac,bc,r0,r1,m,ph,z0,z1){ var lo=ring(ac,bc,r0,m,ph,z0), hi=ring(ac,bc,r1,m,ph,z1), L=[lo,hi], k;
+    for(k=0;k<m;k++){ var k2=(k+1)%m; L.push([lo[k],lo[k2],hi[k2],hi[k]]); } return solidL(L); }
+  /* a rectangle's frustum: the bottom inset by ib (a coal pile, a hopper upside down when ib<0 is the top's) */
+  function lrfrus(a0,a1,b0,b1,ib,it,z0,z1){ var lo=[[a0+ib,b0+ib,z0],[a1-ib,b0+ib,z0],[a1-ib,b1-ib,z0],[a0+ib,b1-ib,z0]], hi=[[a0+it,b0+it,z1],[a1-it,b0+it,z1],[a1-it,b1-it,z1],[a0+it,b1-it,z1]], L=[lo,hi], k;
+    for(k=0;k<4;k++){ var k2=(k+1)%4; L.push([lo[k],lo[k2],hi[k2],hi[k]]); } return solidL(L); }
+  /* the face of P whose outward normal points along the frame's (da, db, dz) */
+  function faceTo(P,da,db,dz){ var o=M2(0,0), q=M2(da,db), d=[q[0]-o[0],q[1]-o[1],dz||0], L=Math.hypot(d[0],d[1],d[2]), fi=-1;
+    P.faces.forEach(function(f,k){ if(fi<0 && (f.n[0]*d[0]+f.n[1]*d[1]+f.n[2]*d[2])/L>0.9) fi=k; }); return fi; }
+  function fline(P,fi,a,b,col,kind){ if(fi>=0) P.lines.push({a:a, b:b, f0:fi, f1:fi, col:col, kind:kind}); }
+  /* a thin strut from A to B (world), w wide, its ends held 6% short so struts that meet at a joint do not cross */
+  function strut(A,B,w){ var d=[B[0]-A[0],B[1]-A[1],B[2]-A[2]], L=Math.hypot(d[0],d[1],d[2]), A2=[A[0]+d[0]*0.06,A[1]+d[1]*0.06,A[2]+d[2]*0.06], ea=[d[0]*0.88,d[1]*0.88,d[2]*0.88];
+    var hl=Math.hypot(d[0],d[1]), u=hl>1e-6?[-d[1]/hl,d[0]/hl,0]:[1,0,0], v=[u[1]*d[2]-u[2]*d[1],u[2]*d[0]-u[0]*d[2],u[0]*d[1]-u[1]*d[0]], vl=Math.hypot(v[0],v[1],v[2]);
+    v=[v[0]/vl*w,v[1]/vl*w,v[2]/vl*w]; u=[u[0]*w,u[1]*w,u[2]*w];
+    return K.para([A2[0]-u[0]/2-v[0]/2,A2[1]-u[1]/2-v[1]/2,A2[2]-u[2]/2-v[2]/2],ea,u,v); }
+  /* lines that hide nothing: a hides-false sliver at z, its top and bottom faces carrying them */
+  function ghostLines(C,segs,col,kind,z){ if(!segs.length) return null; var xs=[], ys=[];
+    segs.forEach(function(s){ xs.push(s[0][0],s[1][0]); ys.push(s[0][1],s[1][1]); });
+    var P=prismN([[Math.min.apply(null,xs),Math.min.apply(null,ys)],[Math.max.apply(null,xs),Math.min.apply(null,ys)],[Math.max.apply(null,xs),Math.max.apply(null,ys)],[Math.min.apply(null,xs),Math.max.apply(null,ys)]],z,z+0.01);
+    P.lines=segs.map(function(s){ return {a:s[0], b:s[1], f0:0, f1:1, col:col, kind:kind}; }); P.hides=false; P.seeThru=true; return own(P,C,kind,col,'furn'); }
+  /* §1.5: a plume -- 3 to 5 widening rings above the lip, dashed, occluding nothing; inside the container */
+  function plume(C,ac,bc,r0,z0,rmax){ var u=PRV(), un=PRV(); if(u>=PLUME) return; var n=3+Math.floor(un*3), segs=[], i, k;  /* two draws whatever Plumes says, so it moves nothing else */
+    for(i=0;i<n;i++){ var r=Math.min(rmax,r0*(1.05+0.18*i)), z=z0+4+i*Math.max(3,0.6*r0), m=36;
+      for(k=0;k<m;k+=2){ var t0=2*Math.PI*k/m, t1=2*Math.PI*(k+1)/m; segs.push([W3(ac+r*Math.cos(t0),bc+r*Math.sin(t0),z),W3(ac+r*Math.cos(t1),bc+r*Math.sin(t1),z)]); } }
+    ghostLines(C,segs,COLK,'plume',z0+4); info.plant.plumes++; }
+  function lit(ac,bc,t){ var o=M2(ac,bc), q=M2(ac+Math.cos(t),bc+Math.sin(t)), n=[q[0]-o[0],q[1]-o[1]]; return n[0]*SUN[0]+n[1]*SUN[1]>0; }
+  /* meridians on a round band: on its lit half every third facet edge, on its shade half every edge and the
+     facet's middle (a hatch), each only where the lines stand 0.7 mm apart on the sheet */
+  function meridians(P,ac,bc,r0,r1,m,ph,z0,z1){
+    var mid=W3(ac+r0,bc,(z0+z1)/2), ch=2*Math.PI*Math.max(r0,r1)/m, tg=M2(ac+r0,bc+1), og=M2(ac+r0,bc), g=paperGap(mid,[0,0,1],[tg[0]-og[0],tg[1]-og[1],0])*ch;
+    for(var k=0;k<m;k++){ var t=ph+2*Math.PI*k/m, tm=ph+2*Math.PI*(k+0.5)/m, sh=!lit(ac,bc,t), A=W3(ac+r0*Math.cos(t),bc+r0*Math.sin(t),z0), B=W3(ac+r1*Math.cos(t),bc+r1*Math.sin(t),z1);
+      if(sh ? g>=0.7 : (k%3===0 && 3*g>=0.7)) P.lines.push({a:A, b:B, f0:2+(k+m-1)%m, f1:2+k, col:COLK, kind:'meridian'});
+      if(sh && g/2>=0.7) P.lines.push({a:W3(ac+r0*Math.cos(tm)*Math.cos(Math.PI/m),bc+r0*Math.sin(tm)*Math.cos(Math.PI/m),z0), b:W3(ac+r1*Math.cos(tm)*Math.cos(Math.PI/m),bc+r1*Math.sin(tm)*Math.cos(Math.PI/m),z1), f0:2+k, f1:2+k, col:COLK, kind:'meridian'}); } }
+  /* §1.5 THE COOLING TOWER: a hyperboloid narrows to a throat and widens again, so it is not convex. Its
+     profile r(z) = rt*sqrt(1 + ((z - zt)/a)^2) through the base rb, the throat 0.58 rb at 0.78 H and the lip
+     0.64 rb at H -- two half-hyperbolas (a below the throat, another above), since one a cannot pass all three
+     with the throat at its waist -- cut into 8 frusta below the throat and 3 above, each between two rings
+     on the true profile; the open colonnade below it a V of struts every facet */
+  function ptower(C){
+    var e=C.lr, ac=(e[0]+e[1])/2, bc=(e[2]+e[3])/2, H=C.tw.H, rb=C.tw.rb, zt=0.78*H, rt=0.58*rb, rtop=0.64*rb, LEG=Math.max(6,0.055*H), m=24, ph=Math.PI/m;
+    var A1=zt/Math.sqrt(Math.pow(rb/rt,2)-1), A2=(H-zt)/Math.sqrt(Math.pow(rtop/rt,2)-1);
+    function R(z){ return rt*Math.sqrt(1+Math.pow((z-zt)/(z<zt?A1:A2),2)); }
+    var Z=[], k; for(k=0;k<=8;k++) Z.push(LEG+(zt-LEG)*k/8); for(k=1;k<=3;k++) Z.push(zt+(H-zt)*k/3);
+    var geo={c:M2(ac,bc), H:H, rb:rb, rt:rt, rtop:rtop, zt:zt, LEG:LEG, A1:A1, A2:A2, m:m, ph:ph, bands:[], legs:0, frame:[M2(ac,bc),M2(ac+1,bc),M2(ac,bc+1)]};
+    for(k=0;k+1<Z.length;k++){ var P=lfrus(ac,bc,R(Z[k]),R(Z[k+1]),m,ph,Z[k],Z[k+1]); P.crease=0.3; meridians(P,ac,bc,R(Z[k]),R(Z[k+1]),m,ph,Z[k],Z[k+1]);
+      own(P,C,'tband',COLK); geo.bands.push({z0:Z[k], z1:Z[k+1], r0:R(Z[k]), r1:R(Z[k+1]), rec:info.recs.length-1}); }
+    var rL=R(LEG);
+    for(k=0;k<m;k++){ var t0=ph+2*Math.PI*k/m, t1=t0+Math.PI/m, t2=ph+2*Math.PI*(k+1)/m;
+      var B0=W3(ac+rb*Math.cos(t0),bc+rb*Math.sin(t0),0), Tp=W3(ac+rL*Math.cos(t1),bc+rL*Math.sin(t1),LEG-0.05), B1=W3(ac+rb*Math.cos(t2),bc+rb*Math.sin(t2),0);
+      own(strut(B0,Tp,0.45),C,'tleg',COLK); own(strut(Tp,B1,0.45),C,'tleg',COLK); geo.legs+=2; }
+    info.plant.towerGeo.push(geo);
+    plume(C,ac,bc,rtop,H,(e[1]-e[0])/2-1);
+  }
+  /* a chimney: a 24-sided frustum, bands near the top, two red aviation rings, and its plume */
+  function stackAt(C,ac,bc,H,rs){ var P=lfrus(ac,bc,rs,0.62*rs,24,Math.PI/24,0,H); P.crease=0.3; meridians(P,ac,bc,rs,0.62*rs,24,Math.PI/24,0,H);
+    function rz(z){ return rs+(0.62*rs-rs)*z/H; }
+    [[H-3,COLK,'stackband'],[H-0.18*H,COLR,'aviation'],[H-0.18*H-4,COLR,'aviation'],[H-0.36*H,COLR,'aviation'],[H-0.36*H-4,COLR,'aviation']].forEach(function(z){
+      for(var k=0;k<24;k++){ var t0=Math.PI/24+2*Math.PI*k/24, t1=t0+2*Math.PI/24, r=rz(z[0]);
+        P.lines.push({a:W3(ac+r*Math.cos(t0),bc+r*Math.sin(t0),z[0]), b:W3(ac+r*Math.cos(t1),bc+r*Math.sin(t1),z[0]), f0:2+k, f1:2+k, col:z[1], kind:z[2]}); } });
+    own(P,C,'stack',COLK); info.plant.stackRecs=(info.plant.stackRecs||0)+1;
+    plume(C,ac,bc,0.62*rs,H,Math.min((C.lr[1]-C.lr[0])/2,(C.lr[3]-C.lr[2])/2)-0.5); }
+  function boxV(P,fi,a0,a1,b0,b1,z0,z1,step,col,kind){ /* vertical lines on a face along a (b fixed) or b */
+    var n=Math.floor((a1-a0+b1-b0)/step); for(var k=1;k<n;k++){ var f=k/n, A=W3(a0+(a1-a0)*f,b0+(b1-b0)*f,z0), B=W3(a0+(a1-a0)*f,b0+(b1-b0)*f,z1); fline(P,fi,A,B,col,kind); } }
+  function plantCont(C){
+    var e=C.lr, ac=(e[0]+e[1])/2, bc=(e[2]+e[3])/2, k, P;
+    if(C.kind==='ptower'){ ptower(C); return; }
+    if(C.kind==='pstk'){ stackAt(C,ac,bc,C.st.H,C.st.rs); return; }
+    if(C.kind==='pmech'){ P=lbox(e[0]+2,e[1]-2,e[2]+3,e[3]-3,0,10); own(P,C,'mech',COLK);
+      var nf=Math.max(1,Math.floor((e[1]-e[0]-4)/10)); for(k=0;k<nf;k++){ var fa=e[0]+2+(e[1]-e[0]-4)*(k+0.5)/nf, F=lngon(fa,bc,3.8,16,0,10,13.5); F.crease=0.5; own(F,C,'fanstack',COLK); } return; }
+    if(C.kind==='pboil'){ var BH=C.BH, ua=e[0]-2, lb=C.lane;
+      P=lbox(ua+4,ua+42,e[2]+3,e[3]-3,0,0.8*BH); var fi=faceTo(P,-1,0,0); boxV(P,fi,ua+4,ua+4,e[2]+3,e[3]-3,0,0.8*BH,6,COLK,'steelframe'); own(P,C,'boiler',COLK);
+      own(lbox(ua+10,ua+36,e[2]+9,e[3]-9,0.8*BH,BH),C,'boilertop',COLK);
+      own(lbox(lb[0]-1,lb[1]+1,e[2]+3,e[2]+14,0,0.6*BH),C,'bunker',COLK); return; }
+    if(C.kind==='pturb'){ var TH=C.TH; P=lbox(e[0]+2,e[1]-2,e[2]+3,e[3]-3,0,TH); var fg=faceTo(P,-1,0,0);
+      fline(P,fg,W3(e[0]+2,e[2]+3,TH-4),W3(e[0]+2,e[3]-3,TH-4),COLK,'cranerail'); own(P,C,'turbine',COLK);
+      var lo=[[e[0]+6,bc-3,TH],[e[0]+6,bc+3,TH],[e[0]+6,bc,TH+3]], hi=[[e[1]-6,bc-3,TH],[e[1]-6,bc+3,TH],[e[1]-6,bc,TH+3]], L=[lo,hi];
+      for(k=0;k<3;k++){ var k2=(k+1)%3; L.push([lo[k],lo[k2],hi[k2],hi[k]]); } own(solidL(L),C,'monitor',COLK); return; }
+    if(C.kind==='pprecip'){ own(lbox(e[0]+2,e[0]+24,e[2]+5,e[3]-5,12,30),C,'precip',COLK);
+      for(k=0;k<3;k++){ var h0=e[0]+2+k*22/3; own(lrfrus(h0,h0+22/3,e[2]+5,e[3]-5,2.6,0,4,12),C,'hopper',COLK); }
+      /* half a facet turned: a vertical facet faces the hoppers, the plane that separates them (PP7: no face plane did, at a 0 turn) */
+      var A=lngon(e[0]+32,bc,6.5,16,Math.PI/16,0,35); A.crease=0.5; own(A,C,'fgd',COLK); return; }
+    if(C.kind==='pconvc'){ conveyor(C); return; }
+    if(C.kind==='pyard'){ coalYard(C); return; }
+    if(C.kind==='pccgt'){
+      if(!C.hrsg){ own(lbox(e[0]+3,e[1]-3,e[2]+3,e[2]+18,0,12),C,'gthall',COLK); stackAt(C,ac,e[2]+26,C.st.H,3.2); return; }
+      own(lbox(e[0]+6,e[1]-6,e[2]+2,e[2]+14,0,9),C,'gt',COLK);
+      P=lbox(e[0]+4,e[1]-4,e[2]+18,e[2]+48,0,30); var fh=faceTo(P,-1,0,0), fh2=faceTo(P,1,0,0);
+      for(k=1;k<10;k++){ fline(P,fh,W3(e[0]+4,e[2]+18,3*k),W3(e[0]+4,e[2]+48,3*k),COLK,'hrsgband'); fline(P,fh2,W3(e[1]-4,e[2]+18,3*k),W3(e[1]-4,e[2]+48,3*k),COLK,'hrsgband'); }
+      own(P,C,'hrsg',COLK); stackAt(C,ac,e[2]+48+(e[3]-e[2]-48)/2,C.st.H,C.st.rs); return; }
+    if(C.kind==='preact'){ var Rr=C.R, Hc=C.Hc, rcx=e[0]+30;
+      P=lfrus(rcx,bc,Rr,Rr,24,Math.PI/24,0,Hc); P.crease=0.3; meridians(P,rcx,bc,Rr,Rr,24,Math.PI/24,0,Hc); own(P,C,'containment',COLK);
+      var fh3=-1; P.faces.forEach(function(f,q){ if(fh3<0 && q>=2){ var o=M2(rcx,bc), g=M2(rcx,bc-1), d=[g[0]-o[0],g[1]-o[1]]; if(f.n[0]*d[0]+f.n[1]*d[1]>0.97) fh3=q; } });
+      if(fh3>=0){ var hz=[2,9], hw=3.2; [[-hw,hz[0],hw,hz[0]],[hw,hz[0],hw,hz[1]],[hw,hz[1],-hw,hz[1]],[-hw,hz[1],-hw,hz[0]]].forEach(function(s){ fline(P,fh3,W3(rcx+s[0],bc-Rr*Math.cos(Math.PI/24),s[1]),W3(rcx+s[2],bc-Rr*Math.cos(Math.PI/24),s[3]),COLK,'hatch'); }); }
+      var ph4=[0,0.35,0.7,1.05,1.4], q; for(q=0;q+1<ph4.length;q++){ var D=lfrus(rcx,bc,Rr*Math.cos(ph4[q]),Rr*Math.cos(ph4[q+1]),24,Math.PI/24,Hc+Rr*Math.sin(ph4[q]),Hc+Rr*Math.sin(ph4[q+1])); D.crease=0.45; own(D,C,'dome',COLK); }
+      own(lbox(e[0]+56,e[0]+80,bc-12,bc+12,0,25),C,'fuelbldg',COLK); own(lbox(e[0]+84,e[1]-4,e[2]+4,e[3]-4,0,20),C,'auxbldg',COLK); return; }
+    if(C.kind==='pswitch'){ var n=C.n, tw=(e[1]-e[0]-10)/n, gb=[e[2]+26,e[2]+48], segs=[], g;
+      for(k=0;k<n;k++){ var ta=e[0]+6+k*tw; P=lbox(ta,ta+9,e[2]+6,e[2]+13,0,5.5); var fr=faceTo(P,0,-1,0); boxV(P,fr,ta,ta+9,e[2]+6,e[2]+6,0.5,5,1.2,COLB,'fins'); own(P,C,'transformer',COLB);
+        for(g=0;g<3;g++){ var B=lfrus(ta+2+g*2.5,e[2]+9.5,0.45,0.22,8,0,5.5,8.5); B.crease=0.8; own(B,C,'bushing',COLB); } }
+      var NG=Math.max(2,Math.floor((e[1]-e[0]-10)/24)+1);
+      for(g=0;g<NG;g++){ var ga=e[0]+5+g*(e[1]-e[0]-10)/(NG-1);
+        own(lbox(ga-0.5,ga+0.5,gb[0]-0.5,gb[0]+0.5,0,14),C,'gantry',COLK); own(lbox(ga-0.5,ga+0.5,gb[1]-0.5,gb[1]+0.5,0,14),C,'gantry',COLK);
+        own(lbox(ga-0.6,ga+0.6,gb[0]-0.5,gb[1]+0.5,14,15.2),C,'gantrybeam',COLK); }
+      for(g=0;g<3;g++){ var bb=gb[0]+4+g*(gb[1]-gb[0]-8)/2; segs.push([W3(e[0]+5,bb,12.5),W3(e[1]-5,bb,12.5)]); }
+      ghostLines(C,segs,COLK,'busbar',12.5);
+      var DE=lfrus(e[1]-6,e[3]-8,2.4,0.8,4,Math.PI/4,0,32); DE.hides=false; DE.seeThru=true; own(DE,C,'deadend',COLK); /* a lattice: it hides nothing, as row 98's pylons (PP7) */
+      paint(C,e[0]+4,e[3]-2,e[1]-4,e[3]-2,COLR,'warning'); return; }
+    if(C.kind==='padmin'){ own(lbox(e[0]+4,e[0]+10,e[3]-12,e[3]-6,0,4),C,'gatehouse',COLK);
+      P=lbox(e[0]+16,e[0]+56,e[2]+6,e[2]+20,0,12); var fw=faceTo(P,0,1,0); for(k=1;k<3;k++) fline(P,fw,W3(e[0]+16,e[2]+20,4*k),W3(e[0]+56,e[2]+20,4*k),COLK,'floor'); own(P,C,'admin',COLK);
+      for(var x=e[0]+62;x+2.5<=e[1]-4;x+=2.5) paint(C,x,e[2]+8,x,e[2]+13,COLK,'bay');
+      paint(C,e[0]+62,e[2]+8,e[1]-4,e[2]+8,COLK,'bay'); return; }
+  }
+  /* the coal yard: two rows of stockpiles either side of the stacker-reclaimer's rail, the share of the
+     yard Coal yard asks for (salt 709 is the isofactory's, so the pile rolls are SALT_PVAR's); each pile a
+     rectangle's frustum, its top hatched black at a pitch held on the sheet; the machine's boom over them */
+  function coalYard(C){
+    var e=C.lr, bc=(e[2]+e[3])/2, L=e[1]-e[0]-12, PW=(e[3]-e[2])/2-8, h=Math.min(14,PW*0.3), cov=C.coal, k;
+    paint(C,e[0]+4,bc-2,e[1]-4,bc-2,COLK,'rail'); paint(C,e[0]+4,bc+2,e[1]-4,bc+2,COLK,'rail');
+    [-1,1].forEach(function(sd){ var left=L*cov, a=e[0]+6;
+      while(left>8){ var len=Math.min(left,40+PRV()*50); if(a+len>e[1]-6) break;
+        /* a short pile is lower: its sloped ends meet a 2 m ridge at most, so the frustum's top never inverts (PP4) */
+        var b0=sd<0?e[2]+3:bc+5, b1=sd<0?bc-5:e[3]-3, hp=Math.min(h,(Math.min(len,b1-b0)-2)/2.66);
+        if(hp<1){ a+=len+6; left-=len+6; continue; }
+        var P=lrfrus(a,a+len,b0,b1,0,1.33*hp,0,hp), g=gapB(a+len/2,(b0+b1)/2), pitch=Math.max(1,0.7/Math.max(1e-6,g));
+        info.plant.coalZ=Math.min(info.plant.coalZ,hp);
+        for(var y=b0+1.33*hp+pitch;y<b1-1.33*hp;y+=pitch) P.lines.push({a:W3(a+1.33*hp,y,hp), b:W3(a+len-1.33*hp,y,hp), f0:1, f1:1, col:COLK, kind:'coal'});
+        own(P,C,'pile',COLK); info.plant.piles++; a+=len+6; left-=len+6; } });
+    var sa=e[0]+12+PRV()*(L-24), HB=h+4;
+    own(lbox(sa-4,sa+4,bc-3,bc+3,0,HB),C,'stacker',COLK);
+    var A=W3(sa,bc+3,HB-1), Bt=W3(sa,bc+3+PW*0.85,HB-2.5), A2=W3(sa,bc+3,HB+1.5), Bt2=W3(sa,bc+3+PW*0.85,HB-1);
+    own(strut(A,Bt,0.6),C,'boom',COLK); own(strut(A2,Bt2,0.6),C,'boom',COLK);
+  }
+  /* a conveyor gallery from the yard's far edge (past its piles) up to the boiler's bunker bay: one inclined box, cut at every face
+     of the three containers it passes through, each piece owned by the container it lies in */
+  function conveyor(C){
+    var Y=C.conv.yard, Bo=C.conv.boil, a=C.conv.a, bA=Y.lr[3]-2, bB=Bo.lr[2]+3, zA=3, zB=0.6*Bo.BH;
+    var A=W3(a-1.5,bA,zA), B=W3(a-1.5,bB,zB), Ac=W3(a+1.5,bA,zA), u=[Ac[0]-A[0],Ac[1]-A[1],0];
+    var G=K.para(A,[B[0]-A[0],B[1]-A[1],B[2]-A[2]],u,[0,0,3]), pieces=[G], nc=0;
+    [Y,C,Bo].forEach(function(Ct){ var Q=Ct.poly, cx=0, cy=0; Q.forEach(function(q){ cx+=q[0]/Q.length; cy+=q[1]/Q.length; });
+      var inside=pieces.slice(), out=[];
+      inside=[G];
+      for(var m=0;m<Q.length;m++){ var q0=Q[m], q1=Q[(m+1)%Q.length], nx=q1[1]-q0[1], ny=-(q1[0]-q0[0]), nl=Math.hypot(nx,ny); nx/=nl; ny/=nl;
+        if(nx*(cx-q0[0])+ny*(cy-q0[1])>0){ nx=-nx; ny=-ny; }
+        var d=nx*q0[0]+ny*q0[1], nxt=[];
+        inside.forEach(function(Pp){ splitPart(Pp,[nx,ny,0],d).forEach(function(Hh){ if(!Hh.faces.length || verts(Hh).length<4) return;
+          var V=verts(Hh), c=[0,0]; V.forEach(function(v){ c[0]+=v[0]/V.length; c[1]+=v[1]/V.length; });
+          if(nx*c[0]+ny*c[1]<d) nxt.push(Hh); }); });
+        inside=nxt; }
+      inside.forEach(function(Hh){ own(Hh,Ct,'gallery',COLK); nc++; }); });
+    info.plant.conv.push({pieces:nc, a:a});
+  }
   function furnish(dn,df){
     info.recs=[]; info.aircraft=[]; info.bridges=[]; info.tower=null; info.windsock=0;
+    if(SITE.plant){ info.plant.towerGeo=[]; info.plant.conv=[]; info.plant.plumes=0; info.plant.piles=0; info.plant.stackRecs=0; info.plant.coalZ=1e9; PRV=townSub(SITE.LAY,TI,SALT_PVAR); }
     var RD=townSub(SITE.LAY,TI,SALT_AFD);
     SITE.conts.forEach(function(C){ plate(C); });
     var rw=SITE.conts.filter(function(C){ return C.kind==='rwy'; }), tw=SITE.conts.filter(function(C){ return C.kind==='twy'; });
@@ -27489,6 +27755,7 @@ function siteTheme(K,SITE){
       else if(C.kind==='pjunction') junction(C);
       else if(C.kind==='forecourt'){ var e=C.lr, bm=(e[2]+e[3])/2; paint(C,e[0]+4,e[2]+4,e[1]-4,e[2]+4,COLK,'kerb'); paint(C,e[0]+4,bm,e[1]-4,bm,COLK,'lane'); paint(C,e[0]+4,e[2]+4,e[0]+4,bm,COLK,'kerb'); paint(C,e[1]-4,e[2]+4,e[1]-4,bm,COLK,'kerb'); }
       else if(C.kind==='stub'){ var e2=C.lr; paint(C,e2[0],e2[2],e2[1],e2[2],COLK,'kerb'); }
+      else if(SITE.plant && PLANTK[C.kind]) plantCont(C);
     });
   }
   /* ROW 256: AN AIRCRAFT'S PARTS through a frame map L2W (its own x y z to the world), owned by C, each tagged
@@ -44942,7 +45209,7 @@ var KGROUPS=[
   ['ess','Essentials','layout form rows nlen site tier water rail hwy river floors archlots isoaz isoel zoom'],
   ['plan','City plan','sprawl corez rowsp xblk xwidth parks alleys zones'],
   ['lines','Lines that cross the city','rbend rwidth rdrop railbend railz trains ncar rstn hwybend hwyz hlanes ixtype pline'],
-  ['site','Airfield and harbour','sitepct sscale harb rwys rwyhdg stands acmix tower hangars gse ghost ghostt berths vessels pierlen slips'],
+  ['site','Airfield and harbour','sitepct sscale ptype punits towers pstack coalyard plumes harb rwys rwyhdg stands acmix tower hangars gse ghost ghostt berths vessels pierlen slips'],
   ['bld','Buildings','width pave lotmin lotmax alley archmin archdet stepb canti fire uvar'],
   ['life','Street life (close-ups)','glow shopv props signs neon lang cables sag cars graff dots pnear'],
   ['wet','Wet street','puddles pudsz ripple rvar wmk wglint hero hstr hrag hturn hshape'],
@@ -45030,6 +45297,9 @@ var KIDLE={town:[
   {keys:'ghost', par:['site'], why:'Site is not the airfield', on:function(E){ return kR(E,'site')===1; }},
   {keys:'ghostt', par:['site','ghost'], why:'Ghost is off', on:function(E){ return kR(E,'site')===1 && kR(E,'ghost')>=2; }},
   {keys:'rwys acmix tower gse', par:['site','tier'], why:'an airstrip (Scale 2 or less)', on:function(E){ return kR(E,'site')===1 && kR(E,'tier')>=3; }},
+  /* row 114 */
+  {keys:'ptype punits towers plumes', par:['site'], why:'Site is not the power plant', on:function(E){ return kR(E,'site')===3; }},
+  {keys:'pstack coalyard', par:['site','ptype'], why:'not a coal plant', on:function(E){ return kR(E,'site')===3 && kR(E,'ptype')===0; }},
   {keys:'berths vessels pierlen slips', par:['site','form','tier'], why:'no harbour site (or City form\'s Scale 0-1 shore harbour)', on:function(E){ return kR(E,'site')===2 && (kR(E,'form')===0 || kR(E,'tier')>=2); }},
   {keys:'archmin archdet zones', par:['archlots'], why:'Iso buildings 0', on:function(E){ return kR(E,'archlots')>0; }},
   {keys:'pudsz', par:['puddles'], why:'Puddles 0', on:function(E){ return kR(E,'puddles')>0; }},
@@ -46461,6 +46731,12 @@ var HELP={
     sitepct:'How much of the city the site takes, as a share of the whole plan (a harbour’s water; its Scale 3 apron is extra). The rest is the city, a strip or an L. Layout picks the edge or corner.',
     tier:'The site’s size, which also sets the city’s length and block depth. Airfield: 2 an airstrip (900 m runway, one hangar, a windsock, no tower), 3 a regional airport (2,400 m runways, jet bridges, a tower), 4 a hub (3,000 to 3,700 m runways, concourses, wide bodies). Harbour: 0 a pier and a dinghy, 1 a marina, 2 a fishing harbour with a lighthouse, 3 container berths, 4 two basins with 400 m ships and container yards. With Map scale on Fit a bigger Scale makes everything smaller on the sheet; on a fixed Map scale things keep their size and the sheet shows less of the city.',
     sscale:'Multiplies the city’s length and block depth that the site’s Scale sets.',
+    ptype:'With Site 3, the power plant: 0 coal (boilers, a coal yard, precipitators, stacks), 1 gas (gas turbines with their heat-recovery boilers and stacks; a peaker at Scale 1), 2 nuclear (domed containments; from Scale 2). 3 is hydro, not built yet: it draws nuclear.',
+    punits:'How many generating units, up to what the plant’s Scale holds: coal 1/2/4/6, gas 1/1/2/6 gas turbines, nuclear 1/2/4 from Scale 2.',
+    towers:'Natural-draft cooling towers, up to what the Scale holds. 0 cools from the river; with no river a plant that has towers keeps one.',
+    pstack:'A coal plant’s chimneys, one per unit at most, up to 1/1/2/3 by Scale. Each has red aviation bands. A gas plant has one per gas turbine.',
+    coalyard:'The share of the coal yard covered with stockpiles, either side of the stacker’s rail.',
+    plumes:'The chance that each cooling tower and stack draws a plume: rings of dashed line rising off the top, which hide nothing.',
     rwys:'How many runways, where there is room: an airstrip has one, a regional airport up to two parallel, a hub 2 to 8: parallel pairs, plus crosswinds at 30 to 60 degrees past their ends when there are three or more.',
     rwyhdg:'The compass bearing the runways point along, in degrees. It sets the numbers painted at each end: the bearing over ten, and that plus 18 at the far end.',
     stands:'The share of the aircraft stands with an aircraft parked on them.',
