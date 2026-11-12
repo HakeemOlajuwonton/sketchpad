@@ -305,6 +305,11 @@ function fetchBin(url,onProg){
     return pump();
   });
 }
+/* FOUR COMPONENTS ON THE GPU (queue row 334): the build's positions (Int16) and normals (Int8) go up padded to four per
+   vertex. Direct3D has no three-component 16- or 8-bit vertex format, so on the Dell (ANGLE -> Mesa d3d12 -> RTX 3050)
+   three-wide buffers were converted on every draw: Bay's whole-city Orbit ran at 4.9 fps, and 60 padded. The shaders
+   read vec3, so the fourth is never seen. The CPU copies (pos, used by roofs and the SVG export) stay three-wide. */
+function pad4(a,T){ var m=a.length/3, o=new T(m*4); for(var i=0;i<m;i++){ o[i*4]=a[i*3]; o[i*4+1]=a[i*3+1]; o[i*4+2]=a[i*3+2]; } return o; }
 function upload(buf,n){
   /* sort edges by layer so each layer is one draw range */
   var I=new Int16Array(buf,0,n*6), L=new Uint8Array(buf,n*12,n), cnt=[0,0,0,0,0,0,0,0], i;
@@ -312,7 +317,7 @@ function upload(buf,n){
   var start=[],s=0; for(i=0;i<8;i++){start.push(s);s+=cnt[i];}
   var pos=new Int16Array(n*6), lay=new Float32Array(n*2), at=start.slice();
   for(i=0;i<n;i++){ var k=at[L[i]]++; pos.set(I.subarray(i*6,i*6+6),k*6); lay[k*2]=lay[k*2+1]=L[i]; }
-  var pb=gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER,pb); gl.bufferData(gl.ARRAY_BUFFER,pos,gl.STATIC_DRAW);
+  var pb=gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER,pb); gl.bufferData(gl.ARRAY_BUFFER,pad4(pos,Int16Array),gl.STATIC_DRAW);
   var lb=gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER,lb); gl.bufferData(gl.ARRAY_BUFFER,lay,gl.STATIC_DRAW);
   var mn=[1e9,1e9,1e9],mx=[-1e9,-1e9,-1e9];
   for(i=0;i<n*6;i+=3){for(var a=0;a<3;a++){var v=pos[i+a]/10;if(v<mn[a])mn[a]=v;if(v>mx[a])mx[a]=v;}}
@@ -330,8 +335,8 @@ function uploadFaces(buf,n){
     var nx=ay*bz-az*by, ny=az*bx-ax*bz, nz=ax*by-ay*bx, l=Math.hypot(nx,ny,nz)||1;
     pos.set(I.subarray(o,o+9),k*9);
     for(j=0;j<3;j++){ nor[k*9+j*3]=Math.round(nx/l*127); nor[k*9+j*3+1]=Math.round(ny/l*127); nor[k*9+j*3+2]=Math.round(nz/l*127); } }
-  var pb=gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER,pb); gl.bufferData(gl.ARRAY_BUFFER,pos,gl.STATIC_DRAW);
-  var nb=gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER,nb); gl.bufferData(gl.ARRAY_BUFFER,nor,gl.STATIC_DRAW);
+  var pb=gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER,pb); gl.bufferData(gl.ARRAY_BUFFER,pad4(pos,Int16Array),gl.STATIC_DRAW);
+  var nb=gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER,nb); gl.bufferData(gl.ARRAY_BUFFER,pad4(nor,Int8Array),gl.STATIC_DRAW);
   return {pb:pb,nb:nb,n:n,start:start,cnt:cnt,roof:roofMap(pos,start[0],cnt[0]),pos:pos};
 }
 /* ROOFS: the highest building over every 1.5 m cell, from the building triangles (layer 0). A flight is lifted
@@ -507,8 +512,8 @@ function render(){
     gl.enable(gl.POLYGON_OFFSET_FILL); gl.polygonOffset(LOWZ?2.0:1.5,LOWZ?8.0:3.0);
     gl.uniformMatrix4fv(FU.uM,false,MVP); gl.uniform3fv(FU.uE,B.e); gl.uniform3fv(FU.uFwd,B.f); gl.uniform1f(FU.uOrtho,mode==='iso'?1:0);
     gl.uniform2f(FU.uF,near,far); gl.uniform3fv(FU.uSun,SUN); gl.uniform3fv(FU.uBg,T.bg); gl.uniform3fv(FU.uF0,T.f0); gl.uniform3fv(FU.uF1,T.f1);
-    gl.bindBuffer(gl.ARRAY_BUFFER,F.pb); gl.enableVertexAttribArray(fP); gl.vertexAttribPointer(fP,3,gl.SHORT,false,0,0);
-    gl.bindBuffer(gl.ARRAY_BUFFER,F.nb); gl.enableVertexAttribArray(fN); gl.vertexAttribPointer(fN,3,gl.BYTE,true,0,0);
+    gl.bindBuffer(gl.ARRAY_BUFFER,F.pb); gl.enableVertexAttribArray(fP); gl.vertexAttribPointer(fP,4,gl.SHORT,false,0,0);
+    gl.bindBuffer(gl.ARRAY_BUFFER,F.nb); gl.enableVertexAttribArray(fN); gl.vertexAttribPointer(fN,4,gl.BYTE,true,0,0);
     gl.uniformMatrix4fv(FU.uObj,false,ID4); gl.uniform1f(FU.uS,0.1);
     for(var l0=0;l0<8;l0++) if(layOn[l0]&&F.cnt[l0]) gl.drawArrays(gl.TRIANGLES,F.start[l0]*3,F.cnt[l0]*3);
     moverFaces();
@@ -517,7 +522,7 @@ function render(){
   } else gl.disable(gl.DEPTH_TEST);
   gl.enable(gl.BLEND);
   if(glow) gl.blendFunc(gl.ONE,gl.ONE); else gl.blendFunc(gl.ONE,gl.ZERO);
-  gl.bindBuffer(gl.ARRAY_BUFFER,GEO.pb); gl.enableVertexAttribArray(aP); gl.vertexAttribPointer(aP,3,gl.SHORT,false,0,0);
+  gl.bindBuffer(gl.ARRAY_BUFFER,GEO.pb); gl.enableVertexAttribArray(aP); gl.vertexAttribPointer(aP,4,gl.SHORT,false,0,0);
   gl.bindBuffer(gl.ARRAY_BUFFER,GEO.lb); gl.enableVertexAttribArray(aL); gl.vertexAttribPointer(aL,1,gl.FLOAT,false,0,0);
   var order=glow?[1,3,2,4,0,6,5,7]:[1,3,2,4,6,0,7,5];
   gl.uniformMatrix4fv(U.uObj,false,ID4); gl.uniform1f(U.uS,0.1);
@@ -941,7 +946,7 @@ function facePass(Z){
   var F=GEO.faces, ranges=[], base=0;
   if(!F.idb) F.idb=triIds(F.n);
   gl.uniformMatrix4fv(DU.uObj,false,ID4); gl.uniform1f(DU.uS,0.1); gl.uniform1f(DU.uBase,0);
-  gl.bindBuffer(gl.ARRAY_BUFFER,F.pb); gl.vertexAttribPointer(dAP,3,gl.SHORT,false,0,0);
+  gl.bindBuffer(gl.ARRAY_BUFFER,F.pb); gl.vertexAttribPointer(dAP,4,gl.SHORT,false,0,0);
   gl.bindBuffer(gl.ARRAY_BUFFER,F.idb); gl.vertexAttribPointer(dAI,1,gl.FLOAT,false,0,0);
   var thin=null, tmpB=[];
   if(Z.lod&&Z.lod.face>0){ /* row 333: the build's faces thinner than lod.face mm on the sheet are left out; the rest keep their numbers */
@@ -1239,6 +1244,8 @@ window.__cc={state:function(){return {mode:mode,C:C,city:CITY&&CITY.id,tex:opt.t
   play:function(i){ playRoute(CITY.routes[i]); }, cam:function(){ return {eye:C.eye,yaw:C.yaw,pitch:C.pitch,poses:POSES.length,route:ROUTE&&ROUTE.id,mode:mode,playing:playing}; }, auto:function(on){ opt.auto=!!on; $('c-auto').checked=opt.auto; }, run:function(t){ rt=t; playing=true; lastT=0; }, ghost:function(on){ setGhost(on); }, key:function(k){ playing=false; rt=ROUTE._u[k]; applyRoute(); render(); }, at:function(t){ playing=false; rt=t; applyRoute(); render(); }, city:setCity, tex:setTex, theme:function(t){ $('t-'+t).click(); },
   svg:exportSVG, svgposes:function(){ trafficPoses(); return {planes:POSES.map(function(p){ return {i:p.i,m:Array.prototype.slice.call(p.m)}; }),traffic:TPOSES.map(function(k){ return {i:k,a:trafficAt(MOV.list[k],TR.t)}; }),lay:layOn.slice()}; },
   frame:function(){ stopRoute(); frameCity(); dirty=true; render(); },
+  /* perf.mjs (row 334): ask for a frame */
+  redraw:function(){ dirty=true; },
   svgdbg:function(pts){ var Z=SVGLAST.Z,D=SVGLAST.D,M=Z.M; return pts.map(function(p){ var w=M[3]*p[0]+M[7]*p[1]+M[11]*p[2]+M[15], sx=((M[0]*p[0]+M[4]*p[1]+M[8]*p[2]+M[12])/w*0.5+0.5)*D.w, sy=((M[1]*p[0]+M[5]*p[1]+M[9]*p[2]+M[13])/w*0.5+0.5)*D.h, ix=Math.floor(sx), iy=Math.floor(sy), n=[];
     for(var dy=-1;dy<=1;dy++) for(var dx=-1;dx<=1;dx++) n.push(D.id[(iy+dy)*D.w+ix+dx]||0); return {sx:+sx.toFixed(2),sy:+sy.toFixed(2),ids:n,tris:n.filter(function(v,i,a){ return v&&a.indexOf(v)===i; }).map(function(v){ return Array.prototype.map.call(D.tri(v),function(c){ return +c.toFixed(2); }); })}; }); },
   layer:function(i,on){ $('l'+i).checked=!!on; layOn[i]=on?1:0; dirty=true; }, mode:setMode};
