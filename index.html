@@ -462,7 +462,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v384</a> &mdash; Corridor city: Site 3, Plant 3, hydro -- a weir, a gravity dam in 10 m blocks with a stepped spillway, or an arch-gravity dam on its arc, holding the site as a reservoir Head above the river below; each water body mirrors in its own plane, an embankment where the water stands above the street, radial gates, penstocks down the face, a powerhouse with its crane gantry, the switchyard on the bank, and the river out through the fence into the city</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v385</a> &mdash; Corridor city: substations and the grid route -- with Site 3 the power plant&rsquo;s line leaves its switchyard and runs to each substation in turn, straight spans between pylons, an angle tower at every turn and no turn over 60&deg;, entering each yard square to its entry gantry; a pole-top transformer on the kerb, a walled urban compound, a fenced transmission yard of gantries, busbars, breakers and transformers, or a converter station with its valve hall and reactors; elsewhere a substation at each end of the powerline</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <section class="fold" id="fold_pick"><h2>Pick engine<span class="cnt"></span></h2>
@@ -3616,7 +3616,7 @@ var SPEC={
     ['ptype','Plant',0,3,1,0],['punits','Units',1,6,1,2],['towers','Cooling towers',0,6,1,2],['pstack','Stacks',0,4,1,1],
     ['coalyard','Coal yard',0,100,1,60,[1,'%']],['plumes','Plumes',0,100,1,40,[1,'%']],
     /* row 115 (town-power spec §2.1): Plant 3, hydro. Plumes is its spill, the share of the spillway gates open */
-    ['dam','Dam',0,2,1,1],['head','Head',2,120,1,20,[1,' m']],['gates','Spillway gates',0,16,1,6],['penstocks','Penstocks',1,8,1,3],
+    ['dam','Dam',0,2,1,1],['head','Head',2,120,1,20,[1,' m']],['gates','Spillway gates',0,16,1,6],['penstocks','Penstocks',1,8,1,3],['subs','Substations',0,6,1,2],['subsz','Substation size',0,3,1,1],['proute','Line route',0,99,1,0],
     /* row 200 (site-frame spec §2): what the isometric view is fitted to */
     ['sfocus','Focus',0,3,1,1],['ftgt','Focus on',0,5,1,0],
     ['width','Road width',4,24,0.5,9,[1,' m']],['pave','Pavement',0,6,0.25,2.5,[1,' m']],
@@ -23931,10 +23931,16 @@ function buildTown(p){
   /* row 98: the powerline's pylon plots, then the parks -- last, so a park is
      cut round everything already there, and their content is built after
      every other plan's, so the pylons can be raised clear of it */
-  var PWL=Math.round(isFinite(p.pline)?+p.pline:0)===1?townPowerline(p,G,plans,J,RIV,[VR,VH].concat(VB||[]),SITE||(FRM&&FRM.wetAt?{wetAt:FRM.wetAt}:null),WC):null;
+  /* row 116: with the power plant and Substations the line is its grid route (Powerline forced on); else
+     with a line, Substations stand near its ends */
+  var GRT=!!(SITE && SITE.plant && townSubsN(p)>0), PWL=GRT?townGridRoute(p,G,plans,J,RIV,[VR,VH].concat(VB||[]),SITE,FRM,WC):null;
+  if(!PWL) PWL=Math.round(isFinite(p.pline)?+p.pline:0)===1?townPowerline(p,G,plans,J,RIV,[VR,VH].concat(VB||[]),SITE||(FRM&&FRM.wetAt?{wetAt:FRM.wetAt}:null),WC):null;
+  var SBS=PWL && !PWL.info.route && townSubsN(p)>0?townLineSubs(p,G,plans,J,RIV,[VR,VH].concat(VB||[]),PWL,SITE,FRM,WC):null;
+  if(SBS) PWL.extraOcc=SBS.yards;
   var PBLK=FRM?FRM.built:SITE?SITE.blocksOut:BLK, PKS=townParks(p,G,plans,J,RIV,[VR,VH],PWL,PBLK);
   if(PKS) plans.push(PKS.plan);
   if(PWL) plans.push(PWL.plan);
+  if(SBS) plans.push(SBS.plan);
   /* row 204: a pylon's plot stands in a field: the field is cut round it */
   if(PWL && WC) WC.cutSoft(function(q){ var ps=[q], hit=false; PWL.plan.conts.forEach(function(C){ var nx=[]; ps.forEach(function(r){ if(!WC.polyOverlap(r,C.poly)){ nx.push(r); return; } hit=true; townMinus(r,C.poly).forEach(function(m){ nx.push(m); }); }); ps=nx; }); return hit?ps.map(function(r){ return {poly:r}; }):null; });
   /* the camera argument: townCamArg (row 221), so the Scout view reads the same eye and frame */
@@ -23980,7 +23986,7 @@ function buildTown(p){
   STRTTALLY.town.mkt=G.MKT.slice();
   STRTTALLY.town.river=RIV?RIV.info:null;
   STRTTALLY.town.rail=VR?VR.info:null; STRTTALLY.town.hwy=VH?VH.info:null; STRTTALLY.town.vcross=VX;
-  STRTTALLY.town.blocks=BLK; STRTTALLY.town.parks=PKS?PKS.info:null; STRTTALLY.town.pline=PWL?PWL.info:null;
+  STRTTALLY.town.blocks=BLK; STRTTALLY.town.parks=PKS?PKS.info:null; STRTTALLY.town.pline=PWL?PWL.info:null; STRTTALLY.town.subs=SBS?SBS.info:null;
   STRTTALLY.town.site=SITE?SITE.info:null;
   STRTTALLY.town.frame=FR;
   /* row 255 §1.3: what the Map scale readout says, from this build: the world extent (m), the
@@ -24021,7 +24027,15 @@ function buildTown(p){
   /* row 101 (spec §4): the site's count line */
   if(SITE){ var INKM=0; res.forEach(function(q){ for(var e=1;e<q.length;e++) INKM+=Math.hypot(q[e][0]-q[e-1][0],q[e][1]-q[e-1][1]); });
     STRTINFO+=' · site tier '+SITE.info.tier+' · '+(SITE.harbour?0:SITE.info.aircraft.length)+' aircraft · '+(SITE.harbour?SITE.info.boats.length+SITE.info.ships.length:0)+' vessels · paths '+res.length+' · ink '+(INKM*PAGEMM/1000).toFixed(1)+' m'; }
-  if(PWL){ var WI=PWL.info, hz=WI.heights.length?Math.max.apply(null,WI.heights):0;
+  /* row 116: the grid route, and the line-end substations */
+  if(PWL && PWL.info.route){ var GI=PWL.info, nS=PWL.subs.length, nA=GI.chain.filter(function(T){ return T.kind==='angle'; }).length, nP=GI.chain.filter(function(T){ return T.kind==='pylon'; }).length, GL=0, hz6=GI.heights.length?Math.max.apply(null,GI.heights):0;
+    GI.chain.forEach(function(T,j){ if(j) GL+=Math.hypot(T.c[0]-GI.chain[j-1].c[0],T.c[1]-GI.chain[j-1].c[1]); });
+    STRTINFO+=' \u00b7 grid: '+nS+' '+GI.sizeName+' substation'+(nS===1?'':'s')+(nS<GI.asked?' ('+(GI.asked-nS)+' more asked for: no room, or no way in)':'')+', '+(GL/1000).toFixed(1)+' km of line from the switchyard on '+nA+' angle tower'+(nA===1?'':'s')+' and '+nP+' pylon'+(nP===1?'':'s')+
+      ' ('+GI.pylMoved+' moved, '+GI.pylDropped+' dropped)'+(GI.raised?', '+GI.raised+' raised (lowest crossarm up to '+hz6.toFixed(1)+' m)':'')+', '+GI.met+' lots carved'+(GI.turnFail?'; '+GI.turnFail+' turn'+(GI.turnFail===1?'':'s')+' found no tower':''); }
+  if(SITE && SITE.info.gridWhy && townSubsN(p)>0) STRTINFO+=' \u00b7 no grid route: '+SITE.info.gridWhy;
+  if(SBS){ var SBI=SBS.info; STRTINFO+=' \u00b7 '+SBS.subs.length+' '+SBI.sizeName+' substation'+(SBS.subs.length===1?'':'s')+' at the line\'s end'+(SBS.subs.length===1?'':'s'); }
+  else if(PWL && !PWL.info.route && townSubsN(p)>0) STRTINFO+=' \u00b7 no substation at the line\'s ends: none of Substation size '+townSubsZ(p)+' fits';
+  if(PWL && !PWL.info.route){ var WI=PWL.info, hz=WI.heights.length?Math.max.apply(null,WI.heights):0;
     STRTINFO+=' · powerline: '+WI.plots.length+' pylons ('+WI.pylMoved+' moved, '+WI.pylDropped+' dropped), '+WI.met+' lots carved ('+WI.split+' split, '+WI.dropped+' too small dropped'+(WI.riverLots?', '+WI.riverLots+' canal house'+(WI.riverLots===1?'':'s')+' dropped':'')+')'+
       (WI.raised?', '+WI.raised+' raised to clear what is under it (lowest crossarm up to '+hz.toFixed(1)+' m)':''); }
   return res;
@@ -25836,7 +25850,7 @@ function townIntersect(P,Q){
    or more; each keyed BASE + 2 x parent + side. A lot with none is dropped. */
 function townCarve(G,grid,meets,info,cls,BASE,LOTMIN,bbox2){
   var MINENV=4, k;
-  for(k=0;k<(cls==='site'?grid.length:G.ROWS);k++){
+  for(k=0;k<(cls==='site'||cls==='grid'?grid.length:G.ROWS);k++){
     var PLk=grid[k], add=[], gone=[];
     PLk.lots.forEach(function(L){
       if(!meets(L.poly)) return;
@@ -26067,6 +26081,8 @@ function townParks(p,G,plans,J,RIV,VS,PW,BLK){
   if(RIV) RIV.plan.conts.forEach(function(C){ OCC.push(C); });
   VS.forEach(function(V){ if(V) V.plan.conts.forEach(function(C){ OCC.push(C); }); });
   if(PW) PW.plots.forEach(function(C){ OCC.push(C); });
+  /* row 116: and a substation's yard */
+  if(PW && PW.extraOcc) PW.extraOcc.forEach(function(C){ OCC.push(C); });
   var BANDS=[];
   if(RIV) BANDS.push(townBand(RIV.plan.conts.filter(function(C){ return C.kind==='slab'; }),polyOverlap,bbox2,bbHit));
   VS.forEach(function(V){ if(V) BANDS.push(V.band); });
@@ -26456,6 +26472,701 @@ function plineTheme(K,PW){
       });
       info.spans.push(sp);
     }
+  }
+  return {dress:function(){}, signsFor:function(){}, furnish:furnish, cars:[], dots:[], poles:[]};
+}
+/* ROW 116 (docs/specs/2026-10-12-town-power_v3.md §3): SUBSTATIONS AND THE GRID ROUTE.
+   Substations (0-6), all of one Substation size: 0 a pole-top transformer on the kerb strip of a pavement
+   (the 0.3 m of pavement a road slab holds; the rest of a pavement is its lot's), 1 an urban walled
+   compound, 2 a transmission yard, 3 a converter hall. Sizes 1-3 take WHOLE LOTS: a run of adjacent
+   uncarved lots on one side of a row, their common front to the shallowest back, one convex container
+   (townSubCands), picked from Layout's substream (salt 677) and spread apart.
+   WITH SITE 3 the plant's line is the grid route (townGridRoute): it leaves the switchyard's dead-end tower
+   straight out toward the city, and visits every substation in order of distance from it -- straight
+   spans, an ANGLE TOWER at every turn and no turn over 60 deg: a sharper one is taken 60 deg at a time, an
+   angle tower each, 60-120 m apart (Line route re-rolls those and the pylons' spacing, salt 673). It ends on
+   a substation's ENTRY GANTRY, square to the incoming span, and goes on from it straight to an angle tower
+   past the yard. Suspension pylons every 120-180 m between, each moved along its span to a legal plot as
+   row 98's are. Substations 0 leaves Site 3 as row 115 built it.
+   WITHOUT SITE 3 a substation stands near each end of row 98's line inside the network (two at most), fed by
+   one span from the end pylon (townLineSubs); the line itself is not moved, and Powerline 0 draws none. */
+var SALT_ROUTE=673, SALT_SUBS=677;
+function townSubsN(p){ return Math.max(0,Math.min(6,Math.round(isFinite(p.subs)?+p.subs:2))); }
+function townSubsZ(p){ return Math.max(0,Math.min(3,Math.round(isFinite(p.subsz)?+p.subsz:1))); }
+var SUBYARD=[{nm:'pole-top', spr:150},{nom:32,minW:24,minD:22,spr:150,nm:'urban'},{nom:110,minW:48,minD:40,spr:260,nm:'transmission'},
+             {nom:130,minW:52,minD:44,spr:300,nm:'converter'}];
+/* a convex polygon's chord along a ray A + d t: [t0,t1], or null */
+function townRay(Q,A,d){
+  var ar=0, m; for(m=0;m<Q.length;m++){ var qa=Q[m], qb=Q[(m+1)%Q.length]; ar+=qa[0]*qb[1]-qa[1]*qb[0]; }
+  var sg=ar>0?1:-1, t0=-1e18, t1=1e18;
+  for(m=0;m<Q.length;m++){ var a=Q[m], b=Q[(m+1)%Q.length], nx=-(b[1]-a[1])*sg, ny=(b[0]-a[0])*sg;
+    var num=nx*(A[0]-a[0])+ny*(A[1]-a[1]), den=nx*d[0]+ny*d[1];
+    if(Math.abs(den)<1e-15){ if(num<0) return null; continue; }
+    var t=-num/den; if(den>0){ if(t>t0) t0=t; } else { if(t<t1) t1=t; } if(t0>t1) return null; }
+  return [t0,t1];
+}
+/* a convex polygon moved in by e, vertex for vertex (each the meeting of its two edges' moved lines) */
+function townOffset(Q,e){
+  var ar=0, n=Q.length, m, L=[]; for(m=0;m<n;m++){ var qa=Q[m], qb=Q[(m+1)%n]; ar+=qa[0]*qb[1]-qa[1]*qb[0]; }
+  var sg=ar>0?1:-1;
+  for(m=0;m<n;m++){ var a=Q[m], b=Q[(m+1)%n], nx=-(b[1]-a[1])*sg, ny=(b[0]-a[0])*sg, l=Math.hypot(nx,ny)||1; nx/=l; ny/=l; L.push({n:[nx,ny], d:nx*a[0]+ny*a[1]+e}); }
+  return Q.map(function(q,k){ var A=L[(k+n-1)%n], B=L[k], det=A.n[0]*B.n[1]-A.n[1]*B.n[0];
+    if(Math.abs(det)<1e-12) return [q[0]+A.n[0]*e, q[1]+A.n[1]*e];
+    return [(A.d*B.n[1]-A.n[1]*B.d)/det, (A.n[0]*B.d-A.d*B.n[0])/det]; });
+}
+function townConvexQ(Q){ var sg=0; for(var m=0;m<Q.length;m++){ var a=Q[m], b=Q[(m+1)%Q.length], c=Q[(m+2)%Q.length], z=(b[0]-a[0])*(c[1]-b[1])-(b[1]-a[1])*(c[0]-b[0]); if(z>1e-9) sg|=1; else if(z<-1e-9) sg|=2; } return sg!==3; }
+function townUnit(a,b){ var dx=b[0]-a[0], dy=b[1]-a[1], l=Math.hypot(dx,dy)||1; return [dx/l, dy/l]; }
+/* the candidate yards of a size: on each row side, the shortest run of adjacent whole lots (one front,
+   no gap over 0.6 m) whose frontage reaches the size's own, or the longest past its least; deep enough */
+function townSubCands(G,grid,SZ){
+  var out=[], k;
+  for(k=0;k<G.ROWS;k++){ var PLk=grid[k], P3k=PLk.P3;
+    [1,-1].forEach(function(sd){
+      var L=PLk.lots.filter(function(x){ return x.side===sd && !x.carved && x.poly && x.poly.length===4; }).sort(function(a,b){ return a.s0-b.s0; }), i, j;
+      for(i=0;i<L.length;i++){
+        var bk=L[i].back, fe=L[i].fe, got=null;
+        for(j=i;j<L.length;j++){
+          if(j>i && (L[j].s0-L[j-1].s1>0.6 || Math.abs(L[j].fe-fe)>0.01)) break;
+          bk=Math.min(bk,L[j].back);
+          if(bk-fe<SZ.minD-1e-9) break;
+          var W=L[j].s1-L[i].s0;
+          if(W>=SZ.minW-1e-9) got={j:j, back:bk};
+          if(W>=SZ.nom-1e-9) break;
+        }
+        if(!got) continue;
+        var s0=L[i].s0, s1=L[got.j].s1, Q=[P3k(s0,sd,fe,0),P3k(s1,sd,fe,0),P3k(s1,sd,got.back,0),P3k(s0,sd,got.back,0)].map(function(v){ return [v[0],v[1]]; });
+        var A0=P3k(s0,sd,fe,0), A1=P3k(s1,sd,fe,0);
+        out.push({k:k, side:sd, lots:L.slice(i,got.j+1), s0:s0, s1:s1, fe:fe, back:got.back, poly:Q, mid:townMid(Q), ax:townUnit(A0,A1), key:k*4096+i*2+(sd>0?1:0)});
+      }
+    });
+  }
+  return out;
+}
+/* the candidate pole-tops: the middle of every road slab 3.4 m long or more, on its kerb strip */
+function townPoleCands(G,grid){
+  var out=[], k;
+  for(k=0;k<G.ROWS;k++){ var PLk=grid[k], P3k=PLk.P3, fw=PLk.KOFF-PLk.HALFW;
+    if(!(fw>=0.26)) continue;
+    PLk.conts.forEach(function(C,ci){ if(C.kind!=='slab' || C.s1-C.s0<3.4) return;
+      var s=(C.s0+C.s1)/2, f=PLk.HALFW+0.15, q=P3k(s,C.side,f,0), a=P3k(s-1,C.side,f,0), b=P3k(s+1,C.side,f,0), r=P3k(s,C.side,f-1,0);
+      out.push({k:k, side:C.side, slab:C, s:s, f:f, c:[q[0],q[1]], mid:[q[0],q[1]], ax:townUnit(a,b), toRoad:townUnit(q,r), key:k*65536+ci,
+                halfw:PLk.HALFW, koff:PLk.KOFF, pback:PLk.PBACK}); });
+  }
+  return out;
+}
+/* the n of them first in Layout's own substream (salt 677) that pass ok, 120 m or more from D, SPR apart --
+   or, when that leaves fewer than n, half SPR for the rest */
+function townSubPick(cands,n,LAY,SPR,D,ok){
+  var R=cands.map(function(c){ return {c:c, r:townSub(c.key,LAY,SALT_SUBS)()}; }).sort(function(x,y){ return x.r-y.r || x.c.key-y.c.key; });
+  var acc=[], m, pass, sp, bad=[];
+  for(pass=0;pass<2 && acc.length<n;pass++){ sp=pass?SPR/2:SPR;
+    for(m=0;m<R.length && acc.length<n;m++){ var c=R[m].c;
+      if(acc.indexOf(c)>=0 || bad.indexOf(c)>=0) continue;
+      if(D && Math.hypot(c.mid[0]-D[0],c.mid[1]-D[1])<120) continue;
+      if(acc.some(function(a){ return Math.hypot(a.mid[0]-c.mid[0],a.mid[1]-c.mid[1])<sp; })) continue;
+      if(!ok(c)){ bad.push(c); continue; }
+      acc.push(c); } }
+  return acc;
+}
+/* a substation from a candidate: a yard is one container, a pole-top stands in its host container (a slab).
+   Its lots leave their row only when townSubLand says so -- once the line has reached it */
+function townSubLand(grid,S){ if(!S.cont) return; var c=S._c, PLk=grid[c.k];
+  PLk.lots=PLk.lots.filter(function(L){ return c.lots.indexOf(L)<0; });
+  PLk.conts=PLk.conts.filter(function(C){ return c.lots.indexOf(C)<0; }); }
+function townSubTake(grid,c,m,SZI,bbox2){
+  var S={idx:m, size:SZI, mid:c.mid, ax:c.ax, key:c.key, k:c.k, side:c.side, _c:c};
+  if(SZI>0){
+    S.cont={kind:'subyard', poly:c.poly, bb:bbox2(c.poly), parts:[], sub:m, size:SZI};
+    S.lots=c.lots.map(function(L){ return {idx:L.idx, poly:L.poly}; }); S.poly=c.poly; S.s0=c.s0; S.s1=c.s1; }
+  else { var host=grid[c.k].conts.filter(function(C){ return C.poly && townIn(C.poly,c.c); })[0]||c.slab;
+    S.host=host; S.pole=c.c; S.toRoad=c.toRoad; S.f=c.f; S.s=c.s; S.halfw=c.halfw; S.koff=c.koff; S.pback=c.pback; }
+  return S;
+}
+/* the entry gantry: on the incoming line A + u t inside the yard, as near its edge as a gantry Wg wide
+   (and its 2 m of strain insulators either side) stands 0.8 m inside the fence; the widest that does */
+function townGantryAt(Q,A,u){
+  var CI=townOffset(Q,0.8), r=townRay(Q,A,u), v=[-u[1],u[0]];
+  if(!r) return null;
+  var mid=(r[0]+r[1])/2, Ws=[18,16,14,12,10], w, t;
+  for(w=0;w<Ws.length;w++){ var hw=Ws[w]/2+0.5;
+    for(t=r[0]+3;t<=mid+1e-9;t+=0.5){
+      var ok=[-2,2].every(function(dx){ var P=[A[0]+u[0]*(t+dx),A[1]+u[1]*(t+dx)];
+        return townIn(CI,[P[0]+v[0]*hw,P[1]+v[1]*hw]) && townIn(CI,[P[0]-v[0]*hw,P[1]-v[1]*hw]); });
+      if(ok) return {t:t, Wg:Ws[w], c:[A[0]+u[0]*t,A[1]+u[1]*t], tin:r[0], tout:r[1]}; } }
+  return {t:mid, Wg:10, c:[A[0]+u[0]*mid,A[1]+u[1]*mid], tin:r[0], tout:r[1], misfit:true};
+}
+/* what a yard may not meet, and where a plot may not stand: every street, junction, the river's slabs,
+   quays and canal houses, each viaduct's strip and band, the site and its roads, City form's own plans
+   (its fields too, unless the whole city cuts them round a plot), and what is already placed */
+function townGridOcc(grid,J,RIV,VS,SX,FRM,WH,withLots){
+  var OCC=[], bands=[];
+  grid.forEach(function(PL){ PL.conts.forEach(function(C){ if(withLots || C.kind!=='lot') OCC.push(C); }); });
+  J.forEach(function(C){ OCC.push(C); });
+  if(RIV) RIV.plan.conts.forEach(function(C){ if(withLots || C.kind!=='lot') OCC.push(C); });
+  VS.forEach(function(V){ if(!V) return; V.plan.conts.forEach(function(C){ OCC.push(C); }); bands.push(V.band); });
+  if(SX && SX.plans) SX.plans.forEach(function(PL){ PL.conts.forEach(function(C){ OCC.push(C); }); });
+  if(FRM) FRM.plans.forEach(function(PL){ if(WH && (PL.fieldPlan || PL===FRM.waterPlan)) return; PL.conts.forEach(function(C){ if(withLots || C.kind!=='lot') OCC.push(C); }); });
+  return {OCC:OCC, bands:bands};
+}
+function townGridRoute(p,G,plans,J,RIV,VS,SX,FRM,WH){
+  var LAY=Math.max(0,Math.min(99,Math.round(isFinite(p.layout)?+p.layout:0))), RTE=Math.max(0,Math.min(99,Math.round(isFinite(p.proute)?+p.proute:0))), LOTMIN=Math.max(3,+p.lotmin||5);
+  var N=townSubsN(p), SZI=townSubsZ(p), SZ=SUBYARD[SZI], TMAX=60*Math.PI/180;
+  var NG=G.ROWS+G.UX.length, grid=plans.slice(0,NG), P0=grid[0], polyOverlap=P0.polyOverlap, bbox2=P0.bbox2, bbHit=P0.bbHit;
+  var info={route:true, size:SZI, sizeName:SZ.nm, asked:N, subs:[], chain:[], plots:[], spans:[], heights:[], recs:[], raised:0, met:0, kept:0, split:0, dropped:0,
+            riverLots:0, pylMoved:0, pylDropped:0, turnFail:0, tmax:60, misfit:0, oblique:0};
+  var SW=SX.conts.filter(function(C){ return C.kind==='pswitch'; })[0];
+  if(!SW){ SX.info.gridWhy='the plant has no switchyard'; return null; }
+  var e=SW.lr, D=SX.M2(e[1]-6,e[3]-8), D1=SX.M2(e[1]-6,e[3]-7), h0=Math.atan2(D1[1]-D[1],D1[0]-D[0]);
+  var R=SX.rect, SR=SX.outline&&SX.outline.length>=3?SX.outline:R?[[R[0],R[1]],[R[2],R[1]],[R[2],R[3]],[R[0],R[3]]]:null;
+  var NB=townBox(grid,J), SB=SR?townBbox(SR):NB, BX=[Math.min(NB[0],SB[0])-60,Math.min(NB[1],SB[1])-60,Math.max(NB[2],SB[2])+60,Math.max(NB[3],SB[3])+60];
+  var WAT=(FRM&&FRM.wetAt)||SX.wetAt||null;
+  /* the substations, in order of distance from the dead-end tower */
+  var OL=townGridOcc(grid,J,RIV,VS,SX,FRM,WH,true), LOTQ=townBandGrid(OL.OCC);
+  function okYard(c){ var Q=c.poly; if(!townConvexQ(Q)) return false; var Qs=townOffset(Q,0.05), b=bbox2(Qs);
+    if(SR && polyOverlap(townOffset(Qs,-20),SR)) return false;
+    if(WAT && Q.some(function(q){ return WAT(q); })) return false;
+    if(LOTQ(b).some(function(C){ return c.lots.indexOf(C)<0 && bbHit(b,C.bb) && polyOverlap(Qs,C.poly); })) return false;
+    return !OL.bands.some(function(B){ return B.meets(Qs); }); }
+  function okPole(c){ return c.slab.under===undefined && !(WAT && WAT(c.c)) && !(SR && polyOverlap([[c.c[0]-30,c.c[1]-30],[c.c[0]+30,c.c[1]-30],[c.c[0]+30,c.c[1]+30],[c.c[0]-30,c.c[1]+30]],SR)); }
+  var picks=SZI>0?townSubPick(townSubCands(G,grid,SZ),N,LAY,SZ.spr,D,okYard):townSubPick(townPoleCands(G,grid),N,LAY,SZ.spr,D,okPole);
+  if(!picks.length){ SX.info.gridWhy='no '+SZ.nm+' substation fits'; return null; }
+  picks.sort(function(a,b){ return Math.hypot(a.mid[0]-D[0],a.mid[1]-D[1])-Math.hypot(b.mid[0]-D[0],b.mid[1]-D[1]) || a.key-b.key; });
+  /* where a plot may stand: the yards counted before they are taken, so a route that cannot leave the site takes nothing */
+  var OC=townGridOcc(grid,J,RIV,VS,SX,FRM,WH,false), YD=picks.filter(function(c){ return c.poly; }).map(function(c){ return {poly:c.poly, bb:bbox2(c.poly)}; }),
+      OQ=townBandGrid(OC.OCC.concat(YD)), plots=[];
+  function sq(c,r,d){ var nn=[-d[1],d[0]]; return [[c[0]-d[0]*r-nn[0]*r, c[1]-d[1]*r-nn[1]*r],[c[0]+d[0]*r-nn[0]*r, c[1]+d[1]*r-nn[1]*r],
+                                                    [c[0]+d[0]*r+nn[0]*r, c[1]+d[1]*r+nn[1]*r],[c[0]-d[0]*r+nn[0]*r, c[1]-d[1]*r+nn[1]*r]]; }
+  function legal(c,half,d){
+    var Q=sq(c,half,d), Qc=sq(c,half+0.3,d), b=bbox2(Qc);
+    if(!Q.every(function(q){ return q[0]>=BX[0] && q[0]<=BX[2] && q[1]>=BX[1] && q[1]<=BX[3]; })) return false;
+    if(SR && polyOverlap(Qc,SR)) return false;
+    if(WAT && WAT(c)) return false;
+    if(OQ(b).some(function(C){ return bbHit(b,C.bb) && polyOverlap(Qc,C.poly); })) return false;
+    if(OC.bands.some(function(B){ return B.meets(Qc); })) return false;
+    return !plots.some(function(P){ return bbHit(b,P.bb) && polyOverlap(Qc,P.poly); });
+  }
+  function along(X,d,t0,t1,half){ for(var t=t0;t<=t1+1e-9;t+=0.5){ var c=[X[0]+d[0]*t,X[1]+d[1]*t]; if(legal(c,half,d)) return {c:c, t:t}; } return null; }
+  function mkPlot(c,half,d,role){ var Q=sq(c,half,d), P={kind:'plot', poly:Q, bb:bbox2(Q), parts:[], c:c, role:role}; plots.push(P); return P; }
+  function dirOf(h){ return [Math.cos(h),Math.sin(h)]; }
+  /* the approach corridors (below) clear the lots they meet, so a wire comes down over the street */
+  var corr=[];
+  function corridor(P1,P2,w){ var d=townUnit(P1,P2), nn=[-d[1]*w,d[0]*w], Q=[[P1[0]-nn[0],P1[1]-nn[1]],[P2[0]-nn[0],P2[1]-nn[1]],[P2[0]+nn[0],P2[1]+nn[1]],[P1[0]+nn[0],P1[1]+nn[1]]];
+    corr.push({kind:'corridor', poly:Q, bb:bbox2(Q)}); }
+  function wrap(a){ while(a>Math.PI) a-=2*Math.PI; while(a<-Math.PI) a+=2*Math.PI; return a; }
+  /* THE ROUTE: out of the switchyard on its own heading, then turn by turn */
+  var RS=townSub(5,RTE,SALT_ROUTE), chain=[{kind:'dead', c:D}], AH=6*Math.SQRT2+0.01;
+  var g0=along(D,dirOf(h0),40,600,AH);
+  if(!g0){ SX.info.gridWhy='no room for a tower outside the site'; return null; }
+  var subs=picks.map(function(c,m){ return townSubTake(grid,c,m,SZI,bbox2); });
+  chain.push({kind:'angle', c:g0.c, plot:mkPlot(g0.c,AH,dirOf(h0),'angle')});
+  var cur={c:g0.c, h:h0};
+  /* steer from where the line is to a point: straight when the bearing is within 60 deg of the heading, else an
+     angle tower 60-120 m on, 60 deg round, and again (six at most) */
+  function steer1(tgt,sg0){
+    for(var it=0;it<6;it++){
+      var b=Math.atan2(tgt[1]-cur.c[1],tgt[0]-cur.c[0]), dl=wrap(b-cur.h);
+      if(Math.abs(dl)<=TMAX+1e-9) return true;
+      var sg=it===0&&sg0?sg0:(dl>0?1:-1), hn=cur.h+sg*TMAX, st=60+60*RS(), g=along(cur.c,dirOf(hn),st,st+160,AH);
+      if(!g) return false;
+      chain.push({kind:'angle', c:g.c, plot:mkPlot(g.c,AH,dirOf(hn),'angle')}); cur={c:g.c, h:hn};
+    }
+    return Math.abs(wrap(Math.atan2(tgt[1]-cur.c[1],tgt[0]-cur.c[0])-cur.h))<=TMAX+1e-9;
+  }
+  /* the short way round first; a turn of more than 90 deg that cannot be made that way (the network's edge, the
+     river) the long way round */
+  function steer(tgt){
+    var nC=chain.length, nP=plots.length, c0=cur, dl0=wrap(Math.atan2(tgt[1]-cur.c[1],tgt[0]-cur.c[0])-cur.h);
+    if(steer1(tgt,0)) return true;
+    chain.length=nC; plots.length=nP; cur=c0;
+    if(Math.abs(dl0)>Math.PI/2 && steer1(tgt,dl0>0?-1:1)) return true;
+    chain.length=nC; plots.length=nP; cur=c0; return false;
+  }
+  /* the route to one substation, ending on its entry gantry or its pole; false (and nothing kept) when it
+     cannot get there with every turn within 60 deg at an angle tower */
+  function routeTo(S,needExit,nxt){
+    var tgt=S.cont?townMid(S.cont.poly):S.pole, u=null, T0=null, GA=null;
+    /* A YARD IS ENTERED SQUARE: the last tower stands on one of the yard's own axes through its middle, 14-60 m
+       outside it, so the span in runs along the axis and the gantries cross the yard. The axis nearest the
+       line's bearing in and to the next substation first; the first that the route reaches with every turn within
+       60 deg (and, if the line goes on, can leave by). None: straight in */
+    if(S.cont){
+      var ax=S.ax, AX=[ax,[-ax[1],ax[0]],[-ax[0],-ax[1]],[ax[1],-ax[0]]], b0=Math.atan2(tgt[1]-cur.c[1],tgt[0]-cur.c[0]), b1=nxt?Math.atan2(nxt[1]-tgt[1],nxt[0]-tgt[0]):null;
+      function cost(p){ var h=Math.atan2(p[1],p[0]); return Math.abs(wrap(h-b0))+(b1===null?0:Math.abs(wrap(h-b1))); }
+      AX.sort(function(p,q){ return cost(p)-cost(q); });
+      for(var ai=0;ai<AX.length && !u;ai++){ var ua=AX[ai], r=townRay(S.cont.poly,tgt,[-ua[0],-ua[1]]); if(!r) continue;
+        var Tq=null, d; for(d=14;d<=60;d+=0.5){ var cq=[tgt[0]-ua[0]*(r[1]+d),tgt[1]-ua[1]*(r[1]+d)]; if(legal(cq,AH,ua)){ Tq=cq; break; } }
+        if(!Tq) continue;
+        /* and, when the line goes on, an axis it can leave by: an angle tower straight on past the yard */
+        if(needExit){ var GAq=townGantryAt(S.cont.poly,Tq,ua), xq=GAq?GAq.tout-GAq.t+12:0; if(!GAq || !along(GAq.c,ua,xq,xq+300,AH)) continue; }
+        var nC=chain.length, nP=plots.length, c0=cur;
+        var ok=steer(Tq), bT=Math.atan2(Tq[1]-cur.c[1],Tq[0]-cur.c[0]);
+        if(ok && Math.abs(wrap(Math.atan2(ua[1],ua[0])-bT))<=TMAX+1e-9 && Math.hypot(Tq[0]-cur.c[0],Tq[1]-cur.c[1])>=20){
+          chain.push({kind:'angle', c:Tq, plot:mkPlot(Tq,AH,ua,'angle'), role:'terminal'}); T0=Tq; u=ua; cur={c:Tq, h:Math.atan2(ua[1],ua[0])}; }
+        else { chain.length=nC; plots.length=nP; cur=c0; } }
+      if(u) GA=townGantryAt(S.cont.poly,T0,u);
+      else { if(!steer(tgt)) return false; info.oblique++; u=townUnit(cur.c,tgt); T0=cur.c; GA=townGantryAt(S.cont.poly,cur.c,u); }
+      if(!GA){ GA={t:Math.hypot(tgt[0]-T0[0],tgt[1]-T0[1]), Wg:10, c:tgt, tin:0, tout:0, misfit:true}; }
+      if(GA.misfit) info.misfit++;
+      S.g=GA.c; S.Wg=GA.Wg; S.exit=GA.tout-GA.t;
+    } else {
+      /* a pole-top: steered to, and the last tower 14-60 m short of it on the line in */
+      if(!steer(tgt)) return false;
+      u=townUnit(cur.c,tgt); T0=cur.c; S.g=S.pole; S.exit=0;
+      var tin=Math.hypot(tgt[0]-cur.c[0],tgt[1]-cur.c[1]);
+      if(tin>60){ var tt=null, tq; for(tq=tin-14;tq>=tin-60;tq-=0.5){ var cq2=[cur.c[0]+u[0]*tq,cur.c[1]+u[1]*tq]; if(legal(cq2,AH,u)){ tt=cq2; break; } }
+        if(tt){ chain.push({kind:'angle', c:tt, plot:mkPlot(tt,AH,u,'angle'), role:'terminal'}); T0=tt; } }
+    }
+    S.u=u; S.v=[-u[1],u[0]];
+    chain.push({kind:S.cont?'gantry':'pole', c:S.g, sub:S.idx});
+    cur={c:S.g, h:Math.atan2(u[1],u[0])};
+    return true;
+  }
+  /* each in turn; a line that goes on leaves a gantry straight on, to an angle tower 12 m or more past the yard.
+     The first substation the route cannot reach ends it: it and those after it are not built */
+  var served=0, si;
+  for(si=0;si<subs.length;si++){
+    var S=subs[si], nC0=chain.length, nP0=plots.length, cur0=cur, okS=true;
+    if(si>0){ var Sp=subs[si-1], t0=Sp.exit+12, g2=along(Sp.g,Sp.u,t0,t0+300,AH);
+      if(!g2) okS=false;
+      else { chain.push({kind:'angle', c:g2.c, plot:mkPlot(g2.c,AH,Sp.u,'angle')}); cur={c:g2.c, h:cur.h}; } }
+    if(okS) okS=routeTo(S,si+1<subs.length,si+1<subs.length?(subs[si+1].cont?townMid(subs[si+1].cont.poly):subs[si+1].pole):null);
+    if(!okS){ chain.length=nC0; plots.length=nP0; cur=cur0; info.unreached=subs.length-si; break; }
+    served++;
+  }
+  if(!served){ SX.info.gridWhy='the line reaches no substation'; return null; }
+  subs=subs.slice(0,served); subs.forEach(function(S,m){ S.pass=m+1<served; townSubLand(grid,S); });
+  var yards=subs.filter(function(S){ return S.cont; }).map(function(S){ return S.cont; });
+  /* the suspension pylons, every 120-180 m between, each moved along its span to a legal plot or dropped */
+  var full=[chain[0]], i;
+  for(i=0;i+1<chain.length;i++){
+    var A=chain[i].c, B=chain[i+1].c, Lg=Math.hypot(B[0]-A[0],B[1]-A[1]), dg=townUnit(A,B), ss=[], x=120+60*RS();
+    while(x<=Lg-60){ ss.push(x); x+=120+60*RS(); }
+    ss.forEach(function(s0){ var got=null, off;
+      for(off=0;off<=40 && !got;off+=0.5) [off,-off].forEach(function(o){ if(got || (o===-off && off===0)) return; var sx=s0+o;
+        if(sx<35 || sx>Lg-35) return; var c=[A[0]+dg[0]*sx, A[1]+dg[1]*sx]; if(legal(c,5,dg)) got={c:c, moved:o!==0}; });
+      if(!got){ info.pylDropped++; return; }
+      if(got.moved) info.pylMoved++;
+      full.push({kind:'pylon', c:got.c, plot:mkPlot(got.c,5,dg,'pylon'), d:dg}); });
+    full.push(chain[i+1]);
+  }
+  /* each structure's frame: a pylon along its span, an angle tower along the bisector of its turn -- its plot
+     then the 12 m square on that (inside the square it was found legal in) */
+  full.forEach(function(T,j){
+    var din=j>0?townUnit(full[j-1].c,T.c):null, dout=j+1<full.length?townUnit(T.c,full[j+1].c):null;
+    T.din=din; T.dout=dout;
+    var bs=din&&dout?[din[0]+dout[0],din[1]+dout[1]]:(din||dout), l=Math.hypot(bs[0],bs[1]);
+    if(l<1e-6) bs=din||dout; else bs=[bs[0]/l,bs[1]/l];
+    T.bs=bs; T.nn=[-bs[1],bs[0]];
+    T.turn=din&&dout?Math.abs(wrap(Math.atan2(dout[1],dout[0])-Math.atan2(din[1],din[0])))*180/Math.PI:0;
+    if(T.kind==='angle'){ var Q=sq(T.c,6,bs); T.plot.poly=Q; T.plot.bb=bbox2(Q); }
+  });
+  /* THE APPROACH CORRIDORS, off the final chain: under each span that comes down to the dead-end, a gantry or a
+     pole-top, a strip as wide as the gantry and 3 m more each side (the dead-end's 6 m, a pole's 4 m) */
+  full.forEach(function(T,j){ var w=T.kind==='dead'?6:T.kind==='gantry'?RT0w(T):T.kind==='pole'?4:0; if(!w) return;
+    if(j>0) corridor(full[j-1].c,T.c,w); if(j+1<full.length) corridor(T.c,full[j+1].c,w); });
+  function RT0w(T){ var S=subs[T.sub]; return S.Wg/2+3; }
+  /* the lots the plots and corridors meet, carved as row 98 carves them (every row and cross street); City
+     form's and the river's, dropped */
+  function meets(Q){ var b=bbox2(Q); return plots.some(function(P){ return bbHit(b,P.bb) && polyOverlap(Q,P.poly); }) || corr.some(function(P){ return bbHit(b,P.bb) && polyOverlap(Q,P.poly); }); }
+  townCarve(G,grid,meets,info,WH?'site':'grid',400000,LOTMIN,bbox2);
+  /* where the wire comes down low no street pole stands: the street's own pole rows skip a corridor (KIT poleOut) */
+  var WL=corr.map(function(P){ return P.poly; }); grid.forEach(function(PL){ PL.wireLow=(PL.wireLow||[]).concat(WL); });
+  if(FRM) FRM.plans.forEach(function(PLe){ if(!PLe.lots||!PLe.lots.length) return; var go=PLe.lots.filter(function(L){ return meets(L.poly); }); if(go.length){ PLe.lots=PLe.lots.filter(function(L){ return go.indexOf(L)<0; }); PLe.conts=PLe.conts.filter(function(C){ return go.indexOf(C)<0; }); } });
+  if(RIV){ var PR=RIV.plan, rg=PR.lots.filter(function(L){ return meets(L.poly); });
+    if(rg.length){ info.riverLots=rg.length; PR.lots=PR.lots.filter(function(L){ return rg.indexOf(L)<0; }); PR.conts=PR.conts.filter(function(C){ return rg.indexOf(C)<0; }); } }
+  var SAG=0.02+0.02*townSub(4,RTE,SALT_ROUTE)();
+  info.sag=SAG; info.D=D; info.h0=h0; info.site=SR; info.corr=corr.map(function(P){ return P.poly; });
+  info.chain=full.map(function(T){ return {kind:T.kind, c:T.c, sub:T.sub, turn:T.turn, plot:T.plot?T.plot.poly:null}; });
+  info.plots=plots.map(function(P){ return {poly:P.poly, c:P.c, role:P.role}; });
+  info.picks=subs.map(function(S){ return {idx:S.idx, size:S.size, k:S.k, side:S.side, lots:S.lots||null, poly:S.poly||null, pole:S.pole||null, host:S.host?S.host.kind:null, f:S.f, halfw:S.halfw, koff:S.koff, pback:S.pback, g:S.g, u:S.u, Wg:S.Wg, pass:S.pass}; });
+  var RT={full:full, plots:plots, yards:yards, subs:subs, info:info, sag:SAG, SW:SW, D:D, SZI:SZI, corr:corr, extraOcc:yards.concat(corr)};
+  RT.plan={ix:-1, p:p, theme:{key:'town', content:function(K){ return gridTheme(K,RT); }}, sGaps:[], hasGap:false, Z0:0,
+           conts:plots.concat(yards), lots:[], slabsBySide:{'1':[],'-1':[]}, dropped:0, pushed:0};
+  return RT;
+}
+/* WITHOUT SITE 3: a substation near each end of row 98's line inside the network, fed by one span from
+   that end's pylon. The line is not moved: a yard stands 8 m or more from its axis */
+function townLineSubs(p,G,plans,J,RIV,VS,PW,SX,FRM,WH){
+  var LAY=Math.max(0,Math.min(99,Math.round(isFinite(p.layout)?+p.layout:0))), N=Math.min(2,townSubsN(p)), SZI=townSubsZ(p), SZ=SUBYARD[SZI];
+  var NG=G.ROWS+G.UX.length, grid=plans.slice(0,NG), P0=grid[0], polyOverlap=P0.polyOverlap, bbox2=P0.bbox2, bbHit=P0.bbHit;
+  var PL=PW.plots, NB=townBox(grid,J), info={size:SZI, sizeName:SZ.nm, asked:N, subs:[], ends:[]};
+  if(PL.length<2 || !N) return null;
+  function inNB(c){ return c[0]>NB[0] && c[0]<NB[2] && c[1]>NB[1] && c[1]<NB[3]; }
+  var ends=[], j;
+  for(j=0;j<PL.length;j++) if(inNB(PL[j].c)){ ends.push(j); break; }
+  for(j=PL.length-1;j>=0;j--) if(inNB(PL[j].c)){ if(ends.indexOf(j)<0) ends.push(j); break; }
+  ends=ends.slice(0,N);
+  var A0=PW.info.A0, dd=PW.dir;
+  function axisD(q){ var x=q[0]-A0[0], y=q[1]-A0[1]; return Math.abs(-dd[1]*x+dd[0]*y); }
+  var OL=townGridOcc(grid,J,RIV,VS,SX,FRM,WH,true), LOTQ=townBandGrid(OL.OCC.concat(PL)), WAT=(FRM&&FRM.wetAt)||(SX&&SX.wetAt)||null;
+  var CANDS=SZI>0?townSubCands(G,grid,SZ):townPoleCands(G,grid), subs=[], taken=[];
+  ends.forEach(function(je){ var E=PL[je].c;
+    function ok(c){
+      var d0=Math.hypot(c.mid[0]-E[0],c.mid[1]-E[1]); if(d0>220 || d0<25) return false;
+      if(taken.some(function(t){ return Math.hypot(t.mid[0]-c.mid[0],t.mid[1]-c.mid[1])<SZ.spr; })) return false;
+      if(SZI===0) return c.slab.under===undefined && axisD(c.c)>=8 && !(WAT && WAT(c.c));
+      var Q=c.poly; if(!townConvexQ(Q) || Q.some(function(q){ return axisD(q)<8; })) return false;
+      if(WAT && Q.some(function(q){ return WAT(q); })) return false;
+      var Qs=townOffset(Q,0.05), b=bbox2(Qs);
+      if(LOTQ(b).some(function(C){ return c.lots.indexOf(C)<0 && bbHit(b,C.bb) && polyOverlap(Qs,C.poly); })) return false;
+      return !OL.bands.some(function(B){ return B.meets(Qs); }); }
+    var got=townSubPick(CANDS,1,LAY,0,null,ok)[0];
+    if(!got) return;
+    taken.push(got);
+    var S=townSubTake(grid,got,subs.length,SZI,bbox2); townSubLand(grid,S); var tgt=S.cont?townMid(S.cont.poly):S.pole, u=townUnit(E,tgt);
+    if(S.cont){ var GA=townGantryAt(S.cont.poly,E,u)||{c:tgt, Wg:10, t:0, tout:0, misfit:true}; S.g=GA.c; S.Wg=GA.Wg; S.misfit=!!GA.misfit; }
+    else S.g=S.pole;
+    S.u=u; S.v=[-u[1],u[0]]; S.pass=false; S.from=je;
+    subs.push(S);
+  });
+  if(!subs.length) return null;
+  /* THE FEED SPAN comes down from the end pylon to the gantry (or the pole-top) over the city, so it gets the grid
+     route's approach corridor: a strip as wide as the gantry and 3 m more each side (a pole's 4 m) clears the lots it
+     meets and keeps the street's poles out. The line and its plots do not move */
+  var corr=subs.map(function(S){ var E=PL[S.from].c, w=S.cont?S.Wg/2+3:4, d=townUnit(E,S.g), nn=[-d[1]*w,d[0]*w];
+    var Q=[[E[0]-nn[0],E[1]-nn[1]],[S.g[0]-nn[0],S.g[1]-nn[1]],[S.g[0]+nn[0],S.g[1]+nn[1]],[E[0]+nn[0],E[1]+nn[1]]]; return {poly:Q, bb:bbox2(Q)}; });
+  /* EXCEPT under row 98's own wires (6 m each side of each span, the arms' 4.5 and a margin): row 98 lifts its towers
+     over what stands there, so a lot carved there is a new building and the line would move. Near the pylon the feed
+     wire hangs at the line's own height, and E2 holds it to 12 m over whatever is kept */
+  var MB=[]; for(var mi=0;mi+1<PL.length;mi++){ var a0=PL[mi].c, a1=PL[mi+1].c, dm=townUnit(a0,a1), nm=[-dm[1]*6,dm[0]*6], QM=[[a0[0]-nm[0],a0[1]-nm[1]],[a1[0]-nm[0],a1[1]-nm[1]],[a1[0]+nm[0],a1[1]+nm[1]],[a0[0]+nm[0],a0[1]+nm[1]]]; MB.push({poly:QM, bb:bbox2(QM)}); }
+  function hitA(Q,b,A){ return A.some(function(C){ return bbHit(b,C.bb) && polyOverlap(Q,C.poly); }); }
+  var cinfo={met:0, kept:0, dropped:0, split:0};
+  townCarve(G,grid,function(Q){ var b=bbox2(Q); return hitA(Q,b,corr) && !hitA(Q,b,MB); },cinfo,'grid',1100000,Math.max(3,+p.lotmin||5),bbox2);
+  var WL=corr.map(function(C){ return C.poly; }), WK=MB.map(function(C){ return C.poly; });
+  grid.forEach(function(PL){ PL.wireLow=(PL.wireLow||[]).concat(WL); PL.wireKeep=(PL.wireKeep||[]).concat(WK); });
+  info.keep=WK;
+  info.corr=WL; info.carved=cinfo.met;
+  info.picks=subs.map(function(S){ return {idx:S.idx, size:S.size, k:S.k, side:S.side, lots:S.lots||null, poly:S.poly||null, pole:S.pole||null, host:S.host?S.host.kind:null, f:S.f, halfw:S.halfw, koff:S.koff, pback:S.pback, g:S.g, u:S.u, Wg:S.Wg, from:S.from}; });
+  var yards=subs.filter(function(S){ return S.cont; }).map(function(S){ return S.cont; });
+  var SB={subs:subs, yards:yards, info:info, PW:PW, SZI:SZI};
+  SB.plan={ix:-1, p:p, theme:{key:'town', content:function(K){ return lineSubsTheme(K,SB); }}, sGaps:[], hasGap:false, Z0:0,
+           conts:yards, lots:[], slabsBySide:{'1':[],'-1':[]}, dropped:0, pushed:0};
+  return SB;
+}
+/* ROW 116: WHAT A SUBSTATION AND ITS LINE ARE BUILT OF (subKit), shared by the grid route's theme and the
+   line-end substations'. A yard is laid in its gantry's frame: x along the incoming line (u), y across it
+   (v), from the entry gantry's centre g. Every part is convex and kept only if it stands inside its yard
+   (0.8 m inside the fence for the equipment): what does not fit is not built, and the yard's record names
+   it. The fence (sizes 2-3) is four thin see-through slabs, posts and rails as lines -- it hides nothing; an
+   urban compound's wall (size 1) is solid. The busbars are lines on a see-through slab between the gantry
+   rows. Every wire is hung on the kit's catenary, as row 98's, and cut into each container it crosses. */
+function subKit(K,info){
+  var prismN=K.prismN, polyFromLoops=K.polyFromLoops, verts=K.verts, inConv=K.inConv, conts=K.conts, para=K.para, bbHit=K.bbHit, cables=K.cables;
+  var COLK='#1a1a1a', COLT='#8a8a8a', COLB='#8b5a2b', COLG='#2f6b3a', COLR='#d42a2a';
+  function rec(P,C){ info.recs.push({kind:P.kind, V:verts(P), F:P.faces.map(function(f){ return {n:f.n, d:f.d}; }), cont:{kind:C.kind, poly:C.poly}, hides:P.hides!==false, sub:C.sub}); }
+  function own(P,C,kind,col,layer){ P.cont=C; P.kind=kind; P.col=col; P.layer=layer||'struct';
+    P.lines.forEach(function(Ln){ if(!Ln.col) Ln.col=col; if(!Ln.kind) Ln.kind=kind; });
+    C.parts.push(P); rec(P,C); return P; }
+  function ghost(P){ P.hides=false; P.seeThru=true; return P; }
+  function faceDir(P,d){ var best=-2, fi=-1; P.faces.forEach(function(f,q){ var c=f.n[0]*d[0]+f.n[1]*d[1]+f.n[2]*d[2]; if(c>best){ best=c; fi=q; } }); return fi; }
+  /* ---- a yard ---- */
+  function yard(S,GU){
+    var C=S.cont, u=GU||S.u, v=[-u[1],u[0]], g=S.g, Wg=S.Wg, ZG=S.size===1?11:15, PASS=S.pass, hw=Wg/2, rs=townSub(S.key,S.size,SALT_SUBS);
+    var CI=townOffset(C.poly,0.8), R={idx:S.idx, size:S.size, g:g, u:S.u, v:[-S.u[1],S.u[0]], Wg:Wg, zg:ZG, pass:PASS, skipped:[], built:{}, cont:C.poly};
+    function F(x,y){ return [g[0]+u[0]*x+v[0]*y, g[1]+u[1]*x+v[1]*y]; }
+    function F3(x,y,z){ var q=F(x,y); return [q[0],q[1],z]; }
+    function box(x0,x1,y0,y1,z0,z1){ return prismN([F(x0,y0),F(x1,y0),F(x1,y1),F(x0,y1)],z0,z1); }
+    function fus(x,y,r0,r1,m,z0,z1){ var lo=[], hi=[], k, L; for(k=0;k<m;k++){ var t=2*Math.PI*k/m; lo.push(F3(x+r0*Math.cos(t),y+r0*Math.sin(t),z0)); hi.push(F3(x+r1*Math.cos(t),y+r1*Math.sin(t),z1)); }
+      L=[lo,hi]; for(k=0;k<m;k++){ var k2=(k+1)%m; L.push([lo[k],lo[k2],hi[k2],hi[k]]); } return polyFromLoops(L); }
+    function fits(P,Q){ return verts(P).every(function(q){ return townIn(Q||CI,q,1e-9); }); }
+    function put(P,kind,col,Q){ if(!fits(P,Q)){ R.skipped.push(kind); return null; } R.built[kind]=(R.built[kind]||0)+1; return own(P,C,kind,col); }
+    /* the ground, gravel stippled in a transmission or converter yard */
+    var Pl=prismN(C.poly,-0.02,0); Pl.lines=[]; Pl.hides=false; own(Pl,C,'subplate',COLK,'furn');
+    if(S.size>=2){ var bb=townBbox(CI), x, y, row=0;
+      for(y=bb[1]+2;y<=bb[3]-2;y+=4.5,row++) for(x=bb[0]+2+(row%2)*2.25;x<=bb[2]-2;x+=4.5) if(townIn(CI,[x,y]) && townIn(CI,[x+0.4,y]))
+        Pl.lines.push({a:[x,y,0], b:[x+0.4,y,0], f0:1, f1:1, col:COLT, kind:'gravel'}); }
+    /* the wall or the fence, one piece per side */
+    var n=C.poly.length, O=townOffset(C.poly,0.05), I=townOffset(C.poly,S.size===1?0.35:0.3), e;
+    for(e=0;e<n;e++){ var e2=(e+1)%n;
+      if(S.size===1){ put(prismN([O[e],O[e2],I[e2],I[e]],0,3),'wall',COLK,C.poly); continue; }
+      var Fp=ghost(prismN([O[e],O[e2],I[e2],I[e]],0,2.4)), a=[(O[e][0]+I[e][0])/2,(O[e][1]+I[e][1])/2], b=[(O[e2][0]+I[e2][0])/2,(O[e2][1]+I[e2][1])/2], Ls=[], L=Math.hypot(b[0]-a[0],b[1]-a[1]), np=Math.max(1,Math.round(L/3)), k;
+      Ls.push({a:[a[0],a[1],2.4], b:[b[0],b[1],2.4], f0:0, f1:0}, {a:[a[0],a[1],1.2], b:[b[0],b[1],1.2], f0:0, f1:0});
+      for(k=0;k<=np;k++){ var q=[a[0]+(b[0]-a[0])*k/np, a[1]+(b[1]-a[1])*k/np]; Ls.push({a:[q[0],q[1],0], b:[q[0],q[1],2.4], f0:0, f1:0}); }
+      Fp.lines=Ls; put(Fp,'fence',COLT,C.poly); }
+    /* THE ENTRY GANTRY: two legs and a beam across the incoming line, an earth spike on top, the strain
+       insulators toward the line (and on toward the next one when the line goes on) */
+    function gantry(x,W,z,kind){ var h=W/2;
+      put(box(x-0.4,x+0.4,-h-0.4,-h+0.4,0,z),kind,COLK); put(box(x-0.4,x+0.4,h-0.4,h+0.4,0,z),kind,COLK);
+      return put(box(x-0.5,x+0.5,-h-0.4,h+0.4,z,z+1),kind+'beam',COLK); }
+    var B0=gantry(0,Wg,ZG,'gantry');
+    put(box(-0.15,0.15,-0.15,0.15,ZG+1,ZG+3.4),'spike',COLK);
+    var OG=[-7.4,-4.8,-2.2,2.2,4.8,7.4].map(function(o){ return o*Wg/18; });
+    R.og=OG; R.att={zin:ZG+0.5, xin:-1.7, xout:1.7, earth:ZG+3.45};
+    [-1].concat(PASS?[1]:[]).forEach(function(sg){ var Hp=ghost(box(sg<0?-1.9:0.5,sg<0?-0.5:1.9,-hw,hw,ZG+0.2,ZG+0.8));
+      Hp.lines=OG.map(function(o){ return {a:F3(sg*0.5,o,ZG+0.5), b:F3(sg*1.7,o,ZG+0.5), f0:0, f1:0}; }); put(Hp,'insulator',COLT); });
+    if(B0) R.beam=verts(B0).map(function(q){ return [q[0],q[1],q[2]]; });
+    /* WHERE EQUIPMENT STANDS: each piece claims its footprint in the gantry's frame, inside the yard and clear of
+       every piece before it by 0.5 m, or it is not built -- so no two solids in a yard meet */
+    var CL=[[-2.2,2.2,-hw-0.6,hw+0.6]];
+    function claim(x0,x1,y0,y1){
+      if(![[x0,y0],[x1,y0],[x1,y1],[x0,y1]].every(function(q){ return townIn(CI,F(q[0],q[1]),1e-9); })) return false;
+      if(CL.some(function(r){ return x0<r[1]+0.5 && x1>r[0]-0.5 && y0<r[3]+0.5 && y1>r[2]-0.5; })) return false;
+      CL.push([x0,x1,y0,y1]); return true; }
+    /* a transformer: a tank, radiator fins on its two long faces, three bushings on top */
+    function transformer(x0,x1,yc,w,h){ if(!claim(x0,x1,yc-w/2,yc+w/2)){ R.skipped.push('transformer'); return false; }
+      var T=box(x0,x1,yc-w/2,yc+w/2,0,h);
+      [1,-1].forEach(function(sg){ var fi=faceDir(T,[v[0]*sg,v[1]*sg,0]), x; for(x=x0+0.6;x<=x1-0.5;x+=0.6) T.lines.push({a:F3(x,yc+sg*w/2,0.5), b:F3(x,yc+sg*w/2,h-0.4), f0:fi, f1:fi, col:COLK, kind:'fins'}); });
+      put(T,'transformer',COLK);
+      for(var k=0;k<3;k++) put(fus(x0+(x1-x0)*(k+1)/4,yc,0.3,0.15,8,h,h+1.8),'bushing',COLB);
+      return true; }
+    function building(dims,yc,x0s,kind,h){ var k, m;
+      for(k=0;k<dims.length;k++) for(m=0;m<x0s.length;m++){ var x0=x0s[m], y0=yc(dims[k][1]);
+        if(claim(x0,x0+dims[k][0],y0[0],y0[1])) return {x0:x0, x1:x0+dims[k][0], y0:y0[0], y1:y0[1], P:put(box(x0,x0+dims[k][0],y0[0],y0[1],0,h),kind,COLK)}; }
+      R.skipped.push(kind); return null; }
+    if(S.size===1){
+      var yt=Math.max(2.6,hw/2)+0.5;
+      transformer(4,9,-yt,4,3.6); transformer(4,9,yt,4,3.6);
+      var SG=building([[16,14],[12,12],[10,9],[8,7]],function(w){ return [-w/2,w/2]; },[12,14,16],'switchgear',6);
+      if(SG && SG.P){ var fw=faceDir(SG.P,[-u[0],-u[1],0]), xd0=SG.x0; SG.P.lines.push({a:F3(xd0,-1,0), b:F3(xd0,-1,2.6), f0:fw, f1:fw}, {a:F3(xd0,1,0), b:F3(xd0,1,2.6), f0:fw, f1:fw}, {a:F3(xd0,-1,2.6), b:F3(xd0,1,2.6), f0:fw, f1:fw}); }
+    } else {
+      /* the AC yard: a second gantry row, busbars between the rows, breakers and disconnectors under them,
+         transformers past it, a control house on the near edge beside the bays */
+      var X2=null, xc;
+      for(xc=S.size===3?24:34;xc>=14;xc-=2) if(claim(2.8,xc+1,-hw-0.6,hw+0.6)){ X2=xc; break; }
+      if(X2!==null){
+        gantry(X2,Wg,10,'gantry2');
+        var Bb=ghost(box(0.6,X2-0.6,-hw,hw,8.4,8.6)); Bb.lines=[-0.25,0,0.25].map(function(f){ return {a:F3(0.6,f*Wg,8.5), b:F3(X2-0.6,f*Wg,8.5), f0:0, f1:0}; }); put(Bb,'busbar',COLK);
+        var xb=0.35*X2, xd=0.7*X2;
+        OG.forEach(function(o){
+          put(box(xb-0.6,xb+0.6,o-0.6,o+0.6,2.2,3.4),'breaker',COLK);
+          [[-1,-1],[1,-1],[1,1],[-1,1]].forEach(function(q){ put(box(xb+q[0]*0.45-0.06,xb+q[0]*0.45+0.06,o+q[1]*0.45-0.06,o+q[1]*0.45+0.06,0,2.2),'breakerleg',COLK); });
+          [-0.5,0.5].forEach(function(dy){ put(box(xd-0.1,xd+0.1,o+dy-0.1,o+dy+0.1,0,4.5),'disconnector',COLK); }); });
+        var NT=S.size===3?2+Math.floor(rs()*2):3+Math.floor(rs()*4), m, nb=0;
+        for(m=0;m<NT;m++) if(transformer(X2+4,X2+11,(m-(NT-1)/2)*8,5,4.2)) nb++;
+        R.transformers=nb;
+      } else R.skipped.push('gantry2');
+      var chs=0;
+      var CH=building([[10,8],[8,6]],function(w){ return [hw+2,hw+2+w]; },[2.5,6],'controlhouse',4)||(R.skipped.pop(),building([[10,8],[8,6]],function(w){ return [-hw-2-w,-hw-2]; },[2.5,6],'controlhouse',4));
+      if(CH) chs=CH.y0>0?1:-1;
+      if(S.size===3){
+        /* the converter: a valve hall 30 m tall beside the line's corridor (the side the control house is not),
+           a low wedge roof, and its DC yard of smoothing reactors on insulator stacks past it */
+        var sd=chs>0?-1:1, HL=null, sides=[sd,-sd], q;
+        for(q=0;q<2 && !HL;q++){ var sg=sides[q]; HL=building([[36,22],[30,18],[24,14]],function(w){ return sg>0?[hw+2,hw+2+w]:[-hw-2-w,-hw-2]; },[2.5,14,X2!==null?X2+2:20],'valvehall',30); if(!HL && q===0) R.skipped.pop(); }
+        if(HL){ var ym=(HL.y0+HL.y1)/2;
+          var Rf=polyFromLoops([[F3(HL.x0,HL.y0,30),F3(HL.x0,HL.y1,30),F3(HL.x0,ym,33)],[F3(HL.x1,HL.y0,30),F3(HL.x1,HL.y1,30),F3(HL.x1,ym,33)],
+                                [F3(HL.x0,HL.y0,30),F3(HL.x1,HL.y0,30),F3(HL.x1,ym,33),F3(HL.x0,ym,33)],[F3(HL.x0,HL.y1,30),F3(HL.x1,HL.y1,30),F3(HL.x1,ym,33),F3(HL.x0,ym,33)],
+                                [F3(HL.x0,HL.y0,30),F3(HL.x1,HL.y0,30),F3(HL.x1,HL.y1,30),F3(HL.x0,HL.y1,30)]]);
+          put(Rf,'hallroof',COLK);
+          var q2, nr=0; for(q2=0;q2<6 && nr<4;q2++){ var xr=HL.x1+4+(q2>>1)*6, yr=ym+((q2&1)?-1:1)*4.5;
+            if(claim(xr-2.1,xr+2.1,yr-2.1,yr+2.1)){ put(fus(xr,yr,0.45,0.35,8,0,6),'insulatorstack',COLT); put(fus(xr,yr,1.8,1.8,12,6,10),'reactor',COLK); nr++; } }
+          if(!nr) R.skipped.push('reactor');
+        }
+      }
+    }
+    info.subs[S.idx]=R;
+    return R;
+  }
+  /* ---- a pole-top: a wooden pole, its crossarm along the street, three cutouts under it, the transformer on
+     the road side, on the kerb strip of the pavement ---- */
+  function poleTop(S){
+    /* its slab as the drawing has it: a bare street (its lots all massed at this camera) merges its slabs into runs */
+    var C=conts.filter(function(Cc){ return Cc.kind==='slab' && Cc.poly && inConv(Cc.poly,[S.pole[0],S.pole[1]]); })[0]||S.host, P=S.pole, ax=S.ax, tr=S.toRoad, z0=0, R={idx:S.idx, size:0, g:P, u:S.u, v:[-S.u[1],S.u[0]], pass:S.pass, host:C.kind, f:S.f, halfw:S.halfw, koff:S.koff, pback:S.pback, skipped:[], built:{}};
+    C.parts.forEach(function(Pt){ var V=verts(Pt), top=-1e18; V.forEach(function(q){ if(q[2]>top) top=q[2]; }); if(top>0.5 || top<=z0) return;
+      var xs=V.map(function(q){ return q[0]; }), ys=V.map(function(q){ return q[1]; });
+      if(P[0]>=Math.min.apply(null,xs) && P[0]<=Math.max.apply(null,xs) && P[1]>=Math.min.apply(null,ys) && P[1]<=Math.max.apply(null,ys)) z0=top; });
+    function W(a,c){ return [P[0]+ax[0]*a+tr[0]*c, P[1]+ax[1]*a+tr[1]*c]; }
+    function bx(a0,a1,c0,c1,za,zb){ return prismN([W(a0,c0),W(a1,c0),W(a1,c1),W(a0,c1)],za,zb); }
+    function cyl(a,c,r0,r1,m,za,zb){ var lo=[], hi=[], k, L; for(k=0;k<m;k++){ var t=2*Math.PI*k/m, q0=W(a+r0*Math.cos(t),c+r0*Math.sin(t)), q1=W(a+r1*Math.cos(t),c+r1*Math.sin(t)); lo.push([q0[0],q0[1],za]); hi.push([q1[0],q1[1],zb]); }
+      L=[lo,hi]; for(k=0;k<m;k++){ var k2=(k+1)%m; L.push([lo[k],lo[k2],hi[k2],hi[k]]); } return polyFromLoops(L); }
+    function put(Pt,kind,col){ if(!verts(Pt).every(function(q){ return townIn(C.poly,q,1e-9); })){ R.skipped.push(kind); return null; } R.built[kind]=(R.built[kind]||0)+1; return own(Pt,C,kind,col); }
+    var ZX=z0+9.2;
+    put(cyl(0,0,0.14,0.11,10,z0,z0+10.2),'pole',COLB);
+    put(bx(-1.2,1.2,0.12,0.24,ZX,ZX+0.15),'crossarm',COLB);
+    [-1,0,1].forEach(function(a){ put(bx(a-0.05,a+0.05,0.13,0.23,ZX-0.5,ZX),'cutout',COLK); });
+    put(cyl(0,0.62,0.42,0.42,12,z0+6.2,z0+7.6),'poletx',COLK);
+    /* the middle phase on a pin insulator on top of the pole: landed on the crossarm beside the pole, a span coming
+       from behind the pole ran through it (E6 found it) */
+    put(cyl(0,0,0.06,0.04,8,z0+10.2,z0+10.5),'pin',COLK);
+    R.att={z:ZX+0.2, zs:[ZX+0.2,z0+10.55,ZX+0.2], at:[W(-1,0.18),W(0,0),W(1,0.18)]};
+    R.z0=z0;
+    info.subs[S.idx]=R;
+    return R;
+  }
+  /* ---- a wire: the kit's catenary between two points, cut into every container it crosses ---- */
+  function aOf(S,Lp){
+    if(!(S>1e-9)) return Infinity;
+    var lo=Lp*1e-3, hi=Lp*Lp/(8*S)*4+Lp, it;
+    for(it=0;it<200;it++){ var md=Math.sqrt(lo*hi), sh=Math.sinh(Lp/(4*md)); if(2*md*sh*sh>S) lo=md; else hi=md; }
+    return Math.sqrt(lo*hi);
+  }
+  function dip(t,a,Lp){ return isFinite(a)?-2*a*Math.sinh(t*Lp/(2*a))*Math.sinh((t-1)*Lp/(2*a)):0; }
+  function segIn(A,B,Q){ var r=townRay(Q,A,[B[0]-A[0],B[1]-A[1]]); if(!r) return null; var t0=Math.max(0,r[0]), t1=Math.min(1,r[1]); return t1>t0?[t0,t1]:null; }
+  function cross3(a,b){ return [a[1]*b[2]-a[2]*b[1], a[2]*b[0]-a[0]*b[2], a[0]*b[1]-a[1]*b[0]]; }
+  function nrm3(a){ var L=Math.hypot(a[0],a[1],a[2])||1; return [a[0]/L,a[1]/L,a[2]/L]; }
+  function stick(Pa,Pb,Q){
+    var dv=[Pb[0]-Pa[0],Pb[1]-Pa[1],Pb[2]-Pa[2]], L=Math.hypot(dv[0],dv[1],dv[2]), th=0.02, k;
+    var hz=nrm3([-dv[1],dv[0],0]), up=nrm3(cross3(dv,hz)), u=[dv[0]/L,dv[1]/L,dv[2]/L], cut=[0,0.012,0.03,0.06,0.12,0.25];
+    for(k=0;k<cut.length;k++){
+      var c=Math.min(cut[k],L*0.45), A=[Pa[0]+u[0]*c,Pa[1]+u[1]*c,Pa[2]+u[2]*c], ea=[u[0]*(L-2*c),u[1]*(L-2*c),u[2]*(L-2*c)];
+      var o=[A[0]-hz[0]*th/2-up[0]*th/2, A[1]-hz[1]*th/2-up[1]*th/2, A[2]-hz[2]*th/2-up[2]*th/2];
+      var Pq=para(o,ea,[hz[0]*th,hz[1]*th,hz[2]*th],[up[0]*th,up[1]*th,up[2]*th]);
+      if(verts(Pq).every(function(v){ return inConv(Q,v); })) return Pq;
+    }
+    return null;
+  }
+  function hang(A3,B3,sag,kind,wid){
+    var Lq=Math.hypot(B3[0]-A3[0],B3[1]-A3[1]), Sq=sag*Lq, aq=aOf(Sq,Lq), np=0, nd=0;
+    function P3(t){ return [A3[0]+(B3[0]-A3[0])*t, A3[1]+(B3[1]-A3[1])*t, A3[2]+(B3[2]-A3[2])*t-dip(t,aq,Lq)]; }
+    var bb=townBbox([A3,B3]);
+    conts.forEach(function(C){ if(!bbHit(bb,C.bb)) return; var r=segIn(A3,B3,C.poly); if(!r || r[1]-r[0]<1e-9) return;
+      var n=Math.max(1,Math.ceil(Lq*(r[1]-r[0])/1.0));
+      for(var m=0;m<n;m++){ var ta=r[0]+(r[1]-r[0])*m/n, tb=r[0]+(r[1]-r[0])*(m+1)/n, Pa=P3(ta), Pb=P3(tb), Pq=stick(Pa,Pb,C.poly);
+        if(!Pq){ nd++; continue; }
+        Pq.lines=[{a:Pa, b:Pb, f0:0, f1:0, kind:kind, col:COLK}];
+        Pq.cont=C; Pq.col=COLK; Pq.kind=kind; Pq.layer='cable'; Pq.via='pline'; Pq.hides=false; Pq.seeThru=true; Pq.wire=wid;
+        C.parts.push(Pq); np++; } });
+    info.dropPieces=(info.dropPieces||0)+nd;
+    return {A:A3, B:B3, L:Lq, S:Sq, a:aq, pieces:np, dropped:nd, earth:kind==='earthwire'};
+  }
+  return {own:own, rec:rec, ghost:ghost, yard:yard, poleTop:poleTop, hang:hang, aOf:aOf, dip:dip, COLT:COLT, COLK:COLK};
+}
+/* THE GRID ROUTE'S CONTENT: the yards and pole-tops first (so the heights see them), each plot's plate, the
+   heights, the towers, then the wires span by span. A SUSPENSION PYLON is row 98's; an ANGLE TOWER has a base
+   1.4 x as wide, double crossarms and its insulators strung along the two spans (strain) where a pylon's hang;
+   the plant's DEAD-END TOWER gets crossarms of its own on the line's heading. THE HEIGHTS as row 98's: the
+   lowest wire 12 m or more over anything under it, each span lifting its towers, never below 24 m to the
+   lowest crossarm -- except inside the site, a yard, or an approach corridor (cleared of lots), where the line
+   comes down to the dead-end, a gantry or a pole-top. */
+function gridTheme(K,RT){
+  var polyFromLoops=K.polyFromLoops, prismN=K.prismN, verts=K.verts, inConv=K.inConv, dist3=K.dist3, bbHit=K.bbHit, conts=K.conts, cables=K.cables;
+  var info=RT.info, full=RT.full, SK, Z1B=24, ARM=4.5, INS=1.2, DZ=4, PK=3, HB=4.6, EXR=45, COLT='#8a8a8a';
+  var WIRES=[]; [-1,1].forEach(function(sg){ [0,1,2].forEach(function(k){ WIRES.push({o:sg*ARM, k:k, sg:sg, dz:k*DZ-INS, earth:false}); }); });
+  WIRES.push({o:0, k:3, sg:0, dz:2*DZ+PK, earth:true});
+  function hull2(V){ var pts=V.map(function(v){ return [v[0],v[1]]; }).sort(function(a,b){ return a[0]-b[0] || a[1]-b[1]; });
+    function cr(o,a,b){ return (a[0]-o[0])*(b[1]-o[1])-(a[1]-o[1])*(b[0]-o[0]); }
+    var lo=[], up=[], i;
+    for(i=0;i<pts.length;i++){ while(lo.length>=2 && cr(lo[lo.length-2],lo[lo.length-1],pts[i])<=1e-12) lo.pop(); lo.push(pts[i]); }
+    for(i=pts.length-1;i>=0;i--){ while(up.length>=2 && cr(up[up.length-2],up[up.length-1],pts[i])<=1e-12) up.pop(); up.push(pts[i]); }
+    up.pop(); lo.pop(); return lo.concat(up); }
+  function near(H,x,y){
+    if(inConv(H,[x,y])) return true;
+    for(var e=0;e<H.length;e++){ var a=H[e], b=H[(e+1)%H.length], dx=b[0]-a[0], dy=b[1]-a[1], L2=dx*dx+dy*dy, t=L2?((x-a[0])*dx+(y-a[1])*dy)/L2:0;
+      t=Math.max(0,Math.min(1,t)); if(Math.hypot(x-a[0]-dx*t,y-a[1]-dy*t)<=0.5) return true; }
+    return false;
+  }
+  function obstacles(){
+    var B={}, CS=4, LB=townBbox(full.map(function(T){ return T.c; }));
+    LB=[LB[0]-12,LB[1]-12,LB[2]+12,LB[3]+12];
+    function put(b,o){ for(var i=Math.floor(b[0]/CS);i<=Math.floor(b[2]/CS);i++) for(var j=Math.floor(b[1]/CS);j<=Math.floor(b[3]/CS);j++){ var k=i+','+j; (B[k]||(B[k]=[])).push(o); } }
+    conts.forEach(function(C){ if(!bbHit(LB,C.bb)) return;
+      C.parts.forEach(function(P){ if(P.via==='pline') return; var V=verts(P); if(V.length<3) return;
+        var H=hull2(V), b=townBbox(H), z=-1e18; V.forEach(function(v){ if(v[2]>z) z=v[2]; });
+        if(!bbHit(LB,b) || H.length<3) return; put([b[0]-0.5,b[1]-0.5,b[2]+0.5,b[3]+0.5],{H:H, z:z}); }); });
+    cables.forEach(function(cb){ var n=Math.max(1,Math.ceil(cb.L/0.5)); for(var m=0;m<=n;m++){ var q=cb.at(m/n), b=[q[0]-0.6,q[1]-0.6,q[0]+0.6,q[1]+0.6];
+      if(bbHit(LB,b)) put(b,{q:q, z:q[2]}); } });
+    return function(x,y){ var L=B[Math.floor(x/CS)+','+Math.floor(y/CS)]||[], top=-1e18;
+      L.forEach(function(o){ if(o.z<=top) return; if(o.q){ if(Math.hypot(o.q[0]-x,o.q[1]-y)<=0.6) top=o.z; } else if(near(o.H,x,y)) top=o.z; });
+      return top; };
+  }
+  var FIXED={dead:1, gantry:1, pole:1};
+  function exempt(x,y){
+    if(info.site && townIn(info.site,[x,y])) return true;
+    if(RT.yards.some(function(Y){ return townIn(Y.poly,[x,y]); })) return true;
+    return RT.corr.some(function(Q){ return townIn(Q.poly,[x,y]); });
+  }
+  /* where a wire meets a structure: on a pylon the foot of its hanging insulator, on an angle tower the far
+     end of its strain string on that span's side, on a gantry its strain string, on a pole-top its crossarm */
+  var Z=full.map(function(){ return Z1B; }), DEADZ=[20,24,28];
+  function att(j,w,side){
+    var T=full[j], W=WIRES[w], c=T.c, nn=T.nn;
+    if(T.kind==='pylon') return [c[0]+nn[0]*W.o, c[1]+nn[1]*W.o, Z[j]+W.dz];
+    if(T.kind==='angle'){ if(W.earth) return [c[0],c[1],Z[j]+W.dz];
+      var dd=side==='in'?[-T.din[0],-T.din[1]]:T.dout; return [c[0]+nn[0]*W.o+dd[0]*INS, c[1]+nn[1]*W.o+dd[1]*INS, Z[j]+W.k*DZ]; }
+    if(T.kind==='dead'){ var dn=[-T.dout[1],T.dout[0]]; if(W.earth) return [c[0],c[1],32.6]; return [c[0]+dn[0]*W.sg*3.4, c[1]+dn[1]*W.sg*3.4, DEADZ[W.k]]; }
+    var R=info.subs[T.sub]; if(!R) return null;
+    if(T.kind==='gantry'){ var S=RT.subs[T.sub], u=S.u, v=S.v, g=S.g;
+      if(W.earth) return [g[0],g[1],R.att.earth];
+      var o=R.og[W.sg<0?2-W.k:3+W.k], x=side==='in'?R.att.xin:R.att.xout; return [g[0]+u[0]*x+v[0]*o, g[1]+u[1]*x+v[1]*o, R.att.zin]; }
+    if(T.kind==='pole'){ if(W.earth || W.sg<0) return null; var q=R.att.at[W.k]; return [q[0],q[1],R.att.zs[W.k]]; }
+    return null;
+  }
+  function furnish(dn,df){
+    info.recs=[]; info.spans=[]; info.heights=[]; info.raised=0; info.dropPieces=0; info.subs=[];
+    SK=subKit(K,info);
+    RT.subs.forEach(function(S){ if(S.cont) SK.yard(S); else SK.poleTop(S); });
+    RT.plots.forEach(function(C){ var Pl=prismN(C.poly,-0.02,0); Pl.hides=false; var n=C.poly.length;
+      Pl.lines=C.poly.map(function(q,e){ var r=C.poly[(e+1)%n]; return {a:[q[0],q[1],0], b:[r[0],r[1],0], f0:1, f1:1, col:COLT, kind:'plotedge'}; });
+      Pl.via='pline'; SK.own(Pl,C,'plotplate',COLT,'furn'); });
+    /* the heights */
+    var top=obstacles(), i;
+    for(i=0;i+1<full.length;i++){
+      var j0=i, j1=i+1, F0=!!FIXED[full[j0].kind], F1=!!FIXED[full[j1].kind];
+      if(F0 && F1) continue;
+      WIRES.forEach(function(W,w){
+        var A=att(j0,w,'out'), B=att(j1,w,'in'); if(!A || !B) return;
+        var Lp=Math.hypot(B[0]-A[0],B[1]-A[1]), a=SK.aOf(RT.sag*Lp,Lp), n=Math.max(1,Math.ceil(Lp)), m, dzA=A[2]-Z[j0], dzB=B[2]-Z[j1];
+        for(m=0;m<=n;m++){ var t=m/n, x=A[0]+(B[0]-A[0])*t, y=A[1]+(B[1]-A[1])*t; if(exempt(x,y)) continue;
+          var tp=top(x,y); if(tp<-1e17) continue; var need=tp+12+SK.dip(t,a,Lp);
+          if(!F0 && !F1){ var q=need-Math.min(dzA,dzB); if(q>Z[j0]) Z[j0]=q; if(q>Z[j1]) Z[j1]=q; continue; }
+          /* one end fixed: the free end's height that lifts the chord there to the need */
+          var tf=F0?t:1-t; if(tf<1e-6) continue; var zF=F0?A[2]:B[2], dzT=F0?dzB:dzA, q2=(need-zF*(1-tf))/tf-dzT, jt=F0?j1:j0;
+          if(q2>Z[jt]) Z[jt]=q2; }
+      });
+    }
+    full.forEach(function(T,j){ if(T.kind==='pylon'||T.kind==='angle'){ if(Z[j]>Z1B+1e-9) info.raised++; info.heights.push(Z[j]); } });
+    /* the towers */
+    full.forEach(function(T,j){
+      if(T.kind==='dead'){ var dn=[-T.dout[1],T.dout[0]], c=T.c, bs=T.dout, Ls=[];
+        function atD(s,o,z){ return [c[0]+bs[0]*s+dn[0]*o, c[1]+bs[1]*s+dn[1]*o, z]; }
+        var Q=[[-4,-4],[4,-4],[4,4],[-4,4]].map(function(q){ var r=atD(q[0],q[1],0); return [r[0],r[1]]; }), Dp=SK.ghost(prismN(Q,19.4,33.3));
+        DEADZ.forEach(function(z){ [-1,1].forEach(function(sg){ Ls.push({a:atD(0,sg*3.4,z), b:atD(0,sg*0.9,z), f0:0, f1:0}, {a:atD(0,sg*3.4,z), b:atD(0,sg*0.9,z+0.7), f0:0, f1:0}); }); });
+        Ls.push({a:atD(0,0,32), b:atD(0,0,32.6), f0:0, f1:0});
+        Dp.lines=Ls; Dp.via='pline'; SK.own(Dp,RT.SW,'deadendarms','#1a1a1a'); return; }
+      if(T.kind!=='pylon' && T.kind!=='angle') return;
+      var ANG=T.kind==='angle', C=T.plot, c2=T.c, b2=T.bs, n2=T.nn, z1=Z[j], zP=z1+2*DZ+PK, zl=z1-INS-0.05, zu=z1+2*DZ;
+      var AW0=ANG?4.2:3.0, AWP=ANG?1.6:0.6, HBk=ANG?5.6:HB;
+      function at(s,o,z){ return [c2[0]+b2[0]*s+n2[0]*o, c2[1]+b2[1]*s+n2[1]*o, z]; }
+      function aw(z){ return AW0+(AWP-AW0)*z/zP; }
+      function rect(z,a,cc){ return [at(-a,-cc,z),at(a,-cc,z),at(a,cc,z),at(-a,cc,z)]; }
+      var rs=[rect(0,AW0,AW0), rect(zl,aw(zl),HBk), rect(zu,aw(zu),HBk), rect(zP,AWP,AWP)], loops=[rs[0],rs[3]], k, e;
+      for(k=0;k<3;k++) for(e=0;e<4;e++){ var e2=(e+1)%4; loops.push([rs[k][e],rs[k][e2],rs[k+1][e2],rs[k+1][e]]); }
+      var Tp=polyFromLoops(loops), Ls2=[];
+      function ln(a,b){ Ls2.push({a:a, b:b, f0:0, f1:0}); }
+      [[-1,-1],[1,-1],[1,1],[-1,1]].forEach(function(q){ ln(at(q[0]*AW0,q[1]*AW0,0),at(q[0]*AWP,q[1]*AWP,zP)); });
+      for(k=0;k<3;k++){ var za=z1+k*DZ;
+        [-1,1].forEach(function(sg){ var tip=at(0,sg*ARM,za);
+          if(!ANG){ ln(tip,at(0,sg*aw(za),za)); ln(tip,at(0,sg*aw(za+0.8),za+0.8)); ln(tip,at(0,sg*ARM,za-INS)); return; }
+          [-0.8,0.8].forEach(function(ds){ var t2=at(ds,sg*ARM,za); ln(t2,at(ds,sg*aw(za),za)); ln(t2,at(ds,sg*aw(za+0.8),za+0.8)); });
+          ln(at(-0.8,sg*ARM,za),at(0.8,sg*ARM,za));
+          ln(tip,[tip[0]-T.din[0]*INS,tip[1]-T.din[1]*INS,za]); ln(tip,[tip[0]+T.dout[0]*INS,tip[1]+T.dout[1]*INS,za]); }); }
+      if(dist3(at(0,0,zP/2))<dn){
+        var NPN=Math.max(2,Math.round(zP/4));
+        for(k=0;k<NPN;k++){ var za0=zP*k/NPN, za1=zP*(k+1)/NPN, a0=aw(za0), a1=aw(za1);
+          [[1,0],[0,1],[-1,0],[0,-1]].forEach(function(f){
+            if(f[0]){ ln(at(f[0]*a0,-a0,za0),at(f[0]*a1,a1,za1)); ln(at(f[0]*a0,a0,za0),at(f[0]*a1,-a1,za1)); }
+            else { ln(at(-a0,f[1]*a0,za0),at(a1,f[1]*a1,za1)); ln(at(a0,f[1]*a0,za0),at(-a1,f[1]*a1,za1)); } }); } }
+      Tp.lines=Ls2; SK.ghost(Tp); Tp.via='pline'; SK.own(Tp,C,ANG?'angletower':'pylon',COLT);
+    });
+    /* the wires, span by span */
+    for(i=0;i+1<full.length;i++){
+      var sp={i:i, from:full[i].kind, to:full[i+1].kind, sub:full[i+1].sub, wires:[]};
+      WIRES.forEach(function(W,w){ var A=att(i,w,'out'), B=att(i+1,w,'in'); if(!A || !B) return;
+        var hw=SK.hang(A,B,RT.sag,W.earth?'earthwire':'conductor',i*8+w); sp.wires.push(hw); });
+      sp.L=sp.wires.length?sp.wires[0].L:0; sp.S=sp.wires.length?sp.wires[0].S:0;
+      info.spans.push(sp);
+    }
+  }
+  return {dress:function(){}, signsFor:function(){}, furnish:furnish, cars:[], dots:[], poles:[]};
+}
+/* THE LINE-END SUBSTATIONS' CONTENT: each yard or pole-top, and the one span from row 98's end pylon -- its
+   six conductors and earth wire from where they hang on that pylon to the gantry or the pole */
+function lineSubsTheme(K,SB){
+  var info=SB.info, PW=SB.PW;
+  function furnish(){
+    info.recs=[]; info.subs=[]; info.spans=[];
+    var SK=subKit(K,info), PI=PW.info, nn=PW.nn, ARM=4.5, INS=1.2, DZ=4, PK=3;
+    SB.subs.forEach(function(S){
+      var R=S.cont?SK.yard(S):SK.poleTop(S), P=PW.plots[S.from], z1=PI.heights[S.from], sp={sub:S.idx, from:'pylon', to:S.cont?'gantry':'pole', wires:[]};
+      if(!isFinite(z1)) return;
+      [-1,1].forEach(function(sg){ [0,1,2].forEach(function(k){
+        var A=[P.c[0]+nn[0]*sg*ARM, P.c[1]+nn[1]*sg*ARM, z1+k*DZ-INS], B;
+        if(S.cont){ var o=R.og[sg<0?2-k:3+k]; B=[S.g[0]+S.u[0]*R.att.xin+S.v[0]*o, S.g[1]+S.u[1]*R.att.xin+S.v[1]*o, R.att.zin]; }
+        else { if(sg<0) return; var q=R.att.at[k]; B=[q[0],q[1],R.att.zs[k]]; }
+        sp.wires.push(SK.hang(A,B,PI.sag,'conductor',9000+S.idx*8+(sg<0?0:3)+k)); }); });
+      if(S.cont) sp.wires.push(SK.hang([P.c[0],P.c[1],z1+2*DZ+PK],[S.g[0],S.g[1],R.att.earth],PI.sag,'earthwire',9000+S.idx*8+7));
+      info.spans.push(sp);
+    });
   }
   return {dress:function(){}, signsFor:function(){}, furnish:furnish, cars:[], dots:[], poles:[]};
 }
@@ -40463,6 +41174,7 @@ function streetTheme(K){
       if(s>LEN-1) continue;
       if(inGapS(PSIDE,s-0.6,s+0.6)) continue;
       if(K.massedAt && K.massedAt(PSIDE,s)) continue;
+      if(K.poleOut && K.poleOut(P3(s,PSIDE,HALFW+0.15,0))) continue;
       poles.push({s:s, side:PSIDE, h:ph, slab:Math.floor(s/4), arm:true});
     }
   }
@@ -43940,7 +44652,7 @@ function corridorDraw(p,plans,THM,camera){
   function facesEye(f){ return (HOLD||[KCAM]).some(function(Kc){ var E=Kc.CE; return f.n[0]*E[0]+f.n[1]*E[1]+f.n[2]*E[2]-f.d>1e-9; }); }
   /* and the sheet's across direction at P -- held, the nearest frame's */
   function rtAt(P){ return HOLD?holdK(P).RT:RT; }
-  function KIT(PL){ var K={planRef:PL, facesEye:facesEye, rtAt:rtAt, massedAt:MASSED&&MASSED.get(PL)?function(sd,s){ return MASSED.get(PL)[sd].some(function(L){ return s>=L.s0-1 && s<=L.s1+1; }); }:null, sGaps:PL.sGaps, hasGap:PL.hasGap, slabPieces:slabPieces, bbHit:bbHit, MINSP:0.7, FW:FW, UP:UP, PAD:PAD, NS:PL.NS, THM:PL.theme||THM, P3:PL.P3, add3:add3, addCable:addCable, cam:camK, dist3:dist3, project:project, drawOn:drawOn, faceC:faceC, faceIx:faceIx, frame:PL.frame, hitsAny:hitsAny, inConv:inConv, lateral:PL.lateral, mmPerM:mmPerM, paperGap:paperGap, para:para, polyFromLoops:polyFromLoops, prism:prism, prismN:prismN, splitPart:splitPart, sub:PL.sub, surf:surf, vec:vec, verts:verts, wallOf:wallOf, wp:wp, CANTI:PL.CANTI, CANYON:PL.CANYON, CE:CE, FF:FF, FLOORS:PL.FLOORS, HALFW:PL.HALFW, HW:HW, KERB:PL.KERB, KOFF:PL.KOFF, LEN:PL.LEN, NEAR:NEAR, PBACK:PL.PBACK, RT:RT, SALT_BLD:PL.SALT_BLD, STEPB:PL.STEPB, ZUP:ZUP, cables:cables, conts:conts, lots:PL.lots, slabsBySide:PL.slabsBySide, p:p};
+  function KIT(PL){ var K={planRef:PL, poleOut:PL.wireLow?function(q){ return PL.wireLow.some(function(Q){ return townIn(Q,q); }) && !(PL.wireKeep||[]).some(function(Q){ return townIn(Q,q); }); }:null, facesEye:facesEye, rtAt:rtAt, massedAt:MASSED&&MASSED.get(PL)?function(sd,s){ return MASSED.get(PL)[sd].some(function(L){ return s>=L.s0-1 && s<=L.s1+1; }); }:null, sGaps:PL.sGaps, hasGap:PL.hasGap, slabPieces:slabPieces, bbHit:bbHit, MINSP:0.7, FW:FW, UP:UP, PAD:PAD, NS:PL.NS, THM:PL.theme||THM, P3:PL.P3, add3:add3, addCable:addCable, cam:camK, dist3:dist3, project:project, drawOn:drawOn, faceC:faceC, faceIx:faceIx, frame:PL.frame, hitsAny:hitsAny, inConv:inConv, lateral:PL.lateral, mmPerM:mmPerM, paperGap:paperGap, para:para, polyFromLoops:polyFromLoops, prism:prism, prismN:prismN, splitPart:splitPart, sub:PL.sub, surf:surf, vec:vec, verts:verts, wallOf:wallOf, wp:wp, CANTI:PL.CANTI, CANYON:PL.CANYON, CE:CE, FF:FF, FLOORS:PL.FLOORS, HALFW:PL.HALFW, HW:HW, KERB:PL.KERB, KOFF:PL.KOFF, LEN:PL.LEN, NEAR:NEAR, PBACK:PL.PBACK, RT:RT, SALT_BLD:PL.SALT_BLD, STEPB:PL.STEPB, ZUP:ZUP, cables:cables, conts:conts, lots:PL.lots, slabsBySide:PL.slabsBySide, p:p};
     /* row 96: a plan with a theme of its own reads its own knobs and cables */
     if(PL.theme){ K.p=PL.p; K.addCable=PL.addCable||addCable; K.cables=PL.cables||cables; }
     return K; }
@@ -45402,7 +46114,7 @@ var KCORR=['town','strt','mkt','harb','libr','grnh','celr','tori','dhal','garg',
 var KGROUPS=[
   ['ess','Essentials','layout form rows nlen site tier water rail hwy river floors archlots isoaz isoel zoom'],
   ['plan','City plan','sprawl corez rowsp xblk xwidth parks alleys zones'],
-  ['lines','Lines that cross the city','rbend rwidth rdrop railbend railz trains ncar rstn hwybend hwyz hlanes ixtype pline'],
+  ['lines','Lines that cross the city','rbend rwidth rdrop railbend railz trains ncar rstn hwybend hwyz hlanes ixtype pline subs subsz proute'],
   ['site','Airfield and harbour','sitepct sscale ptype punits towers pstack coalyard plumes dam head gates penstocks harb rwys rwyhdg stands acmix tower hangars gse ghost ghostt berths vessels pierlen slips'],
   ['bld','Buildings','width pave lotmin lotmax alley archmin archdet stepb canti fire uvar'],
   ['life','Street life (close-ups)','glow shopv props signs neon lang cables sag cars graff dots pnear'],
@@ -45495,6 +46207,11 @@ var KIDLE={town:[
   {keys:'ptype plumes', par:['site'], why:'Site is not the power plant', on:function(E){ return kR(E,'site')===3; }},
   {keys:'punits towers', par:['site','ptype'], why:'not a thermal plant', on:function(E){ return kR(E,'site')===3 && kR(E,'ptype')!==3; }},
   {keys:'dam head gates penstocks', par:['site','ptype'], why:'not a hydro plant', on:function(E){ return kR(E,'site')===3 && kR(E,'ptype')===3; }},
+  /* row 116 */
+  {keys:'subs', par:['site','pline'], why:'no line: Powerline 0 and Site is not the power plant', on:function(E){ return kR(E,'site')===3 || kR(E,'pline')===1; }},
+  {keys:'subsz', par:['site','pline','subs'], why:'no substation: Substations 0, or no line', on:function(E){ return kR(E,'subs')>0 && (kR(E,'site')===3 || kR(E,'pline')===1); }},
+  {keys:'proute', par:['site','subs'], why:'no grid route: Site is not the power plant, or Substations 0', on:function(E){ return kR(E,'site')===3 && kR(E,'subs')>0; }},
+  {keys:'pline', par:['site','subs'], why:'the power plant\'s grid route is the line (Site 3 with Substations)', on:function(E){ return !(kR(E,'site')===3 && kR(E,'subs')>0); }},
   {keys:'pstack coalyard', par:['site','ptype'], why:'not a coal plant', on:function(E){ return kR(E,'site')===3 && kR(E,'ptype')===0; }},
   {keys:'berths vessels pierlen slips', par:['site','form','tier'], why:'no harbour site (or City form\'s Scale 0-1 shore harbour)', on:function(E){ return kR(E,'site')===2 && (kR(E,'form')===0 || kR(E,'tier')>=2); }},
   {keys:'archmin archdet zones', par:['archlots'], why:'Iso buildings 0', on:function(E){ return kR(E,'archlots')>0; }},
@@ -46937,6 +47654,9 @@ var HELP={
     head:'Hydro: how far the reservoir stands above the river below the dam, up to 15, 40, 80 or 120 m by Scale. Above the street it sits behind an embankment Head less the river’s drop plus 1.5 m high.',
     gates:'Hydro: the spillway’s radial gates, each between two piers. 0 builds the dam with no spillway.',
     penstocks:'Hydro: the pipes from the intake towers down the dam’s face to the powerhouse, one generator bay each. A weir’s intakes are in its sill, beside the powerhouse, with no pipe.',
+    subs:'How many substations the line feeds. With Site 3, the power plant, the line runs from its switchyard to each of them in turn: straight spans between pylons, an angle tower at every turn, and no turn sharper than 60\u00b0 (a sharper one takes two or three towers). Elsewhere, with Powerline on, a substation stands near each end of the straight line, two at most. 0 builds none, and with Site 3 no line.',
+    subsz:'0 a pole-top transformer on the kerb of a pavement; 1 an urban compound behind a wall, with two transformers and a switchgear building; 2 a fenced transmission yard with two rows of gantries, busbars, breakers and transformers; 3 a converter station: the same yard and a 30 m valve hall with its DC reactors. Sizes 1 to 3 take whole lots; what does not fit in them is left out.',
+    proute:'Re-rolls the grid route with Site 3: where its angle towers stand and how its pylons are spaced. The substations stay where they are.',
     rwys:'How many runways, where there is room: an airstrip has one, a regional airport up to two parallel, a hub 2 to 8: parallel pairs, plus crosswinds at 30 to 60 degrees past their ends when there are three or more.',
     rwyhdg:'The compass bearing the runways point along, in degrees. It sets the numbers painted at each end: the bearing over ten, and that plus 18 at the far end.',
     stands:'The share of the aircraft stands with an aircraft parked on them.',
