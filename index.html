@@ -462,7 +462,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v392</a> &mdash; Refactor only: the powerline&rsquo;s wire geometry lifted into one helper so the line can ask how tall its pylons must be before the city is built. The drawing is unchanged</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v393</a> &mdash; Corridor city: the powerline keeps clear of the city. Every pylon stands 3 m or more from every building, no pylon is over 65 m (a line that would need one takes another route, or the city has no line and the stat line says so), and the wires pass 6 m or more from every building</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <section class="fold" id="fold_pick"><h2>Pick engine<span class="cnt"></span></h2>
@@ -24134,6 +24134,8 @@ function buildTown(p){
      with a line, Substations stand near its ends */
   var GRT=!!(SITE && SITE.plant && townSubsN(p)>0), PWL=GRT?townGridRoute(p,G,plans,J,RIV,[VR,VH].concat(VB||[]),SITE,FRM,WC):null;
   if(!PWL) PWL=Math.round(isFinite(p.pline)?+p.pline:0)===1?townPowerline(p,G,plans,J,RIV,[VR,VH].concat(VB||[]),SITE||(FRM&&FRM.wetAt?{wetAt:FRM.wetAt}:null),WC):null;
+  /* row 342: no route under 65 m is no line */
+  var PLNONE=null; if(PWL && PWL.none){ PLNONE=PWL.info; PWL=null; }
   var SBS=PWL && !PWL.info.route && townSubsN(p)>0?townLineSubs(p,G,plans,J,RIV,[VR,VH].concat(VB||[]),PWL,SITE,FRM,WC):null;
   if(SBS) PWL.extraOcc=SBS.yards;
   var PBLK=FRM?FRM.built:SITE?SITE.blocksOut:BLK, PKS=townParks(p,G,plans,J,RIV,[VR,VH],PWL,PBLK);
@@ -24193,7 +24195,7 @@ function buildTown(p){
   STRTTALLY.town.mkt=G.MKT.slice();
   STRTTALLY.town.river=RIV?RIV.info:null;
   STRTTALLY.town.rail=VR?VR.info:null; STRTTALLY.town.hwy=VH?VH.info:null; STRTTALLY.town.vcross=VX;
-  STRTTALLY.town.blocks=BLK; STRTTALLY.town.parks=PKS?PKS.info:null; STRTTALLY.town.pline=PWL?PWL.info:null; STRTTALLY.town.subs=SBS?SBS.info:null;
+  STRTTALLY.town.blocks=BLK; STRTTALLY.town.parks=PKS?PKS.info:null; STRTTALLY.town.pline=PWL?PWL.info:null; STRTTALLY.town.plineNone=PLNONE; STRTTALLY.town.subs=SBS?SBS.info:null;
   STRTTALLY.town.site=SITE?SITE.info:null;
   STRTTALLY.town.frame=FR;
   /* row 255 §1.3: what the Map scale readout says, from this build: the world extent (m), the
@@ -24244,7 +24246,9 @@ function buildTown(p){
   else if(PWL && !PWL.info.route && townSubsN(p)>0) STRTINFO+=' \u00b7 no substation at the line\'s ends: none of Substation size '+townSubsZ(p)+' fits';
   if(PWL && !PWL.info.route){ var WI=PWL.info, hz=WI.heights.length?Math.max.apply(null,WI.heights):0;
     STRTINFO+=' · powerline: '+WI.plots.length+' pylons ('+WI.pylMoved+' moved, '+WI.pylDropped+' dropped), '+WI.met+' lots carved ('+WI.split+' split, '+WI.dropped+' too small dropped'+(WI.riverLots?', '+WI.riverLots+' canal house'+(WI.riverLots===1?'':'s')+' dropped':'')+')'+
-      (WI.raised?', '+WI.raised+' raised to clear what is under it (lowest crossarm up to '+hz.toFixed(1)+' m)':''); }
+      (WI.raised?', '+WI.raised+' raised to clear what is under it (lowest crossarm up to '+hz.toFixed(1)+' m)':'')+
+      (WI.capped||WI.capDropped?', '+WI.capped+' lot'+(WI.capped===1?'':'s')+' kept under the wires'+(WI.capDropped?', '+WI.capDropped+' too low for a storey dropped':''):''); }
+  if(PLNONE) STRTINFO+=' \u00b7 powerline: no route under 65 m (the best of its '+PLNONE.tries+' draws needs a '+PLNONE.H.toFixed(1)+' m pylon)';
   return res;
 }
 /* ROW 221 (v363, REFACTOR ONLY): buildTown's camera argument, lifted verbatim.
@@ -26057,7 +26061,9 @@ function townIntersect(P,Q){
    or more; each keyed BASE + 2 x parent + side. A lot with none is dropped. */
 function townCarve(G,grid,meets,info,cls,BASE,LOTMIN,bbox2){
   var MINENV=4, k;
-  for(k=0;k<(cls==='site'||cls==='grid'?grid.length:G.ROWS);k++){
+  /* row 342: the powerline's carve walks the cross streets' plans too. It walked the rows alone, and a lot
+     fronting a cross street kept the ground its plot stood on: every pylon measured inside a building was there */
+  for(k=0;k<(cls==='site'||cls==='grid'||cls==='pline'?grid.length:G.ROWS);k++){
     var PLk=grid[k], add=[], gone=[];
     PLk.lots.forEach(function(L){
       if(!meets(L.poly)) return;
@@ -26091,6 +26097,8 @@ function townCarve(G,grid,meets,info,cls,BASE,LOTMIN,bbox2){
         Lq.idx=BASE+L.idx*2+(pick.length===2?m:(q.a>L.s0+1e-9?1:0));
         Lq.s0=q.a; Lq.s1=q.b; Lq.back=q.back; Lq.depth=L.depth-(L.back-q.back); Lq.fe=fe; Lq.poly=env; Lq.bb=bbox2(env);
         Lq.carved={row:k, side:sd, idx:L.idx, cls:cls};
+        /* row 342: a piece of a lot under the powerline keeps its caps */
+        if(m>0 && L.plcap!==undefined){ Lq.plcap=L.plcap; Lq.under=L.under; Lq.zcap=L.zcap; }
         if(m>0) add.push({after:L, lot:Lq});
         info.kept++;
       });
@@ -26153,6 +26161,9 @@ function townPowerline(p,G,plans,J,RIV,VS,SX,WH){
   var LAY=Math.max(0,Math.min(99,Math.round(isFinite(p.layout)?+p.layout:0))), LOTMIN=Math.max(3,+p.lotmin||5);
   var NG=G.ROWS+G.UX.length, grid=plans.slice(0,NG), P0=grid[0], polyOverlap=P0.polyOverlap, bbox2=P0.bbox2, bbHit=P0.bbHit;
   var BX=townBox(grid,J), HALF=5, CLR=0.3, k;
+  /* row 342: a plot carves every lot within 3 m of it (CLRB), so a building stands 3 m or more from a pylon; a
+     pylon is at most HMAX tall; a building beside a wire within BSIDE of it keeps that far below it */
+  var CLRB=3, HMAX=65, BSIDE=6, ROOFM=6, F0=14;
   /* row 204: it runs from edge to edge of the frame */
   if(WH) BX=WH.ext.slice();
   /* row 200 §9: with a site it stays on the city's side of it */
@@ -26191,10 +26202,11 @@ function townPowerline(p,G,plans,J,RIV,VS,SX,WH){
       if(WH && WH.FRM && WH.FRM.info.harbour && polyOverlap(sq(c,HALF+40),WH.FRM.info.harbour.poly)) return false;
       if(!Q.every(function(q){ return q[0]>=BX[0] && q[0]<=BX[2] && q[1]>=BX[1] && q[1]<=BX[3]; })) return false;
       if(OCC.some(function(C){ return bbHit(b,C.bb) && polyOverlap(Qc,C.poly); })) return false;
+      if(OCC.some(function(C){ if(C.kind!=='hangar' && C.kind!=='hlhouse') return false; var Qb=sq(c,HALF+CLRB); return bbHit(bbox2(Qb),C.bb) && polyOverlap(Qb,C.poly); })) return false;
       if(bands.some(function(B){ return B.meets(Qc); })) return false;
       return !plots.some(function(P){ return bbHit(b,P.bb) && polyOverlap(Qc,P.poly); });
     }
-    function plotAt(g,s0){ var Q=sq(g.c,HALF); return {kind:'plot', poly:Q, bb:bbox2(Q), parts:[], pyl:0, s:g.s, c:g.c, s0:s0}; }
+    function plotAt(g,s0){ var Q=sq(g.c,HALF), Qg=sq(g.c,HALF+CLRB); return {kind:'plot', poly:Q, bb:bbox2(Q), pg:Qg, pgb:bbox2(Qg), parts:[], pyl:0, s:g.s, c:g.c, s0:s0}; }
     ss.forEach(function(s0){
       var got=null, off;
       for(off=0;off<=40 && !got;off+=0.5){
@@ -26221,24 +26233,85 @@ function townPowerline(p,G,plans,J,RIV,VS,SX,WH){
      that is 20 deg or more from each viaduct's mean heading (its first point to
      its last) and stands two pylons or more; else the best of them, clearance
      first, then pylons */
+  /* ROW 342: HOW TALL A PYLON EACH DRAW NEEDS, before anything is built. Every lot's box stack is replayed from
+     its own stream exactly as the Street's content draws it (KERB, its base and mid storeys at Storeys x its
+     density), plus ROOFM for what stands on a roof; a shed its own height; a viaduct's band its top; anywhere
+     else F0 (lamps, trees, the street's cables). A wire keeps 12 m over what is under it and BSIDE over what
+     stands within BSIDE beside it, as the furnish does. The draws' sag is the line's own, drawn here rather than
+     after (its own substream, so no number moves) */
+  /* the line is planned for Storeys at its default (9), so Storeys never moves it (row 98's P4: the plots move with
+     the plan alone); a taller city is cut back under it by the corridor's caps below */
+  var PG=plineGeom(), SAG=0.02+0.02*townSub(4,LAY,SALT_PLINE)(), THT=STHEMES.town, FLOORS=9;
+  function lsub(ix,a,b,salt){
+    /* corridorPlan's sub(a,b,salt) for plan ix, the same numbers */
+    if(ix) a+=ix*1000003;
+    var s=(rnd(a*7919+b*104729+salt*1299709+17)*4294967296)>>>0;
+    return function(){ s=(s+0x9E3779B9)>>>0; var t=s; t=Math.imul(t^(t>>>15),0x85EBCA6B)>>>0; t=Math.imul(t^(t>>>13),0xC2B2AE35)>>>0; return ((t^(t>>>16))>>>0)/4294967296; };
+  }
+  function lotZ(L,ix){
+    if(L.shed) return (L.shedZ||12);
+    var R=lsub(ix,L.side<0?2:1,L.idx,37), nBase=R()<THT.baseN2?2:1, baseH=THT.baseH[0]+R()*(THT.baseH[1]-THT.baseH[0]), u=R();
+    var nMid=Math.max(L.fm?2:1,Math.min(L.fm?40:1e9,Math.round(FLOORS*(L.tower?1:0.45+0.55*u)*(L.fm||1)))), midH=THT.midH[0]+R()*(THT.midH[1]-THT.midH[0]);
+    var z=THT.edgeZ+nBase*baseH+nMid*midH; return L.zcap!==undefined?Math.min(z,L.zcap):z;
+  }
+  var LOTPL=[]; grid.forEach(function(PL){ LOTPL.push(PL); }); if(RIV) LOTPL.push(RIV.plan); if(WH) WH.FRM.plans.forEach(function(PL){ if(PL.lots && PL.lots.length) LOTPL.push(PL); });
+  var LB={}, LCS=16;
+  function lput(b,o){ for(var i=Math.floor(b[0]/LCS);i<=Math.floor(b[2]/LCS);i++) for(var j=Math.floor(b[1]/LCS);j<=Math.floor(b[3]/LCS);j++){ var kk=i+','+j; (LB[kk]||(LB[kk]=[])).push(o); } }
+  LOTPL.forEach(function(PL){ (PL.lots||[]).forEach(function(L){ if(!L.poly || L.poly.length<3) return; var b=bbox2(L.poly);
+    lput([b[0]-BSIDE,b[1]-BSIDE,b[2]+BSIDE,b[3]+BSIDE],{L:L, z:lotZ(L,PL.ix||0)+ROOFM, b:b}); }); });
+  function sd2(x,y,a,b){ var dx=b[0]-a[0], dy=b[1]-a[1], L2=dx*dx+dy*dy, t=L2?((x-a[0])*dx+(y-a[1])*dy)/L2:0; t=Math.max(0,Math.min(1,t)); return Math.hypot(x-a[0]-dx*t,y-a[1]-dy*t); }
+  function pdistP(Q,x,y){ if(townIn(Q,[x,y])) return 0; var m=1e18; for(var e=0;e<Q.length;e++) m=Math.min(m,sd2(x,y,Q[e],Q[(e+1)%Q.length])); return m; }
+  /* (under, beside): the tallest thing within 0.5 m of (x,y), and within BSIDE of it */
+  function topPred(x,y){
+    var tu=F0, tb=-1e18, Lq=LB[Math.floor(x/LCS)+','+Math.floor(y/LCS)]||[];
+    Lq.forEach(function(o){ if(o.z<=tu && o.z<=tb) return; if(x<o.b[0]-BSIDE||x>o.b[2]+BSIDE||y<o.b[1]-BSIDE||y>o.b[3]+BSIDE) return;
+      var dd=pdistP(o.L.poly,x,y); if(dd<=0.5){ if(o.z>tu) tu=o.z; } else if(dd<=BSIDE && o.z>tb) tb=o.z; });
+    VS.forEach(function(V){ if(!V) return; var Q=[[x-0.5,y-0.5],[x+0.5,y-0.5],[x+0.5,y+0.5],[x-0.5,y+0.5]]; if(V.band.meets(Q)){ var tv=viaductTop(V); if(tv>tu) tu=tv; } });
+    return [tu,tb];
+  }
+  /* each pylon's lowest crossarm (Z1, as the furnish raises it) and the tallest pylon */
+  function predict(PLs){
+    var Z1=PLs.map(function(){ return PG.Z1B; }), i;
+    for(i=0;i+1<PLs.length;i++){
+      var A=PLs[i], B=PLs[i+1], Lp=Math.hypot(B.c[0]-A.c[0],B.c[1]-A.c[1]), S=SAG*Lp, a=PG.aOf(S,Lp), n=Math.max(1,Math.ceil(Lp)), nd=-1e18, dn=[-(B.c[1]-A.c[1])/(Lp||1),(B.c[0]-A.c[0])/(Lp||1)];
+      PG.WIRES.forEach(function(wr){ for(var m=0;m<=n;m++){ var t=m/n, x=A.c[0]+(B.c[0]-A.c[0])*t+dn[0]*wr.o, y=A.c[1]+(B.c[1]-A.c[1])*t+dn[1]*wr.o;
+        var tp=topPred(x,y), q=Math.max(tp[0]+12,tp[1]+BSIDE)+PG.dip(t,a,Lp)-wr.dz; if(q>nd) nd=q; } });
+      Z1[i]=Math.max(Z1[i],nd); Z1[i+1]=Math.max(Z1[i+1],nd);
+    }
+    var H=PLs.length?Math.max.apply(null,Z1)+2*PG.DZ+PG.PK:0;
+    return {Z1:Z1, H:H};
+  }
   var R=townSub(3,LAY,SALT_PLINE), best=null;
-  function score(x){ return (x.ok?1000:0)+Math.min(x.plots.length,3)+(WH&&x.land?500:0); }
-  for(k=0;k<16;k++){
-    var ang=(25+40*R())*Math.PI/180, h=R()<0.5?ang:-ang, fu=R(), fv=R(), S=[], m=Infinity, j;
-    for(j=0;j<6;j++) S.push(R());
+  /* row 342: after row 98's own rules (20 deg off each viaduct, its ends on land) a draw under HMAX beats one over it,
+     then the pylons, then the lower the better; the best over HMAX is no line */
+  function score(x){ return (x.ok?1000:0)+(WH&&x.land?500:0)+(x.H<=HMAX+1e-9?100:0)+Math.min(x.plots.length,3)-x.H/1000; }
+  /* row 342: ROUND THE TALLEST DISTRICT. When none of the 16 is a line under HMAX, 16 more from their own
+     substream, each through a point in the outer quarter of the box either side (5-30 % or 70-95 % across, each way)
+     where the first 16 go through its middle 40 %: the core is where the city is tallest. The first 16 are drawn as
+     they were, so a line they found does not move */
+  var R2=townSub(5,LAY,SALT_PLINE), pass, acc=false;
+  function outer(f){ return f<0.5?0.05+0.5*f:0.45+0.5*f; }
+  for(pass=0;pass<2 && !acc;pass++) for(k=0;k<16;k++){
+    var RR=pass?R2:R;
+    var ang=(25+40*RR())*Math.PI/180, h=RR()<0.5?ang:-ang, fu=RR(), fv=RR(), S=[], m=Infinity, j;
+    for(j=0;j<6;j++) S.push(RR());
     heads.forEach(function(hv){ m=Math.min(m,und(h-hv)); });
-    var ok=m>=20*Math.PI/180-1e-12, Ln=lineOf(h,[BX[0]+(0.3+0.4*fu)*bw, BX[1]+(0.3+0.4*fv)*bh],S);
-    Ln.clear=m; Ln.ok=ok; info.tries=k+1;
+    var ok=m>=20*Math.PI/180-1e-12, Ln=lineOf(h,pass?[BX[0]+outer(fu)*bw, BX[1]+outer(fv)*bh]:[BX[0]+(0.3+0.4*fu)*bw, BX[1]+(0.3+0.4*fv)*bh],S);
+    Ln.clear=m; Ln.ok=ok; info.tries=pass*16+k+1; Ln.pred=predict(Ln.plots); Ln.H=Ln.pred.H;
     /* row 204: its ends on land, and neither through the airfield nor the harbour */
     if(WH){ var qe=[Ln.A0,[Ln.A0[0]+Ln.d[0]*Ln.LEN,Ln.A0[1]+Ln.d[1]*Ln.LEN]], fine=!WH.wat||qe.every(function(q){ return WH.wat(q[0],q[1])<-50; }), t9; if(fine) for(t9=0;t9<=Ln.LEN;t9+=20){ var q9=[Ln.A0[0]+Ln.d[0]*t9,Ln.A0[1]+Ln.d[1]*t9]; if((WH.out&&townIn(WH.out,q9))||(WH.hp&&townIn(WH.hp,q9))){ fine=false; break; } } Ln.land=fine; }
     if(!best || score(Ln)>score(best)) best=Ln;
-    if(ok && Ln.plots.length>=2 && (!WH||Ln.land)) break;
+    if(ok && Ln.plots.length>=2 && (!WH||Ln.land) && Ln.H<=HMAX+1e-9){ acc=true; break; }
   }
+  /* row 342: no draw stays at or under HMAX -- no line, and the stat line says so */
+  if(best.H>HMAX+1e-9) return {none:true, info:{why:'no route under '+HMAX+' m', tries:info.tries, H:best.H}};
   var d=best.d, nn=best.nn, plots=best.plots;
+  info.Hplan=best.H; info.Z1plan=best.pred.Z1.slice();
   info.heading=best.h; info.clear=best.clear; info.heads=heads; info.A0=best.A0; info.dir=d; info.LEN=best.LEN; info.box=BX;
   info.pylMoved=best.moved; info.pylDropped=best.dropped; info.nominal=best.nominal;
   /* the lots they meet, carved; a canal house of the river's they meet, dropped */
-  function meets(Q){ var b=bbox2(Q); return plots.some(function(P){ return bbHit(b,P.bb) && polyOverlap(Q,P.poly); }); }
+  /* row 342: a lot within CLRB of a plot is carved (the plot grown by CLRB) */
+  function meets(Q){ var b=bbox2(Q); return plots.some(function(P){ return bbHit(b,P.pgb) && polyOverlap(Q,P.pg); }); }
   townCarve(G,grid,meets,info,WH?'site':'pline',400000,LOTMIN,bbox2);
   if(WH) WH.FRM.plans.forEach(function(PLe){ if(!PLe.lots||!PLe.lots.length) return; var go=PLe.lots.filter(function(L){ return meets(L.poly); }); if(go.length){ PLe.lots=PLe.lots.filter(function(L){ return go.indexOf(L)<0; }); PLe.conts=PLe.conts.filter(function(C){ return go.indexOf(C)<0; }); } });
   if(RIV){
@@ -26248,9 +26321,30 @@ function townPowerline(p,G,plans,J,RIV,VS,SX,WH){
       PR.conts=PR.conts.filter(function(C){ return rg.indexOf(C)<0; }); }
   }
   info.plots=plots.map(function(P){ return {poly:P.poly, c:P.c, s:P.s, s0:P.s0}; });
-  /* the sag: one share of the span for the whole line, 2-4 % */
-  var SAG=0.02+0.02*townSub(4,LAY,SALT_PLINE)();
+  /* the sag: one share of the span for the whole line, 2-4 % (drawn before the draws, row 342) */
   info.sag=SAG;
+  /* ROW 342: THE CORRIDOR'S CAPS. A lot within BSIDE of a wire as planned keeps under it -- 12 m under where the
+     wire is over it, BSIDE where it passes beside -- so what is built cannot raise a pylon past the plan: its
+     storeys stop ROOFM under the cap (L.zcap), the kit drops anything above the cap (L.under), and an Iso
+     building rolls again until it fits (L.plcap). A lot with no storey under its cap is dropped */
+  info.capped=0; info.capDropped=0;
+  (function(){
+    var Z1=info.Z1plan, caps=new Map(), i;
+    for(i=0;i+1<plots.length;i++){
+      var A=plots[i], B=plots[i+1], Lp=Math.hypot(B.c[0]-A.c[0],B.c[1]-A.c[1]), S=SAG*Lp, a=PG.aOf(S,Lp), n=Math.max(1,Math.ceil(Lp)), dn=[-(B.c[1]-A.c[1])/(Lp||1),(B.c[0]-A.c[0])/(Lp||1)];
+      PG.WIRES.forEach(function(wr){ for(var m=0;m<=n;m++){ var t=m/n, x=A.c[0]+(B.c[0]-A.c[0])*t+dn[0]*wr.o, y=A.c[1]+(B.c[1]-A.c[1])*t+dn[1]*wr.o;
+        var wz=Z1[i]+(Z1[i+1]-Z1[i])*t+wr.dz-PG.dip(t,a,Lp);
+        LOTPL.forEach(function(PL){ (PL.lots||[]).forEach(function(L){ if(!L.poly || L.poly.length<3) return; var b=L.bb||bbox2(L.poly);
+          if(x<b[0]-BSIDE||x>b[2]+BSIDE||y<b[1]-BSIDE||y>b[3]+BSIDE) return;
+          var dd=pdistP(L.poly,x,y); if(dd>BSIDE) return; var cp=dd<=0.5?wz-12:wz-BSIDE, o=caps.get(L);
+          if(o===undefined || cp<o.cp) caps.set(L,{cp:cp, PL:PL}); }); }); } });
+    }
+    caps.forEach(function(o,L){
+      if(o.cp-ROOFM<THT.edgeZ+THT.baseH[0]){ var PLd=o.PL; PLd.lots=PLd.lots.filter(function(X){ return X!==L; }); PLd.conts=PLd.conts.filter(function(X){ return X!==L; }); info.capDropped++; return; }
+      if(L.plcap===undefined || o.cp<L.plcap){ L.plcap=o.cp; L.under=L.under!==undefined?Math.min(L.under,o.cp):o.cp; L.zcap=L.zcap!==undefined?Math.min(L.zcap,o.cp-ROOFM):o.cp-ROOFM; }
+      if(lotZ(L,o.PL.ix||0)+ROOFM>o.cp+1e-9) info.capped++;
+    });
+  })();
   var PW={plots:plots, info:info, dir:d, nn:nn, sag:SAG, LAY:LAY};
   PW.plan={ix:-1, p:p, theme:{key:'town', content:function(K){ return plineTheme(K,PW); }}, sGaps:[], hasGap:false, Z0:0,
            conts:plots, lots:[], slabsBySide:{'1':[],'-1':[]}, dropped:0, pushed:0};
@@ -26581,18 +26675,27 @@ function plineTheme(K,PW){
     return false;
   }
   function obstacles(){
-    var B={}, CS=4, LB=PW.plots.length?townBbox([].concat.apply([],PW.plots.map(function(P){ return P.poly; }))):[0,0,0,0];
+    var B={}, BB={}, CS=4, LB=PW.plots.length?townBbox([].concat.apply([],PW.plots.map(function(P){ return P.poly; }))):[0,0,0,0];
     LB=[LB[0]-12,LB[1]-12,LB[2]+12,LB[3]+12];
     function put(b,o){ for(var i=Math.floor(b[0]/CS);i<=Math.floor(b[2]/CS);i++) for(var j=Math.floor(b[1]/CS);j<=Math.floor(b[3]/CS);j++){ var k=i+','+j; (B[k]||(B[k]=[])).push(o); } }
     conts.forEach(function(C){ if(!bbHit(LB,C.bb)) return;
       C.parts.forEach(function(P){ if(P.via==='pline') return; var V=verts(P); if(V.length<3) return;
         var H=hull2(V), b=townBbox(H), z=-1e18; V.forEach(function(v){ if(v[2]>z) z=v[2]; });
-        if(!bbHit(LB,b) || H.length<3) return; put([b[0]-0.5,b[1]-0.5,b[2]+0.5,b[3]+0.5],{H:H, z:z}); }); });
+        if(!bbHit(LB,b) || H.length<3) return; put([b[0]-0.5,b[1]-0.5,b[2]+0.5,b[3]+0.5],{H:H, z:z});
+        /* row 342: a building's part, for the wires that pass beside it */
+        if(C.kind==='lot'||C.kind==='hangar'||C.kind==='hlhouse'){ var o6={H:H, z:z}; for(var i6=Math.floor((b[0]-6)/CS);i6<=Math.floor((b[2]+6)/CS);i6++) for(var j6=Math.floor((b[1]-6)/CS);j6<=Math.floor((b[3]+6)/CS);j6++){ var k6=i6+','+j6; (BB[k6]||(BB[k6]=[])).push(o6); } } }); });
     cables.forEach(function(cb){ var n=Math.max(1,Math.ceil(cb.L/0.5)); for(var m=0;m<=n;m++){ var q=cb.at(m/n), b=[q[0]-0.6,q[1]-0.6,q[0]+0.6,q[1]+0.6];
       if(bbHit(LB,b)) put(b,{q:q, z:q[2]}); } });
-    return function(x,y){ var L=B[Math.floor(x/CS)+','+Math.floor(y/CS)]||[], top=-1e18;
+    var f=function(x,y){ var L=B[Math.floor(x/CS)+','+Math.floor(y/CS)]||[], top=-1e18;
       L.forEach(function(o){ if(o.z<=top) return; if(o.q){ if(Math.hypot(o.q[0]-x,o.q[1]-y)<=0.6) top=o.z; } else if(near(o.H,x,y)) top=o.z; });
       return top; };
+    /* row 342: the tallest building part within 6 m of (x,y) */
+    f.beside=function(x,y){ var L=BB[Math.floor(x/CS)+','+Math.floor(y/CS)]||[], top=-1e18;
+      L.forEach(function(o){ if(o.z<=top) return; if(inConv(o.H,[x,y])){ top=o.z; return; }
+        for(var e=0;e<o.H.length;e++){ var a=o.H[e], b=o.H[(e+1)%o.H.length], dx=b[0]-a[0], dy=b[1]-a[1], L2=dx*dx+dy*dy, t=L2?((x-a[0])*dx+(y-a[1])*dy)/L2:0;
+          t=Math.max(0,Math.min(1,t)); if(Math.hypot(x-a[0]-dx*t,y-a[1]-dy*t)<=6){ top=o.z; return; } } });
+      return top; };
+    return f;
   }
   function segIn(A,B,Q){
     var t0=0, t1=1, dx=B[0]-A[0], dy=B[1]-A[1], m, ar=0;
@@ -26635,7 +26738,7 @@ function plineTheme(K,PW){
     for(i=0;i+1<PL.length;i++){
       var A=PL[i], B=PL[i+1], Lp=Math.hypot(B.c[0]-A.c[0],B.c[1]-A.c[1]), S=PW.sag*Lp, a=aOf(S,Lp), n=Math.max(1,Math.ceil(Lp)), nd=-1e18;
       WIRES.forEach(function(wr){ for(var m=0;m<=n;m++){ var t=m/n, x=A.c[0]+(B.c[0]-A.c[0])*t+nn[0]*wr.o, y=A.c[1]+(B.c[1]-A.c[1])*t+nn[1]*wr.o;
-        var tp=top(x,y); if(tp<-1e17) continue; var q=tp+12+dip(t,a,Lp)-wr.dz; if(q>nd) nd=q; } });
+        var tp=top(x,y), tb=top.beside(x,y); if(tp<-1e17 && tb<-1e17) continue; var q=Math.max(tp+12,tb+6)+dip(t,a,Lp)-wr.dz; if(q>nd) nd=q; } });
       need.push(nd);
       if(nd>Z1[i]) Z1[i]=nd; if(nd>Z1[i+1]) Z1[i+1]=nd;
     }
@@ -27038,7 +27141,9 @@ function townLineSubs(p,G,plans,J,RIV,VS,PW,SX,FRM,WH){
   /* THE FEED SPAN comes down from the end pylon to the gantry (or the pole-top) over the city, so it gets the grid
      route's approach corridor: a strip as wide as the gantry and 3 m more each side (a pole's 4 m) clears the lots it
      meets and keeps the street's poles out. The line and its plots do not move */
-  var corr=subs.map(function(S){ var E=PL[S.from].c, w=S.cont?S.Wg/2+3:4, d=townUnit(E,S.g), nn=[-d[1]*w,d[0]*w];
+  /* row 342: 6 m beyond the gantry's half-width (7 m round a pole-top), so the feed span's wires pass 6 m or more
+     from what is kept beside them */
+  var corr=subs.map(function(S){ var E=PL[S.from].c, w=S.cont?S.Wg/2+6:7, d=townUnit(E,S.g), nn=[-d[1]*w,d[0]*w];
     var Q=[[E[0]-nn[0],E[1]-nn[1]],[S.g[0]-nn[0],S.g[1]-nn[1]],[S.g[0]+nn[0],S.g[1]+nn[1]],[E[0]+nn[0],E[1]+nn[1]]]; return {poly:Q, bb:bbox2(Q)}; });
   /* EXCEPT under row 98's own wires (6 m each side of each span, the arms' 4.5 and a margin): row 98 lifts its towers
      over what stands there, so a lot carved there is a new building and the line would move. Near the pylon the feed
@@ -27046,7 +27151,12 @@ function townLineSubs(p,G,plans,J,RIV,VS,PW,SX,FRM,WH){
   var MB=[]; for(var mi=0;mi+1<PL.length;mi++){ var a0=PL[mi].c, a1=PL[mi+1].c, dm=townUnit(a0,a1), nm=[-dm[1]*6,dm[0]*6], QM=[[a0[0]-nm[0],a0[1]-nm[1]],[a1[0]-nm[0],a1[1]-nm[1]],[a1[0]+nm[0],a1[1]+nm[1]],[a0[0]+nm[0],a0[1]+nm[1]]]; MB.push({poly:QM, bb:bbox2(QM)}); }
   function hitA(Q,b,A){ return A.some(function(C){ return bbHit(b,C.bb) && polyOverlap(Q,C.poly); }); }
   var cinfo={met:0, kept:0, dropped:0, split:0};
-  townCarve(G,grid,function(Q){ var b=bbox2(Q); return hitA(Q,b,corr) && !hitA(Q,b,MB); },cinfo,'grid',1100000,Math.max(3,+p.lotmin||5),bbox2);
+  /* row 342: and a ring 3 m round each yard (its gantries and poles stand inside it) and round each pole-top, under
+     row 98's wires too: nothing of a substation stands within 3 m of a building */
+  var RING=subs.map(function(S){ var Q=S.cont?townOffset(S.cont.poly,-3):[[S.pole[0]-3.5,S.pole[1]-3.5],[S.pole[0]+3.5,S.pole[1]-3.5],[S.pole[0]+3.5,S.pole[1]+3.5],[S.pole[0]-3.5,S.pole[1]+3.5]]; return {poly:Q, bb:bbox2(Q)}; });
+  /* row 342: and under row 98's wires too -- what is kept there is capped under the line (townPowerline), and a
+     building kept beside the feed span stood 5.4 m from its wires */
+  townCarve(G,grid,function(Q){ var b=bbox2(Q); return hitA(Q,b,corr) || hitA(Q,b,RING); },cinfo,'grid',1100000,Math.max(3,+p.lotmin||5),bbox2);
   var WL=corr.map(function(C){ return C.poly; }), WK=MB.map(function(C){ return C.poly; });
   grid.forEach(function(PL){ PL.wireLow=(PL.wireLow||[]).concat(WL); PL.wireKeep=(PL.wireKeep||[]).concat(WK); });
   info.keep=WK;
@@ -29742,7 +29852,7 @@ function archTheme(K,base){
         parts.push(P);
       });
       parts=archDisjoint(parts,K);
-      parts.forEach(function(P){ K.verts(P).forEach(function(v){ if(!K.inConv(L.poly,v) || v[2]<-1e-6 || v[2]>THM.ztop) fits=false; }); });
+      parts.forEach(function(P){ K.verts(P).forEach(function(v){ if(!K.inConv(L.poly,v) || v[2]<-1e-6 || v[2]>THM.ztop || (L.plcap!==undefined && v[2]>L.plcap)) fits=false; }); });
       byDet.push(parts);
     });
     } while((!fits || !byDet[0].length) && ++tries<ARCHTRIES);
