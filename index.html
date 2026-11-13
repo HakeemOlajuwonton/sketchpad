@@ -462,7 +462,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v390</a> &mdash; Hatch style 1 on the Street, Night market, Harbour, Library, Canal, Train station, Warehouse, Baggage hall and Corridor city: tone in three steps that reads as light from down the street, lines spaced on the paper and lined up across walls, windows and signs left clear, round tanks and lanterns shaded round, and Hatch lines to turn them</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v391</a> &mdash; Sun height and Cast shadows at Hatch style 1 on the Street, Night market, Harbour, Canal and Train station: buildings, cars, signs and stalls throw their shadows onto the lit walls and the ground, hatched at the middle tone, with the puddles and manholes left clear</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <section class="fold" id="fold_pick"><h2>Pick engine<span class="cnt"></span></h2>
@@ -3269,7 +3269,7 @@ var SPEC={
     ['wmk','Water marks',0,100,1,40,[100,'%']],['wglint','Glint gap',0,15,1,5,[10,' mm']],
     ['dots','Particles',0,3000,10,420],['pnear','Particles near',0,100,1,50,[100,'%']],['graff','Graffiti',0,100,1,20,[100,'%']],
     ['hatch','Tone hatch',0,100,1,55,[100,'%']],['hatchmode','Hatch spacing',0,1,1,0],['hstyle','Hatch style',0,1,1,0],['hdir','Hatch lines',0,3,1,1],
-    ['sun','Light from',0,359,1,300,[1,'°']],
+    ['sun','Light from',0,359,1,300,[1,'°']],['sunel','Sun height',10,80,1,30,[1,'°']],['shad','Cast shadows',0,1,1,1],
     ['cams','Camera along',0,90,1,12,[100,'%']],['camx','Camera side',-100,100,1,-10,[100,'%']],
     ['camz','Camera height',0.2,80,0.1,1.6,[1,' m']],['look','Look ahead',5,300,1,60,[1,' m']],['turn','Turn',-90,90,1,0,[1,'°']],
     ['pitch','Pitch',-45,45,0.5,6,[1,'°']],['fov','Field of view',25,120,1,72,[1,'°']],
@@ -3304,7 +3304,7 @@ var SPEC={
     ['rvar','Ripple variety',0,100,1,60,[100,'%']],
     ['wmk','Water marks',0,100,1,40,[100,'%']],['wglint','Glint gap',0,15,1,5,[10,' mm']],
     ['hatch','Tone hatch',0,100,1,55,[100,'%']],['hatchmode','Hatch spacing',0,1,1,0],['hstyle','Hatch style',0,1,1,0],['hdir','Hatch lines',0,3,1,1],
-    ['sun','Light from',0,359,1,300,[1,'°']],
+    ['sun','Light from',0,359,1,300,[1,'°']],['sunel','Sun height',10,80,1,30,[1,'°']],['shad','Cast shadows',0,1,1,1],
     ['cams','Camera along',0,90,1,6,[100,'%']],['camx','Camera side',-100,100,1,0,[100,'%']],
     ['camz','Camera height',0.2,80,0.1,1.6,[1,' m']],['look','Look ahead',5,300,1,25,[1,' m']],['turn','Turn',-90,90,1,0,[1,'°']],
     ['pitch','Pitch',-45,45,0.5,4,[1,'°']],['fov','Field of view',25,120,1,80,[1,'°']],
@@ -3327,7 +3327,7 @@ var SPEC={
     ['hstr','Front puddle stretch',-100,100,1,0,[100,'%']],['hrag','Front puddle edge',0,100,1,50,[100,'%']],['hturn','Front puddle turn',-45,45,1,0,[1,'°']],['hshape','Front puddle shape',0,99,1,0],
     ['rvar','Ripple variety',0,100,1,60,[100,'%']],
     ['wmk','Water marks',0,100,1,40,[100,'%']],['wglint','Glint gap',0,15,1,5,[10,' mm']],
-    ['hatch','Tone hatch',0,100,1,50,[100,'%']],['hstyle','Hatch style',0,1,1,0],['hdir','Hatch lines',0,3,1,1],['sun','Light from',0,359,1,300,[1,'°']],
+    ['hatch','Tone hatch',0,100,1,50,[100,'%']],['hstyle','Hatch style',0,1,1,0],['hdir','Hatch lines',0,3,1,1],['sun','Light from',0,359,1,300,[1,'°']],['sunel','Sun height',10,80,1,30,[1,'°']],['shad','Cast shadows',0,1,1,1],
     ['cams','Camera along',0,90,1,5,[100,'%']],['camx','Camera side',-100,100,1,-20,[100,'%']],
     ['camz','Camera height',0.2,80,0.1,1.8,[1,' m']],['look','Look ahead',5,300,1,80,[1,' m']],['turn','Turn',-90,90,1,0,[1,'°']],
     ['pitch','Pitch',-45,45,0.5,3,[1,'°']],['fov','Field of view',25,120,1,70,[1,'°']],
@@ -3529,7 +3529,7 @@ var SPEC={
     ['boats','Boats',0,12,1,3,[1,'/100 m']],['waves','Waves',0,100,1,35,[100,'%']],
     ['ripple','Ripple',0,30,1,10,[10,' mm']],['rvar','Ripple variety',0,100,1,60,[100,'%']],
     ['hatch','Tone hatch',0,100,1,55,[100,'%']],['hatchmode','Hatch spacing',0,1,1,0],['hstyle','Hatch style',0,1,1,0],['hdir','Hatch lines',0,3,1,1],
-    ['sun','Light from',0,359,1,300,[1,'°']],
+    ['sun','Light from',0,359,1,300,[1,'°']],['sunel','Sun height',10,80,1,30,[1,'°']],['shad','Cast shadows',0,1,1,1],
     ['cams','Camera along',0,90,1,5,[100,'%']],['camx','Camera side',-100,100,1,15,[100,'%']],
     ['camz','Camera height',0.2,80,0.1,1.2,[1,' m']],['look','Look ahead',5,300,1,50,[1,' m']],['turn','Turn',-90,90,1,0,[1,'°']],
     ['pitch','Pitch',-45,45,0.5,3,[1,'°']],['fov','Field of view',25,120,1,70,[1,'°']],
@@ -3562,7 +3562,7 @@ var SPEC={
     ['rvar','Ripple variety',0,100,1,60,[100,'%']],['wmk','Water marks',0,100,1,40,[100,'%']],['wglint','Glint gap',0,15,1,5,[10,' mm']],['hero','Front puddle',0,100,1,0,[100,'%']],
     ['hstr','Front puddle stretch',-100,100,1,0,[100,'%']],['hrag','Front puddle edge',0,100,1,50,[100,'%']],['hturn','Front puddle turn',-45,45,1,0,[1,'°']],['hshape','Front puddle shape',0,99,1,0],
     ['hatch','Tone hatch',0,100,1,55,[100,'%']],['hatchmode','Hatch spacing',0,1,1,0],['hstyle','Hatch style',0,1,1,0],['hdir','Hatch lines',0,3,1,1],
-    ['sun','Light from',0,359,1,300,[1,'°']],
+    ['sun','Light from',0,359,1,300,[1,'°']],['sunel','Sun height',10,80,1,30,[1,'°']],['shad','Cast shadows',0,1,1,1],
     ['cams','Camera along',0,90,1,6,[100,'%']],['camx','Camera side',-100,100,1,-72,[100,'%']],
     ['camz','Camera height',0.2,80,0.1,2.9,[1,' m']],['look','Look ahead',5,300,1,60,[1,' m']],['turn','Turn',-90,90,1,0,[1,'°']],
     ['pitch','Pitch',-45,45,0.5,2,[1,'°']],['fov','Field of view',25,120,1,70,[1,'°']],
@@ -23797,19 +23797,19 @@ var STRTTALLY={cam:null,project:null,parts:[],pre:[],sil:[],conts:[],lots:[],sla
    is the first theme and draws byte for byte what it drew before. */
 var STHEMES={
   street:{key:'strt', label:'Street', lotDepth:[8,20], alleyW:[1.2,2.5], baseN2:0.35, baseH:[3.6,4.5],
-          midH:[2.8,3.2], edgeZ:0.15, slabLen:4, clear:4.5, ztop:200, mirror:'puddles',
+          midH:[2.8,3.2], edgeZ:0.15, slabLen:4, clear:4.5, ztop:200, mirror:'puddles', mirrorSkip:['shadow'],
           content:function(K){ return streetTheme(K); }},
   /* §3: a narrow lane, a single shopfront storey of 3.2-3.8 m, lantern strings
      at 2.6 m (the street's 4.5 m would refuse every one), no poles, no cars,
      no lane paint, no bollards, no particles (steam instead), no graffiti */
   mkt:{key:'mkt', label:'Night market', lotDepth:[6,12], alleyW:[1.2,2.5], baseN2:0, baseH:[3.2,3.8],
-       midH:[2.8,3.2], edgeZ:0.15, slabLen:4, clear:2.6, ztop:200, mirror:'puddles', minWidth:2,
+       midH:[2.8,3.2], edgeZ:0.15, slabLen:4, clear:2.6, ztop:200, mirror:'puddles', mirrorSkip:['shadow'], minWidth:2,
        fixed:{shopv:0, props:0, cars:0, dots:0, graff:0}, flags:{poles:false, roadMarks:false, bollards:false, shopOpen:true, cableEdge:true, attachBase:true, edgeSlots:true},
        cableAvoid:['lantern','stall'],
        content:function(K){ return marketTheme(K); }},
   /* §4: a yard lane, a container row for a lot, no kerb and no buildings */
   harb:{key:'harb', label:'Harbour', lotDepth:[13,26], alleyW:[0.3,0.4], baseN2:0, baseH:[2.591,2.591],
-        midH:[2.591,2.591], edgeZ:0, slabLen:4, clear:4.5, ztop:200, mirror:'puddles', minWidth:6,
+        midH:[2.591,2.591], edgeZ:0, slabLen:4, clear:4.5, ztop:200, mirror:'puddles', mirrorSkip:['shadow'], minWidth:6,
         /* row 65: at the camera's feet the depth factor doubled Ripple, and on a
            yard of 40 puddles that read as zig-zag: 1.25 here */
         ripMax:1.25,
@@ -23904,7 +23904,7 @@ var STHEMES={
   /* §6: a water channel between plastered houses; the whole road is water and
      the mirror; the kerb is the quay's edge, 0.8 m over the water */
   canal:{key:'canal', label:'Canal', lotDepth:[8,16], alleyW:[1.0,2.2], baseN2:0, baseH:[3.0,3.6],
-         midH:[2.8,3.2], edgeZ:0.8, slabLen:4, clear:3.0, ztop:200, mirror:'channel', minWidth:4,
+         midH:[2.8,3.2], edgeZ:0.8, slabLen:4, clear:3.0, ztop:200, mirror:'channel', mirrorSkip:['shadow'], minWidth:4,
          strip:0.25, channel:true, kerbKind:'quay', pudCol:null, pudWord:'slabs of water',
          cableAvoid:['bridge','boat','post'],
          fixed:{shopv:0, props:0, cars:0, dots:0, graff:0, neon:0, puddles:0, hero:0, fire:0},
@@ -23916,7 +23916,7 @@ var STHEMES={
      with the Street's buildings behind a back lane; the eye stands on the
      near platform. Alley pinned at 0 so the decks abut. */
   stn:{key:'stn', label:'Train station', lotDepth:[8,20], alleyW:[0,0], baseN2:0.35, baseH:[3.6,4.5],
-       midH:[2.8,3.2], edgeZ:1.30, slabLen:4, clear:4.6, ztop:200, mirror:'puddles', minWidth:6.4,
+       midH:[2.8,3.2], edgeZ:1.30, slabLen:4, clear:4.6, ztop:200, mirror:'puddles', mirrorSkip:['shadow'], minWidth:6.4,
        strip:0.25, kerbKind:'platform', kerbHides:true, lotsToEnd:true,
        paveOf:function(p){ var k=stationKnobs(p); return k.platw+k.lane; },
        camReach:function(p){ return stationKnobs(p).platw-1.0; },
@@ -42401,7 +42401,7 @@ function corridorCamera(p,PL,plans,THM,camera){
      the pavement. A theme may let it reach CREACH metres further (the
      station's eye stands on its platform); absent, HALFW+0 is HALFW exactly */
   var CREACH=THM.camReach?THM.camReach(p):0;
-  var CE=P3(sC,1,CAMX*(HALFW+CREACH),CAMZ), TG=P3(sC+LOOK,1,0,CAMZ);
+  var CE=P3(sC,1,CAMX*(HALFW+CREACH),CAMZ), TG=P3(sC+LOOK,1,0,CAMZ), STF=frame(sC);
   /* ROW 95: a network's camera is placed by the network (camera.CE, camera.TG
      for the perspective eye; camera.O, camera.th for the isometric frame) */
   if(camera && camera.CE){ CE=camera.CE; TG=camera.TG; }
@@ -42440,7 +42440,7 @@ function corridorCamera(p,PL,plans,THM,camera){
      move every time a building grew. */
   function scr(c){ if(ISO) return [PGW/2+ISOS*c[0], PGH/2-ISOS*c[1]]; return [PGW/2+FF*c[0]/c[2]*HW, PGH/2-FF*c[1]/c[2]*HW]; }
   function project(P){ var c=cam(P); return c[2]>1e-12?scr(c):null; }
-  var tally={C:CE, f:FW, r:RT, u:UP, F:FF, near:NEAR, pad:PAD, hw:HW, hh:HH};
+  var tally={C:CE, f:FW, r:RT, u:UP, F:FF, near:NEAR, pad:PAD, hw:HW, hh:HH, st:{s:sC, F:STF}};
   /* ---- ROW 94: THE ISOMETRIC CAMERA, Projection 1 (corridor-city spec §3.2).
      A PARALLEL projection: the view direction is Iso turn from the street's
      tangent at its middle and Iso tilt below level, FW/RT/UP built from it as
@@ -42531,7 +42531,7 @@ function corridorCamera(p,PL,plans,THM,camera){
       ISOC=[MSCA.c[0]+RT[0]*MWX+UP[0]/UHl*MWY, MSCA.c[1]+RT[1]*MWX+UP[1]/UHl*MWY, 0]; }
     CE=[ISOC[0]-FW[0]*1e5, ISOC[1]-FW[1]*1e5, ISOC[2]-FW[2]*1e5];
     D_EFF=FF*HW/ISOS;
-    tally={C:CE, f:FW, r:RT, u:UP, F:FF, near:NEAR, pad:PAD, hw:HW, hh:HH,
+    tally={C:CE, f:FW, r:RT, u:UP, F:FF, near:NEAR, pad:PAD, hw:HW, hh:HH, st:{s:sC, F:STF},
                    iso:true, S:ISOS, fit:SFIT, O:ISOC, deff:D_EFF, zfit:ZFIT, az:IAZ, el:IEL};
     if(TC){
       var TO=ISOC, TAO=TO[0]*TC.fx+TO[1]*TC.fy, TRT=RT;
@@ -43048,7 +43048,7 @@ function corridorDraw(p,plans,THM,camera){
      gap along a straight edge on the sheet is monotone, so the box's corners bound it */
   function rsvBoxes(P,fi,d,s){
     var RV=[];
-    (P.rsv||[]).forEach(function(r){ if(r.f!==fi) return;
+    (P.rsv||[]).forEach(function(r){ if(r.f!==fi || r.pg) return;
       var u0=Infinity, u1=-Infinity, v0=Infinity, v1=-Infinity;
       r.poly.forEach(function(q){ var u=dot3h(q,d), w=dot3h(q,s); if(u<u0) u0=u; if(u>u1) u1=u; if(w<v0) v0=w; if(w>v1) v1=w; });
       /* the growth along d is measured on the box's ends u0/u1 out to its grown sides, and the growth along s on its
@@ -43142,6 +43142,7 @@ function corridorDraw(p,plans,THM,camera){
   }
   function surfHatch1(P,faces,o){
     if(!(o.hatch>0)) return;
+    if(o.col){ P.hcol=o.col; if(!SHCOL) SHCOL=o.col; }
     var T=1-o.hatch, Bmm=Math.max(MINSP,0.7+1.3*(1-o.hatch)), Lv=LIGHT.Lv, R2=Math.SQRT1_2;
     faces.forEach(function(fi){
       var f=P.faces[fi];
@@ -43230,6 +43231,289 @@ function corridorDraw(p,plans,THM,camera){
         }
       }
     }
+  }
+  /* ROW 144 A3b: CAST SHADOWS (spec §1.7). At hstyle 1 with shad 1, on the engines with a shad knob (strt mkt harb
+     canal stn; stn only while shed is 0), once the pass's parts are final (puddles laid, the eye cleared):
+     - CASTERS: solid parts (hides, not seeThru; not a puddle, plate, dot or cable; no noShadow), 0.3 m or more in
+       plan and 0.5 m or more tall, nearer than Outline detail to. Every kit part is convex (A0 measured it).
+     - RECEIVERS: lit walls (|n.z| < 0.3, N.Lv > 0) of solid parts, not round, and the ground's tops (the road plate,
+       the pavement kerb, a quay, a platform, a deck; canal's plate is its water), facing the eye and nearer than
+       Solid detail to: the middle band's lines draw nowhere else (§1.6).
+     - EXACT: the caster clipped to the light side of the receiver's plane, n.(x - q) >= 1e-4 m, each vertex left
+       projected along -Lv onto it, and the 2D convex hull, which is the parallel-light shadow of a convex body. A
+       line is clipped to the union of its chords in the hulls, then to the face, then cut by the face's reserves.
+     - TONE IN SHADOW is the middle band: the face's own family (hdir) at every 2nd line k*B_m, thinned to MINSP across
+       the whole face exactly as hatchFam would, drawn inside the hulls; a lightest-band face loses its own lines
+       there. A face already in the middle or darkest band needs nothing. GROUND lines run across the street, square
+       to the slab's heading, stacked along it. Puddles and manholes are POLYGON reserves on the ground, cut even-odd.
+     - CULL: a caster meets a receiver only where its plan box, swept away from the light by zmax/tan(EL), overlaps
+       the receiver's: a point the caster shades lies under the light ray within that reach. An 8 m plan grid.
+     - kind 'shadow', hb 2: the budget drops it with the middle band (§1.6). */
+  var SHAD=HSTY && LIGHT.sun && (typeof SPEC!=='undefined' && SPEC[THM.key]?SPEC[THM.key][1]:[]).some(function(rw){ return rw[0]==='shad'; }) &&
+           Math.round(isFinite(p.shad)?+p.shad:1)===1;
+  var SHADT=null, SHCOL=null;
+  /* a polygon reserve; `of`, the part it stands for (a puddle), is a link the tally maps to an index, kept out of
+     every enumeration so no clone or JSON of the tally follows it into the scene */
+  function reservePoly(P,fi,poly,of){ var r={f:fi, poly:poly, pg:true}; if(of) Object.defineProperty(r,'ofP',{value:of});
+    (P.rsv||(P.rsv=[])).push(r); return P; }
+  function evenOdd(Q,W){ var xs=[], i;
+    for(i=0;i<Q.length;i++){ var a=Q[i], b=Q[(i+1)%Q.length]; if((a[1]<=W)!==(b[1]<=W)) xs.push(a[0]+(b[0]-a[0])*(W-a[1])/(b[1]-a[1])); }
+    xs.sort(function(x,y){ return x-y; }); var o=[]; for(i=0;i+1<xs.length;i+=2) o.push([xs[i],xs[i+1]]); return o; }
+  /* the u-extent of polygon Q (in (u,w)) inside the strip w0 <= w <= w1, exactly: between two of its vertex levels the
+     chords' ends move linearly, so each chord's [min,max] over a sub-strip's two ends bounds it there */
+  function pgStrip(Q,w0,w1){
+    if(!(w1-w0>1e-12)) return evenOdd(Q,w0);
+    var lv=[w0,w1], out=[], i;
+    Q.forEach(function(q){ if(q[1]>w0 && q[1]<w1) lv.push(q[1]); });
+    lv.sort(function(a,b){ return a-b; });
+    for(i=0;i+1<lv.length;i++){ var a=lv[i], b=lv[i+1]; if(!(b-a>1e-12)) continue;
+      var e=(b-a)*1e-7, A=evenOdd(Q,a+e), B=evenOdd(Q,b-e);
+      if(A.length===B.length) A.forEach(function(x,j){ out.push([Math.min(x[0],B[j][0]),Math.max(x[1],B[j][1])]); });
+      else A.concat(B).forEach(function(x){ out.push(x); }); }
+    return out;
+  }
+  /* face fi's polygon reserves in a family's (u,w), each with its 0.6 mm growth along d and s, measured as rsvBoxes
+     measures a box's, on its bounding box */
+  function rsvPolys(P,fi,d,s){
+    var G=[];
+    (P.rsv||[]).forEach(function(r){ if(r.f!==fi || !r.pg) return;
+      var Q=r.poly.map(function(q){ return [dot3h(q,d),dot3h(q,s)]; }), u0=Infinity, u1=-Infinity, v0=Infinity, v1=-Infinity;
+      Q.forEach(function(q){ if(q[0]<u0) u0=q[0]; if(q[0]>u1) u1=q[0]; if(q[1]<v0) v0=q[1]; if(q[1]>v1) v1=q[1]; });
+      var fc=P.faces[fi], X=function(u,w){ return [d[0]*u+s[0]*w+fc.n[0]*fc.d, d[1]*u+s[1]*w+fc.n[1]*fc.d, d[2]*u+s[2]*w+fc.n[2]*fc.d]; };
+      var mu=0, mw=0;
+      for(var it=0;it<3;it++){
+        mu=grow06([X(u0,v0-mw),X(u0,v1+mw),X(u1,v0-mw),X(u1,v1+mw)],s,d);
+        mw=grow06([X(u0-mu,v0),X(u1+mu,v0),X(u0-mu,v1),X(u1+mu,v1)],d,s);
+      }
+      mu=grow06([X(u0,v0-mw),X(u0,v1+mw),X(u1,v0-mw),X(u1,v1+mw)],s,d);
+      G.push({Q:Q, mu:mu, mw:mw, u0:u0, u1:u1, w0:v0, w1:v1, X:X, d:d, s:s, P3:r.poly}); });
+    return G;
+  }
+  /* THE POLYGON CUT, EXACT ON THE SHEET: the line u in [lo,hi] at W and the polygon, both projected; the stretch of the
+     line inside the polygon or within 0.6 mm of an edge (a capsule per edge), mapped back to u through the line's own
+     projective parameter, t(s) = a s/(c s + 1), which three points fix exactly. A box grown along d and s overshoots on
+     a receding plate, where the line's projection is oblique to the polygon's: 2.4 mm measured, against 0.6. null where
+     a point is behind the near plane (the box rule then stands) */
+  function sheetCut(G,W,lo,hi){
+    if(!(hi-lo>1e-9)) return null;
+    var Xm=G.X((lo+hi)/2,W), hk=HOLD?holdK(Xm):null, CM=hk?hk.cam:cam, SC=hk?hk.scr:scr;
+    function pjm(X){ var c=CM(X); if(!(c[2]>NEAR)) return null; var q=SC(c); return [q[0]*PAGEMM, q[1]*PAGEMM]; }
+    var p0=pjm(G.X(lo,W)), ph=pjm(Xm), p1=pjm(G.X(hi,W)); if(!p0 || !ph || !p1) return null;
+    var vx=p1[0]-p0[0], vy=p1[1]-p0[1], T1=Math.hypot(vx,vy); if(!(T1>1e-9)) return null; vx/=T1; vy/=T1;
+    var Th=(ph[0]-p0[0])*vx+(ph[1]-p0[1])*vy, c=(T1-2*Th)/(Th-T1), a=T1*(c+1);
+    if(!isFinite(c) || !isFinite(a)) return null;
+    var Q=[], i; for(i=0;i<G.P3.length;i++){ var q=pjm(G.P3[i]); if(!q) return null; Q.push(q); }
+    var R=0.6+1e-6, ivs=[], xs=[];
+    function sub(x,y){ return [x[0]-y[0],x[1]-y[1]]; }
+    function circ(Cc){ var w=sub(p0,Cc), b=w[0]*vx+w[1]*vy, cc=w[0]*w[0]+w[1]*w[1]-R*R, dd=b*b-cc; if(dd>=0){ var r2=Math.sqrt(dd); ivs.push([-b-r2,-b+r2]); } }
+    function lin(k0,k1,mn,mx,iv){ /* {t: mn <= k0 + k1 t <= mx} intersected into iv */
+      if(Math.abs(k1)<1e-15){ return (k0>=mn && k0<=mx)?iv:null; }
+      var t0=(mn-k0)/k1, t1=(mx-k0)/k1; if(t0>t1){ var tt=t0; t0=t1; t1=tt; }
+      var x0=Math.max(iv[0],t0), x1=Math.min(iv[1],t1); return x1>x0?[x0,x1]:null; }
+    for(i=0;i<Q.length;i++){
+      var A=Q[i], B=Q[(i+1)%Q.length], ex=B[0]-A[0], ey=B[1]-A[1], L=Math.hypot(ex,ey);
+      circ(A);
+      if(L>1e-12){ ex/=L; ey/=L; var w=sub(p0,A);
+        var iv=lin(w[0]*ex+w[1]*ey, vx*ex+vy*ey, 0, L, [-1e18,1e18]);
+        if(iv) iv=lin(-w[0]*ey+w[1]*ex, -vx*ey+vy*ex, -R, R, iv);
+        if(iv) ivs.push(iv); }
+      /* where the line crosses this edge, for inside-ness (even-odd) */
+      var den=vx*(B[1]-A[1])-vy*(B[0]-A[0]);
+      if(Math.abs(den)>1e-15){ var wx=A[0]-p0[0], wy=A[1]-p0[1], tt2=(wx*(B[1]-A[1])-wy*(B[0]-A[0]))/den, ss=(wx*vy-wy*vx)/den;
+        if(ss>=0 && ss<1) xs.push(tt2); }
+    }
+    xs.sort(function(x,y){ return x-y; }); for(i=0;i+1<xs.length;i+=2) ivs.push([xs[i],xs[i+1]]);
+    var out=[];
+    unionIv(ivs).forEach(function(x){ var t0=Math.max(0,x[0]), t1=Math.min(T1,x[1]); if(!(t1>t0)) return;
+      var s0=t0/(a-c*t0), s1=t1/(a-c*t1); out.push([lo+(hi-lo)*Math.min(s0,s1), lo+(hi-lo)*Math.max(s0,s1)]); });
+    return out;
+  }
+  function cutRsv(segs,W,RV,PG){
+    RV.forEach(function(Rb){ if(W>Rb[1] && W<Rb[3]) segs=cutIv(segs,[Rb[0],Rb[2]]); });
+    /* the box's margins say which polygons the line may meet; the cut itself is exact ON THE SHEET (sheetCut) */
+    PG.forEach(function(G){ if(W<G.w0-G.mw || W>G.w1+G.mw || !segs.length) return;
+      var lo=segs[0][0], hi=segs[segs.length-1][1], cut=sheetCut(G,W,lo,hi);
+      if(cut) cut.forEach(function(iv){ segs=cutIv(segs,iv); });
+      else pgStrip(G.Q,W-G.mw,W+G.mw).forEach(function(iv){ segs=cutIv(segs,[iv[0]-G.mu,iv[1]+G.mu]); }); });
+    return segs;
+  }
+  function unionIv(L){ L.sort(function(a,b){ return a[0]-b[0]; }); var o=[];
+    L.forEach(function(x){ var t=o[o.length-1]; if(t && x[0]<=t[1]){ if(x[1]>t[1]) t[1]=x[1]; } else o.push([x[0],x[1]]); }); return o; }
+  function clipIv(L,lo,hi){ var o=[]; L.forEach(function(x){ var a=Math.max(x[0],lo), b=Math.min(x[1],hi); if(b-a>1e-9) o.push([a,b]); }); return o; }
+  /* the shadow of caster record Cs on receiver face f, as a convex ring in (e1,e2), or null */
+  function shadowHull(f,e1,e2,Cs){
+    var Lv=LIGHT.Lv, n=f.n, dd=f.d, nL=n[0]*Lv[0]+n[1]*Lv[1]+n[2]*Lv[2], EPS=1e-4, pts=[], i;
+    function put(x,sx){ var t=sx/nL, y=[x[0]-t*Lv[0],x[1]-t*Lv[1],x[2]-t*Lv[2]];
+      pts.push([y[0]*e1[0]+y[1]*e1[1]+y[2]*e1[2], y[0]*e2[0]+y[1]*e2[1]+y[2]*e2[2]]); }
+    var sv=Cs.V.map(function(v){ return n[0]*v[0]+n[1]*v[1]+n[2]*v[2]-dd; }), any=false;
+    for(i=0;i<sv.length;i++) if(sv[i]>=EPS){ any=true; break; }
+    if(!any) return null;
+    Cs.V.forEach(function(v,i){ if(sv[i]>=EPS) put(v,sv[i]); });
+    Cs.E.forEach(function(e){ var sa=sv[e[0]], sb=sv[e[1]];
+      if((sa>=EPS)!==(sb>=EPS)){ var t=(EPS-sa)/(sb-sa), a=Cs.V[e[0]], b=Cs.V[e[1]];
+        put([a[0]+(b[0]-a[0])*t, a[1]+(b[1]-a[1])*t, a[2]+(b[2]-a[2])*t], EPS); } });
+    return hull2(pts);
+  }
+  /* the middle band's family (d,s) on face fi, drawn only inside the hulls Hs (rings in (u along d, w along s)) */
+  function shadowFam(P,fi,f,d,s,Hs,Bmm,o,SH,cg){
+    var c=cg||faceC(f), g=paperGap(c,d,s); if(!(g>0)) return;
+    var n=f.n, nd=f.d, Bm=Bmm/g, dot=dot3h, step=2;
+    var Q=f.pts.map(function(q){ return [dot(q,d),dot(q,s)]; }), w0=Infinity, w1=-Infinity, hw0=Infinity, hw1=-Infinity;
+    Q.forEach(function(q){ if(q[1]<w0) w0=q[1]; if(q[1]>w1) w1=q[1]; });
+    Hs.forEach(function(H){ H.forEach(function(q){ if(q[1]<hw0) hw0=q[1]; if(q[1]>hw1) hw1=q[1]; }); });
+    var FM={d:d, s:s, bm:Bm, step:step, band:2, f:fi, nb:0, nl:0, nt:0, shadow:1};
+    var k0=Math.ceil(w0/Bm), k1=Math.floor(w1/Bm);
+    if(!(k1-k0<20000)) return;
+    function at(u,W){ return [d[0]*u+s[0]*W+n[0]*nd, d[1]*u+s[1]*W+n[1]*nd, d[2]*u+s[2]*W+n[2]*nd]; }
+    function gapMin(pts,h){ var m=Infinity; pts.forEach(function(X){ var q=gapOn(X,d,s,h); if(q<m) m=q; }); return m; }
+    var last=null, RV=null, PG=null;
+    for(var k=k0;k<=k1;k++){
+      var W=Bm*k, iv=chordAt(Q,W); if(!iv) continue;
+      FM.nb++;
+      if(((k%step)+step)%step) continue;
+      FM.nl++;
+      if(iv[1]-iv[0]<1e-6) continue;
+      var A=at(iv[0],W), B=at(iv[1],W), M=[(A[0]+B[0])/2,(A[1]+B[1])/2,(A[2]+B[2])/2], pts=[A,B,M];
+      if(last && !(Math.min(gapMin(last.pts,W-last.W),gapMin(pts,last.W-W))>=MINSP)) continue;
+      last={W:W, pts:pts};
+      FM.nt++;
+      if(W<hw0 || W>hw1) continue;
+      var hs=[]; Hs.forEach(function(H){ var x=chordAt(H,W); if(x) hs.push(x); });
+      if(!hs.length) continue;
+      var segs=clipIv(unionIv(hs),iv[0],iv[1]); if(!segs.length) continue;
+      if(!RV){ RV=rsvBoxes(P,fi,d,s); PG=rsvPolys(P,fi,d,s); }
+      segs=cutRsv(segs,W,RV,PG);
+      segs.forEach(function(sg){ if(sg[1]-sg[0]<1e-6) return;
+        var a=at(sg[0],W), b=at(sg[1],W), dm=dist3([(a[0]+b[0])/2,(a[1]+b[1])/2,(a[2]+b[2])/2]);
+        if(!(dm<o.far) || !(dm<o.near)) return;
+        P.lines.push({a:a, b:b, f0:fi, f1:fi, col:o.col, kind:'shadow', hb:2, fam:FM}); HN[2]++; SH.n++; });
+    }
+  }
+  /* a lightest-band face's own lines leave the shadow, where the middle band's take over */
+  function shadowOut(P,fi,Hs3){
+    var out=[];
+    P.lines.forEach(function(Ln){
+      var F=Ln.fam;
+      if(Ln.hb!==1 || !F || F.shadow || F.f!==fi){ out.push(Ln); return; }
+      var Hs=Hs3(F.d,F.s), ua=dot3h(Ln.a,F.d), ub=dot3h(Ln.b,F.d), W=dot3h(Ln.a,F.s), lo=Math.min(ua,ub), hi=Math.max(ua,ub);
+      var hs=[]; Hs.forEach(function(H){ var x=chordAt(H,W); if(x) hs.push(x); });
+      if(!hs.length){ out.push(Ln); return; }
+      var segs=[[lo,hi]]; unionIv(hs).forEach(function(x){ segs=cutIv(segs,x); });
+      if(segs.length===1 && segs[0][0]===lo && segs[0][1]===hi){ out.push(Ln); return; }
+      HN[1]--;
+      var L=ub-ua;
+      segs.forEach(function(sg){ if(sg[1]-sg[0]<1e-6) return; var ta=(sg[0]-ua)/L, tb=(sg[1]-ua)/L;
+        out.push({a:[Ln.a[0]+(Ln.b[0]-Ln.a[0])*ta, Ln.a[1]+(Ln.b[1]-Ln.a[1])*ta, Ln.a[2]+(Ln.b[2]-Ln.a[2])*ta],
+                  b:[Ln.a[0]+(Ln.b[0]-Ln.a[0])*tb, Ln.a[1]+(Ln.b[1]-Ln.a[1])*tb, Ln.a[2]+(Ln.b[2]-Ln.a[2])*tb],
+                  f0:Ln.f0, f1:Ln.f1, col:Ln.col, kind:Ln.kind, hb:Ln.hb, fam:F}); HN[1]++; });
+    });
+    P.lines=out;
+  }
+  function shadowPass(dn,df){
+    SHADT={cast:[], recv:[], hulls:[], n:0, near:dn, far:df};
+    if(!(HATCHK>0) || HDROP>=2) return;
+    var Lv=LIGHT.Lv, T=1-HATCHK, Bmm=Math.max(MINSP,0.7+1.3*(1-HATCHK)), tl=Math.cos(LIGHT.el)/Math.sin(LIGHT.el), R2=Math.SQRT1_2;
+    var ph=Math.hypot(Lv[0],Lv[1]), sw=ph>1e-12?[-Lv[0]/ph,-Lv[1]/ph]:[0,0];
+    var GROUND={plate:1, kerb:1, quay:1, platform:1, deck:1}, NOC={puddle:1, plate:1, dot:1, cable:1};
+    var CS=[], RS=[], GRID=new Map(), CELL=8, col0=SHCOL||COL_HATCH, SH={n:0}, PUDS=[];
+    conts.forEach(function(C){ C.parts.forEach(function(Pq){ if(Pq.kind==='puddle' && Pq.pud && Pq.pud.ring && Pq.pud.ring.length>=3) PUDS.push(Pq); }); });
+    function nearest(a,b){ var E=HOLD?holdK([(a[0]+b[0])/2,(a[1]+b[1])/2,(a[2]+b[2])/2]).CE:CE;
+      return dist3([Math.max(a[0],Math.min(E[0],b[0])), Math.max(a[1],Math.min(E[1],b[1])), Math.max(a[2],Math.min(E[2],b[2]))]); }
+    /* prep()'s frustum test, without its side effects: a receiver the camera cannot see draws nothing */
+    function inView(V){ var all=[0,0,0,0,0], m;
+      for(m=0;m<V.length;m++){ var c=cam(V[m]);
+        if(c[2]<NEAR) all[0]++;
+        if(ISO){ if(c[0]*ISOS-HW*M>0) all[1]++; if(-c[0]*ISOS-HW*M>0) all[2]++; if(c[1]*ISOS-HH*M>0) all[3]++; if(-c[1]*ISOS-HH*M>0) all[4]++; continue; }
+        if(c[0]-c[2]*TH*M>0) all[1]++; if(-c[0]-c[2]*TH*M>0) all[2]++; if(c[1]-c[2]*TV*M>0) all[3]++; if(-c[1]-c[2]*TV*M>0) all[4]++; }
+      for(m=0;m<5;m++) if(all[m]===V.length) return false;
+      return true; }
+    function cellsOf(x0,y0,x1,y1,fn){ for(var gx=Math.floor(x0/CELL);gx<=Math.floor(x1/CELL);gx++) for(var gy=Math.floor(y0/CELL);gy<=Math.floor(y1/CELL);gy++) fn(gx+','+gy); }
+    conts.forEach(function(C){ C.parts.forEach(function(P){
+      if(!P.faces || !P.faces.length) return;
+      var V=verts(P); if(!V.length) return;
+      var a=[Infinity,Infinity,Infinity], b=[-Infinity,-Infinity,-Infinity];
+      V.forEach(function(v){ for(var i=0;i<3;i++){ if(v[i]<a[i]) a[i]=v[i]; if(v[i]>b[i]) b[i]=v[i]; } });
+      var dm=nearest(a,b), solid=P.hides!==false && !P.seeThru;
+      if(solid && !NOC[P.kind] && !P.noShadow && Math.max(b[0]-a[0],b[1]-a[1])>=0.3 && b[2]-a[2]>=0.5 && dm<df){
+        var E=[], off=0; P.faces.forEach(function(fc){ var m=fc.pts.length; for(var j=0;j<m;j++) E.push([off+j, off+(j+1)%m]); off+=m; });
+        var sl=Math.max(0,b[2])*tl, rc={P:P, V:V, E:E, a:a, b:b, i:CS.length,
+          x0:a[0]+Math.min(0,sw[0]*sl), y0:a[1]+Math.min(0,sw[1]*sl), x1:b[0]+Math.max(0,sw[0]*sl), y1:b[1]+Math.max(0,sw[1]*sl)};
+        CS.push(rc);
+        cellsOf(rc.x0,rc.y0,rc.x1,rc.y1,function(k){ var L=GRID.get(k); if(!L) GRID.set(k,L=[]); L.push(rc); });
+      }
+      if(dm<dn && !P.round && inView(V)) RS.push({P:P, a:a, b:b, solid:solid, C:C});
+    }); });
+    SHADT.cast=CS;
+    var REG=new Set();
+    RS.forEach(function(R){
+      var P=R.P, ground=GROUND[P.kind]===1 && !(THM.channel && P.kind==='plate');
+      if(!ground && !R.solid) return;
+      var mine=null;
+      function casters(){ if(mine) return mine; var seen=new Set(); mine=[];
+        cellsOf(R.a[0],R.a[1],R.b[0],R.b[1],function(k){ (GRID.get(k)||[]).forEach(function(rc){
+          if(seen.has(rc) || rc.P===P) return; seen.add(rc);
+          if(rc.x0<=R.b[0] && rc.x1>=R.a[0] && rc.y0<=R.b[1] && rc.y1>=R.a[1]) mine.push(rc); }); });
+        mine.sort(function(x,y){ return x.i-y.i; }); return mine; }
+      P.faces.forEach(function(f,fi){
+        if(f.pts.length<3 || !facesEye(f)) return;
+        var e1, e2, band=0;
+        if(ground){
+          if(!(f.n[2]>0.9)) return;
+          var hd=LIGHT.fwd, Cn=R.C, cg=null;
+          /* the pitch is held at the street's axis at the slab's middle, so the slabs either side of it and
+             their kerbs share one pitch and one phase, and the lines run straight across the road */
+          if(Cn && isFinite(Cn.s0) && isFinite(Cn.s1)){ var Fh=PLof(Cn).frame((Cn.s0+Cn.s1)/2); if(Fh && isFinite(Fh[2])){ hd=[Fh[2],Fh[3]]; cg=[Fh[0],Fh[1],f.pts[0][2]]; } }
+          var hl0=Math.hypot(hd[0],hd[1]); e2=[hd[0]/hl0,hd[1]/hl0,0]; e1=[-e2[1],e2[0],0];
+        } else {
+          if(!(Math.abs(f.n[2])<0.3)) return;
+          var Lm=f.n[0]*Lv[0]+f.n[1]*Lv[1]+f.n[2]*Lv[2]; if(!(Lm>0)) return;
+          band=hBand((1-Lm)/2,T);
+          var hl=Math.hypot(f.n[0],f.n[1]); e1=[-f.n[1]/hl,f.n[0]/hl,0]; e2=[-f.n[2]*f.n[0]/hl,-f.n[2]*f.n[1]/hl,hl];
+        }
+        var Qf=f.pts.map(function(q){ return [dot3h(q,e1),dot3h(q,e2)]; }), fb=[Infinity,Infinity,-Infinity,-Infinity];
+        Qf.forEach(function(q){ if(q[0]<fb[0]) fb[0]=q[0]; if(q[1]<fb[1]) fb[1]=q[1]; if(q[0]>fb[2]) fb[2]=q[0]; if(q[1]>fb[3]) fb[3]=q[1]; });
+        var ri=SHADT.recv.length;
+        SHADT.recv.push({P:P, f:fi, e1:e1, e2:e2, ground:ground, band:band});
+        var Hs=[];
+        casters().forEach(function(rc){
+          var H=shadowHull(f,e1,e2,rc); if(!H) return;
+          var hb0=[Infinity,Infinity,-Infinity,-Infinity];
+          H.forEach(function(q){ if(q[0]<hb0[0]) hb0[0]=q[0]; if(q[1]<hb0[1]) hb0[1]=q[1]; if(q[0]>hb0[2]) hb0[2]=q[0]; if(q[1]>hb0[3]) hb0[3]=q[1]; });
+          if(hb0[2]<=fb[0] || hb0[0]>=fb[2] || hb0[3]<=fb[1] || hb0[1]>=fb[3]) return;
+          Hs.push(H); SHADT.hulls.push({r:ri, c:rc.i, uv:H});
+        });
+        if(!Hs.length || band>=2) return;
+        /* the hulls in a family's (u along d, w along s): d and s lie in the face's plane, spanned by e1 and e2 */
+        function Hs3(d,s){ var a1=dot3h(e1,d), b1=dot3h(e2,d), a2=dot3h(e1,s), b2=dot3h(e2,s);
+          return Hs.map(function(H){ return H.map(function(q){ return [q[0]*a1+q[1]*b1, q[0]*a2+q[1]*b2]; }); }); }
+        var o={near:dn, far:df, col:P.hcol||col0};
+        if(ground){
+          if(!REG.has(P)){ REG.add(P);
+            var zt=f.pts[0][2];
+            /* every puddle whose plan meets the receiver's, in any container (one may straddle two slabs): the ragged
+               ring itself, not its hull */
+            PUDS.forEach(function(Pq){
+              var Hq=Pq.pud.ring, qa=[Infinity,Infinity], qb=[-Infinity,-Infinity];
+              Hq.forEach(function(q){ if(q[0]<qa[0]) qa[0]=q[0]; if(q[1]<qa[1]) qa[1]=q[1]; if(q[0]>qb[0]) qb[0]=q[0]; if(q[1]>qb[1]) qb[1]=q[1]; });
+              if(qb[0]<=R.a[0] || qa[0]>=R.b[0] || qb[1]<=R.a[1] || qa[1]>=R.b[1]) return;
+              reservePoly(P,fi,Hq.map(function(q){ return [q[0],q[1],zt]; }),Pq); });
+            /* the manholes drawn on it: rings of 'manhole' lines, chained end to start */
+            var ring=null, rings=[], same=function(x,y){ return Math.abs(x[0]-y[0])+Math.abs(x[1]-y[1])+Math.abs(x[2]-y[2])<1e-9; };
+            P.lines.forEach(function(Ln){ if(Ln.kind!=='manhole' || Ln.f0!==fi) return;
+              if(ring && same(ring[ring.length-1],Ln.a)) ring.push(Ln.b); else { ring=[Ln.a,Ln.b]; rings.push(ring); } });
+            rings.forEach(function(rg){ if(same(rg[rg.length-1],rg[0])) rg=rg.slice(0,-1); if(rg.length>=3) reservePoly(P,fi,rg,null); });
+          }
+          shadowFam(P,fi,f,e1,e2,Hs,Bmm,o,SH,cg);
+          return;
+        }
+        var t=e1, up=e2;
+        var sfams=HDIR===1?[[up,t]]:HDIR===2?[[t,up]]:
+                 HDIR===0?[[[(t[0]+up[0])*R2,(t[1]+up[1])*R2,(t[2]+up[2])*R2],[(t[0]-up[0])*R2,(t[1]-up[1])*R2,(t[2]-up[2])*R2]]]:[[up,t]];
+        if(band===1) shadowOut(P,fi,Hs3);
+        sfams.forEach(function(F2){ shadowFam(P,fi,f,F2[0],F2[1],Hs3(F2[0],F2[1]),Bmm,o,SH); });
+      });
+    });
+    SHADT.n=SH.n;
   }
   function surfHatch(P,faces,o){
     if(HSTY) return surfHatch1(P,faces,o);
@@ -44328,7 +44612,7 @@ function corridorDraw(p,plans,THM,camera){
     /* row 113: the crease and seam rules' records, real and mirror world, per pass */
     STRTTALLY.creased=[]; STRTTALLY.seamDrawn=[]; STRTTALLY.rcreased=[]; STRTTALLY.rseamDrawn=[];
     STRTTALLY.mirrorSkip=THM.mirrorSkip||[]; STRTTALLY.pudMinMM=THM.pudMinMM||0;
-    STRTTALLY.elems=[]; STRTTALLY.bld=[]; STRTTALLY.hfaces=[]; HN=[0,0,0,0];
+    STRTTALLY.elems=[]; STRTTALLY.bld=[]; STRTTALLY.hfaces=[]; HN=[0,0,0,0]; SHADT=null;
     STRTTALLY.signs=[]; STRTTALLY.graff=[]; STRTTALLY.cars=[]; STRTTALLY.upr=[]; STRTTALLY.urows=[]; STRTTALLY.unsepPairs=[];
     STRTTALLY.shops=[]; STRTTALLY.props=[]; STRTTALLY.ribbons=[];
     conts.forEach(function(C){ C.parts=[]; });
@@ -44579,6 +44863,8 @@ function corridorDraw(p,plans,THM,camera){
       EYECLR=Object.keys(drop).length;
       if(EYECLR) conts.forEach(function(C){ if(C.kind==='slab') C.parts=C.parts.filter(function(P){ return !(movable(P) && drop[key(P)]); }); });
     })();
+    /* row 144 A3b: the cast shadows, once the pass's parts are final */
+    if(SHAD) shadowPass(dn,df);
 
     /* ROW 222: what each container holds once its content is built -- its parts,
        their lines, a sum over their points -- on a film frame (p.film), for the
@@ -45090,6 +45376,16 @@ function corridorDraw(p,plans,THM,camera){
 
     STRTTALLY.hfaces=STRTTALLY.hfaces.map(function(h){ return h.fams?Object.assign({},h,{part:committed.indexOf(h.part)}):{part:committed.indexOf(h.part), f:h.f, sp:h.sp, c:h.c}; })
                                      .filter(function(h){ return h.part>=0; });
+    /* row 144 A3b: a ground reserve names the part it stands for (a puddle) by its committed index */
+    if(SHAD) STRTTALLY.parts.forEach(function(Pd){ if(Pd.rsv && Pd.rsv.some(function(r){ return r.ofP; }))
+      Pd.rsv=Pd.rsv.map(function(r){ return r.ofP?Object.assign({},r,{of:committed.indexOf(r.ofP)}):r; }); });
+    STRTTALLY.shadow=SHAD&&SHADT?{
+      casters:SHADT.cast.map(function(rc){ return {part:committed.indexOf(rc.P), kind:rc.P.kind||'', a:rc.a, b:rc.b,
+        planes:rc.P.faces.map(function(fc){ return [fc.n[0],fc.n[1],fc.n[2],fc.d]; })}; }),
+      receivers:SHADT.recv.map(function(rv){ var fc=rv.P.faces[rv.f]; return {part:committed.indexOf(rv.P), face:rv.f, n:fc.n, d:fc.d, pts:fc.pts,
+        e1:rv.e1, e2:rv.e2, ground:rv.ground, band:rv.band, kind:rv.P.kind||''}; }),
+      hulls:SHADT.hulls.map(function(h){ var rv=SHADT.recv[h.r]; return {part:committed.indexOf(rv.P), face:rv.f, caster:committed.indexOf(SHADT.cast[h.c].P), r:h.r, c:h.c, uv:h.uv}; }),
+      n:SHADT.n, near:SHADT.near, far:SHADT.far}:null;
     return {res:res, committed:committed, live:live, cycles:cycles, ccycles:ccycles,
             splits:splits, unsep:unsep, unsepC:unsepC, unsepParts:unsepParts, farz:FARZ,
             rcycles:cycles-rc0, rsplits:splits-rs0, runsep:unsepParts-ru0,
@@ -47439,6 +47735,8 @@ var HELP={
 'harb.hstyle':'0 draws the shading as it always has. 1 is the new hatch: tone grows in three steps as a face turns from the light, lines are spaced on the paper, coplanar walls line up, windows, signs and doors stay clear, and round parts are shaded round. A saved setting without this knob draws as 0.',
 'harb.hdir':'Hatch style 1 only. 0 diagonal, 45 degrees in each face, as before. 1 vertical lines, spaced along the wall (round parts: along their axis). 2 courses, horizontal lines that run to the wall\u2019s vanishing point (round parts: rings). 3 vertical everywhere shaded, plus courses in the darkest band.',
 'harb.sun':'Where the light comes from. Hatch style 0: in degrees, a bearing; the faces turned away carry the tone hatch. Hatch style 1: measured from straight down the lane at the camera, clockwise: 0 from ahead, 90 from the right, 180 from behind you, 270 from the left.',
+'harb.sunel':'Hatch style 1 only. How high the sun stands, in degrees above the horizon. Low light throws long shadows across the yard and up the far walls; high light keeps them short, close under what casts them. It also sets how the tone falls on the walls.',
+'harb.shad':'Hatch style 1 only. 1: containers, cranes and trucks throw their shadows onto the lit walls and the ground, hatched at the middle tone, with the puddles and manholes left clear. 0: no cast shadows.',
 'harb.cams':'Where the camera stands, as a share of the lane length. Near 0 you see the whole lane ahead.',
 'harb.camx':'The camera across the lane, as a share of half its width: 0 is the middle, 100 or -100 an edge.',
 'harb.camz':'The camera height in metres. 1.8 is a driver\u2019s eye; higher looks down onto the stack tops.',
@@ -47746,6 +48044,8 @@ var HELP={
 'stn.hdir':'Hatch style 1 only. 0 diagonal, 45 degrees in each face, as before. 1 vertical lines, spaced along the wall (round parts: along their axis). 2 courses, horizontal lines that run to the wall\u2019s vanishing point (round parts: rings). 3 vertical everywhere shaded, plus courses in the darkest band.',
 'stn.hatchmode':"0: the shading lines are evenly spaced ON THE WALL, so they crowd together into the distance. 1: evenly spaced ON THE PAPER, so a far wall is as light as a near one.",
 'stn.sun':"Where the light comes from. Hatch style 0: a compass bearing, 0 north, 90 east, 180 south, 270 west; the building walls facing away get the tone hatch. Hatch style 1: measured from straight down the line at the camera, clockwise: 0 from ahead, 90 from the right, 180 from behind you, 270 from the left. Under the train shed it is fixed at 300.",
+'stn.sunel':'Hatch style 1 only. How high the sun stands, in degrees above the horizon. Low light throws long shadows across the tracks and up the far walls; high light keeps them short, close under what casts them. It also sets how the tone falls on the walls.',
+'stn.shad':'Hatch style 1 only. 1: buildings, the platforms and the train throw their shadows onto the lit walls and the ground, hatched at the middle tone, with the puddles and manholes left clear. 0: no cast shadows. None while the shed roof is on.',
 'stn.cams':"Where the camera stands, as a share of the platform length. Near 0 you see the whole station ahead; the train, the footbridge and the wire portals are all placed ahead of this point.",
 'stn.camx':"The camera across the station, as a share of half the track bed plus the platform width less 1 m: 0 is between the two tracks and \u00b1100 is 1 m in front of a platform\u2019s back fence. At the defaults \u221272 stands on the near platform, behind the yellow tactile strip.",
 'stn.camz':"The camera height in metres over the track bed. The platforms are 1.3 m high, so 2.9 is standing eye height on a platform, and below 1.3 an eye over a platform is inside it. Raise it for a view from the footbridge or a window over the station.",
@@ -47832,6 +48132,8 @@ var HELP={
 'canal.hdir':'Hatch style 1 only. 0 diagonal, 45 degrees in each face, as before. 1 vertical lines, spaced along the wall (round parts: along their axis). 2 courses, horizontal lines that run to the wall\u2019s vanishing point (round parts: rings). 3 vertical everywhere shaded, plus courses in the darkest band.',
 'canal.hatchmode':'0 spaces the hatch in metres on the wall, 1 in millimetres on the sheet.',
 'canal.sun':'Where the light comes from. Hatch style 0: in degrees, a bearing; walls facing away get the tone hatch. Hatch style 1: measured from straight down the canal at the camera, clockwise: 0 from ahead, 90 from the right, 180 from behind you, 270 from the left.',
+'canal.sunel':'Hatch style 1 only. How high the sun stands, in degrees above the horizon. Low light throws long shadows across the water and the quays and up the far walls; high light keeps them short, close under what casts them. It also sets how the tone falls on the walls.',
+'canal.shad':'Hatch style 1 only. 1: buildings, chimneys and boats throw their shadows onto the lit walls and the ground, hatched at the middle tone, with the puddles and manholes left clear. 0: no cast shadows.',
 'canal.cams':'Where the camera sits along the canal, as a share of its length.',
 'canal.camx':'The camera across the canal, as a share of half its width: 0 is the middle.',
 'canal.camz':'The camera height over the water in metres. 1.2 is a boat\u2019s eye.',
@@ -47926,6 +48228,8 @@ var HELP={
 'mkt.hdir':'Hatch style 1 only. 0 diagonal, 45 degrees in each face, as before. 1 vertical lines, spaced along the wall (round parts: along their axis). 2 courses, horizontal lines that run to the wall\u2019s vanishing point (round parts: rings). 3 vertical everywhere shaded, plus courses in the darkest band.',
 'mkt.hatchmode':'0: shading lines evenly spaced on the wall, crowding into the distance. 1: evenly spaced on the paper.',
 'mkt.sun':'Where the light comes from. Hatch style 0: a compass bearing; the walls facing away get the tone hatch. Hatch style 1: measured from straight down the alley at the camera, clockwise: 0 from ahead, 90 from the right, 180 from behind you, 270 from the left.',
+'mkt.sunel':'Hatch style 1 only. How high the sun stands, in degrees above the horizon. Low light throws long shadows across the alley and up the far walls; high light keeps them short, close under what casts them. It also sets how the tone falls on the walls.',
+'mkt.shad':'Hatch style 1 only. 1: buildings, stalls, crates and lanterns throw their shadows onto the lit walls and the ground, hatched at the middle tone, with the puddles and manholes left clear. 0: no cast shadows.',
 'mkt.cams':'Where the camera stands, as a share of the lane length. Near 0 you see the whole lane ahead.',
 'mkt.camx':'The camera across the lane, as a share of half its width: 0 is the middle.',
 'mkt.camz':'The camera height in metres. 1.6 is eye height, looking under the lanterns.',
@@ -47965,6 +48269,8 @@ var HELP={
 'strt.hdir':'Hatch style 1 only. 0 diagonal, 45 degrees in each face, as before. 1 vertical lines, spaced along the wall (round parts: along their axis). 2 courses, horizontal lines that run to the wall\u2019s vanishing point (round parts: rings). 3 vertical everywhere shaded, plus courses in the darkest band.',
 'strt.hatchmode':'0: the shading lines are evenly spaced ON THE WALL, so they crowd together into the distance. 1: evenly spaced ON THE PAPER, so a far wall is as light as a near one.',
 'strt.sun':'Where the light comes from. Hatch style 0: a compass bearing, 0 north, 90 east, 180 south, 270 west, and walls facing away get the shading. Hatch style 1: measured from straight down the street at the camera, clockwise: 0 from ahead, 90 from the right, 180 from behind you, 270 from the left. The default 300 is ahead-left: the left walls in shade, the right walls lit.',
+'strt.sunel':'Hatch style 1 only. How high the sun stands, in degrees above the horizon. Low light throws long shadows across the street and up the far walls; high light keeps them short, close under what casts them. It also sets how the tone falls on the walls.',
+'strt.shad':'Hatch style 1 only. 1: buildings, cars, signs and poles throw their shadows onto the lit walls and the ground, hatched at the middle tone, with the puddles and manholes left clear. 0: no cast shadows.',
 'strt.dnear':'Up to this distance, in metres, the facade is SOLID: sills, lintels, balconies and AC units stand out from the wall and hide what is behind them. Further away they become outlines.',
 'strt.dfar':'Up to this distance, in metres, the facade is drawn as outlines on the wall. Beyond it a building keeps only its floor lines and its outline, which keeps the far end from turning into a smudge.',
 'strt.budg':'How many points the drawing may use, in thousands. If the street needs more, the two detail distances come in toward you and the LOD cutoff rises until it fits, and the status line says so.',
