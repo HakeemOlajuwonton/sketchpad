@@ -462,7 +462,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v385</a> &mdash; Corridor city: substations and the grid route -- with Site 3 the power plant&rsquo;s line leaves its switchyard and runs to each substation in turn, straight spans between pylons, an angle tower at every turn and no turn over 60&deg;, entering each yard square to its entry gantry; a pole-top transformer on the kerb, a walled urban compound, a fenced transmission yard of gantries, busbars, breakers and transformers, or a converter station with its valve hall and reactors; elsewhere a substation at each end of the powerline</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v386</a> &mdash; Corridor city: iso buildings and sites -- no iso building stands on a lot that meets the airfield, the harbour or the power plant, and with Districts on the blocks beside an airfield or a power plant are industrial, beside a harbour port; every other block keeps its district</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <section class="fold" id="fold_pick"><h2>Pick engine<span class="cnt"></span></h2>
@@ -23959,6 +23959,14 @@ function buildTown(p){
     if(q[0]<MEXT[0]) MEXT[0]=q[0]; if(q[1]<MEXT[1]) MEXT[1]=q[1]; if(q[0]>MEXT[2]) MEXT[2]=q[0]; if(q[1]>MEXT[3]) MEXT[3]=q[1]; }); }); });
   /* row 101: a hub's 6 km city is culled and massed in perspective too (perspCull), or one build ran 849 s and past 8 GB */
   var THX=SITE||(MSK&&!p.scoutScene)?Object.assign({},THM,{frameCull:true, perspCull:!!(SITE&&SITE.info.tier>=4), formTall:G.FORM?Math.max(1,Math.min(4,(isFinite(p.corez)?+p.corez:250)/100)):1}):THM;
+  /* ROW 136: THE SITE, FOR THE ARCHETYPES. Every plan carries the site's outline (a rotated site's own, or its rectangle)
+     and the district its neighbouring blocks take: an airfield or a power site `industrial`, a harbour `port` */
+  if(SITE){ var ASO=(SITE.info.outline&&SITE.info.outline.length>=3)?SITE.info.outline:(SITE.outline&&SITE.outline.length>=3)?SITE.outline:null, ASR=SITE.info.rect||SITE.rect;
+    /* a harbour at City form 1 is built on the city's own shore: its outline is the form's quay frame, which is
+       rotated. SITE.rect there is that frame's bounding box, and it reaches blocks the harbour does not */
+    if(!ASO && SITE.formShore && FRM && FRM.info.harbour && FRM.info.harbour.poly && FRM.info.harbour.poly.length>=3) ASO=FRM.info.harbour.poly;
+    if(!ASO && ASR) ASO=[[ASR[0],ASR[1]],[ASR[2],ASR[1]],[ASR[2],ASR[3]],[ASR[0],ASR[3]]];
+    if(ASO){ var ASZ={poly:ASO.map(function(q){ return [q[0],q[1]]; }), zone:SK===2?'port':'industrial', kind:SK}; plans.forEach(function(P){ P.archSite=ASZ; }); } }
   /* row 204 §A6: a close-up dresses what it looks at: at 450 m of dense city every lot dressed is 50,000 parts and minutes */
   if(FTGC){ var RMS=FK===2?110:60; THX=Object.assign({},THX,{massOut:function(L){ var c=townMid(L.poly); return Math.hypot(c[0]-FTGC[0],c[1]-FTGC[1])>RMS; }}); }
   /* row 221: Scout's scene -- the same plan, the camera argument by townCamArg for whatever view it shows */
@@ -29336,13 +29344,26 @@ var ARCHZONECORE={cbd:[0.75,1.0], oldtown:[0.35,0.65], civic:[0.35,0.65], indust
 /* a block's district: (row gap, cross-street gap) of the town grid the lot's
    centre lies in, its number from SALT_ZONE keyed on Layout -- not on any plan,
    so the two rows' lots that meet back to back in one block agree */
-function archZoneOf(p,x,y){
+function archZoneOf(p,x,y,AS){
   var G=townGrid(p), bx=0, by=0, k;
   for(k=0;k<G.UX.length;k++) if(x>G.UX[k]) bx=k+1;
   for(k=0;k<G.VY.length;k++) if(y>G.VY[k]) by=k+1;
   var lay=Math.round(isFinite(p.layout)?+p.layout:0);
-  var u=rnd(lay*7919+bx*104729+by*1299709+SALT_ZONE*15485863+29);
-  return {z:ARCHZONES[Math.min(4,Math.floor(u*5))], bx:bx, by:by};
+  var u=rnd(lay*7919+bx*104729+by*1299709+SALT_ZONE*15485863+29), z=ARCHZONES[Math.min(4,Math.floor(u*5))];
+  /* row 136: a block that meets the site (between its street centrelines, touching counts) is the site's
+     neighbour and takes its zone. The draw above is taken either way, so no other block's zone moves */
+  if(AS){ var x0=bx>0?G.UX[bx-1]:-1e9, x1=bx<G.UX.length?G.UX[bx]:1e9, y0=by>0?G.VY[by-1]:-1e9, y1=by<G.VY.length?G.VY[by]:1e9;
+    if(archMeets([[x0,y0],[x1,y0],[x1,y1],[x0,y1]],AS.poly)) return {z:AS.zone, bx:bx, by:by, site:true}; }
+  return {z:z, bx:bx, by:by};
+}
+/* row 136: two convex plans MEET unless some edge normal of either separates them by more than 1 um */
+function archMeets(A,B){
+  function sep(P,Q){ for(var i=0;i<P.length;i++){ var a=P[i], b=P[(i+1)%P.length], nx=b[1]-a[1], ny=a[0]-b[0], L=Math.hypot(nx,ny); if(L<1e-12) continue; nx/=L; ny/=L;
+      var p0=1e18,p1=-1e18,q0=1e18,q1=-1e18, j, t;
+      for(j=0;j<P.length;j++){ t=P[j][0]*nx+P[j][1]*ny; if(t<p0)p0=t; if(t>p1)p1=t; }
+      for(j=0;j<Q.length;j++){ t=Q[j][0]*nx+Q[j][1]*ny; if(t<q0)q0=t; if(t>q1)q1=t; }
+      if(q0>p1+1e-6 || p0>q1+1e-6) return true; } return false; }
+  return !sep(A,B) && !sep(B,A);
 }
 var ARCHISO={grid:8, detail:1, lift:30, minf:2, maxf:26, floor:16, mull:19, inset:11, facets:12, accent:28, plaza:0, occ:5};
 function archCells(cells,face,skip){
@@ -29459,12 +29480,15 @@ function archTheme(K,base){
   var AMIN=Math.max(0,isFinite(p.archmin)?+p.archmin:10), ZON=Math.round(p.zones||0)>0;
   var ADET=Math.max(0,Math.min(2,Math.round(p.archdet||0))), DF0=isFinite(p.dfar)?+p.dfar:0;
   var THM=K.THM, FH=0.16, STOREY=(THM.midH[0]+THM.midH[1])/2, CELLM=STOREY/FH;
-  var picked=[];
+  var picked=[], ASITE=K.planRef&&K.planRef.archSite||null;
   K.lots.forEach(function(L){
     var F0=Math.max(K.PBACK,L.fe);
     var A=K.P3(L.s0,L.side,F0,0), B=K.P3(L.s1,L.side,F0,0), C=K.P3(L.s1,L.side,L.back,0);
     var W=Math.hypot(B[0]-A[0],B[1]-A[1]), D=Math.hypot(C[0]-B[0],C[1]-B[1]);
     if(!archRect(L.poly) || W<AMIN || D<2) return;
+    /* row 136: a lot that meets the site (inside or touching it) is never an archetype. Its own stream, so no
+       other lot's draw moves */
+    if(ASITE && archMeets(L.poly,ASITE.poly)) return;
     var R=K.sub(L.side<0?2:1,L.idx,SALT_ARCHLOT);
     var uPick=R(), uFl=R(), uCore=R(), uRoll=R();
     if(!(uPick<AL)) return;
@@ -29473,7 +29497,7 @@ function archTheme(K,base){
     if(ex[0]*ey[1]-ex[1]*ey[0]<0){ ex=[-ex[0],-ex[1]]; O=B; }
     var floors, core, zone=null, rows=null, fr=null, cb=null;
     if(ZON){
-      var cz=[(A[0]+C[0])/2,(A[1]+C[1])/2]; zone=archZoneOf(p,cz[0],cz[1]);
+      var cz=[(A[0]+C[0])/2,(A[1]+C[1])/2]; zone=archZoneOf(p,cz[0],cz[1],ASITE);
       fr=ARCHZONEFLOORS[zone.z]; cb=ARCHZONECORE[zone.z];
       rows={}; ARCHZONEROWS[zone.z].forEach(function(n){ rows[n]=true; });
     }
