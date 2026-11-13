@@ -462,7 +462,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v383</a> &mdash; Corridor city: Site 3, a thermal power plant -- coal, gas or nuclear on the airfield's carve: cooling towers as stacked frusta on the hyperboloid, stacks with red aviation bands, boilers, turbine halls, coal yard with conveyor galleries cut at each face, CCGT blocks, reactors, switchyard (queue row 114)</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v384</a> &mdash; Corridor city: Site 3, Plant 3, hydro -- a weir, a gravity dam in 10 m blocks with a stepped spillway, or an arch-gravity dam on its arc, holding the site as a reservoir Head above the river below; each water body mirrors in its own plane, an embankment where the water stands above the street, radial gates, penstocks down the face, a powerhouse with its crane gantry, the switchyard on the bank, and the river out through the fence into the city</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <section class="fold" id="fold_pick"><h2>Pick engine<span class="cnt"></span></h2>
@@ -3615,6 +3615,8 @@ var SPEC={
        row on this engine is drawn by the Night market's content, which reads p.steam for its own stalls */
     ['ptype','Plant',0,3,1,0],['punits','Units',1,6,1,2],['towers','Cooling towers',0,6,1,2],['pstack','Stacks',0,4,1,1],
     ['coalyard','Coal yard',0,100,1,60,[1,'%']],['plumes','Plumes',0,100,1,40,[1,'%']],
+    /* row 115 (town-power spec §2.1): Plant 3, hydro. Plumes is its spill, the share of the spillway gates open */
+    ['dam','Dam',0,2,1,1],['head','Head',2,120,1,20,[1,' m']],['gates','Spillway gates',0,16,1,6],['penstocks','Penstocks',1,8,1,3],
     /* row 200 (site-frame spec §2): what the isometric view is fitted to */
     ['sfocus','Focus',0,3,1,1],['ftgt','Focus on',0,5,1,0],
     ['width','Road width',4,24,0.5,9,[1,' m']],['pave','Pavement',0,6,0.25,2.5,[1,' m']],
@@ -23906,7 +23908,10 @@ function buildTown(p){
   var FRM=G.FORM?townForm(p,G,plans,J,BLK,SITE):null;
   if(FRM) FRM.plans.forEach(function(P){ plans.push(P); });
   /* row 96: the river, a reaching corridor across the grid (spec §5.1-5.2) */
-  var RIV=Math.round(isFinite(p.river)?+p.river:1)===1 && !(FRM&&FRM.wet)?townRiver(p,G,plans,J,SITE):null;
+  var RIVON=Math.round(isFinite(p.river)?+p.river:1)===1;
+  /* row 115: a reservoir needs an outflow, so Plant 3 turns River on, and the stat line says so */
+  if(SITE && SITE.hydro){ if(!RIVON && !(FRM&&FRM.wet)){ RIVON=true; SITE.hydro.riverForced=true; } if(FRM&&FRM.wet) SITE.hydro.noRiver='the city’s water takes its outflow'; }
+  var RIV=RIVON && !(FRM&&FRM.wet)?townRiver(p,G,plans,J,SITE):null;
   /* row 97: the railway and the highway, two more reaching corridors, high
      over everything; where they cross, the higher deck clears the lower */
   /* row 204: the lines reach the frame's edges */
@@ -23999,6 +24004,11 @@ function buildTown(p){
   if(PKS){ var PKI=PKS.info; STRTINFO+=' · '+PKI.parks.length+' park'+(PKI.parks.length===1?'':'s')+' ('+PKI.pieces+' piece'+(PKI.pieces===1?'':'s')+', '+PKI.trees.length+' trees, '+PKI.lots+' lots'+(PKI.riverLots?' and '+PKI.riverLots+' canal house'+(PKI.riverLots===1?'':'s'):'')+' cleared)'; }
   if(SITE && SITE.harbour){ var HI=SITE.info;
     STRTINFO+=' · harbour, Scale '+HI.tier+': '+(isFinite(HI.water/HI.netArea)?'water '+Math.round(100*HI.water/HI.netArea)+'% of the city, ':'')+HI.boats.length+' boat'+(HI.boats.length===1?'':'s')+', '+HI.ships.length+' ship'+(HI.ships.length===1?'':'s')+(HI.lighthouse?', a lighthouse':'')+'; '+HI.inside+' lots inside removed, '+HI.met+' cut back ('+HI.split+' split, '+HI.dropped+' too small dropped)'+(HI.left.length?'; left out: '+HI.left.join(', '):''); }
+  else if(SITE && SITE.hydro){ var HI2=SITE.hydro, PS2=function(n,w){ return n+' '+w+(n===1?'':'s'); };
+    STRTINFO+=' · power plant, hydro, Scale '+HI2.tier+': '+Math.round(100*SITE.info.area/SITE.info.netArea)+'% of the city, '+['a weir','a gravity dam','an arch-gravity dam'][HI2.dam]+', head '+HI2.head+' m'+
+      (HI2.head<HI2.asked?' (the Scale holds '+HI2.head+')':'')+', '+PS2(HI2.gates,'spillway gate')+', '+PS2(HI2.pen,'penstock')+'; reservoir at '+(HI2.ZW>=0?'+':'')+HI2.ZW.toFixed(1)+' m'+
+      (HI2.HE>0?' behind a '+HI2.HE.toFixed(1)+' m embankment':'')+(HI2.riverForced?'; River turned on (a reservoir needs an outflow)':'')+(HI2.noRiver?'; '+HI2.noRiver:'')+
+      '; '+SITE.info.inside+' lots inside removed'+(HI2.left.length?'; left out: '+HI2.left.join(', '):''); }
   else if(SITE && SITE.plant){ var PI=SITE.info.plant, PS=function(n,w){ return n+' '+w+(n===1?'':'s'); };
     STRTINFO+=' · power plant, '+PI.type+', Scale '+PI.tier+': '+Math.round(100*SITE.info.area/SITE.info.netArea)+'% of the city, '+PS(PI.units,PI.type==='gas'?'gas turbine':'unit')+
       (PI.type==='nuclear'?' ('+PS(PI.domes,'dome')+')':PI.type==='gas'?(PI.hrsg?', '+PS(PI.hrsg,'HRSG'):', a peaker')+(PI.halls?', '+PS(PI.halls,'steam turbine hall'):''):'')+(PI.stacks?', '+PS(PI.stacks,'stack'):'')+', '+
@@ -24161,6 +24171,8 @@ function townRiver(p,G,plans,J,SX){
   var RB=Math.max(0,Math.min(60,isFinite(p.rbend)?+p.rbend:24)), RW=Math.max(8,Math.min(60,isFinite(p.rwidth)?+p.rwidth:24));
   var RD=Math.max(0.5,Math.min(6,isFinite(p.rdrop)?+p.rdrop:2.5)), LAY=Math.max(0,Math.min(99,Math.round(isFinite(p.layout)?+p.layout:0)));
   var LOTMIN=Math.max(3,+p.lotmin||5), MINENV=4, QUAY=1.5, NG=G.ROWS+G.UX.length, grid=plans.slice(0,NG).concat(SX?SX.roads:[]), i, j, k;
+  /* row 115: a hydro plant's river leaves the site's fence and may cross City form 1's own roads (its arterial, its ring): cut them too */
+  if(SX && SX.hydroOut) plans.slice(NG).forEach(function(P){ if(grid.indexOf(P)<0 && P.slabsBySide && P.conts.some(function(C){ return C.kind==='slab'; })) grid.push(P); });
   var CN=STHEMES.canal, info={rbend:RB, rwidth:RW, rdrop:RD, layout:LAY, quay:QUAY, met:0, carved:0, split:0, dropped:0, unresolved:0,
     slabsCut:0, slabsGone:0, juncCut:0, juncGone:0, juncSplit:0, gapCells:0, crossings:[], bridges:[], lots:[]};
   /* the theme: the canal's, its band the water and a quay each side */
@@ -24179,8 +24191,10 @@ function townRiver(p,G,plans,J,SX){
   var h0=(bottom?Math.PI/2:-Math.PI/2)+(us<0.5?-1:1)*(10+20*ua)*Math.PI/180;
   /* row 200 §9: with a site. A harbour's river comes from the far side of the city straight down
      into the water; an airfield's runs along the city, across its width */
-  var SWET=SX&&SX.harbour&&SX.info.tier<3;
-  if(SX){ var RQ=SX.rect, BXc=[BX[0],SX.top?BX[1]:RQ[3],BX[2],SX.top?RQ[1]:BX[3]];
+  var SWET=SX&&SX.harbour&&SX.info.tier<3, HYO=SX&&SX.hydroOut, INB=false;
+  /* row 115: a hydro plant's river starts at its channel's mouth in the fence, headed into the city */
+  if(HYO){ x0=HYO.x; y0=HYO.y; h0=HYO.h; RB=Math.min(RB,6); RTHM.headClear=40; }
+  else if(SX){ var RQ=SX.rect, BXc=[BX[0],SX.top?BX[1]:RQ[3],BX[2],SX.top?RQ[1]:BX[3]];
     if(SX.harbour){ bottom=SX.top; y0=bottom?BX[1]:BX[3]; x0=RQ[0]+(0.25+0.5*ux)*(RQ[2]-RQ[0]); h0=(bottom?Math.PI/2:-Math.PI/2)+(us<0.5?-1:1)*(4*ua)*Math.PI/180; RB=Math.min(RB,8); }
     else { var WC=BX[2]-BX[0], DC=BXc[3]-BXc[1], FAN=Math.atan2(0.8*DC,0.25*WC); bottom=SX.top; x0=BX[2]-0.25*WC; y0=SX.top?BX[1]:BX[3]; h0=SX.top?FAN:-FAN; RB=Math.min(RB,6); } }
   var pr=Object.assign({},p,{bend:RB, width:RW}), hk={spline:{x:x0, y:y0, h:h0, salt:521}, noLots:true, Z0:-RD, theme:RTHM};
@@ -24188,7 +24202,8 @@ function townRiver(p,G,plans,J,SX){
   /* it ends where its centreline first leaves the box */
   var LENr=PL0.LEN;
   for(i=1;i<PL0.NS;i++){ var xi=PL0.SX[i], yi=PL0.SY[i];
-    if(xi<BX[0]-1e-6||xi>BX[2]+1e-6||yi<BX[1]-1e-6||yi>BX[3]+1e-6){ LENr=Math.max(10,i*PL0.DS); break; }
+    if(xi<BX[0]-1e-6||xi>BX[2]+1e-6||yi<BX[1]-1e-6||yi>BX[3]+1e-6){ if(HYO && !INB) continue; LENr=Math.max(10,i*PL0.DS); break; }
+    INB=true; if(HYO) continue;
     /* row 200 §9: it stops at the site: past the road and into the water at a small harbour, clear of everything else */
     if(SX){ var RQs=SX.harbour&&SWET?SX.waterEdge:SX.rect, M=SWET?-8:RW/2+25;
       if(xi>RQs[0]-M && xi<RQs[2]+M && yi>RQs[1]-M && yi<RQs[3]+M){ LENr=Math.max(10,i*PL0.DS); info.stopped=true; break; } } }
@@ -26873,10 +26888,12 @@ var PLANT_TYPES={nlen:[0,800,1500,2400,3500],
        {units:2,hrsg:1,stackH:60,steam:1,towers:2,towerH:110,mech:0},{units:6,hrsg:1,stackH:60,steam:2,towers:4,towerH:110,mech:0}],
   nuclear:[null,null,{units:1,dome:60,towers:2,towerH:150,mech:0},{units:2,dome:60,towers:4,towerH:165,mech:0},{units:4,dome:60,towers:6,towerH:170,mech:0}]};
 var SALT_PLANT=667, SALT_PVAR=671;
-var PLANTK={ptower:1, pmech:1, pyard:1, pstk:1, pprecip:1, pconvc:1, pboil:1, pturb:1, pccgt:1, preact:1, pswitch:1, padmin:1};
-/* Plant 3 (hydro) is row 115's: until then it draws nuclear's neighbour, gas, no -- it clamps to 2 (§1.1) */
-function townPlantType(p){ return Math.max(0,Math.min(2,Math.round(isFinite(p.ptype)?+p.ptype:0))); }
+var PLANTK={ptower:1, pmech:1, pyard:1, pstk:1, pprecip:1, pconvc:1, pboil:1, pturb:1, pccgt:1, preact:1, pswitch:1, padmin:1,
+            hres:1, hemb:1, hdam:1, hpower:1, hbasin:1, hchan:1};
+/* Plant 3 is hydro (row 115, townHydroPlan) */
+function townPlantType(p){ return Math.max(0,Math.min(3,Math.round(isFinite(p.ptype)?+p.ptype:0))); }
 function townPlantPlan(p,TI){
+  if(townPlantType(p)===3) return townHydroPlan(p,TI);
   var PT=townPlantType(p), NM=['coal','gas','nuclear'][PT], T=PLANT_TYPES[NM][TI];
   function kn(k,lo,hi,d){ return Math.max(lo,Math.min(hi,Math.round(isFinite(p[k])?+p[k]:d))); }
   var units=Math.min(kn('punits',1,6,2),T.units), towers=Math.min(kn('towers',0,6,2),T.towers), forced=false;
@@ -26941,6 +26958,101 @@ function townPlantLayout(PL,o){
   C('pswitch',sa0,sa0+SWA,BD.pswitch,{n:Math.max(2,PL.units)});
   if(ad1-ad0>=60) C('padmin',ad0,ad1,BD.pswitch);
   return {BS:{rwy:[], twy:[], term:{k:'term', w:1, b0:LBI-FOREB-1, b1:LBI-FOREB}}, b0:LBI-FOREB, s0:a0+60, SW:Math.max(0,PL.mainA-120), info:info, BD:BD, PL:PL, FOREB:FOREB};
+}
+/* ROW 115 (town-power spec §2): HYDRO, Plant 3. The site is the reservoir: water at z = Head - River drop, a
+   channel plan of its own so a mirror plane of its own (row 96 already runs one mirror pass per plane; the river
+   below the dam stays at -River drop), bounded where it stands above the street by an embankment Head - River
+   drop + 1.5 m high. The dam closes it on the city side and the river leaves from its toe into the city. Every
+   dam piece is laid along one axis P(t, s): t along the crest (an arc of radius 1.5 x the dam's length for the
+   arch-gravity dam, a line for the others), s downstream from the upstream face, so a block, a step, a pier, a
+   gate, an intake and a penstock are each convex for all three dams. HYDRO_HEAD is the Scale's ceiling on Head. */
+var HYDRO_HEAD=[0,15,40,80,120];
+function townHydroPlan(p,TI){
+  function kn(k,lo,hi,d){ return Math.max(lo,Math.min(hi,Math.round(isFinite(p[k])?+p[k]:d))); }
+  var dam=kn('dam',0,2,1), asked=kn('head',2,120,20), head=Math.min(asked,HYDRO_HEAD[TI]), gates=kn('gates',0,16,6), pen=kn('penstocks',1,8,3);
+  var RD=Math.max(0.5,Math.min(6,isFinite(p.rdrop)?+p.rdrop:2.5)), RW=Math.max(8,Math.min(60,isFinite(p.rwidth)?+p.rwidth:24));
+  var ZW=head-RD, HE=Math.max(0,head-RD+1.5), EW=HE>0?4+HE:0;
+  var CW=dam===0?Math.max(6,0.5*head):Math.max(6,0.1*head), BW=dam===0?CW:Math.max(CW+2,(dam===1?0.8:0.6)*head);
+  /* an arch's gate bays are shorter, so each straight block stays within 0.1 m of its arc (Y2) */
+  var GBW=dam===2?8.5:12, SPL=gates?gates*GBW+2.5:0, PS=Math.max(24,pen*10), DL=SPL+2*(PS+10), PHD=24+3*TI,
+      /* the channel's reach below the powerhouse: long enough that the switchyard (70 m deep, its gantries and dead-end tower as the thermal plant's) fits on the bank below the embankment's
+         outer foot, which is EW - 8 - the dam's base downstream of its upstream face (cos asin 1/3 on the arch: R = 1.5 x its chord) */
+      CR=Math.max(24,RW,76+Math.max(0,EW-8-BW*(dam===2?Math.sqrt(8)/3:1))-PHD);
+  return {NM:'hydro', PT:3, TI:TI, hydro:true, dam:dam, head:head, asked:asked, gates:gates, pen:pen, RD:RD, RW:RW, ZW:ZW, ZC:ZW+1.5, HE:HE, EW:EW,
+          CW:CW, BW:BW, GBW:GBW, SPL:SPL, PS:PS, DL:DL, PHD:PHD, CR:CR, GH:Math.min(12,Math.max(2.5,0.25*head)), river:true, units:pen, towers:0, stacks:0,
+          needA:2*EW+DL+280, bands:[{k:'hydro', w:EW+40+8+BW+PHD+CR+6}]};
+}
+function townHydroLayout(PL,o){
+  var LA=o.LA, LBI=o.LBI, m=o.B0, cont=o.cont, lrect=o.lrect, EW=PL.EW, ZW=PL.ZW, ZC=PL.ZC, RD=PL.RD, CW=PL.CW, BW=PL.BW, i, k;
+  var info={type:'hydro', tier:PL.TI, dam:PL.dam, head:PL.head, asked:PL.asked, gates:PL.gates, pen:PL.pen, ZW:ZW, ZC:ZC, HE:PL.HE, EW:EW, RD:RD, RW:PL.RW,
+            units:PL.pen, towers:0, stacks:0, domes:0, hrsg:0, halls:0, mech:0, forced:false, river:true, left:[], conts:[], towerGeo:[], conv:[], plumes:0, piles:0};
+  var bT=LBI-PL.CR, bD1=bT-PL.PHD, H=PL.DL/2, ARCH=PL.dam===2, R=ARCH?1.5*PL.DL:0, TH=ARCH?Math.asin(H/R):0, HT=ARCH?R*TH:H;
+  var bD0=ARCH?bD1-BW*Math.cos(TH):bD1-BW, bOc=ARCH?bD0+R*Math.cos(TH):0, aD=LA/2, ZS=Math.max(-RD+0.5,ZW-PL.GH);
+  function P(t,s){ if(ARCH){ var th=t/R; return [aD+(R-s)*Math.sin(th), bOc-(R-s)*Math.cos(th)]; } return [aD+t, bD0+s]; }
+  var tS0=-PL.SPL/2, tS1=PL.SPL/2, tP0=tS0-PL.PS, tP1=tS0;
+  /* the river leaves the channel at the fence, [aR - RW/2, aR + RW/2]: off every cross street that meets the road there */
+  function exitAt(){ var a0=P(tP0,BW)[0], a1=P(PL.gates?tS1:tP1,BW)[0]; return (a0+a1)/2; }
+  var lo=m+EW+H+12, hi=LA-m-EW-H-12, step, aR;
+  for(step=0;step<40;step++){ var trial=LA/2+(step%2?1:-1)*Math.ceil(step/2)*10; if(trial<lo || trial>hi) continue; aD=trial; aR=exitAt();
+    if(!(o.avoid||[]).some(function(g){ return g[1]>aR-PL.RW/2-6 && g[0]<aR+PL.RW/2+6; })) break; }
+  aD=Math.max(lo,Math.min(hi,aD)); aR=exitAt();
+  function q4(t0,t1,s0,s1,z){ var A=P(t0,s0), B=P(t1,s0), C=P(t1,s1), D=P(t0,s1); return [[A[0],A[1],z],[B[0],B[1],z],[C[0],C[1],z],[D[0],D[1],z]]; }
+  function pt(t,s,z){ var q=P(t,s); return [q[0],q[1],z]; }
+  /* on a block's own chord: u from 0 at its t0 to 1 at its t1. On the arch a pier or a gate laid by P(t, s) would stand on a
+     shorter chord than its block's, bulging upstream past the block's face; on a straight dam the two are the same */
+  function ps(S,u,s,z){ var A=P(S.t0,s), B=P(S.t1,s); return [A[0]+(B[0]-A[0])*u,A[1]+(B[1]-A[1])*u,z]; }
+  function q4s(S,u0,u1,s0,s1,z){ return [ps(S,u0,s0,z),ps(S,u1,s0,z),ps(S,u1,s1,z),ps(S,u0,s1,z)]; }
+  /* the crest cut into blocks: abutment, powerhouse, the spillway's bays (each a pier and a gate), the last pier, abutment */
+  var BL=ARCH?Math.min(10,Math.sqrt(0.72*R)):10, seg=[];
+  function cut(t0,t1,kd){ if(t1-t0<1e-6) return; var n=Math.max(1,Math.ceil((t1-t0)/BL-1e-9)); for(var q=0;q<n;q++) seg.push({t0:t0+(t1-t0)*q/n, t1:t0+(t1-t0)*(q+1)/n, k:kd}); }
+  cut(-HT,tP0,'abut'); cut(tP0,tP1,'ph');
+  for(i=0;i<PL.gates;i++) seg.push({t0:tS0+i*PL.GBW, t1:tS0+(i+1)*PL.GBW, k:'spill', gate:i});
+  if(PL.gates) seg.push({t0:tS1-2.5, t1:tS1, k:'spill', last:true});
+  cut(tS1,HT,'abut');
+  var G={arch:ARCH, R:R, aD:aD, bOc:bOc, bD0:bD0, bD1:bD1, bT:bT, ZS:ZS, ZW:ZW, ZC:ZC, RD:RD, CW:CW, BW:BW, HT:HT, TH:TH, seg:seg,
+         blocks:[], steps:[], piers:[], gates:[], towers:[], fills:[], pens:[]};
+  seg.forEach(function(S){
+    var zt=S.k==='spill'?-RD:0;
+    if(S.k==='spill' && PL.dam===1){ var NSt=Math.max(3,Math.min(24,Math.round((ZS-zt)/1.5))), sh=(ZS-zt)/NSt, sb=(BW-CW)/NSt;
+      for(k=0;k<NSt;k++) G.steps.push({lo:q4(S.t0,S.t1,0,CW+(k+1)*sb,ZS-(k+1)*sh), hi:q4(S.t0,S.t1,0,CW+(k+1)*sb,ZS-k*sh)}); }
+    else G.blocks.push({lo:q4(S.t0,S.t1,0,BW,zt), hi:q4(S.t0,S.t1,0,CW,S.k==='spill'?ZS:ZC), k:S.k==='spill'?'spillblock':'damblock', t0:S.t0, t1:S.t1});
+    if(S.k==='spill'){ var up=2.5/(S.t1-S.t0); G.piers.push({lo:q4s(S,0,up,0,CW,ZS), hi:q4s(S,0,up,0,CW,ZC+2)});
+      if(!S.last){ var ga=S.t0+2.5, gb=S.t1; G.gates.push({A:[ps(S,up,0,ZS),ps(S,up,0,ZW+0.3),ps(S,up,3,ZS)], B:[ps(S,1,0,ZS),ps(S,1,0,ZW+0.3),ps(S,1,3,ZS)], t0:ga, t1:gb, i:S.gate}); } }
+  });
+  /* the intakes upstream of the powerhouse blocks, one a penstock; under the water, a fill that hides what the water would */
+  var bU=1e18; seg.forEach(function(S){ bU=Math.min(bU,P(S.t0,0)[1],P(S.t1,0)[1]); }); if(ARCH) bU=Math.min(bU,P(0,0)[1]);
+  var bRes=bU-8;
+  seg.forEach(function(S){ var A=P(S.t0,0), B=P(S.t1,0);
+    G.fills.push({lo:[[A[0],bRes,-RD],[B[0],bRes,-RD],[B[0],B[1],-RD],[A[0],A[1],-RD]], hi:[[A[0],bRes,ZW-0.05],[B[0],bRes,ZW-0.05],[B[0],B[1],ZW-0.05],[A[0],A[1],ZW-0.05]]}); });
+  var pr=Math.min(3,1.2+0.02*PL.head);
+  for(i=0;i<PL.pen;i++){ var tp=tP0+PL.PS*(i+0.5)/PL.pen;
+    /* 0.1 m upstream of the face: on the arch a 6 m chord across two blocks' joint would cut into them by up to 9/2R */
+    G.towers.push({lo:q4(tp-3,tp+3,-6.1,-0.1,ZW-0.05), hi:q4(tp-3,tp+3,-6.1,-0.1,ZC+5)});
+    var sW=ARCH?R-(bOc-(bD1+6))/Math.cos(tp/R):(bD1+6)-bD0, tb=0.5, st, sbt, zt2, zb2;
+    for(k=0;k<6;k++){ var cb=Math.cos(tb), sn=Math.sin(tb); st=CW+pr*sn+0.3; sbt=sW-pr*sn-0.1; zt2=ZC+pr/cb+0.3; zb2=pr/cb+0.3; tb=Math.atan2(zt2-zb2,sbt-st); }
+    /* a weir's intakes are in its sill and feed the powerhouse beside it: no pipe */
+    if(PL.dam>0) G.pens.push({A:pt(tp,st,zt2), B:pt(tp,sbt,zb2), r:pr, t:tp}); }
+  /* the containers: the dam's, the reservoir's, the embankment's, the powerhouse's, the basin's, the channel's, the switchyard's */
+  var dA0=P(-HT,0)[0], dA1=P(HT,0)[0], DAM=cont('hdam',lrect(dA0,dA1,bRes,bD1),{lr:[dA0,dA1,bRes,bD1], hyd:G});
+  var r0=m+EW, r1=LA-m-EW, RES=cont('hres',lrect(r0,r1,m+EW,bRes),{lr:[r0,r1,m+EW,bRes], water:true, zw:ZW, ripMax:0.6});
+  info.reservoir={lr:[r0,r1,m+EW,bRes], z:ZW}; info.emb=[];
+  if(EW>0){ var bE1=bRes+EW;
+    [[m,LA-m,m,m+EW,'+b'],[m,m+EW,m+EW,bE1,'+a'],[LA-m-EW,LA-m,m+EW,bE1,'-a'],[m+EW,dA0,bRes,bE1,'-b'],[dA1,LA-m-EW,bRes,bE1,'-b']].forEach(function(E){
+      if(E[1]-E[0]<1 || E[3]-E[2]<1) return;
+      var Ce=cont('hemb',lrect(E[0],E[1],E[2],E[3]),{lr:E.slice(0,4), inner:E[4], HE:PL.HE}); info.emb.push({lr:E.slice(0,4), inner:E[4]}); }); }
+  var phA0=P(tP0,BW)[0], phA1=P(tP1,BW)[0], spA1=PL.gates?P(tS1,BW)[0]:phA1;
+  var PH=cont('hpower',lrect(phA0,phA1,bD1,bT),{lr:[phA0,phA1,bD1,bT], pen:PL.pen});
+  G.pens.forEach(function(S){ S.ph=PH; });
+  var BAS=PL.gates?cont('hbasin',lrect(phA1,spA1,bD1,bT),{lr:[phA1,spA1,bD1,bT], water:true, zw:-RD, spans:G.gates.map(function(g){ return [P(g.t0,BW)[0],P(g.t1,BW)[0]]; })}):null;
+  var CH=cont('hchan',[o.M2(phA0,bT),o.M2(spA1,bT),o.M2(aR+PL.RW/2,LBI),o.M2(aR-PL.RW/2,LBI)],{lr:[phA0,spA1,bT,LBI], quad:[[phA0,bT],[spA1,bT],[aR+PL.RW/2,LBI],[aR-PL.RW/2,LBI]], water:true, zw:-RD});
+  /* the switchyard on the bank below the embankment, beside the channel: the far side of the spillway, else the powerhouse's */
+  var SWA=120, sb0=Math.max(bD1,bRes+EW)+4, sd=LBI-2-sb0>=70?70:0, cA=Math.min(aR-PL.RW/2,phA0), cB=Math.max(aR+PL.RW/2,spA1), sa0=null;
+  if(cB+10+SWA<=LA-m) sa0=cB+10; else if(cA-10-SWA>=m) sa0=cA-10-SWA;
+  if(sd && sa0!==null) cont('pswitch',lrect(sa0,sa0+SWA,sb0,sb0+sd),{lr:[sa0,sa0+SWA,sb0,sb0+sd], n:Math.max(2,Math.ceil(PL.pen/2))});
+  else info.left.push('switchyard');
+  [DAM,RES,PH,BAS,CH].forEach(function(c){ if(c) info.conts.push({kind:c.kind, poly:c.poly, lr:c.lr}); });
+  info.geo=G; info.cw=ARCH?o.M2(aD,bOc):null; info.R=R; info.DL=PL.DL; info.exit={a0:aR-PL.RW/2, a1:aR+PL.RW/2, aR:aR}; info.blocks=G.blocks.length+G.steps.length;
+  return {BS:{rwy:[], twy:[]}, b0:LBI+1, s0:aD, SW:0, info:info, PL:PL, FOREB:0, out:info.exit, hydro:true};
 }
 function townSiteKind(p){ var s=Math.round(isFinite(p.site)?+p.site:0); return s===1||s===2||s===3?s:0; }
 /* an airfield is Scale 2-3, a harbour 0-3 (Scale 4, the hub, is row 101's) */
@@ -27121,7 +27233,11 @@ function townSite(p,G,plans,J,BLK,KIND){
   var nr=RWN, bands, stands=[], HUBZ=null;
   FIELD: {
   /* row 114: a plant's rows in place of the runways, against the forecourt like the airfield's bands */
-  if(PLN){ var PLY=townPlantLayout(PLN,{LA:LA, LB:LB, B0:ROT?1:0, LBI:ROT?LB-1:LB, cont:cont, lrect:lrect});
+  if(PLN){ var PLY=PLN.hydro?townHydroLayout(PLN,{LA:LA, LB:LB, B0:ROT?1:0, LBI:ROT?LB-1:LB, cont:cont, lrect:lrect, M2:M2,
+      /* off every street that meets the fence: in City form 1 the arterial, which meets it at the middle (townForm's SITE.aC) */
+      avoid:ROT?[[LA/2-40,LA/2+40]]:hg.map(function(g){ return [hx[0]+g[0]-U[0],hx[0]+g[1]-U[0]]; })}):townPlantLayout(PLN,{LA:LA, LB:LB, B0:ROT?1:0, LBI:ROT?LB-1:LB, cont:cont, lrect:lrect});
+    /* row 115: the river leaves through the fence (a gap, quays and all) */
+    if(PLY.hydro && FENCEX){ var XG=[PLY.out.a0-3,PLY.out.a1+3]; FENCEX.gaps.push(ROT?XG:[U[0]+XG[0],U[0]+XG[1]]); }
     var BS=PLY.BS, b0=PLY.b0, s0=PLY.s0, NS=1, SW=PLY.SW, FOREB=PLY.FOREB; break FIELD; }
   if(TI>=4){ HUBZ=townHub({p:p, T:T, LA:LA, LB:LB, LBI:ROT?LB-1:LB, B0:ROT?1:0, RWN:RWN, XWN:XWN, RRW:RRW, HDG:HDG, top:top, LAY:LAY, TI:TI, info:info, cont:cont, lrect:lrect, M2:M2, stands:stands});
     var BS=HUBZ.BS, b0=HUBZ.b0, s0=HUBZ.s0, NS=1, SW=HUBZ.TW, SA=HUBZ.SA, SB=HUBZ.SB, FOREB=30; break FIELD; }
@@ -27209,6 +27325,13 @@ function townSite(p,G,plans,J,BLK,KIND){
   SITE.plan={ix:-1, p:p, theme:{key:'town', content:function(K){ return siteTheme(K,SITE); }}, sGaps:[], hasGap:false, Z0:0,
              conts:conts, lots:[], slabsBySide:{'1':[],'-1':[]}, dropped:0, pushed:0};
   SITE.plans=pplans.concat([SITE.plan]);
+  /* row 115: a hydro plant's water is two channel plans, each at its own plane: the reservoir at Head - River drop,
+     the basin and the channel at the river's -River drop. Their containers are drawn with the site (SITE.conts) */
+  if(PLN && PLN.hydro){ SITE.hydro=PLY.info; SITE.plan.conts=conts.filter(function(C){ return !C.water; });
+    var XO=PLY.out, XA=M2(XO.aR,LB), XB=M2(XO.aR,LB+1); SITE.hydroOut={x:XA[0], y:XA[1], h:Math.atan2(XB[1]-XA[1],XB[0]-XA[0]), a0:XO.a0, a1:XO.a1};
+    [PLN.ZW,-PLN.RD].forEach(function(z){ var WC=conts.filter(function(C){ return C.water && C.zw===z; }); if(!WC.length) return;
+      SITE.plans.push({ix:-1, p:p, theme:{key:'town', channel:true, content:function(){ return {dress:function(){}, signsFor:function(){}, furnish:function(){}, cars:[], dots:[], poles:[]}; }},
+                       sGaps:[], hasGap:false, Z0:z, conts:WC, lots:[], slabsBySide:{'1':[],'-1':[]}, dropped:0, pushed:0}); }); }
   SITE.rect=R; SITE.roads=pplans; SITE.pconts=conts; SITE.rot=ROT; SITE.fenceFace=FENCEX; SITE.outline=FOUT; SITE.topSide=ROT?ROT.top:top;
   if(ROT){ SITE.top=ROT.top; SITE.faceAt=function(a){ return M2(a,LB); }; SITE.aC=LA/2; }
   var TA=conts.filter(function(C){ return C.kind==='term'||C.kind==='forecourt'; })[0]; if(TA) SITE.aim=[townMid(TA.poly)[0],top?R[1]:R[3]]; else SITE.aim=[(R[0]+R[2])/2,top?R[1]:R[3]];
@@ -27218,6 +27341,8 @@ function townSite(p,G,plans,J,BLK,KIND){
   /* row 307: the middle of the tightest three stands holding an aircraft (fewer: of what there is), or null */
   SITE.standsAim=function(){
     /* row 114: a plant's middle is its switchyard; Focus 1 at a Map scale looks at its first unit's stack, dome or HRSG beside the nearest cooling tower */
+    /* row 115: a hydro plant's, its dam */
+    if(PLN && PLN.hydro){ var DM=conts.filter(function(C){ return C.kind==='hdam'; })[0]; return DM?townMid(DM.poly):null; }
     if(PLN){ var U1=conts.filter(function(C){ return C.kind==='pstk'||C.kind==='preact'||C.kind==='pccgt'||C.kind==='pboil'; })[0]; if(!U1) return null;
       var u=townMid(U1.poly), TW=conts.filter(function(C){ return C.kind==='ptower'; }).sort(function(x,y){ var a=townMid(x.poly), b=townMid(y.poly); return Math.hypot(a[0]-u[0],a[1]-u[1])-Math.hypot(b[0]-u[0],b[1]-u[1]); })[0];
       return TW?townMid([u,townMid(TW.poly)]):u; }
@@ -27226,7 +27351,10 @@ function townSite(p,G,plans,J,BLK,KIND){
     return townMid(best); };
   SITE.frameOf=function(k){
     /* row 114: Focus 2 the plant's rows without its towers, Focus 3 one cooling tower */
-    if(PLN && k>=2){ var PK=conts.filter(function(C){ return k===3?C.kind==='ptower':PLANTK[C.kind] && C.kind!=='ptower'; }).slice(0,k===3?1:1e9);
+    /* row 115: hydro's Focus 2 the dam, its powerhouse, basin, channel and switchyard; Focus 3 the dam */
+    if(PLN && PLN.hydro && k>=2){ var HK=conts.filter(function(C){ return k===3?C.kind==='hdam':/^(hdam|hpower|hbasin|hchan|pswitch)$/.test(C.kind); });
+      if(HK.length) return townGrow(townBbox([].concat.apply([],HK.map(function(C){ return C.poly; }))),k===3?0.15:0.05); }
+    if(PLN && !PLN.hydro && k>=2){ var PK=conts.filter(function(C){ return k===3?C.kind==='ptower':PLANTK[C.kind] && C.kind!=='ptower'; }).slice(0,k===3?1:1e9);
       if(PK.length) return townGrow(townBbox([].concat.apply([],PK.map(function(C){ return C.poly; }))),k===3?0.15:0.05); }
     if(k===1){ var UA=conts.filter(function(C){ return C.kind!=='pjunction' && C.kind!=='fence'; }); if(!UA.length) return townGrow(R,0.08);
       var bu=townBbox([].concat.apply([],UA.map(function(C){ return C.poly; }))); return townGrow(bu,0.08); }
@@ -27621,6 +27749,7 @@ function siteTheme(K,SITE){
     var n=Math.floor((a1-a0+b1-b0)/step); for(var k=1;k<n;k++){ var f=k/n, A=W3(a0+(a1-a0)*f,b0+(b1-b0)*f,z0), B=W3(a0+(a1-a0)*f,b0+(b1-b0)*f,z1); fline(P,fi,A,B,col,kind); } }
   function plantCont(C){
     var e=C.lr, ac=(e[0]+e[1])/2, bc=(e[2]+e[3])/2, k, P;
+    if(C.kind.charAt(0)==='h'){ hydroCont(C); return; }
     if(C.kind==='ptower'){ ptower(C); return; }
     if(C.kind==='pstk'){ stackAt(C,ac,bc,C.st.H,C.st.rs); return; }
     if(C.kind==='pmech'){ P=lbox(e[0]+2,e[1]-2,e[2]+3,e[3]-3,0,10); own(P,C,'mech',COLK);
@@ -27667,6 +27796,68 @@ function siteTheme(K,SITE){
       for(var x=e[0]+62;x+2.5<=e[1]-4;x+=2.5) paint(C,x,e[2]+8,x,e[2]+13,COLK,'bay');
       paint(C,e[0]+62,e[2]+8,e[1]-4,e[2]+8,COLK,'bay'); return; }
   }
+  /* ROW 115: HYDRO (townHydroLayout). A water container's parts are built with its water at z 0: its plan's
+     Z0 lifts them to the reservoir's plane or lowers them to the river's */
+  function qfrus(lo,hi){ var L=[lo,hi], k; for(k=0;k<lo.length;k++){ var k2=(k+1)%lo.length; L.push([lo[k],lo[k2],hi[k2],hi[k]]); } return solidL(L); }
+  /* a convex part cut at every face of each container it crosses, a piece owned by each */
+  function cutOwn(G0,CS,kind,col){ var n=0;
+    CS.forEach(function(Ct){ var Q=Ct.poly, cx=0, cy=0, inside=[G0]; Q.forEach(function(q){ cx+=q[0]/Q.length; cy+=q[1]/Q.length; });
+      for(var m=0;m<Q.length;m++){ var q0=Q[m], q1=Q[(m+1)%Q.length], nx=q1[1]-q0[1], ny=-(q1[0]-q0[0]), nl=Math.hypot(nx,ny); nx/=nl; ny/=nl;
+        if(nx*(cx-q0[0])+ny*(cy-q0[1])>0){ nx=-nx; ny=-ny; }
+        var d=nx*q0[0]+ny*q0[1], nxt=[];
+        inside.forEach(function(Pp){ splitPart(Pp,[nx,ny,0],d).forEach(function(Hh){ if(!Hh.faces.length || verts(Hh).length<4) return;
+          var V=verts(Hh), c=[0,0]; V.forEach(function(v){ c[0]+=v[0]/V.length; c[1]+=v[1]/V.length; }); if(nx*c[0]+ny*c[1]<d) nxt.push(Hh); }); });
+        inside=nxt; }
+      inside.forEach(function(Hh){ Hh.crease=0.5; own(Hh,Ct,kind,col); n++; }); });
+    return n; }
+  function penstock(S,CS){ var d=[S.B[0]-S.A[0],S.B[1]-S.A[1],S.B[2]-S.A[2]], L=Math.hypot(d[0],d[1],d[2]); d=[d[0]/L,d[1]/L,d[2]/L];
+    var hl=Math.hypot(d[0],d[1]), u=[-d[1]/hl,d[0]/hl,0], v=[d[1]*u[2]-d[2]*u[1],d[2]*u[0]-d[0]*u[2],d[0]*u[1]-d[1]*u[0]], m=12, lo=[], hi=[], k;
+    for(k=0;k<m;k++){ var t=2*Math.PI*(k+0.5)/m, c=Math.cos(t)*S.r, s2=Math.sin(t)*S.r;
+      lo.push([S.A[0]+u[0]*c+v[0]*s2,S.A[1]+u[1]*c+v[1]*s2,S.A[2]+u[2]*c+v[2]*s2]); hi.push([S.B[0]+u[0]*c+v[0]*s2,S.B[1]+u[1]*c+v[1]*s2,S.B[2]+u[2]*c+v[2]*s2]); }
+    return cutOwn(qfrus(lo,hi),CS,'penstock',COLK); }
+  /* the quay's edge, at the street, on a plate over the container's own polygon (a box round a slanted line would leave it) */
+  function bankLines(C,segs){ var Pb=prismN(C.poly.map(function(q){ return [q[0],q[1]]; }),info.plant.RD,info.plant.RD+0.01);
+    Pb.lines=segs.map(function(s){ return {a:s[0], b:s[1], f0:0, f1:1, col:COLK, kind:'bank'}; }); Pb.hides=false; Pb.seeThru=true; return own(Pb,C,'bank',COLK,'furn'); }
+  function hydroCont(C){
+    var e=C.lr, HI=info.plant, k, P, i;
+    if(C.kind==='hdam'){ var G=C.hyd;
+      G.fills.forEach(function(B){ var F=qfrus(B.lo,B.hi); F.lines=[]; own(F,C,'hfill',COLK); });
+      G.blocks.forEach(function(B){ var Pb=qfrus(B.lo,B.hi); own(Pb,C,B.k,COLK); });
+      G.steps.forEach(function(B){ own(qfrus(B.lo,B.hi),C,'step',COLK); });
+      G.piers.forEach(function(B){ own(qfrus(B.lo,B.hi),C,'pier',COLK); });
+      G.gates.forEach(function(B){ own(qfrus(B.A,B.B),C,'rgate',COLK); });
+      G.towers.forEach(function(B){ own(qfrus(B.lo,B.hi),C,'intake',COLK); });
+      HI.penPieces=0; G.pens.forEach(function(S){ HI.penPieces+=penstock(S,[C,S.ph]); });
+      return; }
+    if(C.kind==='hres'){ var Fr=prismN(C.poly.map(function(q){ return [q[0],q[1]]; }),-HI.RD-HI.ZW,-0.05); Fr.lines=[]; own(Fr,C,'hfill',COLK); return; }
+    if(C.kind==='hemb'){ var HE=C.HE, x=C.inner, a0=e[0], a1=e[1], b0=e[2], b1=e[3], L, fi;
+      /* the inner face is upright (the water and the fill under it lie against it), the outer a 1:1 slope */
+      if(x==='+b') L=[[[a0,b1,0],[a0,b1,HE],[a0,b1-4,HE],[a0,b0,0]],[[a1,b1,0],[a1,b1,HE],[a1,b1-4,HE],[a1,b0,0]]];
+      else if(x==='-b') L=[[[a0,b0,0],[a0,b0,HE],[a0,b0+4,HE],[a0,b1,0]],[[a1,b0,0],[a1,b0,HE],[a1,b0+4,HE],[a1,b1,0]]];
+      else if(x==='+a') L=[[[a1,b0,0],[a1,b0,HE],[a1-4,b0,HE],[a0,b0,0]],[[a1,b1,0],[a1,b1,HE],[a1-4,b1,HE],[a0,b1,0]]];
+      else L=[[[a0,b0,0],[a0,b0,HE],[a0+4,b0,HE],[a1,b0,0]],[[a0,b1,0],[a0,b1,HE],[a0+4,b1,HE],[a1,b1,0]]];
+      P=qfrus(L[0],L[1]); var dn=x==='+b'?[0,1]:x==='-b'?[0,-1]:x==='+a'?[1,0]:[-1,0]; fi=faceTo(P,dn[0],dn[1],0);
+      /* the waterline on the inner face */
+      if(x==='+b'||x==='-b'){ var bw=x==='+b'?b1:b0; fline(P,fi,W3(a0,bw,HI.ZW),W3(a1,bw,HI.ZW),COLK,'waterline'); }
+      else { var aw=x==='+a'?a1:a0; fline(P,fi,W3(aw,b0,HI.ZW),W3(aw,b1,HI.ZW),COLK,'waterline'); }
+      own(P,C,'embankment',COLK); return; }
+    if(C.kind==='hpower'){ var PHH=18+2*TI, ba=e[2]+6, bb=e[3]-2, aa=e[0]+2, ab=e[1]-2;
+      P=lbox(aa,ab,ba,bb,0,PHH); var fr=faceTo(P,0,0,1);
+      /* a generator bay a penstock, as bands on the roof */
+      for(i=1;i<C.pen;i++){ var xa=aa+(ab-aa)*i/C.pen; fline(P,fr,W3(xa,ba,PHH),W3(xa,bb,PHH),COLK,'bay'); }
+      own(P,C,'powerhouse',COLK);
+      /* the crane's gantry: two portals on the roof */
+      [aa+6,ab-6].forEach(function(xg){ own(lbox(xg-0.4,xg+0.4,ba+1.6,ba+2.4,PHH,PHH+7),C,'gantry',COLK); own(lbox(xg-0.4,xg+0.4,bb-2.4,bb-1.6,PHH,PHH+7),C,'gantry',COLK);
+        own(lbox(xg-0.4,xg+0.4,ba+1.6,bb-1.6,PHH+7,PHH+8),C,'gantrybeam',COLK); });
+      return; }
+    if(C.kind==='hbasin'){ var NO=Math.round(HI.gates*PLUME), segs=[], bk=[];
+      /* the spill: white water below the open gates, lines that hide nothing (Plumes is the share open) */
+      C.spans.slice(0,NO).forEach(function(sp){ var g0=Math.min(sp[0],sp[1])+1, g1=Math.max(sp[0],sp[1])-1;
+        for(var y=e[2]+1.5;y<=e[3]-2;y+=1.5){ var j=0.25*(g1-g0)*PRV(), j2=0.25*(g1-g0)*PRV(); segs.push([W3(g0+j,y,0),W3(g1-j2,y,0)]); } });
+      if(segs.length) ghostLines(C,segs,COLK,'spill',0);
+      bankLines(C,[[W3(e[1],e[2],HI.RD),W3(e[1],e[3],HI.RD)]]); return; }
+    if(C.kind==='hchan'){ var Qd=C.quad; bankLines(C,[[W3(Qd[0][0],Qd[0][1],HI.RD),W3(Qd[3][0],Qd[3][1],HI.RD)],[W3(Qd[1][0],Qd[1][1],HI.RD),W3(Qd[2][0],Qd[2][1],HI.RD)]]); return; }
+  }
   /* the coal yard: two rows of stockpiles either side of the stacker-reclaimer's rail, the share of the
      yard Coal yard asks for (salt 709 is the isofactory's, so the pile rolls are SALT_PVAR's); each pile a
      rectangle's frustum, its top hatched black at a pitch held on the sheet; the machine's boom over them */
@@ -27710,7 +27901,8 @@ function siteTheme(K,SITE){
     info.recs=[]; info.aircraft=[]; info.bridges=[]; info.tower=null; info.windsock=0;
     if(SITE.plant){ info.plant.towerGeo=[]; info.plant.conv=[]; info.plant.plumes=0; info.plant.piles=0; info.plant.stackRecs=0; info.plant.coalZ=1e9; PRV=townSub(SITE.LAY,TI,SALT_PVAR); }
     var RD=townSub(SITE.LAY,TI,SALT_AFD);
-    SITE.conts.forEach(function(C){ plate(C); });
+    /* row 115: no plate under a hydro dam -- its spillway and the fill under the reservoir go down to the river below */
+    SITE.conts.forEach(function(C){ if(C.kind!=='hdam') plate(C); });
     var rw=SITE.conts.filter(function(C){ return C.kind==='rwy'; }), tw=SITE.conts.filter(function(C){ return C.kind==='twy'; });
     rw.forEach(function(C,m){ XF=C.rwy.xf||null; runwayPaint(C); XF=null; });
     /* row 256 §1.2: the Ghost's aircraft is the one Focus 3 looks at, the first stand with one (frameOf) */
@@ -35307,6 +35499,8 @@ function canalTheme(K){
         var R=sub(sd<0?2:1,k,SALT_POST), u=R(), us=R(), uc=R(), uh=R();
         if(!(u<0.45)) continue;
         var sp=k*14+2+10*us, col=POSTCOL[Math.floor(uc*3)], H=2.6+0.6*uh, list=[], bands=[];
+        /* row 115: none in a hydro river's first metres (its theme's headClear), the tailrace under the perimeter road */
+        if(K.THM.headClear && sp<K.THM.headClear) continue;
         [0,1.0].forEach(function(ds){
           var c0=P3(sp+ds,sd,HALFW-0.45,0), Q=[], j;
           for(j=0;j<10;j++){ var an=TAU*j/10; Q.push([c0[0]+0.12*Math.cos(an), c0[1]+0.12*Math.sin(an)]); }
@@ -42191,7 +42385,7 @@ function corridorDraw(p,plans,THM,camera){
     });
   });
   STRTTALLY.puds=STRTTALLY.pudsPlaced=puds.map(function(pd){ return {id:pd.id, side:pd.side, s0:pd.C.s0, s1:pd.C.s1, poly:pd.C.poly,
-    s:pd.s, o:pd.o, len:pd.len, wid:pd.wid, ring:pd.ring, hero:!!pd.hero, outline:pd.outline, grp:pd.grp, cont:pd.C.kind}; });
+    s:pd.s, o:pd.o, len:pd.len, wid:pd.wid, ring:pd.ring, hero:!!pd.hero, outline:pd.outline, grp:pd.grp, cont:pd.C.kind, mz:pd.mz}; });
   STRTTALLY.mirrorZ=MZ; STRTTALLY.pudOn=PUDON;
   STRTTALLY.hero=heroRec?{ring:heroRec.ring, s0:heroRec.s0, s1:heroRec.s1, g0:heroRec.g0, o:heroRec.o, wid:heroRec.wid,
     len:heroRec.len, pieces:heroRec.pieces.length, off:!!heroInfo}:null;
@@ -43413,7 +43607,7 @@ function corridorDraw(p,plans,THM,camera){
             var a=cam(Ln.a), b=cam(Ln.b);
             if(a[2]<NEAR && b[2]<NEAR) return;
             var ri=STRTTALLY.rpre.length;
-            STRTTALLY.rpre.push({a:Ln.a, b:Ln.b, part:pid, kind:Ln.kind, col:Ln.col});
+            STRTTALLY.rpre.push({a:Ln.a, b:Ln.b, part:pid, kind:Ln.kind, col:Ln.col, mz:MZ});
             if(a[2]<NEAR || b[2]<NEAR){
               var t=(NEAR-a[2])/(b[2]-a[2]);
               var x=[a[0]+(b[0]-a[0])*t, a[1]+(b[1]-a[1])*t, NEAR];
@@ -45209,7 +45403,7 @@ var KGROUPS=[
   ['ess','Essentials','layout form rows nlen site tier water rail hwy river floors archlots isoaz isoel zoom'],
   ['plan','City plan','sprawl corez rowsp xblk xwidth parks alleys zones'],
   ['lines','Lines that cross the city','rbend rwidth rdrop railbend railz trains ncar rstn hwybend hwyz hlanes ixtype pline'],
-  ['site','Airfield and harbour','sitepct sscale ptype punits towers pstack coalyard plumes harb rwys rwyhdg stands acmix tower hangars gse ghost ghostt berths vessels pierlen slips'],
+  ['site','Airfield and harbour','sitepct sscale ptype punits towers pstack coalyard plumes dam head gates penstocks harb rwys rwyhdg stands acmix tower hangars gse ghost ghostt berths vessels pierlen slips'],
   ['bld','Buildings','width pave lotmin lotmax alley archmin archdet stepb canti fire uvar'],
   ['life','Street life (close-ups)','glow shopv props signs neon lang cables sag cars graff dots pnear'],
   ['wet','Wet street','puddles pudsz ripple rvar wmk wglint hero hstr hrag hturn hshape'],
@@ -45298,7 +45492,9 @@ var KIDLE={town:[
   {keys:'ghostt', par:['site','ghost'], why:'Ghost is off', on:function(E){ return kR(E,'site')===1 && kR(E,'ghost')>=2; }},
   {keys:'rwys acmix tower gse', par:['site','tier'], why:'an airstrip (Scale 2 or less)', on:function(E){ return kR(E,'site')===1 && kR(E,'tier')>=3; }},
   /* row 114 */
-  {keys:'ptype punits towers plumes', par:['site'], why:'Site is not the power plant', on:function(E){ return kR(E,'site')===3; }},
+  {keys:'ptype plumes', par:['site'], why:'Site is not the power plant', on:function(E){ return kR(E,'site')===3; }},
+  {keys:'punits towers', par:['site','ptype'], why:'not a thermal plant', on:function(E){ return kR(E,'site')===3 && kR(E,'ptype')!==3; }},
+  {keys:'dam head gates penstocks', par:['site','ptype'], why:'not a hydro plant', on:function(E){ return kR(E,'site')===3 && kR(E,'ptype')===3; }},
   {keys:'pstack coalyard', par:['site','ptype'], why:'not a coal plant', on:function(E){ return kR(E,'site')===3 && kR(E,'ptype')===0; }},
   {keys:'berths vessels pierlen slips', par:['site','form','tier'], why:'no harbour site (or City form\'s Scale 0-1 shore harbour)', on:function(E){ return kR(E,'site')===2 && (kR(E,'form')===0 || kR(E,'tier')>=2); }},
   {keys:'archmin archdet zones', par:['archlots'], why:'Iso buildings 0', on:function(E){ return kR(E,'archlots')>0; }},
@@ -46731,12 +46927,16 @@ var HELP={
     sitepct:'How much of the city the site takes, as a share of the whole plan (a harbour’s water; its Scale 3 apron is extra). The rest is the city, a strip or an L. Layout picks the edge or corner.',
     tier:'The site’s size, which also sets the city’s length and block depth. Airfield: 2 an airstrip (900 m runway, one hangar, a windsock, no tower), 3 a regional airport (2,400 m runways, jet bridges, a tower), 4 a hub (3,000 to 3,700 m runways, concourses, wide bodies). Harbour: 0 a pier and a dinghy, 1 a marina, 2 a fishing harbour with a lighthouse, 3 container berths, 4 two basins with 400 m ships and container yards. With Map scale on Fit a bigger Scale makes everything smaller on the sheet; on a fixed Map scale things keep their size and the sheet shows less of the city.',
     sscale:'Multiplies the city’s length and block depth that the site’s Scale sets.',
-    ptype:'With Site 3, the power plant: 0 coal (boilers, a coal yard, precipitators, stacks), 1 gas (gas turbines with their heat-recovery boilers and stacks; a peaker at Scale 1), 2 nuclear (domed containments; from Scale 2). 3 is hydro, not built yet: it draws nuclear.',
+    ptype:'With Site 3, the power plant: 0 coal (boilers, a coal yard, precipitators, stacks), 1 gas (gas turbines with their heat-recovery boilers and stacks; a peaker at Scale 1), 2 nuclear (domed containments; from Scale 2), 3 hydro (a dam across the river: the site is its reservoir, Head above the river below the dam, and River is turned on).',
     punits:'How many generating units, up to what the plant’s Scale holds: coal 1/2/4/6, gas 1/1/2/6 gas turbines, nuclear 1/2/4 from Scale 2.',
     towers:'Natural-draft cooling towers, up to what the Scale holds. 0 cools from the river; with no river a plant that has towers keeps one.',
     pstack:'A coal plant’s chimneys, one per unit at most, up to 1/1/2/3 by Scale. Each has red aviation bands. A gas plant has one per gas turbine.',
     coalyard:'The share of the coal yard covered with stockpiles, either side of the stacker’s rail.',
-    plumes:'The chance that each cooling tower and stack draws a plume: rings of dashed line rising off the top, which hide nothing.',
+    plumes:'The chance that each cooling tower and stack draws a plume: rings of dashed line rising off the top, which hide nothing. On a hydro plant it is the share of the spillway gates open, with white water below them.',
+    dam:'With Plant 3, hydro: 0 a low weir with radial gates, run-of-river; 1 a gravity dam in 10 m blocks, its spillway a stepped chute; 2 an arch-gravity dam, its crest on an arc, its spillway at the crown.',
+    head:'Hydro: how far the reservoir stands above the river below the dam, up to 15, 40, 80 or 120 m by Scale. Above the street it sits behind an embankment Head less the river’s drop plus 1.5 m high.',
+    gates:'Hydro: the spillway’s radial gates, each between two piers. 0 builds the dam with no spillway.',
+    penstocks:'Hydro: the pipes from the intake towers down the dam’s face to the powerhouse, one generator bay each. A weir’s intakes are in its sill, beside the powerhouse, with no pipe.',
     rwys:'How many runways, where there is room: an airstrip has one, a regional airport up to two parallel, a hub 2 to 8: parallel pairs, plus crosswinds at 30 to 60 degrees past their ends when there are three or more.',
     rwyhdg:'The compass bearing the runways point along, in degrees. It sets the numbers painted at each end: the bearing over ten, and that plus 18 at the far end.',
     stands:'The share of the aircraft stands with an aircraft parked on them.',
