@@ -462,7 +462,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v387</a> &mdash; Kolam, a new engine: one line round a block of dots, curling at the edge and crossing inside, joined into one closed line -- a block, a chain, a Sierpinski carpet, a Vicsek cross or your mask, with mirrors; and two kolam grammars in L-system, Anklets of Krishna and Snake, with Smoothing</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v388</a> &mdash; the wall tone hatch moved into one shared function, ready for the new hatch; nothing you can see changes</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <section class="fold" id="fold_pick"><h2>Pick engine<span class="cnt"></span></h2>
@@ -30055,33 +30055,11 @@ function harbourTheme(K){
      Never on a container: its ribs are its tone. */
   var HATCHH=kn(p.hatch,50,0,100)/100, SUNH=kn(p.sun,300,0,359)*Math.PI/180, SUNV=[Math.sin(SUNH),Math.cos(SUNH)];
   var HSPH=0.15+1.2*Math.pow(1-HATCHH,1.5), COL_OCHRE='#c8962e', COL_DGH='#4a4a4a';
+  /* row 144 A1: the kit's surfHatch draws exactly what this drew */
   function shade(P,near,far){
     if(!(HATCHH>0)) return;
     var hc=(P.col===COL_YEL||P.col===COL_OR)?COL_OCHRE:COL_DGH;
-    P.faces.forEach(function(f,fi){
-      if(Math.abs(f.n[2])>0.3 || f.n[0]*SUNV[0]+f.n[1]*SUNV[1]>=0 || f.pts.length<3) return;
-      var hl=Math.hypot(f.n[0],f.n[1]), u=[-f.n[1]/hl,f.n[0]/hl,0], c=[0,0,0], k;
-      f.pts.forEach(function(q){ c[0]+=q[0]/f.pts.length; c[1]+=q[1]/f.pts.length; c[2]+=q[2]/f.pts.length; });
-      var d=dist3(c); if(!(d<far)) return;
-      var dl=[u[0]*Math.SQRT1_2,u[1]*Math.SQRT1_2,Math.SQRT1_2], dm=[u[0]*Math.SQRT1_2,u[1]*Math.SQRT1_2,-Math.SQRT1_2];
-      var gh=paperGap(c,dl,dm); if(!(gh>0)) return;
-      var sp=Math.max(HSPH,MINSP/gh)*(d<near?1:2);
-      /* the face in (u,v), v up; lines u - v = c, clipped to its polygon */
-      var Q=f.pts.map(function(q){ return [(q[0]-c[0])*u[0]+(q[1]-c[1])*u[1], q[2]-c[2]]; }), lo=1e9, hi=-1e9;
-      Q.forEach(function(q){ var w=q[0]-q[1]; if(w<lo) lo=w; if(w>hi) hi=w; });
-      for(var cc=lo+sp*Math.SQRT2/2;cc<hi;cc+=sp*Math.SQRT2){
-        var t0=-1e9, t1=1e9, ok=true;
-        /* the line: (u,v) = (cc/2 + t, -cc/2 + t); clip by each edge's half-plane */
-        for(k=0;k<Q.length && ok;k++){ var a=Q[k], b=Q[(k+1)%Q.length], ex=b[0]-a[0], ey=b[1]-a[1];
-          var px=cc/2-a[0], py=-cc/2-a[1], cr0=ex*py-ey*px, cr1=ex*1-ey*1, side=ex*(Q[(k+2)%Q.length][1]-a[1])-ey*(Q[(k+2)%Q.length][0]-a[0]);
-          if(side<0){ cr0=-cr0; cr1=-cr1; }
-          if(Math.abs(cr1)<1e-12){ if(cr0<0) ok=false; continue; }
-          var tt=-cr0/cr1; if(cr1>0){ if(tt>t0) t0=tt; } else { if(tt<t1) t1=tt; } }
-        if(!ok || !(t1-t0>1e-6)) continue;
-        var A=[c[0]+u[0]*(cc/2+t0), c[1]+u[1]*(cc/2+t0), c[2]-cc/2+t0], B=[c[0]+u[0]*(cc/2+t1), c[1]+u[1]*(cc/2+t1), c[2]-cc/2+t1];
-        P.lines.push({a:A, b:B, f0:fi, f1:fi, col:hc, kind:'shade'});
-      }
-    });
+    K.surfHatch(P,P.faces.map(function(f,fi){ return fi; }),{sun:SUNV, spM:HSPH, minsp:MINSP, near:near, far:far, col:hc, kind:'shade'});
   }
   /* lines on face fi of P: a closed polygon or an open run, in world points */
   function fl(P,fi,pts,closed,col,kind){
@@ -41093,30 +41071,9 @@ function streetTheme(K){
       /* §5.5 the tone hatch: diagonal lines on every wall facing away from
          the light, generated on the wall plane so they foreshorten with it;
          the returns (the canyon's side walls) half again as dense */
-      if(HATCH>0) for(var fk=2;fk<=5;fk++){
-        var fh=BP.faces[fk];
-        if(fh.n[0]*SUN[0]+fh.n[1]*SUN[1]>=0) continue;
-        var h0=fh.pts[0], h1=fh.pts[1], hx=h1[0]-h0[0], hy=h1[1]-h0[1], Wh=Math.hypot(hx,hy);
-        if(Wh<0.5) continue;
-        var HT={A:[h0[0],h0[1],0], t:[hx/Wh,hy/Wh,0], n:[fh.n[0],fh.n[1],0], W:Wh}, H=B.z1-B.z0, sp;
-        /* the lines run along (t+z)/sqrt2 and stack along (t-z)/sqrt2 */
-        var dl=[HT.t[0]*Math.SQRT1_2,HT.t[1]*Math.SQRT1_2,Math.SQRT1_2];
-        var dnm=[HT.t[0]*Math.SQRT1_2,HT.t[1]*Math.SQRT1_2,-Math.SQRT1_2];
-        var gh=paperGap(wp(HT,Wh/2,(B.z0+B.z1)/2,0),dl,dnm);
-        if(!(gh>0)) continue;
-        sp=(HMODE===1)?HSPMM/gh:HSPW;
-        if(fk===3||fk===5) sp/=1.5;
-        sp=Math.max(sp, MINSP/gh);
-        var stp=sp*Math.SQRT2;
-        for(var cc=-H+stp/2;cc<Wh;cc+=stp){
-          var v0=Math.max(0,-cc), v1=Math.min(H,Wh-cc);
-          if(v1-v0<1e-6) continue;
-          var pa=wp(HT,cc+v0,B.z0+v0,0), pb2=wp(HT,cc+v1,B.z0+v1,0);
-          if(dist3([(pa[0]+pb2[0])/2,(pa[1]+pb2[1])/2,(pa[2]+pb2[2])/2])>=df) continue;
-          BP.lines.push({a:pa,b:pb2,f0:fk,f1:fk,col:L.plaster||COL_HATCH,kind:'hatch'});
-        }
-        STRTTALLY.hfaces.push({part:BP, f:fk, sp:sp, c:wp(HT,Wh/2,(B.z0+B.z1)/2,0)});
-      }
+      /* row 144 A1: the loop is the kit's surfHatch, called to draw exactly this */
+      if(HATCH>0) K.surfHatch(BP,[2,3,4,5],{rect:B, sun:SUN, mm:HMODE===1, spM:HSPW, spMM:HSPMM, div:[3,5], minsp:MINSP,
+                                           far:df, col:L.plaster||COL_HATCH, kind:'hatch', tally:STRTTALLY.hfaces});
     }
     /* §5.4 THE TOP, on the highest block. Weights 45 flat + parapet, 20
        stepped crown, 20 plant deck, 15 gable; every draw is taken whatever
@@ -42963,6 +42920,70 @@ function corridorDraw(p,plans,THM,camera){
     polys.forEach(function(pl){
       for(var i=1;i<pl.length;i++)
         Pt.lines.push({a:M(pl[i-1][0],pl[i-1][1]), b:M(pl[i][0],pl[i][1]), f0:fi, f1:fi, col:col, kind:kind, sign:sid});
+    });
+  }
+  /* ROW 144 (docs/specs/2026-10-18-surface-hatch_v5.md): THE SURFACE HATCH, the tone
+     hatch on the flat faces `faces` of part P, one kit function for every theme.
+     A1 is a REFACTOR ONLY: it draws exactly what the two sites it replaced drew.
+       o.rect {z0,z1}: streetTheme's §5.5 wall hatch. A face is hatched when its
+         normal points away from o.sun; 45 degrees in the wall plane from the face's
+         first edge over z0..z1, each face from its own phase. Pitch o.spM metres,
+         or o.spMM on paper when o.mm; the faces in o.div are 1.5x denser; floored
+         at o.minsp mm. A line whose midpoint is o.far or further is not drawn, and
+         every hatched face goes on o.tally.
+       otherwise: harbourTheme's shade(). Any face with |n.z| <= 0.3 facing away
+         from o.sun, its own polygon, 45 degrees about its centroid; o.spM metres
+         floored at o.minsp mm, doubled at o.near and beyond, none from o.far. */
+  function surfHatch(P,faces,o){
+    var MINSP=o.minsp, SUN=o.sun;
+    if(o.rect) faces.forEach(function(fk){
+      var fh=P.faces[fk], B=o.rect;
+      if(fh.n[0]*SUN[0]+fh.n[1]*SUN[1]>=0) return;
+      var h0=fh.pts[0], h1=fh.pts[1], hx=h1[0]-h0[0], hy=h1[1]-h0[1], Wh=Math.hypot(hx,hy);
+      if(Wh<0.5) return;
+      var HT={A:[h0[0],h0[1],0], t:[hx/Wh,hy/Wh,0], n:[fh.n[0],fh.n[1],0], W:Wh}, H=B.z1-B.z0, sp;
+      /* the lines run along (t+z)/sqrt2 and stack along (t-z)/sqrt2 */
+      var dl=[HT.t[0]*Math.SQRT1_2,HT.t[1]*Math.SQRT1_2,Math.SQRT1_2];
+      var dnm=[HT.t[0]*Math.SQRT1_2,HT.t[1]*Math.SQRT1_2,-Math.SQRT1_2];
+      var gh=paperGap(wp(HT,Wh/2,(B.z0+B.z1)/2,0),dl,dnm);
+      if(!(gh>0)) return;
+      sp=o.mm?o.spMM/gh:o.spM;
+      if(o.div.indexOf(fk)>=0) sp/=1.5;
+      sp=Math.max(sp, MINSP/gh);
+      var stp=sp*Math.SQRT2;
+      for(var cc=-H+stp/2;cc<Wh;cc+=stp){
+        var v0=Math.max(0,-cc), v1=Math.min(H,Wh-cc);
+        if(v1-v0<1e-6) continue;
+        var pa=wp(HT,cc+v0,B.z0+v0,0), pb2=wp(HT,cc+v1,B.z0+v1,0);
+        if(dist3([(pa[0]+pb2[0])/2,(pa[1]+pb2[1])/2,(pa[2]+pb2[2])/2])>=o.far) continue;
+        P.lines.push({a:pa,b:pb2,f0:fk,f1:fk,col:o.col,kind:o.kind});
+      }
+      o.tally.push({part:P, f:fk, sp:sp, c:wp(HT,Wh/2,(B.z0+B.z1)/2,0)});
+    });
+    else faces.forEach(function(fi){
+      var f=P.faces[fi], near=o.near, far=o.far, k;
+      if(Math.abs(f.n[2])>0.3 || f.n[0]*SUN[0]+f.n[1]*SUN[1]>=0 || f.pts.length<3) return;
+      var hl=Math.hypot(f.n[0],f.n[1]), u=[-f.n[1]/hl,f.n[0]/hl,0], c=[0,0,0];
+      f.pts.forEach(function(q){ c[0]+=q[0]/f.pts.length; c[1]+=q[1]/f.pts.length; c[2]+=q[2]/f.pts.length; });
+      var d=dist3(c); if(!(d<far)) return;
+      var dl=[u[0]*Math.SQRT1_2,u[1]*Math.SQRT1_2,Math.SQRT1_2], dm=[u[0]*Math.SQRT1_2,u[1]*Math.SQRT1_2,-Math.SQRT1_2];
+      var gh=paperGap(c,dl,dm); if(!(gh>0)) return;
+      var sp=Math.max(o.spM,MINSP/gh)*(d<near?1:2);
+      /* the face in (u,v), v up; lines u - v = c, clipped to its polygon */
+      var Q=f.pts.map(function(q){ return [(q[0]-c[0])*u[0]+(q[1]-c[1])*u[1], q[2]-c[2]]; }), lo=1e9, hi=-1e9;
+      Q.forEach(function(q){ var w=q[0]-q[1]; if(w<lo) lo=w; if(w>hi) hi=w; });
+      for(var cc=lo+sp*Math.SQRT2/2;cc<hi;cc+=sp*Math.SQRT2){
+        var t0=-1e9, t1=1e9, ok=true;
+        /* the line: (u,v) = (cc/2 + t, -cc/2 + t); clip by each edge's half-plane */
+        for(k=0;k<Q.length && ok;k++){ var a=Q[k], b=Q[(k+1)%Q.length], ex=b[0]-a[0], ey=b[1]-a[1];
+          var px=cc/2-a[0], py=-cc/2-a[1], cr0=ex*py-ey*px, cr1=ex*1-ey*1, side=ex*(Q[(k+2)%Q.length][1]-a[1])-ey*(Q[(k+2)%Q.length][0]-a[0]);
+          if(side<0){ cr0=-cr0; cr1=-cr1; }
+          if(Math.abs(cr1)<1e-12){ if(cr0<0) ok=false; continue; }
+          var tt=-cr0/cr1; if(cr1>0){ if(tt>t0) t0=tt; } else { if(tt<t1) t1=tt; } }
+        if(!ok || !(t1-t0>1e-6)) continue;
+        var A=[c[0]+u[0]*(cc/2+t0), c[1]+u[1]*(cc/2+t0), c[2]-cc/2+t0], Bq=[c[0]+u[0]*(cc/2+t1), c[1]+u[1]*(cc/2+t1), c[2]-cc/2+t1];
+        P.lines.push({a:A, b:Bq, f0:fi, f1:fi, col:o.col, kind:o.kind});
+      }
     });
   }
   function inConv(Q,v){
@@ -44875,7 +44896,7 @@ function corridorDraw(p,plans,THM,camera){
   function facesEye(f){ return (HOLD||[KCAM]).some(function(Kc){ var E=Kc.CE; return f.n[0]*E[0]+f.n[1]*E[1]+f.n[2]*E[2]-f.d>1e-9; }); }
   /* and the sheet's across direction at P -- held, the nearest frame's */
   function rtAt(P){ return HOLD?holdK(P).RT:RT; }
-  function KIT(PL){ var K={planRef:PL, poleOut:PL.wireLow?function(q){ return PL.wireLow.some(function(Q){ return townIn(Q,q); }) && !(PL.wireKeep||[]).some(function(Q){ return townIn(Q,q); }); }:null, facesEye:facesEye, rtAt:rtAt, massedAt:MASSED&&MASSED.get(PL)?function(sd,s){ return MASSED.get(PL)[sd].some(function(L){ return s>=L.s0-1 && s<=L.s1+1; }); }:null, sGaps:PL.sGaps, hasGap:PL.hasGap, slabPieces:slabPieces, bbHit:bbHit, MINSP:0.7, FW:FW, UP:UP, PAD:PAD, NS:PL.NS, THM:PL.theme||THM, P3:PL.P3, add3:add3, addCable:addCable, cam:camK, dist3:dist3, project:project, drawOn:drawOn, faceC:faceC, faceIx:faceIx, frame:PL.frame, hitsAny:hitsAny, inConv:inConv, lateral:PL.lateral, mmPerM:mmPerM, paperGap:paperGap, para:para, polyFromLoops:polyFromLoops, prism:prism, prismN:prismN, splitPart:splitPart, sub:PL.sub, surf:surf, vec:vec, verts:verts, wallOf:wallOf, wp:wp, CANTI:PL.CANTI, CANYON:PL.CANYON, CE:CE, FF:FF, FLOORS:PL.FLOORS, HALFW:PL.HALFW, HW:HW, KERB:PL.KERB, KOFF:PL.KOFF, LEN:PL.LEN, NEAR:NEAR, PBACK:PL.PBACK, RT:RT, SALT_BLD:PL.SALT_BLD, STEPB:PL.STEPB, ZUP:ZUP, cables:cables, conts:conts, lots:PL.lots, slabsBySide:PL.slabsBySide, p:p};
+  function KIT(PL){ var K={planRef:PL, poleOut:PL.wireLow?function(q){ return PL.wireLow.some(function(Q){ return townIn(Q,q); }) && !(PL.wireKeep||[]).some(function(Q){ return townIn(Q,q); }); }:null, facesEye:facesEye, rtAt:rtAt, massedAt:MASSED&&MASSED.get(PL)?function(sd,s){ return MASSED.get(PL)[sd].some(function(L){ return s>=L.s0-1 && s<=L.s1+1; }); }:null, sGaps:PL.sGaps, hasGap:PL.hasGap, slabPieces:slabPieces, bbHit:bbHit, MINSP:0.7, FW:FW, UP:UP, PAD:PAD, NS:PL.NS, THM:PL.theme||THM, P3:PL.P3, add3:add3, addCable:addCable, cam:camK, dist3:dist3, project:project, drawOn:drawOn, surfHatch:surfHatch, faceC:faceC, faceIx:faceIx, frame:PL.frame, hitsAny:hitsAny, inConv:inConv, lateral:PL.lateral, mmPerM:mmPerM, paperGap:paperGap, para:para, polyFromLoops:polyFromLoops, prism:prism, prismN:prismN, splitPart:splitPart, sub:PL.sub, surf:surf, vec:vec, verts:verts, wallOf:wallOf, wp:wp, CANTI:PL.CANTI, CANYON:PL.CANYON, CE:CE, FF:FF, FLOORS:PL.FLOORS, HALFW:PL.HALFW, HW:HW, KERB:PL.KERB, KOFF:PL.KOFF, LEN:PL.LEN, NEAR:NEAR, PBACK:PL.PBACK, RT:RT, SALT_BLD:PL.SALT_BLD, STEPB:PL.STEPB, ZUP:ZUP, cables:cables, conts:conts, lots:PL.lots, slabsBySide:PL.slabsBySide, p:p};
     /* row 96: a plan with a theme of its own reads its own knobs and cables */
     if(PL.theme){ K.p=PL.p; K.addCable=PL.addCable||addCable; K.cables=PL.cables||cables; }
     return K; }
