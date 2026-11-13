@@ -462,7 +462,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v386</a> &mdash; Corridor city: iso buildings and sites -- no iso building stands on a lot that meets the airfield, the harbour or the power plant, and with Districts on the blocks beside an airfield or a power plant are industrial, beside a harbour port; every other block keeps its district</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v387</a> &mdash; Kolam, a new engine: one line round a block of dots, curling at the edge and crossing inside, joined into one closed line -- a block, a chain, a Sierpinski carpet, a Vicsek cross or your mask, with mirrors; and two kolam grammars in L-system, Anklets of Krishna and Snake, with Smoothing</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <section class="fold" id="fold_pick"><h2>Pick engine<span class="cnt"></span></h2>
@@ -3012,6 +3012,12 @@ var SPEC={
     ['tlmode','Lines add detail',0,1,1,0],['tgap','Tile gap',-100,90,1,0,[1,'%']],
     ['tsize','Size from mask',0,100,1,0,[1,'%']],['tsinv','Invert size',0,1,1,0],
     ['tmin','Smallest tile',0,50,1,10,[10,' mm']],['thead','Facing',0,3,1,0]]],
+  /* row 143: the mirror-curve engine (docs/specs/2026-10-18-kolam-engine_v3.md section 3) */
+  kolam:['Kolam',[
+    ['kshape','Shape',0,4,1,1],['kw','Width',1,40,1,5],['kh','Height',1,40,1,7],['kdep','Depth',1,4,1,2],
+    ['kcurl','Curls',0,3,1,1],['kcr','Curl size',10,45,1,37],['kbr','Bend',10,45,1,27],
+    ['kmir','Mirrors',0,60,1,0,[1,'%']],['kone','One line',0,1,1,1],['krot','Turn',0,90,1,45,[1,'\u00b0']],
+    ['pad','Margin',0,20,1,6]]],
   rows:['Rows',[
     ['pad','Margin',0,20,1,6],['bous','Boustrophedon',0,1,1,1]]],
   /* NO KNOB HERE MAY BE CALLED `occ`. engineHasOcc() decides whether an engine
@@ -3093,9 +3099,9 @@ var SPEC={
     ['rings','Rings',1,90,1,26],['drift','Lobe drift',0,100,1,26],
     ['res','Points',120,2400,20,700]]],
   lsys:['L-system',[
-    ['rule','Grammar',0,6,1,5],['iters','Iterations',1,10,1,5],
+    ['rule','Grammar',0,8,1,5],['iters','Iterations',1,10,1,5],
     ['angle','Angle',5,120,1,25,[1,'\u00b0']],['decay','Step decay',0,400,1,0],
-    ['jitter','Jitter',0,300,1,0]]],
+    ['jitter','Jitter',0,300,1,0],['smooth','Smoothing',0,6,1,0]]],
   surf:['Surface',[
     ['kind','Shape',0,4,1,2],['nu','U lines',3,90,1,26],['nv','V lines',3,90,1,18],
     ['tube','Tube',5,90,1,38],['res','Points',24,400,4,140]].concat(VIEW3)],
@@ -5084,7 +5090,10 @@ function buildLSys(p){
     {ax:'F', r:{F:'+F--F+'}, ang:45},                       /* Levy */
     {ax:'A', r:{A:'B-A-B', B:'A+B+A'}, ang:60},             /* Sierpinski */
     {ax:'X', r:{X:'F+[[X]-X]-F[-FX]+X', F:'FF'}, ang:25},   /* plant */
-    {ax:'X', r:{X:'F[+X]F[-X]+X', F:'FF'}, ang:20}          /* bush */
+    {ax:'X', r:{X:'F[+X]F[-X]+X', F:'FF'}, ang:20},         /* bush */
+    /* row 143: South Indian kolams, each one closed line (Prusinkiewicz and Hanan; the source's x is X) */
+    {ax:'-X--X', r:{X:'XFX--XFX'}, ang:45},                 /* 7 Anklets of Krishna */
+    {ax:'F+XF+F+XF', r:{X:'XF-F-F+XF+F+XF-F-F+X'}, ang:90}  /* 8 Snake */
   ];
   var R=RULES[Math.max(0,Math.min(RULES.length-1,K))];
   var str=R.ax, cap=260000;
@@ -5113,8 +5122,198 @@ function buildLSys(p){
   }
   if(run.length>1) out.push(run);
   if(!out.length) return [];
+  /* row 143 Part B: Smoothing, Chaikin corner-cutting on each run. A run that ends where it began
+     is smoothed CYCLICALLY: open-path Chaikin keeps both ends and leaves a notch at the seam. At 0
+     nothing here runs */
+  var SMO=Math.max(0,Math.min(6,Math.round(+p.smooth||0)));
+  if(SMO) out=out.map(function(P){
+    var n0=P.length, cyc=n0>3 && Math.abs(P[0][0]-P[n0-1][0])<=1e-6 && Math.abs(P[0][1]-P[n0-1][1])<=1e-6, k, i, Q, a, b;
+    if(cyc) P=P.slice(0,n0-1);
+    for(k=0;k<SMO;k++){
+      Q=cyc?[]:[P[0]];
+      for(i=0;i<(cyc?P.length:P.length-1);i++){ a=P[i]; b=P[(i+1)%P.length];
+        Q.push([0.75*a[0]+0.25*b[0],0.75*a[1]+0.25*b[1]],[0.25*a[0]+0.75*b[0],0.25*a[1]+0.75*b[1]]); }
+      if(!cyc) Q.push(P[P.length-1]);
+      P=Q; }
+    if(cyc) P.push([P[0][0],P[0][1]]);
+    return P; });
   return fitPaths(out,0.06);
 }
+
+/* ---------- KOLAM : one line around a block of dots (a mirror curve) ----------
+   Spec docs/specs/2026-10-18-kolam-engine_v3.md, queue row 143. Dots at integer (i,j), y UP. A
+   vertex sits between two 4-adjacent dots; the line steps diagonally from vertex to vertex, each
+   step passing round exactly one dot, so a drawing is exactly 4 x dots steps, each used once.
+   At an INTERIOR vertex (both dots in the block) the line crosses straight through, or bounces
+   off a seeded mirror; at a BORDER vertex it bounces, as a CURL on Curls' sides and a bend
+   elsewhere. A concave border vertex always bends.
+   ONE LINE IS ONE UNION-FIND PASS: trace once, take each interior vertex passed by two different
+   lines as an edge between them, walk those in seeded order, and where a vertex joins two lines
+   not yet joined switch it to one of its two other states -- each of those pairs its four
+   half-edges differently and joins the two lines, so each switch removes exactly one line. Then
+   trace once more. (Re-tracing after every switch was the spec's v2, 57 s at Sierpinski d4.)
+   Points are emitted natively -- a crossing is one point, a bend 14, a curl 50 -- never
+   resampled, and the budget is checked before anything is emitted.
+   Coordinates inside are DOUBLED (a dot at (2i,2j), a vertex with exactly one odd coordinate),
+   so every vertex is an integer pair. */
+var KOLINFO='', KOLTALLY=null, KOLLB={}, KOLLBN=0;
+/* SEEDED's question: does this knob set draw more than one line before the merge? The first
+   trace alone, cached per knob set (and per mask, for Mask) */
+function kolamLinesBefore(p){
+  var g=(typeof STATE!=='undefined'&&STATE)?STATE.g:null, m=(typeof MASK!=='undefined'&&MASK)?MASK:null;
+  var k=[p.kshape,p.kw,p.kh,p.kdep,p.pad, Math.round(+p.kshape)===4&&m?[m.ready,m.name,m.w,m.h,g&&g.mscale,g&&g.mdx,g&&g.mdy,g&&g.mfit,g&&g.tinv,g&&g.tgam].join(':'):''].join(',');
+  if(!(k in KOLLB)){ if(++KOLLBN>200){ KOLLB={}; KOLLBN=1; } KOLLB[k]=buildKolam(Object.assign({},p,{__lines:1})); }
+  return KOLLB[k];
+}
+function buildKolam(p){
+  function num(v,d,a,b){ v=+v; if(!isFinite(v)) v=d; return Math.max(a,Math.min(b,v)); }
+  var SH=Math.round(num(p.kshape,1,0,4)), KW=Math.round(num(p.kw,5,1,40)), KH=Math.round(num(p.kh,7,1,40)),
+      DEP=Math.round(num(p.kdep,2,1,4)), CURL=Math.round(num(p.kcurl,1,0,3)), CR=num(p.kcr,37,10,45)/100,
+      BR=num(p.kbr,27,10,45)/100, MIR=num(p.kmir,0,0,60)/100, ONE=Math.round(num(p.kone,1,0,1))===1,
+      ROT=num(p.krot,45,0,90)*Math.PI/180, PAD=num(p.pad,6,0,20)/100, LINES=!!p.__lines;
+  /* a seeded stream per purpose, from the drawing's own rnd */
+  function prng(salt){ var a=Math.floor(rnd(salt)*4294967296)>>>0;
+    return function(){ a=(a+0x6D2B79F5)>>>0; var t=a; t=Math.imul(t^(t>>>15),t|1); t^=t+Math.imul(t^(t>>>7),t|61); return ((t^(t>>>14))>>>0)/4294967296; }; }
+  /* ---- the block ---- */
+  var DOT=new Set(), note='', NAMES=['Block','Chain','Sierpinski','Vicsek','Mask'];
+  function dk(i,j){ return (i+512)*1024+(j+512); }
+  function addRect(x,y,w,h){ for(var i=x;i<x+w;i++) for(var j=y;j<y+h;j++) DOT.add(dk(i,j)); }
+  var shape=SH;
+  if(shape===4){
+    var MG=(typeof MASK!=='undefined')?MASK:null;
+    if(!MG||!MG.ready){ shape=0; note='no mask loaded, so Block'; }
+    else { var G4=(typeof STATE!=='undefined'&&STATE)?STATE.g:null;
+      for(var i4=0;i4<KW;i4++) for(var j4=0;j4<KH;j4++){
+        var px=PAD+(i4+0.5)/KW*(PGW-2*PAD), py=PAD+(KH-1-j4+0.5)/KH*(PGH-2*PAD);
+        if(toneAt(px,py,G4)>=0.5) DOT.add(dk(i4,j4)); } }
+  }
+  if(shape===0) addRect(0,0,KW,KH);
+  else if(shape===1){
+    /* Chain: 5-7 small rectangles, each overlapping the last by at least one dot and drifting
+       down-left, then a 4-6 x 4-6 block overlapping the last (mc3.layout). Every rectangle shares
+       a dot with the one before, so the chain is connected */
+    var RC=prng(7001), ri=function(a,b){ return a+Math.floor(RC()*(b-a+1)); }, pick=function(A){ return A[Math.floor(RC()*A.length)]; };
+    var SZ=[[1,2],[2,1],[2,2],[1,3],[3,1],[2,3],[3,2]], x=0, y=0, w=2, h=2, BL=[], nb=ri(5,7);
+    for(var b1=0;b1<nb;b1++){
+      BL.push([x,y,w,h]); var nz=pick(SZ), nw=nz[0], nh=nz[1];
+      x=x+ri(-nw+1,w-1)-pick([0,0,1]);
+      if(RC()<0.7) y=y-nh+1-pick([0,0,1]); else y=y+ri(-nh+1,h-1);
+      w=nw; h=nh; var LB=BL[BL.length-1];
+      if(!(x<=LB[0]+LB[2]-1 && LB[0]<=x+w-1 && y<=LB[1]+LB[3]-1 && LB[1]<=y+h-1)){ y=LB[1]-h+1; x=LB[0]; }
+    }
+    BL.push([x,y,w,h]); var bw=ri(4,6), bh=ri(4,6); BL.push([x-bw+2,y-bh+1,bw,bh]);
+    BL.forEach(function(r){ addRect(r[0],r[1],r[2],r[3]); });
+  } else if(shape===2){
+    var N3=Math.pow(3,DEP);
+    for(var i2=0;i2<N3;i2++) for(var j2=0;j2<N3;j2++){ var a2=i2, c2=j2, ok=true;
+      while(a2||c2){ if(a2%3===1&&c2%3===1){ ok=false; break; } a2=Math.floor(a2/3); c2=Math.floor(c2/3); }
+      if(ok) DOT.add(dk(i2,j2)); }
+  } else if(shape===3){
+    var VP=[[0,0]], st=1;
+    for(var d3=0;d3<DEP;d3++){ var nx=[], seen={};
+      VP.forEach(function(q){ [[0,0],[1,0],[-1,0],[0,1],[0,-1]].forEach(function(e){ var a=q[0]+e[0]*st, c=q[1]+e[1]*st, kk=a+','+c;
+        if(!seen[kk]){ seen[kk]=1; nx.push([a,c]); } }); });
+      VP=nx; st*=3; }
+    VP.forEach(function(q){ DOT.add(dk(q[0],q[1])); });
+  }
+  function isDot(i,j){ return DOT.has(dk(i,j)); }
+  var NDOT=DOT.size;
+  if(!NDOT){ if(LINES) return 0; KOLINFO=NAMES[SH]+' · the mask leaves no dots'; KOLTALLY={dots:0, linesBefore:0, switches:0, points:0, steps:[], bounces:[]}; return []; }
+  /* ---- the vertices, each classified once ---- */
+  var CS=[{},{'+y':1,'-x':1},{'+x':1,'-x':1,'+y':1,'-y':1},{'+x':1,'-y':1}][CURL];
+  function vk(X,Y){ return (X+2048)*4096+(Y+2048); }
+  var VI=new Map(), VL=[];
+  DOT.forEach(function(key){ var i=Math.floor(key/1024)-512, j=key%1024-512, X=2*i, Y=2*j;
+    [[X+1,Y],[X-1,Y],[X,Y+1],[X,Y-1]].forEach(function(V){ var k=vk(V[0],V[1]); if(VI.has(k)) return;
+      var ax=(V[0]&1)?'x':'y', A, B;
+      if(ax==='x'){ A=[(V[0]-1)/2,V[1]/2]; B=[(V[0]+1)/2,V[1]/2]; } else { A=[V[0]/2,(V[1]-1)/2]; B=[V[0]/2,(V[1]+1)/2]; }
+      var ia=isDot(A[0],A[1]), ib=isDot(B[0],B[1]), o={k:k, X:V[0], Y:V[1], ax:ax, int:ia&&ib};
+      if(!o.int){ var out=ia?B:A, nn=0;
+        [[1,0],[-1,0],[0,1],[0,-1]].forEach(function(e){ if(isDot(out[0]+e[0],out[1]+e[1])) nn++; });
+        o.concave=nn>=2; o.side=(ia?'+':'-')+ax; o.curl=!o.concave && !!CS[o.side]; }
+      VI.set(k,o); VL.push(o); }); });
+  VL.sort(function(a,b){ return a.k-b.k; });
+  function okStep(o,dx,dy){ return (o.X&1)?isDot((o.X+dx)/2,o.Y/2):isDot(o.X/2,(o.Y+dy)/2); }
+  function ek(a,b){ return a<b?a*16777216+b:b*16777216+a; }
+  var DIRS=[[1,1],[1,-1],[-1,1],[-1,-1]];
+  /* one trace: every line as its list of vertex visits {o, k (0 cross, 1 mirror, 2 bend, 3 curl), the step in, the step out} */
+  function trace(M){
+    var used=new Set(), comps=[];
+    for(var v=0;v<VL.length;v++){ var o0=VL[v];
+      for(var d=0;d<4;d++){ var dx0=DIRS[d][0], dy0=DIRS[d][1];
+        if(!okStep(o0,dx0,dy0) || used.has(ek(o0.k,vk(o0.X+dx0,o0.Y+dy0)))) continue;
+        var X=o0.X, Y=o0.Y, dx=dx0, dy=dy0, seq=[];
+        for(;;){
+          var X2=X+dx, Y2=Y+dy, k2=vk(X2,Y2), o=VI.get(k2), ox=dx, oy=dy, kind;
+          used.add(ek(vk(X,Y),k2));
+          if(o.int){ var m=M.get(k2); if(m==='x') ox=-dx; else if(m==='y') oy=-dy; kind=m?1:0; }
+          else { if(o.ax==='x') ox=-dx; else oy=-dy; kind=o.curl?3:2; }
+          seq.push({o:o, k:kind, dx:dx, dy:dy, ox:ox, oy:oy});
+          X=X2; Y=Y2; dx=ox; dy=oy;
+          if((X===o0.X&&Y===o0.Y&&dx===dx0&&dy===dy0) || seq.length>4*NDOT+8) break;
+        }
+        comps.push(seq);
+      } }
+    return comps;
+  }
+  var M=new Map();
+  if(LINES) return trace(M).length;
+  if(MIR>0){ var RM=prng(7003); VL.forEach(function(o){ if(o.int && RM()<MIR) M.set(o.k, RM()<0.5?'x':'y'); }); }
+  var comps=trace(M), before=comps.length, switches=0;
+  if(ONE && comps.length>1){
+    var owner=new Map();
+    comps.forEach(function(seq,ci){ seq.forEach(function(s){ if(s.k>1) return;
+      var w=owner.get(s.o.k); if(!w) owner.set(s.o.k,[ci]); else if(w.indexOf(ci)<0) w.push(ci); }); });
+    var cands=[]; owner.forEach(function(w,k){ if(w.length===2) cands.push(k); });
+    cands.sort(function(a,b){ return a-b; });
+    var RS=prng(7005);
+    for(var c1=cands.length-1;c1>0;c1--){ var r1=Math.floor(RS()*(c1+1)), t1=cands[c1]; cands[c1]=cands[r1]; cands[r1]=t1; }
+    var par=comps.map(function(_,i){ return i; });
+    var find=function(a){ while(par[a]!==a){ par[a]=par[par[a]]; a=par[a]; } return a; };
+    cands.forEach(function(k){ var w=owner.get(k), ra=find(w[0]), rb=find(w[1]); if(ra===rb) return;
+      par[ra]=rb; switches++;
+      var cur=M.get(k)||null, opts=[null,'x','y'].filter(function(s){ return s!==cur; }), stt=opts[Math.floor(RS()*2)];
+      if(stt===null) M.delete(k); else M.set(k,stt); });
+    comps=trace(M);
+  }
+  /* ---- the record, in dot coordinates ---- */
+  var steps=[], bounces=[], est=0;
+  comps.forEach(function(seq){ var n=seq.length;
+    seq.forEach(function(s,ix){ var o=s.o, pv=seq[(ix+n-1)%n].o;
+      steps.push([pv.X/2,pv.Y/2,o.X/2,o.Y/2]);
+      est+=s.k===0?1:s.k===3?50:14;
+      if(!o.int) bounces.push({v:[o.X/2,o.Y/2], side:o.side, kind:s.k===3?'curl':'bend', concave:!!o.concave}); }); });
+  KOLTALLY={dots:NDOT, linesBefore:before, switches:switches, points:est, steps:steps, bounces:bounces};
+  var CAP=(typeof GEOCAPFULL!=='undefined')?GEOCAPFULL:GEOCAP;
+  var head=NAMES[shape]+(note?' ('+note+')':'')+' · '+NDOT.toLocaleString()+' dots · ';
+  if(est>CAP){ KOLINFO=head+est.toLocaleString()+' points against the budget of '+CAP.toLocaleString()+': nothing drawn'; return []; }
+  /* ---- emission: native points, then the stated transform ---- */
+  var cr=Math.cos(ROT), sr=Math.sin(ROT), S2=Math.SQRT1_2, out=[];
+  comps.forEach(function(seq){ var P=[];
+    seq.forEach(function(s){ var vx=s.o.X/2, vy=s.o.Y/2;
+      if(s.k===0){ P.push([vx,vy]); return; }
+      var ix=s.dx*S2, iy=s.dy*S2, ox=s.ox*S2, oy=s.oy*S2, t, q;
+      if(s.k!==3){ var ax0=vx-BR*ix, ay0=vy-BR*iy, ax2=vx+BR*ox, ay2=vy+BR*oy;
+        for(q=0;q<14;q++){ t=q/13; P.push([(1-t)*(1-t)*ax0+2*(1-t)*t*vx+t*t*ax2, (1-t)*(1-t)*ay0+2*(1-t)*t*vy+t*t*ay2]); }
+        return; }
+      var ux=ix-ox, uy=iy-oy, ul=Math.hypot(ux,uy); ux/=ul; uy/=ul;
+      var cx=vx+CR*Math.SQRT2*ux, cy=vy+CR*Math.SQRT2*uy, t1x=vx+CR*ix-cx, t1y=vy+CR*iy-cy, t2x=vx-CR*ox-cx, t2y=vy-CR*oy-cy;
+      var a1=Math.atan2(t1y,t1x), a2=Math.atan2(t2y,t2x), sg=Math.sign(t1x*iy-t1y*ix)||1, TW=2*Math.PI;
+      var span=(((a2-a1)*sg)%TW+TW)%TW;
+      P.push([vx,vy]);
+      for(q=0;q<48;q++){ t=q/47; P.push([cx+CR*Math.cos(a1+sg*span*t), cy+CR*Math.sin(a1+sg*span*t)]); }
+      P.push([vx,vy]); });
+    /* rotate counter-clockwise by Turn, then y down for the page */
+    P=P.map(function(v){ return [v[0]*cr-v[1]*sr, -(v[0]*sr+v[1]*cr)]; });
+    P.push([P[0][0],P[0][1]]);
+    out.push(P); });
+  KOLINFO=head+(ONE&&before>1?before+' lines → '+out.length+' ('+switches+' switches)':out.length+(out.length===1?' line':' lines'))+
+    (ONE&&out.length>1?' · '+out.length+' lines: the block is in '+out.length+' pieces':'')+' · '+est.toLocaleString()+' points';
+  out=fitPaths(out,PAD);
+  KOLTALLY.fit=out.fit; KOLTALLY.rot=ROT;
+  return out;
+}
+
 
 /* ---------- PARAMETRIC SURFACE : a wireframe with real depth ----------
    Torus, Klein bottle, trefoil tube, Mobius, sphere -- sampled on a u,v grid
@@ -18609,7 +18808,7 @@ function realLoad(o){
 }
 
 var ENG={record:buildRecord, flow:buildFlow, growth:buildGrowth, contour:buildContour, ridge:buildRidge,
-         pack:buildPack, voronoi:buildVoronoi, truchet:buildTruchet, maze:buildMaze, hilbert:buildHilbert,
+         pack:buildPack, voronoi:buildVoronoi, truchet:buildTruchet, kolam:buildKolam, maze:buildMaze, hilbert:buildHilbert,
          rows:buildRows, poin:buildPoincare, flag:buildFlag, stat:buildStation, fact:buildFactory, strt:buildStreet, mkt:buildMarket, harb:buildHarbour, libr:buildLibrary, grnh:buildGreenhouse, celr:buildCellar, tori:buildShrine, dhal:buildDataHall, garg:buildGarage, nave:buildNave, canal:buildCanal, stn:buildTrainStation, town:buildTown, real:buildReal, whse:buildWarehouse, bagh:buildBaggage,
          harmo:buildHarmo, chladni:buildChladni, moire:buildMoire, disc:buildChladniDisc, fan:buildFan,
   string:buildString, fermat:buildFermat, logsp:buildLogSpiral, chuck:buildChuck,
@@ -45379,7 +45578,7 @@ function onWorker(e){
   if(VARI.on || R.gen!==BUILDGEN){ WK.dropped++; return; }
   WK.results++;
   var I=R.info||{};
-  POININFO=I.POININFO; POINSTATS=I.POINSTATS; FLOWINFO=I.FLOWINFO; MCONTINFO=I.MCONTINFO; SORTINFO=I.SORTINFO;
+  POININFO=I.POININFO; POINSTATS=I.POINSTATS; FLOWINFO=I.FLOWINFO; MCONTINFO=I.MCONTINFO; SORTINFO=I.SORTINFO; KOLINFO=I.KOLINFO||'';
   STATINFO=I.STATINFO; STATSTATS=I.STATSTATS; FACTINFO=I.FACTINFO; FACTSTATS=I.FACTSTATS; STRTINFO=I.STRTINFO;
   STRTSTATS=I.STRTSTATS; POINSNAP=I.POINSNAP; WORDFIT=I.WORDFIT;
   ENGERR=R.err;
@@ -45396,7 +45595,7 @@ function build(input){
      no recipe), with what each container held (the film's gate) */
   if(input.film){ var gf=gvals();
     return {gen:input.gen, err:err, film:1, svg:svgBody(groups,exportMulti(groups,cur,gf,0),gf,''), sig:(STRTTALLY&&STRTTALLY.contSig)||null}; }
-  var info={POININFO:POININFO, POINSTATS:POINSTATS, FLOWINFO:FLOWINFO, MCONTINFO:MCONTINFO, SORTINFO:SORTINFO,
+  var info={POININFO:POININFO, POINSTATS:POINSTATS, FLOWINFO:FLOWINFO, MCONTINFO:MCONTINFO, SORTINFO:SORTINFO, KOLINFO:KOLINFO,
             STATINFO:STATINFO, STATSTATS:STATSTATS, FACTINFO:FACTINFO, FACTSTATS:FACTSTATS, STRTINFO:STRTINFO,
             STRTSTATS:STRTSTATS, POINSNAP:POINSNAP, WORDFIT:WORDFIT};
   return {gen:input.gen, err:err, groups:packGroups(groups), info:info};
@@ -45803,6 +46002,7 @@ function paint(){
   if(mode==='poin' && POININFO) txt+=' \u00b7 '+POININFO;
   if(mode==='poin' && POINSNAP) txt+=' \u00b7 '+POINSNAP;
   if(mode==='stat' && STATINFO) txt+=' \u00b7 '+STATINFO;
+  if(mode==='kolam' && KOLINFO) txt+=' \u00b7 '+KOLINFO;
   if(mode==='fact' && FACTINFO) txt+=' \u00b7 '+FACTINFO;
   if(mode==='strt' && STRTINFO) txt+=' \u00b7 '+STRTINFO;
   if(mode==='mkt' && STRTINFO) txt+=' \u00b7 '+STRTINFO;
@@ -46078,7 +46278,7 @@ var FAMILIES=[
   ['Ridges',     ['print']],
   ['Cloth',      ['flag']],
   ['Fields',     ['flow','contour','ridge','wave','growth']],
-  ['Lattices',   ['truchet','maze','hilbert','voronoi','pack','rows','poin']],
+  ['Lattices',   ['truchet','kolam','maze','hilbert','voronoi','pack','rows','poin']],
   ['Curves',     ['harmo','sform','lsys','string','fan','chladni']],
   ['FROM PHOTO 3D', ['isoimg']],
   ['3D',         ['hil3','harmo3','attract','ruled','knot','spack','flow3','surf','iso','stat','fact','strt','mkt','harb','libr','grnh','celr','tori','dhal','garg','nave','canal','stn','town','real','whse','bagh']],
@@ -46623,10 +46823,11 @@ var HELP={
 'sform.rings':'Nested copies, each slightly larger. One path per ring, all continuous.',
 'sform.drift':'How much the lobe count shifts across the rings. At 0 they are concentric copies of one shape, which is not worth the pen time \u2014 turn it up and the lobes precess outward so the rings interfere with each other.',
 'sform.res':'Points per ring. Raise it if the sharp lobes look cut off.',
-'lsys.rule':'Which grammar. 0 quadratic Koch, 1 Koch at 60 degrees, 2 dragon curve, 3 Levy C, 4 Sierpinski arrowhead, 5 plant, 6 bush. The first five are unbracketed and come out as ONE continuous stroke of enormous length; the last two branch, so they fragment at every bracket.',
+'lsys.rule':'Which grammar. 0 quadratic Koch, 1 Koch at 60 degrees, 2 dragon curve, 3 Levy C, 4 Sierpinski arrowhead, 5 plant, 6 bush. The first five are unbracketed and come out as ONE continuous stroke of enormous length; the last two branch, so they fragment at every bracket. 7 Anklets of Krishna (set Angle 45), 8 Snake (set Angle 90) \u2014 South Indian kolams, each one closed line.',
 'lsys.iters':'How many times the production rules are applied. Length grows geometrically \u2014 each step multiplies, so 7 is usually the practical ceiling before the string outruns the cap.',
 'lsys.angle':'Turn angle at each + or -. Every grammar has a canonical value it was designed around, and every grammar becomes something else a few degrees either side of it. This is the knob to sweep.',
 'lsys.decay':'Shrink the step length after each branch. Only affects the bracketed grammars, where it is the difference between a plant and a scaffold.',
+'lsys.smooth':'Chaikin corner-cutting, this many passes on each stroke: each pass cuts every corner at a quarter and three quarters of its two edges. A stroke that ends where it began (the kolams, 7 and 8) is smoothed all the way round, so its seam is as round as the rest. 0 draws the grammar exactly as before.',
 'lsys.jitter':'Randomise each turn slightly. Enough of it turns a rigid fractal into something that looks grown rather than constructed; it is also the only thing that makes this engine respond to the seed.',
 'surf.nu':'Curves running one way around the surface.',
 'surf.nv':'Curves running the other way. Set one of these low and the other high for a ribbed look rather than a mesh.',
@@ -46821,6 +47022,17 @@ var HELP={
 'truchet.tsize':'Let the mask set each tile\u2019s size: dark areas of the mask image keep tiles full size, light areas shrink them, by this much. Each tile picks its own level of detail from its real size, so small tiles simplify rather than smear. Needs a mask loaded (Mask & pins).',
 'truchet.tsinv':'Swap which end of the mask makes tiles big.',
 'truchet.tmin':'Tiles that would come out smaller than this on paper are left out entirely. Under a pen 0.3 mm wide, anything under about 1 mm is a dot of ink.',
+'kolam.kshape':'What the dots fill. 0 Block (Width x Height), 1 Chain (small blocks overlapping in a chain, seeded), 2 Sierpinski carpet, 3 Vicsek cross (both at Depth), 4 Mask: a dot is in where the loaded image is dark, on a Width x Height grid over the page. A mask can split the dots into separate pieces, and each piece is its own line.',
+'kolam.kw':'Dots across, for Block and Mask.',
+'kolam.kh':'Dots up, for Block and Mask.',
+'kolam.kdep':'How many times the fractal shapes subdivide: Sierpinski is 3 to this power dots on a side, Vicsek grows by 5 crosses each step.',
+'kolam.kcurl':'Where the line curls instead of bending as it turns at the edge of the block. At Turn 23: 1 curls on the sides facing up-left (as in the photo), 2 on every side, 3 on the sides facing down-right, 0 nowhere. An inside corner always bends.',
+'kolam.kcr':'Curl radius, in hundredths of the dot spacing. Stops at 45: curls on neighbouring edge points are one spacing apart, so half of it would make them touch.',
+'kolam.kbr':'How far before a turn the bend starts, in hundredths of the dot spacing. Larger is rounder.',
+'kolam.kmir':'Share of the inside crossings turned into mirrors before the line is joined, each bouncing the line one way or the other at random. More mirrors, more small turns inside the block.',
+'kolam.kone':'Join every line into one. Off, a plain block draws as many lines as the greatest common divisor of its width and height.',
+'kolam.krot':'Turns the whole drawing counter-clockwise. The photo is at about 23.',
+'kolam.pad':'Margin between the drawing and the sheet edge.',
 'truchet.thead':'Which way roamers face when Quarter turns is off: up, right, down, left. Upright tiles ignore it; radial tiles look the same either way.',
 /* Poincare disc */
 'poin.hatch':'How many lines shade each shaded shape; 0 is off. The lines shrink with the tiles toward the rim, and Detail cutoff decides which shapes are big enough to get them. Which shapes are shaded is Hatch shape’s job.',
@@ -47752,6 +47964,8 @@ var SEEDED={
   sform:function(){ return false; },
   tonehatch:function(){ return false; },
   lsys:function(p){ return (p.jitter||0)>0; },
+  /* the merge's picks are seeded whenever there is more than one line to merge */
+  kolam:function(p){ return Math.round(p.kshape)===1 || p.kmir>0 || kolamLinesBefore(p)>1; },
   surf:function(){ return false; }
 };
 function usesSeed(){ var f=SEEDED[mode]; return f?!!f(vals()):true; }
