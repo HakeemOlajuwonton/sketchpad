@@ -237,7 +237,7 @@ var cv=document.getElementById('gl');
 var gl=cv.getContext('webgl',{antialias:true,preserveDrawingBuffer:true,alpha:false,depth:true})||cv.getContext('experimental-webgl',{antialias:true,preserveDrawingBuffer:true,depth:true});
 var $=function(id){return document.getElementById(id);};
 if(!gl){ $('load').textContent='This page needs WebGL, which this browser has turned off.'; return; }
-var META=null, CITY=null, GEO=null, ROUTE=null;
+var META=null, CITY=null, GEO=null, ROUTE=null, BANK=null;
 var LAYERS=['Buildings','Streets','Airfield','Water','Decks','Vehicles','Trees','Signs'];
 var layOn=[1,1,1,1,1,1,1,1];
 var THEMES={
@@ -544,15 +544,16 @@ function hud(){
 /* ================= cities ================= */
 function stats(){
   if(!CITY) return;
-  $('stats').innerHTML=CITY.name.toUpperCase()+' · '+(CITY.span/1000).toFixed(1)+' km across · tallest '+CITY.tallest+' m<br>'+
+  $('stats').innerHTML=(CITY.label||CITY.name).toUpperCase()+' · '+(CITY.span/1000).toFixed(1)+' km across · tallest '+CITY.tallest+' m<br>'+
     (GEO?GEO.n.toLocaleString():'…')+' lines'+(opt.tex?' with textures':'')+' · Sketchpad '+META.version;
 }
 function setCity(id,keepView){
-  var c=META.cities.filter(function(x){return x.id===id;})[0]||META.cities[0];
+  var c=findCity(id)||META.cities[0];
   CITY=c; stopRoute();
   /* a scene opens at its own field of view (cities.json viewDeg); the viewer can move it after */
   if(c.viewDeg){ var sf=$('s-fov'); sf.value=c.viewDeg; sf.dispatchEvent(new Event('input')); }
-  [].forEach.call(document.querySelectorAll('#cities .btn'),function(b){b.setAttribute('aria-pressed',String(b.dataset.id===c.id));});
+  [].forEach.call(document.querySelectorAll('#cities [data-id]'),function(b){b.setAttribute('aria-pressed',String(b.dataset.id===(c.base||c.id)));});
+  if(BANK) $('b-roll').disabled=(BANK.pool[c.base||c.id]||[]).length<2;
   $('blurb').textContent=c.blurb;
   buildRoutes(); MOV=null; POSES=[]; loadMovers(c);
   return loadGeo(c,opt.tex?'detail':'lite',prog).then(function(g){
@@ -564,6 +565,36 @@ function setCity(id,keepView){
 }
 /* opening a scene (its button, the N key): any flight stops, the scene is framed in Orbit, its title card is up */
 function openScene(id){ setMode('orbit',true); idle=true; lastInput=0; $('card').style.display=''; return setCity(id); }
+/* ROLL (queue row 338, spec 2026-11-12-scout-roll.md §A2). When cities.json names a bank (meta.bank), bank.json lists
+   other cities of each scene, built ahead of time by bank.js: each its own seed and knob variant, with its own files
+   and flights. Roll (key N; Next city moves to C) opens a different one of the current scene, the scene's own city
+   included, and fetches only that one's files. A bank city's link is #<scene>-<seed>. With no bank none of this runs. */
+function findCity(id){ var c=META.cities.filter(function(x){return x.id===id;})[0]; if(c||!BANK) return c; return BANK.list.filter(function(x){return x.id===id;})[0]; }
+function useBank(b){
+  var list=(b&&b.cities||[]).filter(function(c){ return c.base&&c.seed&&META.cities.some(function(x){return x.id===c.base;}); });
+  if(!list.length) return;
+  BANK={list:list,pool:{}};
+  META.cities.forEach(function(c){ BANK.pool[c.id]=[c]; });
+  list.forEach(function(c){ var v=(c.variant||c.name).split(' · '); c.label=v[0]+' #'+c.seed+(v.length>1?' · '+v.slice(1).join(' · '):''); BANK.pool[c.base].push(c); });
+  var b2=document.createElement('button'); b2.className='btn'; b2.id='b-roll'; b2.title='Another city of this scene, generated with its own seed and knobs (N)'; b2.textContent='Roll';
+  b2.onclick=function(){ roll(); }; $('cities').appendChild(b2);
+  var nk=[].filter.call(document.querySelectorAll('#help dt'),function(dt){ return dt.textContent==='N'; })[0];
+  if(nk){ nk.nextElementSibling.textContent='Roll: another city of this scene'; nk.nextElementSibling.insertAdjacentHTML('afterend','<dt><kbd>C</kbd></dt><dd>Next city</dd>'); }
+}
+/* a bank city left behind gives its GPU buffers back: a Bay is ~33 MB, and rolling should not pile them up */
+function freeBank(keep){
+  BANK.list.forEach(function(c){ if(c===keep) return; ['lite','detail'].forEach(function(w){ var g=cache[c.id+'-'+w]; if(!g||g===GEO) return;
+    gl.deleteBuffer(g.pb); gl.deleteBuffer(g.lb); if(g.faces){ gl.deleteBuffer(g.faces.pb); gl.deleteBuffer(g.faces.nb); } delete cache[c.id+'-'+w]; }); });
+}
+function roll(){
+  if(!BANK||!CITY) return;
+  var pool=BANK.pool[CITY.base||CITY.id]||[], others=pool.filter(function(c){ return c!==CITY; });
+  if(!others.length) return;
+  var c=others[Math.floor(Math.random()*others.length)];
+  touchUser(); freeBank(c);
+  return openScene(c.id).then(function(){ if(CITY===c) toast(c.label||c.name); });
+}
+function nextScene(){ var b=CITY.base||CITY.id, i=META.cities.map(function(x){return x.id;}).indexOf(b); openScene(META.cities[(i+1)%META.cities.length].id); }
 function frameCity(){
   var S=SPAN(); C.tgt=GEO.core.slice(); C.dist=S*0.55; C.ortho=S*0.5; C.el=24; C.az=-125;
 }
@@ -801,6 +832,8 @@ window.addEventListener('keydown',function(e){
   if(k==='t'){ setTex(!opt.tex); return; }
   if(k==='o'){ setSolid(!opt.solid); return; }
   if(k==='g'){ setGhost(!opt.ghost); return; }
+  if(k==='n'&&BANK){ roll(); return; }
+  if(k==='c'&&BANK){ nextScene(); return; }
   if(k==='n'){ var i=META.cities.indexOf(CITY); openScene(META.cities[(i+1)%META.cities.length].id); return; }
   if(k==='k'){ addKey(); return; }
   if(k==='p'){ photo(); return; }
@@ -833,7 +866,7 @@ function composite(){
   if(opt.caps&&capEl.classList.contains('on')&&capEl.textContent){ cx.font='600 '+Math.round(Math.min(40,Math.max(22,W*0.04))*s)+'px "Big Shoulders Display", sans-serif';
     cx.textAlign='center'; cx.fillStyle=dark?'#e9e6dc':'#1d2228'; cx.shadowColor='rgba(0,0,0,.7)'; cx.shadowBlur=18*s; cx.fillText(capEl.textContent.toUpperCase(),comp.width/2,comp.height-(opt.bars&&ROUTE?Math.min(comp.height*0.11,comp.width*0.09)+24*s:110*s)); cx.shadowBlur=0; }
   cx.font='800 '+Math.round(16*s)+'px "Big Shoulders Display", sans-serif'; cx.textAlign='left'; cx.fillStyle=dark?'rgba(233,230,220,.85)':'rgba(29,34,40,.85)';
-  var y0=(opt.bars&&ROUTE?Math.min(comp.height*0.11,comp.width*0.09):0)+28*s; cx.fillText('CORRIDOR CITY · '+(CITY?CITY.name.toUpperCase():''),18*s,y0);
+  var y0=(opt.bars&&ROUTE?Math.min(comp.height*0.11,comp.width*0.09):0)+28*s; cx.fillText('CORRIDOR CITY · '+(CITY?(CITY.label||CITY.name).toUpperCase():''),18*s,y0);
   cx.font=Math.round(10*s)+'px "JetBrains Mono", monospace'; cx.fillText('drawn by Plotter Sketchpad '+(META?META.version:''),18*s,y0+16*s);
   return comp;
 }
@@ -1223,12 +1256,17 @@ fetch('data/cities.json').then(function(r){ if(!r.ok) throw new Error('cities.js
   META=m; $('ver').textContent='drawn by Plotter Sketchpad '+m.version;
   $('cities').innerHTML=m.cities.map(function(c){ return '<button class="btn" data-id="'+c.id+'" aria-pressed="false">'+c.name+'</button>'; }).join('');
   $('cities').addEventListener('click',function(e){ var b=e.target.closest('[data-id]'); if(b){ openScene(b.dataset.id); } });
-  var h=(location.hash||'').slice(1).split('/'), cid=h[0]||m.cities[0].id;
-  saveMine();
-  setCity(cid).then(function(){ if(h[1]){ var r=CITY.routes.filter(function(x){return x.id===h[1];})[0]; if(r){ playRoute(r); } } });
-  requestAnimationFrame(tick);
+  function go(){
+    var h=(location.hash||'').slice(1).split('/'), cid=h[0]||m.cities[0].id;
+    saveMine();
+    setCity(cid).then(function(){ if(h[1]){ var r=CITY.routes.filter(function(x){return x.id===h[1];})[0]; if(r){ playRoute(r); } } });
+    requestAnimationFrame(tick);
+  }
+  /* a bank that does not load leaves the page as it is without one */
+  if(!m.bank) return go();
+  return fetch(m.bank).then(function(r){ if(!r.ok) throw new Error(m.bank+' '+r.status); return r.json(); }).then(useBank).catch(function(e){ console.warn('no bank: '+e.message); }).then(go);
 }).catch(function(e){ $('load').textContent='Could not load the cities: '+e.message; });
-window.__cc={state:function(){return {mode:mode,C:C,city:CITY&&CITY.id,tex:opt.tex,n:GEO&&GEO.n,frameMs:frameMs,routes:CITY&&CITY.routes.map(function(r){return r.id;}),
+window.__cc={roll:roll,state:function(){return {mode:mode,C:C,city:CITY&&CITY.id,label:CITY&&(CITY.label||CITY.name),bank:BANK?BANK.list.length:0,tex:opt.tex,n:GEO&&GEO.n,frameMs:frameMs,routes:CITY&&CITY.routes.map(function(r){return r.id;}),
     traffic:{on:opt.traffic,n:MOV?MOV.traffic.length:0,t:TR.t,paused:TR.paused,drawn:TPOSES.length}};},
   /* a flight sampled at 901 frames; the traffic is sampled at the same frames over the flight's length (row 243) */
   probe:function(i){ var r=CITY.routes[i]; prepRoute(r); var R=GEO.faces&&GEO.faces.roof, lo=1e9, inside=0, len=r.secs*opt.pace;
