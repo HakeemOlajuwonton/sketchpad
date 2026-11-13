@@ -359,11 +359,22 @@ function roofMap(pos,from,count){
 function roofAt(R,x,y){ if(!R) return 0; var gx=Math.floor((x-R.x0)/R.cs), gy=Math.floor((y-R.y0)/R.cs);
   return (gx>=0&&gy>=0&&gx<R.nx&&gy<R.ny)?R.H[gy*R.nx+gx]:0;
 }
+/* SPLIT FILES (queue row 340): a .bin over 25 MiB (the most one file may be on Cloudflare Workers, where bits2ink goes)
+   is built as numbered parts of at most 24 MiB, and its entry names them in `parts` in place of `file`. They are fetched
+   at once and joined in that order before parsing; the progress bar is their mean. An entry with `file` is fetched as before. */
+function fetchGeo(f,onProg){
+  if(!f.parts) return fetchBin(f.file,onProg);
+  var fr=f.parts.map(function(){return 0;});
+  return Promise.all(f.parts.map(function(u,i){ return fetchBin(u,onProg&&function(x){ fr[i]=x; onProg(fr.reduce(function(a,b){return a+b;},0)/fr.length); }); })).then(function(bs){
+    var n=0; bs.forEach(function(b){ n+=b.byteLength; });
+    var o=new Uint8Array(n),at=0; bs.forEach(function(b){ o.set(new Uint8Array(b),at); at+=b.byteLength; });
+    return o.buffer; });
+}
 function loadGeo(city,which,onProg){
   var key=city.id+'-'+which; if(cache[key]) return Promise.resolve(cache[key]);
   var f=city[which];
-  var faces=(which==='detail'&&city.faces)?fetchBin(city.faces.file).then(function(b){ return uploadFaces(b,city.faces.n); }).catch(function(){ return null; }):Promise.resolve(null);
-  return Promise.all([fetchBin(f.file,onProg),faces]).then(function(r){ var g=upload(r[0],f.n); g.faces=r[1]; g.fac=f.facade||0; return cache[key]=g; });
+  var faces=(which==='detail'&&city.faces)?fetchGeo(city.faces).then(function(b){ return uploadFaces(b,city.faces.n); }).catch(function(){ return null; }):Promise.resolve(null);
+  return Promise.all([fetchGeo(f,onProg),faces]).then(function(r){ var g=upload(r[0],f.n); g.faces=r[1]; g.fac=f.facade||0; return cache[key]=g; });
 }
 
 /* ================= movers: aircraft, cars and boats drawn with their own pose ================= */
@@ -1282,6 +1293,8 @@ window.__cc={roll:roll,state:function(){return {mode:mode,C:C,city:CITY&&CITY.id
   play:function(i){ playRoute(CITY.routes[i]); }, cam:function(){ return {eye:C.eye,yaw:C.yaw,pitch:C.pitch,poses:POSES.length,route:ROUTE&&ROUTE.id,mode:mode,playing:playing}; }, auto:function(on){ opt.auto=!!on; $('c-auto').checked=opt.auto; }, run:function(t){ rt=t; playing=true; lastT=0; }, ghost:function(on){ setGhost(on); }, key:function(k){ playing=false; rt=ROUTE._u[k]; applyRoute(); render(); }, at:function(t){ playing=false; rt=t; applyRoute(); render(); }, city:setCity, tex:setTex, theme:function(t){ $('t-'+t).click(); },
   svg:exportSVG, svgposes:function(){ trafficPoses(); return {planes:POSES.map(function(p){ return {i:p.i,m:Array.prototype.slice.call(p.m)}; }),traffic:TPOSES.map(function(k){ return {i:k,a:trafficAt(MOV.list[k],TR.t)}; }),lay:layOn.slice()}; },
   frame:function(){ stopRoute(); frameCity(); dirty=true; render(); },
+  /* rollcheck.mjs (row 340): the geometry as parsed, edges and solids, for a sha256 against the unsplit build */
+  geo:function(){ return GEO&&{n:GEO.n,pos:GEO.pos,faces:GEO.faces?GEO.faces.pos:null}; },
   /* perf.mjs (row 334): ask for a frame */
   redraw:function(){ dirty=true; },
   svgdbg:function(pts){ var Z=SVGLAST.Z,D=SVGLAST.D,M=Z.M; return pts.map(function(p){ var w=M[3]*p[0]+M[7]*p[1]+M[11]*p[2]+M[15], sx=((M[0]*p[0]+M[4]*p[1]+M[8]*p[2]+M[12])/w*0.5+0.5)*D.w, sy=((M[1]*p[0]+M[5]*p[1]+M[9]*p[2]+M[13])/w*0.5+0.5)*D.h, ix=Math.floor(sx), iy=Math.floor(sy), n=[];
