@@ -462,7 +462,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v388</a> &mdash; the wall tone hatch moved into one shared function, ready for the new hatch; nothing you can see changes</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v389</a> &mdash; the corridor engines mark their round parts and the windows, signs and doors the new hatch will leave clear; nothing you can see changes</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <section class="fold" id="fold_pick"><h2>Pick engine<span class="cnt"></span></h2>
@@ -29905,6 +29905,7 @@ function harbourTheme(K){
       G.strokes.forEach(function(st){ polys.push(st.map(function(q){ return [u+q[0]*s2, v0+q[1]*s2]; })); });
       u+=G.adv*s2; }
     drawOn(Pq,fi,M,polys,col,kind,-1);
+    K.reserveDrawn(Pq,fi,M,polys);
   }
   /* A CONTAINER'S DRESSING (row 63, docs/specs/2026-10-04-vehicles-cranes.md
      §2.1), one function for the stacks, the trucks and the spreaders. P is the
@@ -30034,13 +30035,13 @@ function harbourTheme(K){
     var A=[], B=[], k, lp, cz=r*Math.cos(Math.PI/n)+1e-9;
     for(k=0;k<n;k++){ var an=TAU*k/n+1.5*Math.PI+Math.PI/n; A.push(F(xc+Math.cos(an)*r,y0,cz+Math.sin(an)*r)); B.push(F(xc+Math.cos(an)*r,y1,cz+Math.sin(an)*r)); }
     lp=[A,B]; for(k=0;k<n;k++){ var k2=(k+1)%n; lp.push([A[k],A[k2],B[k2],B[k]]); }
-    var P=polyFromLoops(lp); P.nside=n; return P;
+    var P=K.asRound(polyFromLoops(lp)); P.nside=n; return P;
   }
   function cylX(F,x0,x1,yc,zc,r,n){
     var A=[], B=[], k, lp;
     for(k=0;k<n;k++){ var an=TAU*(k+0.5)/n; A.push(F(x0,yc+Math.cos(an)*r,zc+Math.sin(an)*r)); B.push(F(x1,yc+Math.cos(an)*r,zc+Math.sin(an)*r)); }
     lp=[A,B]; for(k=0;k<n;k++){ var k2=(k+1)%n; lp.push([A[k],A[k2],B[k2],B[k]]); }
-    return polyFromLoops(lp);
+    return K.asRound(polyFromLoops(lp));
   }
   function disc(F,xc,yc,r,n,z0,z1){
     var A=[], B=[], k, lp;
@@ -31095,7 +31096,7 @@ function libraryTheme(K){
     if(u[2]<0.6){
       var ss=SCAM+0.8+2.2*u[3], ssd=u[4]<0.5?1:-1, Xs=rowFrame(ss,ssd), ring=[];
       for(var q=0;q<10;q++){ var a=TAU*q/10, v=Xs(ss+Math.cos(a)*0.2,HALFW-0.29+Math.sin(a)*0.2,0); ring.push([v[0],v[1]]); }
-      var stl=tag(prismN(ring,0,0.4),'stool',COL_GREY,'floorstuff');
+      var stl=tag(K.asRound(prismN(ring,0,0.4)),'stool',COL_GREY,'floorstuff');
       TAL.stool={s:ss, side:ssd, placed:laneCommit([stl],['furn','cart','sign','book','floorstuff'])};
     }
     var np=Math.floor(3*u[5]);
@@ -31209,7 +31210,7 @@ function libraryTheme(K){
           parts=cartParts(st,sd,dn,df,j,'cart').parts;
         } else {
           var ring=[]; for(var i=0;i<10;i++){ var a=TAU*i/10, q=X(st+Math.cos(a)*0.2,o1-0.22+Math.sin(a)*0.2,0); ring.push([q[0],q[1]]); }
-          parts.push(tag(prismN(ring,0,0.4),'stool',COL_GREY,'cart'));
+          parts.push(tag(K.asRound(prismN(ring,0,0.4)),'stool',COL_GREY,'cart'));
         }
         var all=[], ok=true;
         parts.forEach(function(P){ if(!ok) return; var pcs=slabPieces(P); if(!pcs){ ok=false; return; }
@@ -31421,7 +31422,7 @@ function marketTheme(K){
         var C=null; [1,-1].forEach(function(sd2){ slabsBySide[sd2].forEach(function(Cs){ if(!C && inConv(Cs.poly,X)) C=Cs; }); });
         if(!C){ rec.why.slab++; return false; }
         var oct=[]; for(m=0;m<8;m++){ var an=TAU*(m+0.5)/8; oct.push([X[0]+Math.cos(an)*r, X[1]+Math.sin(an)*r]); }
-        var P=prismN(oct,zt-h,zt);
+        var P=K.asRound(prismN(oct,zt-h,zt));
         if(!verts(P).every(function(v){ return inConv(C.poly,v); })){ rec.why.face++; return false; }
         if(hitsAny(P,C,['furn','stall','lantern'])){ TAL.refused++; rec.why.hit++; return false; }
         /* hitsAny passes over parts that hide nothing, and a tassel is one: a
@@ -36561,7 +36562,7 @@ function canalTheme(K){
       var Sh=prismN(Q,zt,zt+1.1);
       for(j=0;j<8;j++){ var an2=TAU*(j+0.5)/8; Qf0.push([c[0]+0.16*Math.cos(an2), c[1]+0.16*Math.sin(an2), zt+1.1]); Qf1.push([c[0]+0.42*Math.cos(an2), c[1]+0.42*Math.sin(an2), zt+1.7]); }
       var lp=[Qf0,Qf1]; for(j=0;j<8;j++){ var j2=(j+1)%8; lp.push([Qf0[j],Qf0[j2],Qf1[j2],Qf1[j]]); }
-      var Fu=polyFromLoops(lp), ok=true;
+      var Fu=K.asRound(polyFromLoops(lp)), ok=true;
       [Sh,Fu].forEach(function(P){ if(!verts(P).every(function(v){ return inConv(L.poly,v); }) || hitsAny(P,L,['struct'])) ok=false; });
       if(!ok) continue;
       [Sh,Fu].forEach(function(P){ P.cont=L; P.col=COL_K; P.kind='chimney'; P.layer='struct'; L.parts.push(P); });
@@ -37109,7 +37110,7 @@ function trainTheme(K){
       /* under a butterfly the column stands in the valley, which eight samples
          round it can miss: its top is the valley's */
       if(CROOF===2) zt=Math.min(zt,KERB+3.1);
-      var Cp=ngon(cc,0.15,n,KERB,zt-0.001,0.5);
+      var Cp=K.asRound(ngon(cc,0.15,n,KERB,zt-0.001,0.5));
       Cp.lines=Cp.lines.filter(function(Ln){ return !(Math.abs(Ln.a[2]-Ln.b[2])<1e-9 && Math.abs(Ln.a[2]-(zt-0.001))<1e-9); });
       tag(Cp,'column',COL_K,'canopy'); Cp.cont=L;
       if(inLot(Cp,L)){ L.parts.push(Cp); TAL.columns.push({side:sd, s:c.s, o:OCOL, idx:L.idx, x:cc[0], y:cc[1], r:0.15}); }
@@ -38300,7 +38301,7 @@ function warehouseTheme(K){
           if(axis==='x'){ r0.push(X(a0,w,zz)); r1.push(X(a1,w,zz)); } else { r0.push(X(w,a0,zz)); r1.push(X(w,a1,zz)); } }
         loops=[r0,r1];
         for(i=0;i<n;i++){ var j=(i+1)%n; loops.push([r0[i],r0[j],r1[j],r1[i]]); }
-        return polyFromLoops(loops);
+        return K.asRound(polyFromLoops(loops));
       }};
   }
   function sframe(sc,oc,dir){
@@ -38438,7 +38439,7 @@ function warehouseTheme(K){
       var rr=Math.min(0.195,PALD/4-0.005), cs=[[0.25,0.25],[0.75,0.25],[0.25,0.75],[0.75,0.75]];
       cs.forEach(function(c){ var mc2=G.m0+c[0]*PALW, vc=G.v0+c[1]*PALD, ring=[];
         for(var i=0;i<12;i++){ var an=TAU*(i+0.5)/12; ring.push(M.q2(mc2+rr*Math.cos(an),vc+rr*Math.sin(an))); }
-        parts.push(tag(prismN(ring,zp,zp+h),'drum',col,layer)); nbox++; });
+        parts.push(tag(K.asRound(prismN(ring,zp,zp+h)),'drum',col,layer)); nbox++; });
       return {parts:parts, nbox:nbox, h:h};
     }
     var inset=t==='wrap'?0.025:0.01;
@@ -39405,7 +39406,7 @@ function baggageTheme(K){
     out.push(tag(B(-hl,hl,-hw,hw,zb0,zb1),'cartbed',COL_BLUE,'cart'));
     if(lod>=1) [[-hl+0.4,-1],[hl-0.4,-1],[-hl+0.4,1],[hl-0.4,1]].forEach(function(w){
       var r=0.2, cz=r*Math.cos(Math.PI/10)+1e-9, y0=w[1]<0?-hw+0.25:hw-0.40, y1=y0+0.15;
-      out.push(tag(extr(ngon(w[0],cz,r,10),function(q,l){ return V(q[0],l?y1:y0,q[1]); }),'wheel',COL_K,'cart')); });
+      out.push(tag(K.asRound(extr(ngon(w[0],cz,r,10),function(q,l){ return V(q[0],l?y1:y0,q[1]); })),'wheel',COL_K,'cart')); });
     [[-hl,-hw],[hl-0.05,-hw],[-hl,hw-0.05],[hl-0.05,hw-0.05]].forEach(function(c){
       out.push(tag(B(c[0],c[0]+0.05,c[1],c[1]+0.05,zb1,zr),'cartpost',COL_BLUE,'cart')); });
     out.push(tag(B(-hl,hl,-hw,hw,zr,zr+0.03),'cartroof',COL_BLUE,'cart'));
@@ -39450,7 +39451,7 @@ function baggageTheme(K){
     out.push(tag(B(-0.85,0.85,-0.85,0.85,0.40,0.50),'dolly',COL_YEL,'truck'));
     if(lod>=1) [[-0.55,-1],[0.55,-1],[-0.55,1],[0.55,1]].forEach(function(w){
       var r=0.18, cz=r*Math.cos(Math.PI/10)+1e-9, y0=w[1]<0?-0.7:0.55, y1=y0+0.15;
-      out.push(tag(extr(ngon(w[0],cz,r,10),function(q,l){ return V(q[0],l?y1:y0,q[1]); }),'wheel',COL_K,'truck')); });
+      out.push(tag(K.asRound(extr(ngon(w[0],cz,r,10),function(q,l){ return V(q[0],l?y1:y0,q[1]); })),'wheel',COL_K,'truck')); });
     /* base 1.56, full width 2.00 above a 0.62 contour, 1.63 tall, 1.53 deep:
        one convex prism extruded along the road, the contour on the lane's outer side */
     var zb=0.50, pr=[[-0.78,zb],[0.78,zb],[1.22,zb+0.62],[1.22,zb+1.63],[-0.78,zb+1.63]], dx=0.765;
@@ -39563,7 +39564,8 @@ function baggageTheme(K){
     TAL.walls++;
     var door=L.idx%4===0, dz=2.1, ds0=sc-0.5, ds1=sc+0.5;
     if(door){ TAL.doors++;
-      [[ds0,0,ds0,dz],[ds0,dz,ds1,dz],[ds1,dz,ds1,0]].forEach(function(q){ Wp.lines.push({a:P3(q[0],sd,WFRONT,q[1]), b:P3(q[2],sd,WFRONT,q[3]), f0:fw, f1:fw, col:COL_K, kind:'door'}); }); }
+      [[ds0,0,ds0,dz],[ds0,dz,ds1,dz],[ds1,dz,ds1,0]].forEach(function(q){ Wp.lines.push({a:P3(q[0],sd,WFRONT,q[1]), b:P3(q[2],sd,WFRONT,q[3]), f0:fw, f1:fw, col:COL_K, kind:'door'}); });
+      K.reserve(Wp,fw,[P3(ds0,sd,WFRONT,0),P3(ds1,sd,WFRONT,0),P3(ds1,sd,WFRONT,dz),P3(ds0,sd,WFRONT,dz)]); }
     if(HATCH>0){
       var gp=paperGap(P3(sc,sd,WFRONT,CEIL/2),(function(){ var a=P3(sc,sd,WFRONT,0), b=P3(sc+1,sd,WFRONT,0); return [b[0]-a[0],b[1]-a[1],0]; })(),[0,0,1]);
       var sp=Math.max((0.15+0.6*(1-HATCH))*(mid?1:1.5), gp>0?MINSP/gp:1e9);
@@ -40445,10 +40447,18 @@ function streetTheme(K){
         });
         STRTTALLY.urows.push({side:L.side, idx:L.idx, bi:bi, rows:rows});
       })();
-      function line(a,b,col,kind){ BP.lines.push({a:a, b:b, f0:2, f1:2, col:col, kind:kind}); }
+      /* row 144 A2: every bay of the street face collects the (u,v) box of the lines it draws there, and
+         that box is the bay's knockout for the surface hatch; a rectangle drawn outside a bay (a plant
+         storey's louvres) is its own */
+      var RSVB=null;
+      function rsvAdd(q){ var u=(q[0]-F.A[0])*F.t[0]+(q[1]-F.A[1])*F.t[1], v=q[2];
+        if(u<RSVB[0]) RSVB[0]=u; if(v<RSVB[1]) RSVB[1]=v; if(u>RSVB[2]) RSVB[2]=u; if(v>RSVB[3]) RSVB[3]=v; }
+      function rsvFlush(){ if(RSVB && RSVB[0]<=RSVB[2]) K.reserve(BP,2,RSVB,F); RSVB=null; }
+      function line(a,b,col,kind){ BP.lines.push({a:a, b:b, f0:2, f1:2, col:col, kind:kind}); if(RSVB){ rsvAdd(a); rsvAdd(b); } }
       function rect(u0,u1,v0,v1,col,kind){
         line(wp(F,u0,v0,0),wp(F,u1,v0,0),col,kind); line(wp(F,u1,v0,0),wp(F,u1,v1,0),col,kind);
         line(wp(F,u1,v1,0),wp(F,u0,v1,0),col,kind); line(wp(F,u0,v1,0),wp(F,u0,v0,0),col,kind);
+        if(!RSVB) K.reserve(BP,2,[Math.min(u0,u1),Math.min(v0,v1),Math.max(u0,u1),Math.max(v0,v1)],F);
       }
       /* A LINE FILL NEVER CLOSES UP ON PAPER. Slats 0.08 m apart are a texture
          at 10 m and a solid black patch at 80 m, and the first build drew
@@ -40461,7 +40471,8 @@ function streetTheme(K){
         var g=paperGap(wp(Fh,(u0+u1)/2,(v0+v1)/2,0),Fh.t,ZUP);
         if(!(g>0)) return;
         sp=Math.max(sp, MINSP/g);
-        for(var v=v1-sp;v>v0+1e-6;v-=sp) BP.lines.push({a:wp(Fh,u0,v,0), b:wp(Fh,u1,v,0), f0:fh, f1:fh, col:col, kind:kind});
+        for(var v=v1-sp;v>v0+1e-6;v-=sp){ BP.lines.push({a:wp(Fh,u0,v,0), b:wp(Fh,u1,v,0), f0:fh, f1:fh, col:col, kind:kind});
+          if(RSVB && !FR){ rsvAdd(wp(Fh,u0,v,0)); rsvAdd(wp(Fh,u1,v,0)); } }
       }
       function solid(Pq,kind,col,extra){
         Pq.cont=L; Pq.col=col||COL_K; Pq.kind=kind;
@@ -40478,7 +40489,8 @@ function streetTheme(K){
         var g=paperGap(wp(F,(u0+u1)/2,(v0+v1)/2,0),ZUP,F.t);
         if(!(g>0)) return;
         sp=Math.max(sp, MINSP/g);
-        for(var u=u0+sp;u<u1-1e-6;u+=sp) BP.lines.push({a:wp(F,u,v0,0), b:wp(F,u,v1,0), f0:2, f1:2, col:col, kind:kind});
+        for(var u=u0+sp;u<u1-1e-6;u+=sp){ BP.lines.push({a:wp(F,u,v0,0), b:wp(F,u,v1,0), f0:2, f1:2, col:col, kind:kind});
+          if(RSVB){ rsvAdd(wp(F,u,v0,0)); rsvAdd(wp(F,u,v1,0)); } }
       }
       function hsh(a,b){ var x=Math.sin(a*12.9898+b*78.233)*43758.5453; return x-Math.floor(x); }
       function faceLines(Pq,fi,segs,col,kind){ segs.forEach(function(sg){ Pq.lines.push({a:sg[0], b:sg[1], f0:fi, f1:fi, col:col, kind:kind}); }); }
@@ -40537,7 +40549,7 @@ function streetTheme(K){
               if(near && room>=0.45){
                 var oc=[], ctr=wp(F,lu,0,0.25);
                 for(var m8=0;m8<8;m8++){ var an=TAU*(m8+0.5)/8; oc.push([ctr[0]+Math.cos(an)*0.17, ctr[1]+Math.sin(an)*0.17]); }
-                var LP=solid(prismN(oc,zs+1.6,zs+2.1),'shoplantern',COL_RED);
+                var LP=solid(K.asRound(prismN(oc,zs+1.6,zs+2.1)),'shoplantern',COL_RED);
                 LP.lines.forEach(function(Ln){ Ln.col=(Ln.f0<=1||Ln.f1<=1)?COL_GLOW:COL_RED; Ln.kind='shoplantern'; });
               } else rect(lu-0.17,lu+0.17,zs+1.6,zs+2.1,COL_RED,'shoplantern');
             }
@@ -40783,6 +40795,7 @@ function streetTheme(K){
           }
         }
         for(c=0;c<nb;c++){
+          rsvFlush(); RSVB=[1e9,1e9,-1e9,-1e9];
           var u0=c*bw, u1=(c+1)*bw, uc=(u0+u1)/2, ug=RF(), ua=RF(), ub=RF(), ucol=RF();
           var cen=wp(F,uc,(zs+ze)/2,0), band=bandAt(cen);
           if(!band) continue;
@@ -40972,6 +40985,7 @@ function streetTheme(K){
           if(ZN && !S.base && !(hasEsc && bi===escB && c===escCol)) clutter(ZN.cl[si][c],uc,wx0,wx1,wy0,wy1,zs,lit,band,
                  band==='solid' && room>=0.03 && !S.base && ub<0.12 && room>=0.32);
         }
+        rsvFlush();
       });
       /* a downpipe on one bay boundary, the height of the block */
       if(nb>1 && pipeU<0.7){
@@ -41033,6 +41047,7 @@ function streetTheme(K){
             var x0=ucr-rw*0.3, x1=ucr+rw*0.3, y0=S.z0+0.9, y1=S.z1-0.45;
             var corners=[wp(FR,x0,y0,0),wp(FR,x1,y0,0),wp(FR,x1,y1,0),wp(FR,x0,y1,0)];
             for(var e=0;e<4;e++) BP.lines.push({a:corners[e],b:corners[(e+1)%4],f0:fk,f1:fk,col:COL_K,kind:'win'});
+            K.reserve(BP,fk,corners);
             if(rlit) hlines(x0+0.05,x1-0.05,y0+0.05,y1-0.05,0.18,COL_GLOW,'glow',FR,fk);
             elem(rlit?'returnlit':'return',cen2,b2);
           }
@@ -41064,6 +41079,7 @@ function streetTheme(K){
             if(y1-y0<0.4) continue;
             var cr=[wp(FR,x0,y0,0),wp(FR,x1,y0,0),wp(FR,x1,y1,0),wp(FR,x0,y1,0)];
             for(var e=0;e<4;e++) if(!(door && e===0)) BP.lines.push({a:cr[e],b:cr[(e+1)%4],f0:fk,f1:fk,col:COL_K,kind:door?'door':'win'});
+            K.reserve(BP,fk,cr);
             elem(door?'wdoor':'wall326',cen3,'solid');
           }
         });
@@ -41110,7 +41126,7 @@ function streetTheme(K){
       if(K.ENG==='town' && FT.W*dep>=200 && FT.W>2.5 && dep>2.5 && BREC.roofNear){
         var h5=Math.min(1.4,0.15*Math.min(FT.W,dep)), cu5=FT.W*(0.35+0.3*topV[8]), cv5=-dep*(0.35+0.3*topV[9]), o5=function(du,dv){ return wp(FT,cu5+du,zt,cv5+dv); };
         if(topV[5]<0.5) solid2(para(o5(-h5,h5),vec(FT,'t',2*h5),vec(FT,'n',-2*h5),vec(FT,'z',3.0)),'bulkhead');
-        else { var Qt5=[], ct5=o5(0,0); for(var k5=0;k5<8;k5++){ var an5=TAU*(k5+0.5)/8; Qt5.push([ct5[0]+Math.cos(an5)*h5*0.93, ct5[1]+Math.sin(an5)*h5*0.93]); } solid2(prismN(Qt5,zt,zt+2.6),'tank'); }
+        else { var Qt5=[], ct5=o5(0,0); for(var k5=0;k5<8;k5++){ var an5=TAU*(k5+0.5)/8; Qt5.push([ct5[0]+Math.cos(an5)*h5*0.93, ct5[1]+Math.sin(an5)*h5*0.93]); } solid2(K.asRound(prismN(Qt5,zt,zt+2.6)),'tank'); }
         BREC.roofObj=1; }
     }
     else if(type==='crown'){
@@ -41142,7 +41158,7 @@ function streetTheme(K){
           else {
             var Qt=[], ct=o2(0,0);
             for(var k8=0;k8<8;k8++){ var an=TAU*(k8+0.5)/8; Qt.push([ct[0]+Math.cos(an)*1.1, ct[1]+Math.sin(an)*1.1]); }
-            solid2(prismN(Qt,zt,zt+2.4),'tank');
+            solid2(K.asRound(prismN(Qt,zt,zt+2.4)),'tank');
           }
         }
       }
@@ -41297,6 +41313,7 @@ function streetTheme(K){
       var f=fc.P.faces[fc.fi], M=surf(fc.C||faceC(f),f.n,W,H);
       drawOn(fc.P,fc.fi,M,polys,col,kind,rec.sid);
       if(ins.length) drawOn(fc.P,fc.fi,M,ins,col,'neon',rec.sid);
+      K.reserveDrawn(fc.P,fc.fi,M,polys.concat(ins));
       rec.tfaces.push(f.n);
     });
   }
@@ -41603,7 +41620,7 @@ function streetTheme(K){
         var pcol=uPC<0.5?COL_ORANGE:COL_RED, BP=L.parts[0];
         W=F.W-0.3; H=zt1-zt0;
         var Mf=surf(ctr,F.n,W,H);
-        drawOn(BP,2,Mf,[rectIn(W,H,0)],pcol,'sign',sid);
+        drawOn(BP,2,Mf,[rectIn(W,H,0)],pcol,'sign',sid); K.reserveDrawn(BP,2,Mf,[rectIn(W,H,0)]);
         T=setText(rec.script,W,H,false,RT);
         letter(rec,[{P:BP,fi:2,C:ctr}],W,H,T,function(d){ return rectIn(W,H,d); });
         return;
@@ -41872,7 +41889,8 @@ function streetTheme(K){
         ty.forEach(function(t){ tube(kStroke(t,bx,R2),r).forEach(function(lp){ polys.push(lp); }); });
       }
     }
-    drawOn(Pt,fi,surf(C,FR.n,gw,gh),polys,col,'graff');
+    var Mg=surf(C,FR.n,gw,gh);
+    drawOn(Pt,fi,Mg,polys,col,'graff'); K.reserveDrawn(Pt,fi,Mg,polys);
   }
 
   return {dress:dress, signsFor:signsFor, furnish:furnish, cars:cars, dots:dots, poles:poles,
@@ -42934,6 +42952,43 @@ function corridorDraw(p,plans,THM,camera){
        otherwise: harbourTheme's shade(). Any face with |n.z| <= 0.3 facing away
          from o.sun, its own polygon, 45 degrees about its centroid; o.spM metres
          floored at o.minsp mm, doubled at o.near and beyond, none from o.far. */
+  /* ROW 144 A2: MARKS for the surface hatch (spec §1.4, §1.5). Nothing reads them yet.
+     reserve(P,fi,Q,F): a knockout on face fi of P, kept on P.rsv as {f, poly}. Q is
+       [u0,v0,u1,v1] in frame F (u along F.t from F.A, v the world z), or, with no F,
+       a closed polygon of world points on the face.
+     reserveDrawn(P,fi,M,polys): the (u,v) box of exactly what drawOn(P,fi,M,polys)
+       draws, so a reserve always belongs to something drawn.
+     asRound(P,o): P.round = o, round-hatch v2 §2.1's {o, ax, prof, n, ph, face},
+       with the radial pair e1, e2 it measures facet angles from. Without o it is
+       read off the part: faces [cap 0, cap 1, side 0..n-1] about a regular n-gon,
+       as prismN, polyFromLoops on two rings, extr and the themes' cylinders build
+       them. Vertex k sits at angle TAU*k/n from e1 toward e2, so ph is 0 and
+       side face 2+k has its centre at TAU*(k+0.5)/n. */
+  function reserve(P,fi,Q,F){
+    var poly=F?[wp(F,Q[0],Q[1],0),wp(F,Q[2],Q[1],0),wp(F,Q[2],Q[3],0),wp(F,Q[0],Q[3],0)]:Q;
+    (P.rsv||(P.rsv=[])).push({f:fi, poly:poly});
+    return P;
+  }
+  function reserveDrawn(P,fi,M,polys){
+    var u0=1e9, v0=1e9, u1=-1e9, v1=-1e9;
+    polys.forEach(function(pl){ pl.forEach(function(q){ if(q[0]<u0) u0=q[0]; if(q[0]>u1) u1=q[0]; if(q[1]<v0) v0=q[1]; if(q[1]>v1) v1=q[1]; }); });
+    if(u1<u0) return P;
+    return reserve(P,fi,[M(u0,v0),M(u1,v0),M(u1,v1),M(u0,v1)]);
+  }
+  function roundOf(P){
+    var n=P.faces.length-2, A=P.faces[0].pts, Bq=P.faces[1].pts, o=[0,0,0], o1=[0,0,0], k;
+    A.forEach(function(q){ for(k=0;k<3;k++) o[k]+=q[k]/A.length; });
+    Bq.forEach(function(q){ for(k=0;k<3;k++) o1[k]+=q[k]/Bq.length; });
+    var ax=[o1[0]-o[0],o1[1]-o[1],o1[2]-o[2]], len=Math.hypot(ax[0],ax[1],ax[2]);
+    ax=[ax[0]/len,ax[1]/len,ax[2]/len];
+    function perp(q,c){ var d=[q[0]-c[0],q[1]-c[1],q[2]-c[2]], t=d[0]*ax[0]+d[1]*ax[1]+d[2]*ax[2]; return [d[0]-t*ax[0],d[1]-t*ax[1],d[2]-t*ax[2]]; }
+    var d0=perp(A[0],o), r0=Math.hypot(d0[0],d0[1],d0[2]), e1=[d0[0]/r0,d0[1]/r0,d0[2]/r0];
+    var d1=perp(A[1],o), t1=d1[0]*e1[0]+d1[1]*e1[1]+d1[2]*e1[2], e2=[d1[0]-t1*e1[0],d1[1]-t1*e1[1],d1[2]-t1*e1[2]], l2=Math.hypot(e2[0],e2[1],e2[2]);
+    e2=[e2[0]/l2,e2[1]/l2,e2[2]/l2];
+    var b0=perp(Bq[0],o1), r1=Math.hypot(b0[0],b0[1],b0[2]);
+    return {o:o, ax:ax, e1:e1, e2:e2, prof:[[0,r0],[len,r1]], n:n, ph:0, face:function(i,k){ return 2+k; }};
+  }
+  function asRound(P,o){ P.round=o||roundOf(P); return P; }
   function surfHatch(P,faces,o){
     var MINSP=o.minsp, SUN=o.sun;
     if(o.rect) faces.forEach(function(fk){
@@ -44299,6 +44354,12 @@ function corridorDraw(p,plans,THM,camera){
         bridge:P.bridge, boat:P.boat, postPair:P.postPair, cbox:P.cbox, csh:P.csh,
         lines:P.lines.map(function(Ln){ return {a:Ln.a, b:Ln.b, f0:Ln.f0, f1:Ln.f1, col:Ln.col||P.col, kind:Ln.kind, tag:Ln.tag}; })});
     }); });
+    /* row 144: the surface hatch's marks, for enginetest/surfhatch.js. Every part that carries a reserve or a
+       round mark, by reference: its faces (with their points) and lines, as the theme left them */
+    STRTTALLY.marks=[];
+    conts.forEach(function(C){ C.parts.forEach(function(P){
+      if(P.rsv || P.round) STRTTALLY.marks.push({kind:P.kind||'', faces:P.faces, lines:P.lines, rsv:P.rsv||[], round:P.round||null, col:P.col});
+    }); });
     conts.forEach(function(C){
       C.all=C.parts.slice();
       C.parts=C.parts.filter(prep);
@@ -44896,7 +44957,7 @@ function corridorDraw(p,plans,THM,camera){
   function facesEye(f){ return (HOLD||[KCAM]).some(function(Kc){ var E=Kc.CE; return f.n[0]*E[0]+f.n[1]*E[1]+f.n[2]*E[2]-f.d>1e-9; }); }
   /* and the sheet's across direction at P -- held, the nearest frame's */
   function rtAt(P){ return HOLD?holdK(P).RT:RT; }
-  function KIT(PL){ var K={planRef:PL, poleOut:PL.wireLow?function(q){ return PL.wireLow.some(function(Q){ return townIn(Q,q); }) && !(PL.wireKeep||[]).some(function(Q){ return townIn(Q,q); }); }:null, facesEye:facesEye, rtAt:rtAt, massedAt:MASSED&&MASSED.get(PL)?function(sd,s){ return MASSED.get(PL)[sd].some(function(L){ return s>=L.s0-1 && s<=L.s1+1; }); }:null, sGaps:PL.sGaps, hasGap:PL.hasGap, slabPieces:slabPieces, bbHit:bbHit, MINSP:0.7, FW:FW, UP:UP, PAD:PAD, NS:PL.NS, THM:PL.theme||THM, P3:PL.P3, add3:add3, addCable:addCable, cam:camK, dist3:dist3, project:project, drawOn:drawOn, surfHatch:surfHatch, faceC:faceC, faceIx:faceIx, frame:PL.frame, hitsAny:hitsAny, inConv:inConv, lateral:PL.lateral, mmPerM:mmPerM, paperGap:paperGap, para:para, polyFromLoops:polyFromLoops, prism:prism, prismN:prismN, splitPart:splitPart, sub:PL.sub, surf:surf, vec:vec, verts:verts, wallOf:wallOf, wp:wp, CANTI:PL.CANTI, CANYON:PL.CANYON, CE:CE, FF:FF, FLOORS:PL.FLOORS, HALFW:PL.HALFW, HW:HW, KERB:PL.KERB, KOFF:PL.KOFF, LEN:PL.LEN, NEAR:NEAR, PBACK:PL.PBACK, RT:RT, SALT_BLD:PL.SALT_BLD, STEPB:PL.STEPB, ZUP:ZUP, cables:cables, conts:conts, lots:PL.lots, slabsBySide:PL.slabsBySide, p:p};
+  function KIT(PL){ var K={planRef:PL, poleOut:PL.wireLow?function(q){ return PL.wireLow.some(function(Q){ return townIn(Q,q); }) && !(PL.wireKeep||[]).some(function(Q){ return townIn(Q,q); }); }:null, facesEye:facesEye, rtAt:rtAt, massedAt:MASSED&&MASSED.get(PL)?function(sd,s){ return MASSED.get(PL)[sd].some(function(L){ return s>=L.s0-1 && s<=L.s1+1; }); }:null, sGaps:PL.sGaps, hasGap:PL.hasGap, slabPieces:slabPieces, bbHit:bbHit, MINSP:0.7, FW:FW, UP:UP, PAD:PAD, NS:PL.NS, THM:PL.theme||THM, P3:PL.P3, add3:add3, addCable:addCable, cam:camK, dist3:dist3, project:project, drawOn:drawOn, surfHatch:surfHatch, reserve:reserve, reserveDrawn:reserveDrawn, asRound:asRound, faceC:faceC, faceIx:faceIx, frame:PL.frame, hitsAny:hitsAny, inConv:inConv, lateral:PL.lateral, mmPerM:mmPerM, paperGap:paperGap, para:para, polyFromLoops:polyFromLoops, prism:prism, prismN:prismN, splitPart:splitPart, sub:PL.sub, surf:surf, vec:vec, verts:verts, wallOf:wallOf, wp:wp, CANTI:PL.CANTI, CANYON:PL.CANYON, CE:CE, FF:FF, FLOORS:PL.FLOORS, HALFW:PL.HALFW, HW:HW, KERB:PL.KERB, KOFF:PL.KOFF, LEN:PL.LEN, NEAR:NEAR, PBACK:PL.PBACK, RT:RT, SALT_BLD:PL.SALT_BLD, STEPB:PL.STEPB, ZUP:ZUP, cables:cables, conts:conts, lots:PL.lots, slabsBySide:PL.slabsBySide, p:p};
     /* row 96: a plan with a theme of its own reads its own knobs and cables */
     if(PL.theme){ K.p=PL.p; K.addCable=PL.addCable||addCable; K.cables=PL.cables||cables; }
     return K; }
