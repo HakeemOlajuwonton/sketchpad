@@ -462,7 +462,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v391</a> &mdash; Sun height and Cast shadows at Hatch style 1 on the Street, Night market, Harbour, Canal and Train station: buildings, cars, signs and stalls throw their shadows onto the lit walls and the ground, hatched at the middle tone, with the puddles and manholes left clear</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v392</a> &mdash; Refactor only: the powerline&rsquo;s wire geometry lifted into one helper so the line can ask how tall its pylons must be before the city is built. The drawing is unchanged</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <section class="fold" id="fold_pick"><h2>Pick engine<span class="cnt"></span></h2>
@@ -26542,13 +26542,14 @@ function townBbox(Q){ var b=[1e18,1e18,-1e18,-1e18]; Q.forEach(function(q){ if(q
    0.6 m; each span's need lifts
    both its pylons, never below 24 m to the lowest crossarm, and the stat line
    names what was raised. */
-function plineTheme(K,PW){
-  var polyFromLoops=K.polyFromLoops, prismN=K.prismN, para=K.para, verts=K.verts, inConv=K.inConv, dist3=K.dist3, bbHit=K.bbHit, conts=K.conts, cables=K.cables;
-  var COLT='#8a8a8a', COLK='#1a1a1a', info=PW.info, d=PW.dir, nn=PW.nn, Z1B=24, ARM=4.5, INS=1.2, AW0=3.0, AWP=0.6, HB=4.6, DZ=4, PK=3;
-  /* the wires: (offset across the line, height over the lowest crossarm) */
+/* ROW 342 (refactor only): the powerline's wire geometry, one place. The lowest crossarm Z1B over the ground
+   unless raised, the arms' reach ARM, the insulators' drop INS, the arms DZ apart and the earth-wire peak PK over
+   the top arm; the wires as (offset across the line, height over the lowest crossarm); and the catenary through
+   two equal-height points Lp apart sagging S at the middle (aOf, its parameter) and its dip at t (0..1) */
+function plineGeom(){
+  var Z1B=24, ARM=4.5, INS=1.2, DZ=4, PK=3;
   var WIRES=[]; [-1,1].forEach(function(sg){ [0,1,2].forEach(function(k){ WIRES.push({o:sg*ARM, dz:k*DZ-INS, earth:false}); }); });
   WIRES.push({o:0, dz:2*DZ+PK, earth:true});
-  function at(P,s,o,z){ return [P.c[0]+d[0]*s+nn[0]*o, P.c[1]+d[1]*s+nn[1]*o, z]; }
   function aOf(S,Lp){
     if(!(S>1e-9)) return Infinity;
     var lo=Lp*1e-3, hi=Lp*Lp/(8*S)*4+Lp, it;
@@ -26556,6 +26557,13 @@ function plineTheme(K,PW){
     return Math.sqrt(lo*hi);
   }
   function dip(t,a,Lp){ return isFinite(a)?-2*a*Math.sinh(t*Lp/(2*a))*Math.sinh((t-1)*Lp/(2*a)):0; }
+  return {Z1B:Z1B, ARM:ARM, INS:INS, DZ:DZ, PK:PK, WIRES:WIRES, aOf:aOf, dip:dip};
+}
+function plineTheme(K,PW){
+  var polyFromLoops=K.polyFromLoops, prismN=K.prismN, para=K.para, verts=K.verts, inConv=K.inConv, dist3=K.dist3, bbHit=K.bbHit, conts=K.conts, cables=K.cables;
+  var PG=plineGeom(), COLT='#8a8a8a', COLK='#1a1a1a', info=PW.info, d=PW.dir, nn=PW.nn, Z1B=PG.Z1B, ARM=PG.ARM, INS=PG.INS, AW0=3.0, AWP=0.6, HB=4.6, DZ=PG.DZ, PK=PG.PK;
+  var WIRES=PG.WIRES, aOf=PG.aOf, dip=PG.dip;
+  function at(P,s,o,z){ return [P.c[0]+d[0]*s+nn[0]*o, P.c[1]+d[1]*s+nn[1]*o, z]; }
   /* the obstacles, bucketed in 4 m cells: every part's plan hull and top, and
      every cable's points */
   function hull2(V){ var pts=V.map(function(v){ return [v[0],v[1]]; }).sort(function(a,b){ return a[0]-b[0] || a[1]-b[1]; });
