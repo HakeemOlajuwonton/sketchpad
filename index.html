@@ -462,7 +462,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v394</a> &mdash; Surface hatch: the new hatch is the default on the Street, Night market, Harbour, Library stacks, Canal, Train station, Warehouse and Baggage hall (Hatch style 1). A preset saved before it still loads at Hatch style 0 and draws as it did</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v395</a> &mdash; Canal: the waves are little curved water marks with a glint gap cut in the reflection under each, and the reflections ripple up and down as well as sideways (Ripple up&ndash;down), so quay edges, sills and bridge undersides undulate</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <section class="fold" id="fold_pick"><h2>Pick engine<span class="cnt"></span></h2>
@@ -3526,8 +3526,8 @@ var SPEC={
     ['cables','Laundry lines',0,100,1,45,[100,'%']],['sag','Line sag',0,30,1,6,[100,'%']],
     ['laundry','Laundry',0,100,1,30,[100,'%']],
     ['bridges','Bridges',0,4,1,1,[1,'/100 m']],['bclear','Bridge clearance',1.8,3.5,0.1,2.2,[1,' m']],
-    ['boats','Boats',0,12,1,3,[1,'/100 m']],['waves','Waves',0,100,1,35,[100,'%']],
-    ['ripple','Ripple',0,30,1,10,[10,' mm']],['rvar','Ripple variety',0,100,1,60,[100,'%']],
+    ['boats','Boats',0,12,1,3,[1,'/100 m']],['waves','Waves',0,100,1,35,[100,'%']],['wglint','Glint gap',0,15,1,5,[10,' mm']],
+    ['ripple','Ripple',0,30,1,10,[10,' mm']],['rvar','Ripple variety',0,100,1,60,[100,'%']],['rvert','Ripple up–down',0,100,1,50,[100,'%']],
     ['hatch','Tone hatch',0,100,1,55,[100,'%']],['hatchmode','Hatch spacing',0,1,1,0],['hstyle','Hatch style',0,1,1,1],['hdir','Hatch lines',0,3,1,1],
     ['sun','Light from',0,359,1,300,[1,'°']],['sunel','Sun height',10,80,1,30,[1,'°']],['shad','Cast shadows',0,1,1,1],
     ['cams','Camera along',0,90,1,5,[100,'%']],['camx','Camera side',-100,100,1,15,[100,'%']],
@@ -23905,7 +23905,7 @@ var STHEMES={
      the mirror; the kerb is the quay's edge, 0.8 m over the water */
   canal:{key:'canal', label:'Canal', lotDepth:[8,16], alleyW:[1.0,2.2], baseN2:0, baseH:[3.0,3.6],
          midH:[2.8,3.2], edgeZ:0.8, slabLen:4, clear:3.0, ztop:200, mirror:'channel', mirrorSkip:['shadow'], minWidth:4,
-         strip:0.25, channel:true, kerbKind:'quay', pudCol:null, pudWord:'slabs of water',
+         strip:0.25, channel:true, kerbKind:'quay', pudCol:null, waveCol:'#5aa9e6', waveSwing:16, pudWord:'slabs of water',
          cableAvoid:['bridge','boat','post'],
          fixed:{shopv:0, props:0, cars:0, dots:0, graff:0, neon:0, puddles:0, hero:0, fire:0},
          flags:{poles:false, roadMarks:false, bollards:false, manholes:false, topFlat:true, arch:true, leaves:0.4},
@@ -36614,27 +36614,8 @@ function canalTheme(K){
     for(e=0;e<PL.length;e++){ var e2=(e+1)%PL.length; lp.push([Lo[e],Lo[e2],Hi[e2],Hi[e]]); }
     return polyFromLoops(lp);
   }
-  /* ---- WAVES: short dashes along the water on each slab's water plate,
-     denser near the camera -- the plate hides nothing and is not mirrored */
-  function waves(df){
-    conts.forEach(function(C){
-      if(C.kind!=='slab') return;
-      var Pl=null; C.parts.forEach(function(P){ if(P.kind==='plate') Pl=P; }); if(!Pl) return;
-      var mid=P3((C.s0+C.s1)/2,C.side,HALFW/2,0), d=dist3(mid);
-      if(!(d<df)) return;
-      var R=sub(C.side<0?2:1,Math.round(C.s0/SLAB),SALT_WAVE), n=Math.round(WAVES*24*Math.max(0.15,Math.min(1,12/d))), k;
-      for(k=0;k<24;k++){
-        var us=R(), uo=R(), ul=R();
-        if(k>=n) continue;
-        /* across the canal -- horizontal on a sheet looking along it -- and
-           as long in metres as the slab is far, so about as long on paper */
-        var sl=Math.max(0.12,Math.min(0.8,(0.15+0.25*ul)*d/8)), sa=C.s0+0.1+(C.s1-C.s0-0.2)*us, oo=0.1+(HALFW-0.2-sl)*uo;
-        if(oo<0.1) continue;
-        Pl.lines.push({a:P3(sa,C.side,oo,0), b:P3(sa,C.side,oo+sl,0), f0:1, f1:1, col:COL_LBLUE, kind:'wave'});
-        TAL.waves++;
-      }
-    });
-  }
+  /* ---- WAVES (row 146): the straight dashes that were here are the kit's water marks now, one
+     set per slab of water, at Waves (THM.waveCol, the kit's wmPlace) */
   /* ---- LAUNDRY on the lines over the water: a cloth hanging under a line at
      each 0.8 m where its own number says so, any colour */
   function laundry(){
@@ -36710,7 +36691,7 @@ function canalTheme(K){
   return {
     dress:dress, signsFor:S.signsFor,
     furnish:function(dn,df,step){ TAL.bridges=[]; TAL.boats=[]; TAL.posts=[]; TAL.waves=0; TAL.cloths=0; TAL.gates=0; TAL.steps=0;
-      S.furnish(dn,df,step); bridges(dn,df); steps(); posts(dn); boats(dn); waves(df); laundry(); },
+      S.furnish(dn,df,step); bridges(dn,df); steps(); posts(dn); boats(dn); laundry(); },
     cars:[], dots:[], poles:[],
     info:function(nsigns){ return ' · '+nsigns+' signs · '+TAL.bridges.filter(function(b){ return b.placed; }).length+' bridges · '+
       TAL.boats.filter(function(b){ return b.placed; }).length+' boats · '+TAL.posts.filter(function(b){ return b.placed; }).length+' mooring posts · '+
@@ -43727,7 +43708,10 @@ function corridorDraw(p,plans,THM,camera){
   var PUDSZ=Math.max(0.05,Math.min(1,(isFinite(p.pudsz)?+p.pudsz:40)/100));
   var RIPMM=Math.max(0,Math.min(3,(isFinite(p.ripple)?+p.ripple:6)/10));
   var RVAR=Math.max(0,Math.min(1,(isFinite(p.rvar)?+p.rvar:0)/100)), RF=null;
-  if(RVAR>0){
+  /* row 146: Ripple up-down, declared by the canal alone; every other theme reads 0. It reads the ground field even at
+     Ripple variety 0, so the field is built for it too */
+  var RVERT=Math.max(0,Math.min(1,(isFinite(p.rvert)?+p.rvert:0)/100));
+  if(RVAR>0 || RVERT>0){
     var RRP=sub(0,0,227), ur=[]; for(j=0;j<10;j++) ur.push(RRP());
     var aA=TAU*ur[1];
     RF={lA:0.35+0.25*ur[0], aA:aA, lB:0.15+0.10*ur[2], aB:aA+(ur[3]<0.5?-1:1)*(40+40*ur[4])*Math.PI/180,
@@ -43755,6 +43739,10 @@ function corridorDraw(p,plans,THM,camera){
      canal) draws none. Their own substream, SALT_WMARK: 401, the spec's number,
      went to the station's puddles in row 87. */
   var WMK=PUDCOL?Math.max(0,Math.min(1,(isFinite(p.wmk)?+p.wmk:40)/100)):0;
+  /* row 146: a theme whose road is water and which names a wave ink (the canal: THM.waveCol) gives each slab of its
+     water the same marks at its own amount, Waves; WCOL is the marks' ink. A town's river and harbour records come
+     from their plans, not THM, and get none */
+  var CHW=THM.channel && THM.waveCol?Math.max(0,Math.min(1,(isFinite(p.waves)?+p.waves:35)/100)):0, WCOL=THM.waveCol||PUDCOL;
   var WGL=Math.max(0,isFinite(p.wglint)?+p.wglint:5)/10/PAGEMM, SALT_WMARK=613, WMIN=3, WSP=2.2;
   /* WHERE THE CAMERA LOOKS. Spread evenly over the street, nine puddles put
      less than one on the 15 m of road nearest the camera, and that is the
@@ -44017,7 +44005,7 @@ function corridorDraw(p,plans,THM,camera){
     var Qw=[P3(C.s0,C.side,0,0),P3(C.s1,C.side,0,0),P3(C.s1,C.side,HALFW,0),P3(C.s0,C.side,HALFW,0)];
     puds.push({id:2000+puds.length, channel:true, C:C, side:C.side, s:(C.s0+C.s1)/2, o:HALFW/2, len:C.s1-C.s0, wid:HALFW,
                ring:Qw.map(function(v){ return [v[0],v[1],0]; }), hull:hull2(Qw.map(function(v){ return [v[0],v[1]]; })),
-               ph:0, rid:2000, outline:[]});
+               ph:0, rid:2000, outline:[], wmid:CHW>0?5000+2*Math.round(C.s0*4)+(C.side<0?1:0):undefined});
   });
   /* ROW 96: A PLAN WHOSE WHOLE ROAD IS WATER (a town's river) does the same
      with its own slabs, at ITS OWN PLANE: z = its Z0, the water lowered
@@ -44061,8 +44049,10 @@ function corridorDraw(p,plans,THM,camera){
      moved Glint gap up and down and hulled, camera only, so built here too. */
   function wmPlace(pd,wmk){
     pd.wm=[]; pd.wmB=[];
-    if(!(wmk>0) || pd.channel) return;
-    var R=sub(0,pd.id,SALT_WMARK), ring=pd.ring.map(function(v){ return [v[0],v[1]]; }), n=ring.length, m;
+    if(!(wmk>0) || pd.channel && pd.wmid===undefined) return;
+    /* row 146: a slab of canal keys its marks by where it lies (wmid: its start and side), so another knob that moves
+       the slab count leaves every other slab's marks where they were */
+    var R=sub(0,pd.wmid!==undefined?pd.wmid:pd.id,SALT_WMARK), ring=pd.ring.map(function(v){ return [v[0],v[1]]; }), n=ring.length, m;
     function inR(x,y){ var c=false, k; for(k=0;k<n;k++){ var a=ring[k], b=ring[(k+1)%n];
       if((a[1]>y)!==(b[1]>y) && x<a[0]+(y-a[1])*(b[0]-a[0])/(b[1]-a[1])) c=!c; } return c; }
     var bb=bbox2(ring), ar=0;
@@ -44077,7 +44067,7 @@ function corridorDraw(p,plans,THM,camera){
     for(t=0;t<nmax*12 && acc.length<nmax;t++){
       var x=bb[0]+(bb[2]-bb[0])*R(), y=bb[1]+(bb[3]-bb[1])*R(), ul=R(), up=R();
       var dd=ISO?d:Math.max(1.5,Math.hypot(x-CE[0],y-CE[1])), sl=Math.max(0.1,Math.min(1.0,(0.16+0.16*ul)*dd/5));
-      var fs=Math.min(4,dd/H), amp=0.07*sl*fs, mg=0.12*sl*fs+0.05;
+      var fs=Math.min(pd.wmid!==undefined?THM.waveSwing||4:4,dd/H), amp=0.07*sl*fs, mg=0.12*sl*fs+0.05;
       if(!inR(x,y)||!inR(x-ux*sl/2,y-uy*sl/2)||!inR(x+ux*sl/2,y+uy*sl/2)||!inR(x+fx*mg,y+fy*mg)||!inR(x-fx*mg,y-fy*mg)) continue;
       var pts=[], sp=[], ok=true, ph=up<0.5?0:Math.PI;
       for(m=0;m<=K && ok;m++){
@@ -44102,8 +44092,8 @@ function corridorDraw(p,plans,THM,camera){
     }
   }
   var WMHALF=0, NWM=0;
-  function wmAll(wmk){ NWM=0; puds.forEach(function(pd){ wmPlace(pd,wmk); NWM+=pd.wm.length; }); }
-  wmAll(WMK);
+  function wmAll(f){ NWM=0; puds.forEach(function(pd){ wmPlace(pd,(pd.channel?CHW:WMK)*f); NWM+=pd.wm.length; }); }
+  wmAll(1);
   /* the reflection under a mark: a run cut by its puddle's convex bands, the
      pieces OUTSIDE every band kept with their own points untouched */
   function wmCut(pts,B){
@@ -44873,9 +44863,9 @@ function corridorDraw(p,plans,THM,camera){
       else if(PUDCOL) for(m=0;m<pd.ring.length;m++)
         Pq.lines.push({a:pd.ring[m], b:pd.ring[(m+1)%pd.ring.length], f0:1, f1:1, kind:'puddle', col:PUDCOL});
       /* row 119: the water marks, the rim's ink and faces, a kind of their own */
-      if(PUDCOL && pd.wm && pd.wm.length){
+      if(WCOL && pd.wm && pd.wm.length){
         pd.wm.forEach(function(pts){ for(var k=1;k<pts.length;k++)
-          Pq.lines.push({a:pts[k-1], b:pts[k], f0:1, f1:1, kind:'wmark', col:PUDCOL}); });
+          Pq.lines.push({a:pts[k-1], b:pts[k], f0:1, f1:1, kind:'wmark', col:WCOL}); });
         STRTTALLY.wmarks.push({id:pd.id, hero:!!pd.hero, grp:pd.grp, ring:pd.ring, count:pd.wm.length, marks:pd.wm, bands:pd.wmB});
         nwm+=pd.wm.length;
       }
@@ -45342,6 +45332,18 @@ function corridorDraw(p,plans,THM,camera){
       var env=0.25+0.75*vn(x/RF.lE+RF.ne, y/RF.lE, 229);
       return env*(0.55*wA+0.30*wB+0.15*wN)*Math.max(0.4,Math.min(mx||THM.ripMax||2.0,5/G[2]));
     }
+    /* row 146: THE SAME FIELD IN QUADRATURE, for the up-down shift: the same ground point, trains, envelope and
+       5 m / depth law, each train's sin a cos and the noise its own (231). One field per drawing, so a reflected line
+       crossing a slab seam stays continuous */
+    function ripV(q,Z,mx){
+      var G=groundAt(q,Z); if(!G) return 0;
+      var x=G[0], y=G[1];
+      var wA=Math.cos(TAU*(x*Math.cos(RF.aA)+y*Math.sin(RF.aA))/RF.lA+RF.pA);
+      var wB=Math.cos(TAU*(x*Math.cos(RF.aB)+y*Math.sin(RF.aB))/RF.lB+RF.pB);
+      var wN=2*vn(x/0.25+RF.nz, y/0.25, 231)-1;
+      var envV=0.25+0.75*vn(x/RF.lE+RF.ne, y/RF.lE, 229);
+      return envV*(0.55*wA+0.30*wB+0.15*wN)*Math.max(0.4,Math.min(mx||THM.ripMax||2.0,5/G[2]));
+    }
     /* y from the PAGE CENTRE, so the wave rides with the drawing when a taller
        sheet shifts it (pagecheck's FRAMED map) */
     /* a hero's pieces share one id and phase (rid), so the sheet wave is
@@ -45351,22 +45353,24 @@ function corridorDraw(p,plans,THM,camera){
       var src=[], m, k;
       for(m=0;m<pts.length;m++){
         if(m>0 && RIPU>0){
-          /* by sheet LENGTH once the ripple is on the water, because a
-             horizontal edge ripples then too */
-          var a=pts[m-1], b=pts[m], n=Math.ceil((RVAR>0?Math.hypot(b[0]-a[0],b[1]-a[1]):Math.abs(b[1]-a[1]))/RSTEP);
+          /* by sheet LENGTH once the ripple is on the water or moves up and
+             down (row 146): an x shift alone slides a horizontal edge along
+             itself, so it ripples only when Ripple up-down is over 0 */
+          var a=pts[m-1], b=pts[m], n=Math.ceil((RVAR>0||RVERT>0?Math.hypot(b[0]-a[0],b[1]-a[1]):Math.abs(b[1]-a[1]))/RSTEP);
           for(k=1;k<n;k++) src.push([a[0]+(b[0]-a[0])*k/n, a[1]+(b[1]-a[1])*k/n]);
         }
         src.push([pts[m][0],pts[m][1]]);
       }
       return {src:src, dsp:RIPU>0?src.map(function(q){
-        return [q[0]+RIPU*(RVAR>0?(1-RVAR)*ripW(q[1],pd)+RVAR*ripNew(q,pd.mz,pd.ripMax):ripW(q[1],pd)), q[1]]; }):src};
+        return [q[0]+RIPU*(RVAR>0?(1-RVAR)*ripW(q[1],pd)+RVAR*ripNew(q,pd.mz,pd.ripMax):ripW(q[1],pd)),
+                RVERT>0?q[1]+RIPU*RVERT*ripV(q,pd.mz,pd.ripMax):q[1]]; }):src};
     }
     /* depth of the ground under a sheet point: 1/zc. RT is level, so only y counts */
     function groundIz(q,Z){ var ZW=Z===undefined?MZ:Z; if(ISO){ var uy=-(q[1]-PGH/2)/ISOS; return 1/(1e5+(ZW-ISOC[2]-UP[2]*uy)/FW[2]); }
       var sy=-(q[1]-PGH/2)/(FF*HW); return -(UP[2]*sy+FW[2])/(CE[2]-ZW); }
 
     /* ---- commit: front to back, lines first, then the silhouette ----------- */
-    var occl=[], preIx=[], srcOf=[], maxz=NEAR;
+    var occl=[], preIx=[], srcOf=[], maxz=NEAR, occlAt=[], mzAt=[];
     /* row 113: ONE CONVEX BODY IN MANY PIECES (P.body, a key). No piece of a
        convex body hides a face of another that sees the eye, so a piece's lines
        are cut only by the OTHER bodies' occluders -- otherwise each 0.2-0.8 m
@@ -45454,8 +45458,38 @@ function corridorDraw(p,plans,THM,camera){
         STRTTALLY.sil.push(P.sil);
         if(P.sil && P.hides!==false) occl.push(P.gapless?gapIn(P.sil):P.sil);
         if(P.sil && P.hides!==false) occlB.push(P.body);
+        occlAt[pid]=occl.length; if(P.pud) mzAt[pid]=P.pud.mz;
       });
     });
+    /* row 146: A REFLECTION LIFTED PAST ITS WATER'S FAR EDGE IS HIDDEN BY WHAT STANDS THERE. The parts are committed
+       front to back, so a water part's reflections are cut only by the parts in front of it. A sideways ripple keeps
+       every reflected point's y, so it never leaves the water upward and nothing behind could cover it; Ripple up-down
+       can lift a point at the far waterline into a step or post standing beyond it (strtcheck L5, the ray cast to the
+       water). So at Ripple up-down over 0, each water part's drawn reflections are cut once more by the silhouettes
+       committed after it, exactly (no halo, so a reflection still meets its object at the waterline). At 0 nothing
+       here runs */
+    if(RVERT>0 && RIPU>0){
+      var rgx={}, rgk=[];
+      out.forEach(function(run,ix){
+        if(run.kind!=='refl' || !(occlAt[run.part]<occl.length)) return;
+        if(!rgx[run.part]){ rgx[run.part]=[]; rgk.push(run.part); }
+        rgx[run.part].push(ix);
+      });
+      if(rgk.length){
+        var rcut={};
+        rgk.forEach(function(pid){
+          var ixs=rgx[pid], fr=hlrConvex(ixs.map(function(ix){ return out[ix]; }),occl.slice(occlAt[pid]),0), by={};
+          fr.forEach(function(q){ if(q.length<2) return; var o=out[ixs[q.src]];
+            q.pre=-1; q.rp=o.rp; q.pud=o.pud; q.hero=o.hero; q.part=o.part; q.col=o.col; q.kind='refl';
+            q.izs=q.map(function(v){ return groundIz(v,mzAt[pid]); });
+            (by[q.src]||(by[q.src]=[])).push(q); });
+          ixs.forEach(function(ix,k){ rcut[ix]=by[k]||[]; });
+        });
+        var out2=[];
+        out.forEach(function(run,ix){ if(rcut[ix]) rcut[ix].forEach(function(q){ out2.push(q); }); else out2.push(run); });
+        out=out2;
+      }
+    }
 
     /* ---- the page clip, and depth onto the expandos ------------------------ */
     var X0=PAD, Y0=PAD, X1=PGW-PAD, Y1=PGH-PAD, res=[], FARZ=Math.max(maxz,NEAR+1);
@@ -45537,7 +45571,7 @@ function corridorDraw(p,plans,THM,camera){
     /* ROW 144 A3 (§1.6): at hstyle 1 the hatch goes first, a band a step, lightest first: every band
        that drew a line in the last pass is one step, each before the water marks and the reflections */
     if(tries===8 && HSTY && HDROP<3){ var nbd=HDROP+1; while(nbd<=3 && !HN[nbd]) nbd++; if(nbd<=3){ HDROP=nbd; continue; } }
-    if(tries===8 && !WMHALF && NWM>0){ WMHALF=1; wmAll(WMK/2); continue; }
+    if(tries===8 && !WMHALF && NWM>0){ WMHALF=1; wmAll(0.5); continue; }
     if(tries<8){ DN*=0.7; DF=Math.max(DN,DF*0.75); LODE=LODE+0.3; }
     tries++;
   }
@@ -48242,9 +48276,11 @@ var HELP={
 'canal.bridges':'Arched footbridges per 100 m of canal, each spanning from quay edge to quay edge with steps on its deck.',
 'canal.bclear':'How high a bridge clears the water at the middle of the canal, in metres.',
 'canal.boats':'Boats per 100 m: gondolas in black, smaller sandoli, and motor launches with a cabin, moored along a wall or under way, never under a bridge.',
-'canal.waves':'Short dashes on the water, denser near the camera.',
+'canal.waves':'How many little wave marks lie on the water, in light blue. Each is one ripple drawn across your view, so it lies flat on the water, and far water gets fewer, never a smudge. 0 is a plain mirror.',
+'canal.wglint':'How wide a gap each wave mark cuts in the reflection under it, in millimetres above and below the mark. It is what makes a mark read as a glint over a dark reflection. 0 draws the marks over the reflection with no gap.',
 'canal.ripple':'How far the reflection wobbles, in millimetres on the sheet at 5 m. 0 is a still mirror.',
 'canal.rvar':'How much the ripple varies across the water: two wave trains, calm and choppy patches, larger near.',
+'canal.rvert':'How much the reflections break up and down as well as sideways. Real water tilts toward and away from you, so the reflected quay edges, sills and bridge undersides undulate instead of staying ruler-straight. 0 keeps the old sideways-only ripple.',
 'canal.hatch':'A tone hatch on the walls facing away from the light, in each house\u2019s own plaster colour.',
 'canal.hstyle':'0 draws the shading as it always has. 1, the default, is the new hatch: tone grows in three steps as a face turns from the light, lines are spaced on the paper, coplanar walls line up, windows, signs and doors stay clear, and round parts are shaded round. A saved setting without this knob draws as 0.',
 'canal.hdir':'Hatch style 1 only. 0 diagonal, 45 degrees in each face, as before. 1 vertical lines, spaced along the wall (round parts: along their axis). 2 courses, horizontal lines that run to the wall\u2019s vanishing point (round parts: rings). 3 vertical everywhere shaded, plus courses in the darkest band.',
