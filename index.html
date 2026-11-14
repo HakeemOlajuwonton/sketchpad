@@ -462,7 +462,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v401</a> &mdash; Surface hatch: a canal quay top is no longer cut where the water below reaches under its edge</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v402</a> &mdash; Faster on a real city: the lot arc lookup, the container pairs and the occluder grid, refactor only</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <section class="fold" id="fold_pick"><h2>Pick engine<span class="cnt"></span></h2>
@@ -9315,6 +9315,12 @@ function hlrConvex(paths,occl,gap){
      takes the identical code path it always did. */
   var GN=C.GN|0, GX0=C.GX0, GY0=C.GY0, GCW=C.GCW, GCH=C.GCH;
   var BUCK=C.BUCK||null, MARK=C.MARK||null;
+  /* ROW 289: AND REBUILT WHEN THE LIST HAS DOUBLED. A caller that draws a city a container at a time first builds
+     the grid round its first few occluders, and every later one was clamped into the boundary cells, so a query
+     there scanned and sorted most of the city. Rebuilt at each doubling, at most half of the list lies outside the
+     bounds, at a cost linear in the list overall. The candidates stay a superset tested in ascending order, so the
+     output is what it was */
+  if(BUCK && OC.length>=2*(C.built|0)) BUCK=null;
   if(!BUCK && OC.length>=32){
     var bx0=1e18,by0=1e18,bx1=-1e18,by1=-1e18;
     for(i=0;i<OC.length;i++){
@@ -9329,7 +9335,7 @@ function hlrConvex(paths,occl,gap){
     BUCK=new Array(GN*GN);
     for(i=0;i<BUCK.length;i++) BUCK[i]=null;
     C.GN=GN; C.GX0=GX0; C.GY0=GY0; C.GCW=GCW; C.GCH=GCH; C.BUCK=BUCK;
-    C.into=0;
+    C.into=0; C.built=OC.length;
   }
   if(BUCK){
     for(i=C.into|0;i<OC.length;i++){
@@ -42796,9 +42802,17 @@ function corridorPlan(p,THM,ix,hooks){
      offset and back the farthest corner's. */
   var LOTSDROPPED=0;
   if(hooks.lots){
+    /* ROW 289: on a straight plan (hooks.line) a point's distance to the stations is convex in s, so the coarse scan's
+       winner is one of the stations about the point's projection: the scan runs over those alone, the same stations in
+       the same order with the same arithmetic, so it returns what the whole scan does. The whole scan was the bulk of
+       a city's build: every 8th station of the plan for each corner of each supplied lot */
+    var ARCM=0; while((ARCM+8)*DS<=LEN) ARCM+=8;
     var arcAt=function(X){
-      var bs=0, bd=1e18, m, F, d, s;
-      for(m=0;m*DS<=LEN;m+=8){ F=frame(m*DS); d=Math.hypot(X[0]-F[0],X[1]-F[1]); if(d<bd){ bd=d; bs=m*DS; } }
+      var bs=0, bd=1e18, m, F, d, s, m0=0, m1=ARCM;
+      if(hooks.line){ var hl=hooks.line, tq=((X[0]-hl.x)*Math.cos(hl.h)+(X[1]-hl.y)*Math.sin(hl.h))/DS,
+                          mc=Math.max(0,Math.min(ARCM,Math.round(tq/8)*8));
+        m0=Math.max(0,mc-16); m1=Math.min(ARCM,mc+16); }
+      for(m=m0;m<=m1 && m*DS<=LEN;m+=8){ F=frame(m*DS); d=Math.hypot(X[0]-F[0],X[1]-F[1]); if(d<bd){ bd=d; bs=m*DS; } }
       var c=bs;
       for(m=-8;m<=8;m++){ s=Math.max(0,Math.min(LEN,c+m*DS)); F=frame(s); d=Math.hypot(X[0]-F[0],X[1]-F[1]); if(d<bd){ bd=d; bs=s; } }
       return bs; };
@@ -45367,7 +45381,24 @@ function corridorDraw(p,plans,THM,camera){
       live.push(C); nparts+=C.parts.length;
     });
     var cedges=[], unsep=0, unsepC=[];
-    for(i=0;i<live.length;i++) for(j=i+1;j<live.length;j++){
+    /* ROW 289: on the sheet's x (ARCX) a container's arc is an interval, so the pairs that can meet are found by a
+       sweep over the intervals sorted by their low end, rather than by testing every pair: a city of 50,000
+       containers is 1.25 billion pairs. The candidates are a superset of the meeting pairs (and every pair with a
+       missing or non-finite arc), visited in the old (i, j) order and tested by the same arcsMeet, so the edges are the same edges
+       in the same order */
+    var CPAIRS=null;
+    if(ARCX && live.length>64){
+      var NL=live.length, ordL=[], noArc=[], cp=[];
+      for(i=0;i<NL;i++){ var la=live[i].arc; if(la && isFinite(la[0]) && isFinite(la[1])) ordL.push(i); else noArc.push(i); }
+      ordL.sort(function(u,v){ return live[u].arc[0]-live[v].arc[0] || u-v; });
+      for(var oa=0;oa<ordL.length;oa++){ var ia=ordL[oa], ha=live[ia].arc[1];
+        for(var ob=oa+1;ob<ordL.length;ob++){ var ib=ordL[ob]; if(live[ib].arc[0]>ha) break; cp.push(ia<ib?ia*NL+ib:ib*NL+ia); } }
+      noArc.forEach(function(ia){ for(var ib=0;ib<NL;ib++) if(ib!==ia) cp.push(ia<ib?ia*NL+ib:ib*NL+ia); });
+      CPAIRS=Float64Array.from(cp).sort();
+    }
+    for(var cq=0, cqn=CPAIRS?CPAIRS.length:live.length*(live.length-1)/2, ci=0, cj=1; cq<cqn; cq++){
+      if(CPAIRS){ if(cq>0 && CPAIRS[cq]===CPAIRS[cq-1]) continue; i=Math.floor(CPAIRS[cq]/live.length); j=CPAIRS[cq]-i*live.length; }
+      else { i=ci; j=cj; if(++cj>=live.length){ ci++; cj=ci+1; } }
       if(!arcsMeet(live[i].arc,live[j].arc)) continue;
       var rr=planSep(live[i],live[j]);
       /* row 317: and which containers, so a gate can name them */
