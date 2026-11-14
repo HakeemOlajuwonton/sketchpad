@@ -462,7 +462,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v400</a> &mdash; Street props: planter leaves stop at the rim of the pot, so none is drawn inside it</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v401</a> &mdash; Surface hatch: a canal quay top is no longer cut where the water below reaches under its edge</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <section class="fold" id="fold_pick"><h2>Pick engine<span class="cnt"></span></h2>
@@ -43950,6 +43950,9 @@ function corridorDraw(p,plans,THM,camera){
               var Hq=Pq.pud.ring, qa=[Infinity,Infinity], qb=[-Infinity,-Infinity];
               Hq.forEach(function(q){ if(q[0]<qa[0]) qa[0]=q[0]; if(q[1]<qa[1]) qa[1]=q[1]; if(q[0]>qb[0]) qb[0]=q[0]; if(q[1]>qb[1]) qb[1]=q[1]; });
               if(qb[0]<=R.a[0] || qa[0]>=R.b[0] || qb[1]<=R.a[1] || qa[1]>=R.b[1]) return;
+              /* row 355: only a puddle that lies on this ground: canal's water pieces, 0.8 m under the quay, reach a few
+                 cm under its edge in plan and cut the quay top's hatch there */
+              var pz=-Infinity; verts(Pq).forEach(function(v){ if(v[2]>pz) pz=v[2]; }); if(Math.abs(pz-zt)>0.05) return;
               reservePoly(P,fi,Hq.map(function(q){ return [q[0],q[1],zt]; }),Pq); });
             /* the manholes drawn on it: rings of 'manhole' lines, chained end to start */
             var ring=null, rings=[], same=function(x,y){ return Math.abs(x[0]-y[0])+Math.abs(x[1]-y[1])+Math.abs(x[2]-y[2])<1e-9; };
