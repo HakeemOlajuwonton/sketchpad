@@ -462,7 +462,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v398</a> &mdash; Knob panel: Hatch style and Hatch lines sit in Ink and detail beside the tone hatch, not in Other</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v399</a> &mdash; Surface hatch: no hatch line reaches below the ground, so none is mirrored in the water above it</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <section class="fold" id="fold_pick"><h2>Pick engine<span class="cnt"></span></h2>
@@ -43516,6 +43516,14 @@ function corridorDraw(p,plans,THM,camera){
      stands MINSP or more on the sheet from the last one kept, measured both ways at both lines' ends and middles,
      which thins a long receding wall toward its far end and never respaces a line. Reserves cut the lines in the
      late pass (hatchLate), after every reserve of the pass is registered. */
+  /* row 348: NO HATCH LINE UNDER THE GROUND. The kit mirrors every line in the water at z = 0, so a hatch line below
+     the ground (a slab plate's 2 cm side face, z -0.02..0) is reflected ABOVE it. A line wholly below z = 0 is not
+     drawn, one that crosses is cut at it; a part with nothing below the ground is untouched */
+  function hzClip(A,B){ var za=A[2], zb=B[2];
+    if(za>=0 && zb>=0) return [A,B];
+    if(za<0 && zb<0) return null;
+    var t=za/(za-zb), X=[A[0]+(B[0]-A[0])*t, A[1]+(B[1]-A[1])*t, 0];
+    return za<0?[X,B]:[A,X]; }
   function hatchFam(P,fi,f,d,s,c,Bmm,step,band,o,rec){
     var g=paperGap(c,d,s); if(!(g>0)) return;
     var Bm=Bmm/g, n=f.n, nd=f.d, dot=dot3h;
@@ -43542,7 +43550,8 @@ function corridorDraw(p,plans,THM,camera){
       FM.nt++;
       var dm=dist3(M);
       if(!(dm<o.far) || (!(dm<o.near) && band<3)) continue;
-      P.lines.push({a:A, b:B, f0:fi, f1:fi, col:o.col, kind:'hatch', hb:band, fam:FM});
+      var AB=hzClip(A,B); if(!AB) continue;
+      P.lines.push({a:AB[0], b:AB[1], f0:fi, f1:fi, col:o.col, kind:'hatch', hb:band, fam:FM});
     }
   }
   /* THE LATE PASS, every part of every pass, after the furniture: the budget's dropped bands go, each flat hatch line
@@ -43635,7 +43644,7 @@ function corridorDraw(p,plans,THM,camera){
     function keepBand(tau,j,stepAll,need3,M){ var b=hBand(tau,T); if(!b || b<=HDROP) return 0;
       if(need3 && b<3) return 0; var st=stepAll?1:(b===1?3:b===2?2:1); if(((j%st)+st)%st) return 0;
       var dm=dist3(M); if(!(dm<df) || (!(dm<dn) && b<3)) return 0; return b; }
-    function emit(A,B,fi,b){ P.lines.push({a:A, b:B, f0:fi, f1:fi, col:P.col, kind:'hatch', rh:1, hb:b}); }
+    function emit(A,B,fi,b){ var AB=hzClip(A,B); if(AB) P.lines.push({a:AB[0], b:AB[1], f0:fi, f1:fi, col:P.col, kind:'hatch', rh:1, hb:b}); }
     var gA=paperGap(c,ax,lat), gR=paperGap(c,lat,ax);
     /* along: generators */
     if(HDIR!==2 && gA>0){
