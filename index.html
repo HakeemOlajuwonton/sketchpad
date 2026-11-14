@@ -462,7 +462,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v395</a> &mdash; Canal: the waves are little curved water marks with a glint gap cut in the reflection under each, and the reflections ripple up and down as well as sideways (Ripple up&ndash;down), so quay edges, sills and bridge undersides undulate</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v396</a> &mdash; Street: the side walls get the upper-floor variety too (Upper variety): zones of shutters, louvres, blank bays, pairs and ribbons, a plant storey, belt courses, and laundry, curtains and grilles in the windows</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <section class="fold" id="fold_pick"><h2>Pick engine<span class="cnt"></span></h2>
@@ -23786,7 +23786,7 @@ var STRTSTATS={lots:0,conts:0,parts:0,paths:0,points:0,cycles:0};
    ray-casts those itself. Mirrored in enginetest/extract.js's `parts`. */
 var STRTTALLY={cam:null,project:null,parts:[],pre:[],sil:[],conts:[],lots:[],slabs:[],
                elems:[],bld:[],hfaces:[],signs:[],bank:null,words:[],poles:[],cables:[],
-               cars:[],dots:null,graff:[],puds:[],rparts:[],rpre:[],rsil:[],refl:[],allparts:[],upr:[],urows:[]};
+               cars:[],dots:null,graff:[],puds:[],rparts:[],rpre:[],rsil:[],refl:[],allparts:[],upr:[],urows:[],rrows:[]};
 /* CORRIDOR THEMES (queue row 49, docs/specs/2026-10-04-corridor-themes.md §1).
    buildStreet is a general machine for a canyon of objects along a path, seen
    from inside -- the spline, the lots, the slabs, the camera, the exact order,
@@ -40418,6 +40418,16 @@ function streetTheme(K){
      and every drawing is byte-identical to v269. */
   var SALT_UPR=127, UVAR=Math.max(0,Math.min(1,(isFinite(p.uvar)?+p.uvar:55)/100));
   var UKINDS=['win','bal','shut','louv','blank'], UKW=[0.5,0.15,0.1,0.1,0.15];
+  /* ROW 162 (docs/specs/2026-10-13-strt-side-wall-variety.md): THE SIDE WALLS GET IT TOO. Row 45 left the return
+     faces (3 and 5, the lot's own sides) one identical window a column a storey; Albert's plain tower face was one.
+     They take the same grammar under the same knob, from their OWN substream, SALT_RSV (403: the spec's 401 went to
+     row 87's station puddles), in a fixed count per zone and per window: SALT_UPR, SALT_FAC and SALT_RET do not move,
+     so the street faces, their clutter and WHICH side-wall windows are lit are what they were. Kinds: a balcony is
+     a solid and a return carries none (row 44), so `pair` (two narrow windows) takes its place; clutter is only
+     what lies in the window's plane (laundry, a curtain, a grille). A theme that declares no Upper variety reads 0
+     here (row 73's rule for shopv), and at 0 nothing is drawn from it */
+  var SALT_RSV=403, RSVAR=isFinite(p.uvar)?UVAR:0;
+  var RKINDS=['win','pair','shut','louv','blank'], RKW=[0.5,0.15,0.1,0.1,0.15];
   /* ROW 73 (docs/specs/2026-10-08-strt-shopfronts.md): SHOP VARIETY and
      PAVEMENT CLUTTER. One shop a lot, from SALT_SHOP, 8 numbers a lot whatever
      the knobs say; props from SALT_PROP, 4 slots a bay x 6 numbers, likewise.
@@ -40528,7 +40538,7 @@ function streetTheme(K){
          the kind, the zone's type, and the clutter it was dealt -- the building,
          not the drawing, so it is the same in every band */
       (function(){
-        var rows=[];
+        var rows=[], zis=[];
         B.storeys.forEach(function(S2,si2){
           if(S2.base) return;
           var Z2=zoneOf[si2], r2=[];
@@ -40547,9 +40557,9 @@ function streetTheme(K){
             }
             r2.push(sg);
           }
-          rows.push(r2);
+          rows.push(r2); zis.push(Z2?Z2.zi:-1);
         });
-        STRTTALLY.urows.push({side:L.side, idx:L.idx, bi:bi, rows:rows});
+        STRTTALLY.urows.push({side:L.side, idx:L.idx, bi:bi, rows:rows, zis:zis});
       })();
       /* row 144 A2: every bay of the street face collects the (u,v) box of the lines it draws there, and
          that box is the bay's knockout for the surface hatch; a rectangle drawn outside a bay (a plant
@@ -41143,17 +41153,146 @@ function streetTheme(K){
         if(Wr<2.5) return;
         var FR={A:[q0[0],q0[1],0], t:[tx/Wr,ty/Wr,0], n:[fc.n[0],fc.n[1],0], W:Wr};
         var nr=Math.max(1,Math.round(Wr/3.1)), rw=Wr/nr;
-        B.storeys.forEach(function(S){
+        /* ROW 162: this side wall's zones and every number they will use, from SALT_RSV keyed by lot, block, face
+           and zone: a zone's length, re-roll, type, belt and one change/kind pair a column, then six numbers a
+           window of each of its storeys, drawn or not */
+        var rzOf=[];
+        if(RSVAR>0){
+          var rnon=[], rk=0, rzi=0, rprev=[], rtop=-1, rcc;
+          for(rcc=0;rcc<nr;rcc++) rprev.push('win');
+          B.storeys.forEach(function(S2,si2){ if(!S2.base){ rnon.push(si2); rtop=si2; } });
+          while(rk<rnon.length){
+            var RZS=sub(sk,(((L.idx*16+bi)*2+(fk===3?0:1))*64)+rzi,SALT_RSV);
+            var rzl=2+Math.floor(RZS()*4), rRe=RZS(), rTy=RZS(), rTk=RZS(), rBelt=RZS(), rBn=RZS(), rchg=[], rnku=[];
+            for(rcc=0;rcc<nr;rcc++){ rchg.push(RZS()); rnku.push(RZS()); }
+            var rmem=rnon.slice(rk,rk+rzl), rkinds=rprev.slice(), rtype='plain';
+            if(rzi>0 && rRe<RSVAR){
+              var rwant=Math.ceil(nr/2), rpick=[];
+              for(rcc=0;rcc<nr;rcc++) if(rchg[rcc]<0.5) rpick.push(rcc);
+              if(rpick.length<rwant){
+                var rrest=[]; for(rcc=0;rcc<nr;rcc++) if(rchg[rcc]>=0.5) rrest.push(rcc);
+                rrest.sort(function(a,b){ return rchg[a]-rchg[b]; });
+                rpick=rpick.concat(rrest.slice(0,rwant-rpick.length));
+              }
+              rpick.forEach(function(c2){
+                var cur=RKINDS.indexOf(rkinds[c2]), tot=0, k2, acc=0;
+                for(k2=0;k2<5;k2++) if(k2!==cur) tot+=RKW[k2];
+                for(k2=0;k2<5;k2++){ if(k2===cur) continue; acc+=RKW[k2]/tot; if(rnku[c2]<acc || k2===4 || (k2===3&&cur===4)){ rkinds[c2]=RKINDS[k2]; break; } }
+              });
+              /* row 45's rates: a ribbon or a plant storey a third each of 0.35 x Upper variety (its tall pairs
+                 are this wall's `pair` kind) */
+              if(rTy<0.35*RSVAR) rtype=rTk<1/3?'ribbon':rTk<2/3?'plain':'plant';
+            }
+            var RZr={zi:rzi, kinds:rkinds, type:rtype, first:rmem[0], plant:rtype==='plant'?(rmem.indexOf(rtop)>=0?rtop:rmem[0]):-1,
+                     belt:(rzi>0 && rBelt<RSVAR)?(rBn<0.5?1:2):0, cl:{}};
+            rmem.forEach(function(si3){
+              var row=[];
+              for(rcc=0;rcc<nr;rcc++) row.push([RZS(),RZS(),RZS(),RZS(),RZS(),RZS()]);
+              RZr.cl[si3]=row; rzOf[si3]=RZr;
+            });
+            rprev=rkinds; rk+=rzl; rzi++;
+          }
+        }
+        /* the storey rows the side-wall repeat measure reads: per column the kind, the zone's type and the clutter it
+           was dealt, and each row's zone -- the building, the same in every band. At 0 every row is the one window */
+        (function(){
+          var rrw=[], rzs=[];
+          B.storeys.forEach(function(S2,si2){
+            if(S2.base) return;
+            var Z2=rzOf[si2], r2=[];
+            for(var c3=0;c3<nr;c3++){
+              var sg=Z2?Z2.kinds[c3]:'win';
+              if(Z2 && Z2.plant===si2) sg='plant';
+              else if(Z2 && sg==='win'){ var w7=Z2.cl[si2][c3]; if(Z2.type!=='plain') sg+='/'+Z2.type;
+                sg+=(w7[1]<0.10*RSVAR?'l':'')+(w7[3]<0.15*RSVAR?'c':'')+(w7[4]<0.08*RSVAR?'g':''); }
+              r2.push(sg);
+            }
+            rrw.push(r2); rzs.push(Z2?Z2.zi:-1);
+          });
+          STRTTALLY.rrows.push({side:L.side, idx:L.idx, bi:bi, fk:fk, rows:rrw, zis:rzs});
+        })();
+        function rln(u0,v0,u1,v1,kind){ BP.lines.push({a:wp(FR,u0,v0,0),b:wp(FR,u1,v1,0),f0:fk,f1:fk,col:COL_K,kind:kind}); }
+        function rbox(u0,u1,v0,v1,kind){
+          var cs=[wp(FR,u0,v0,0),wp(FR,u1,v0,0),wp(FR,u1,v1,0),wp(FR,u0,v1,0)];
+          for(var e=0;e<4;e++) BP.lines.push({a:cs[e],b:cs[(e+1)%4],f0:fk,f1:fk,col:COL_K,kind:kind});
+          K.reserve(BP,fk,cs);
+        }
+        B.storeys.forEach(function(S,si){
           if(S.base) return;
+          var RZN=rzOf[si];
+          if(RZN){
+            /* a belt course at the zone's foot; a plant storey is louvres across the whole face */
+            if(RZN.first===si && RZN.belt){
+              var rbz=bandAt(wp(FR,Wr/2,S.z0,0));
+              if(rbz){ rln(0.05,S.z0,Wr-0.05,S.z0,'belt'); if(RZN.belt===2) rln(0.05,S.z0+0.25,Wr-0.05,S.z0+0.25,'belt');
+                elem('returnz',wp(FR,Wr/2,S.z0,0),rbz); }
+            }
+            if(RZN.plant===si){
+              var rpc=wp(FR,Wr/2,(S.z0+S.z1)/2,0), rpb=bandAt(rpc);
+              if(rpb){ rbox(0.15,Wr-0.15,S.z0+0.5,S.z1-0.4,'louvre'); hlines(0.15,Wr-0.15,S.z0+0.5,S.z1-0.4,0.08,COL_K,'louvre',FR,fk);
+                elem('returnz',rpc,rpb); }
+            }
+          }
           for(var rc=0;rc<nr;rc++){
             var ucr=(rc+0.5)*rw, cen2=wp(FR,ucr,(S.z0+S.z1)/2,0), b2=bandAt(cen2), rlit=RRT()<GLOW;
             if(!b2) continue;
             var x0=ucr-rw*0.3, x1=ucr+rw*0.3, y0=S.z0+0.9, y1=S.z1-0.45;
+            if(RZN){
+              /* row 162: the zone's kind for this column. The SALT_RET roll above is taken whatever it is */
+              if(RZN.plant===si) continue;
+              var rkd=RZN.kinds[rc];
+              if(rkd==='blank') continue;
+              if(rkd==='shut' || rkd==='louv'){
+                rbox(x0,x1,y0,y1,rkd==='shut'?'shutter':'louvre');
+                hlines(x0,x1,y0,y1,rkd==='shut'?0.12:0.08,COL_K,rkd==='shut'?'shutter':'louvre',FR,fk);
+                elem('returnshut',cen2,b2); continue;
+              }
+              if(rkd==='pair'){
+                [[ucr-0.35*rw,ucr-0.05*rw],[ucr+0.05*rw,ucr+0.35*rw]].forEach(function(h2){
+                  rbox(h2[0],h2[1],y0,y1,'win');
+                  if(rlit) hlines(h2[0]+0.05,h2[1]-0.05,y0+0.05,y1-0.05,0.18,COL_GLOW,'glow',FR,fk);
+                });
+                elem(rlit?'returnlit':'return',cen2,b2); continue;
+              }
+              if(RZN.type==='ribbon'){
+                /* one strip along the run of window columns, a line on every column boundary */
+                var lw2=rc===0 || RZN.kinds[rc-1]!=='win', rw3=rc===nr-1 || RZN.kinds[rc+1]!=='win';
+                var ra=lw2?ucr-rw/2+0.15:ucr-rw/2, rb=rw3?ucr+rw/2-0.15:ucr+rw/2;
+                rln(ra,y0,rb,y0,'win'); rln(ra,y1,rb,y1,'win'); rln(ra,y0,ra,y1,'win');
+                if(rw3) rln(rb,y0,rb,y1,'win');
+                K.reserve(BP,fk,[wp(FR,ra,y0,0),wp(FR,rb,y0,0),wp(FR,rb,y1,0),wp(FR,ra,y1,0)]);
+                if(rlit) hlines(ra+0.05,rb-0.05,y0+0.05,y1-0.05,0.18,COL_GLOW,'glow',FR,fk);
+                elem(rlit?'returnlit':'return',cen2,b2); continue;
+              }
+            }
             var corners=[wp(FR,x0,y0,0),wp(FR,x1,y0,0),wp(FR,x1,y1,0),wp(FR,x0,y1,0)];
             for(var e=0;e<4;e++) BP.lines.push({a:corners[e],b:corners[(e+1)%4],f0:fk,f1:fk,col:COL_K,kind:'win'});
             K.reserve(BP,fk,corners);
             if(rlit) hlines(x0+0.05,x1-0.05,y0+0.05,y1-0.05,0.18,COL_GLOW,'glow',FR,fk);
             elem(rlit?'returnlit':'return',cen2,b2);
+            if(RZN){
+              /* row 162: the window's clutter -- only what lies in its plane, each at row 45's rate; a lit window
+                 keeps its glow and takes no curtain */
+              var w8=RZN.cl[si][rc], kq;
+              if(w8[1]<0.10*RSVAR){
+                var ly=y0+0.6*(y1-y0), nl=2+Math.floor(w8[5]*3), sp2=(x1-x0)/(nl+1);
+                rln(x0-0.1,ly,x1+0.1,ly,'laundry');
+                for(kq=1;kq<=nl;kq++){ var lx=x0+sp2*kq; rbox(lx-0.11,lx+0.11,ly-0.3,ly,'laundry'); }
+                elem('returnclut',cen2,b2);
+              }
+              if(!rlit && w8[3]<0.15*RSVAR){
+                var cx=x0+(0.3+0.4*w8[5])*(x1-x0);
+                rln(cx,y0,cx,y1,'curtain');
+                if(((w8[5]*13)%1)<0.5) hlines(x0+0.05,cx-0.03,y0+0.05,y1-0.05,0.25,COL_K,'curtain',FR,fk);
+                else hlines(cx+0.03,x1-0.05,y0+0.05,y1-0.05,0.25,COL_K,'curtain',FR,fk);
+                elem('returnclut',cen2,b2);
+              }
+              if(w8[4]<0.08*RSVAR){
+                var ng=3+Math.floor(((w8[5]*29)%1)*3);
+                for(kq=1;kq<=ng;kq++){ var gx=x0+(x1-x0)*kq/(ng+1); rln(gx,y0,gx,y1,'grille'); }
+                elem('returnclut',cen2,b2);
+              }
+            }
           }
         });
         if(bi===0){
@@ -42705,7 +42844,7 @@ function corridorDraw(p,plans,THM,camera){
   STRTINFO=''; STRTSTATS={lots:0,conts:0,parts:0,paths:0,points:0,cycles:0};
   STRTTALLY={cam:null,project:null,parts:[],pre:[],sil:[],conts:[],lots:[],slabs:[],
              signs:[],bank:null,words:[],poles:[],cables:[],cars:[],dots:null,graff:[],
-             puds:[],rparts:[],rpre:[],rsil:[],refl:[],allparts:[],upr:[],urows:[]};
+             puds:[],rparts:[],rpre:[],rsil:[],refl:[],allparts:[],upr:[],urows:[],rrows:[]};
   /* every plan's slabs, then its lots, in plan order: one plan is today's list */
   var conts=[], lots=[], dropped=0, pushed=0;
   plans.forEach(function(PLk){
@@ -44721,7 +44860,7 @@ function corridorDraw(p,plans,THM,camera){
     STRTTALLY.creased=[]; STRTTALLY.seamDrawn=[]; STRTTALLY.rcreased=[]; STRTTALLY.rseamDrawn=[];
     STRTTALLY.mirrorSkip=THM.mirrorSkip||[]; STRTTALLY.pudMinMM=THM.pudMinMM||0;
     STRTTALLY.elems=[]; STRTTALLY.bld=[]; STRTTALLY.hfaces=[]; HN=[0,0,0,0]; SHADT=null;
-    STRTTALLY.signs=[]; STRTTALLY.graff=[]; STRTTALLY.cars=[]; STRTTALLY.upr=[]; STRTTALLY.urows=[]; STRTTALLY.unsepPairs=[];
+    STRTTALLY.signs=[]; STRTTALLY.graff=[]; STRTTALLY.cars=[]; STRTTALLY.upr=[]; STRTTALLY.urows=[]; STRTTALLY.rrows=[]; STRTTALLY.unsepPairs=[];
     STRTTALLY.shops=[]; STRTTALLY.props=[]; STRTTALLY.ribbons=[];
     conts.forEach(function(C){ C.parts=[]; });
     lots.forEach(function(L){
