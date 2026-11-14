@@ -462,7 +462,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v393</a> &mdash; Corridor city: the powerline keeps clear of the city. Every pylon stands 3 m or more from every building, no pylon is over 65 m (a line that would need one takes another route, or the city has no line and the stat line says so), and the wires pass 6 m or more from every building</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v394</a> &mdash; Surface hatch: the new hatch is the default on the Street, Night market, Harbour, Library stacks, Canal, Train station, Warehouse and Baggage hall (Hatch style 1). A preset saved before it still loads at Hatch style 0 and draws as it did</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <section class="fold" id="fold_pick"><h2>Pick engine<span class="cnt"></span></h2>
@@ -3268,7 +3268,7 @@ var SPEC={
     ['rvar','Ripple variety',0,100,1,60,[100,'%']],
     ['wmk','Water marks',0,100,1,40,[100,'%']],['wglint','Glint gap',0,15,1,5,[10,' mm']],
     ['dots','Particles',0,3000,10,420],['pnear','Particles near',0,100,1,50,[100,'%']],['graff','Graffiti',0,100,1,20,[100,'%']],
-    ['hatch','Tone hatch',0,100,1,55,[100,'%']],['hatchmode','Hatch spacing',0,1,1,0],['hstyle','Hatch style',0,1,1,0],['hdir','Hatch lines',0,3,1,1],
+    ['hatch','Tone hatch',0,100,1,55,[100,'%']],['hatchmode','Hatch spacing',0,1,1,0],['hstyle','Hatch style',0,1,1,1],['hdir','Hatch lines',0,3,1,1],
     ['sun','Light from',0,359,1,300,[1,'°']],['sunel','Sun height',10,80,1,30,[1,'°']],['shad','Cast shadows',0,1,1,1],
     ['cams','Camera along',0,90,1,12,[100,'%']],['camx','Camera side',-100,100,1,-10,[100,'%']],
     ['camz','Camera height',0.2,80,0.1,1.6,[1,' m']],['look','Look ahead',5,300,1,60,[1,' m']],['turn','Turn',-90,90,1,0,[1,'°']],
@@ -3303,7 +3303,7 @@ var SPEC={
     ['hstr','Front puddle stretch',-100,100,1,0,[100,'%']],['hrag','Front puddle edge',0,100,1,50,[100,'%']],['hturn','Front puddle turn',-45,45,1,0,[1,'°']],['hshape','Front puddle shape',0,99,1,0],
     ['rvar','Ripple variety',0,100,1,60,[100,'%']],
     ['wmk','Water marks',0,100,1,40,[100,'%']],['wglint','Glint gap',0,15,1,5,[10,' mm']],
-    ['hatch','Tone hatch',0,100,1,55,[100,'%']],['hatchmode','Hatch spacing',0,1,1,0],['hstyle','Hatch style',0,1,1,0],['hdir','Hatch lines',0,3,1,1],
+    ['hatch','Tone hatch',0,100,1,55,[100,'%']],['hatchmode','Hatch spacing',0,1,1,0],['hstyle','Hatch style',0,1,1,1],['hdir','Hatch lines',0,3,1,1],
     ['sun','Light from',0,359,1,300,[1,'°']],['sunel','Sun height',10,80,1,30,[1,'°']],['shad','Cast shadows',0,1,1,1],
     ['cams','Camera along',0,90,1,6,[100,'%']],['camx','Camera side',-100,100,1,0,[100,'%']],
     ['camz','Camera height',0.2,80,0.1,1.6,[1,' m']],['look','Look ahead',5,300,1,25,[1,' m']],['turn','Turn',-90,90,1,0,[1,'°']],
@@ -3327,7 +3327,7 @@ var SPEC={
     ['hstr','Front puddle stretch',-100,100,1,0,[100,'%']],['hrag','Front puddle edge',0,100,1,50,[100,'%']],['hturn','Front puddle turn',-45,45,1,0,[1,'°']],['hshape','Front puddle shape',0,99,1,0],
     ['rvar','Ripple variety',0,100,1,60,[100,'%']],
     ['wmk','Water marks',0,100,1,40,[100,'%']],['wglint','Glint gap',0,15,1,5,[10,' mm']],
-    ['hatch','Tone hatch',0,100,1,50,[100,'%']],['hstyle','Hatch style',0,1,1,0],['hdir','Hatch lines',0,3,1,1],['sun','Light from',0,359,1,300,[1,'°']],['sunel','Sun height',10,80,1,30,[1,'°']],['shad','Cast shadows',0,1,1,1],
+    ['hatch','Tone hatch',0,100,1,50,[100,'%']],['hstyle','Hatch style',0,1,1,1],['hdir','Hatch lines',0,3,1,1],['sun','Light from',0,359,1,300,[1,'°']],['sunel','Sun height',10,80,1,30,[1,'°']],['shad','Cast shadows',0,1,1,1],
     ['cams','Camera along',0,90,1,5,[100,'%']],['camx','Camera side',-100,100,1,-20,[100,'%']],
     ['camz','Camera height',0.2,80,0.1,1.8,[1,' m']],['look','Look ahead',5,300,1,80,[1,' m']],['turn','Turn',-90,90,1,0,[1,'°']],
     ['pitch','Pitch',-45,45,0.5,3,[1,'°']],['fov','Field of view',25,120,1,70,[1,'°']],
@@ -3344,7 +3344,7 @@ var SPEC={
     ['len','Aisle length',10,120,1,30,[1,' m']],['bend','Bend',0,60,1,0,[1,'°/100 m']],
     ['width','Aisle width',0.8,3,0.05,1.1,[1,' m']],['pave','Set-back',0,1,0.05,0,[1,' m']],
     ['range','Range length',3,20,1,8],['shelves','Shelves',3,8,1,6],['fill','Fill',30,100,1,85,[100,'%']],
-    ['lang','Script',0,3,1,2],['hatch','Tone hatch',0,100,1,55,[100,'%']],['hstyle','Hatch style',0,1,1,0],['hdir','Hatch lines',0,3,1,1],
+    ['lang','Script',0,3,1,2],['hatch','Tone hatch',0,100,1,55,[100,'%']],['hstyle','Hatch style',0,1,1,1],['hdir','Hatch lines',0,3,1,1],
     ['cover','Cover texture',0,100,1,65,[100,'%']],['vivid','Vivid share',0,100,1,30,[100,'%']],
     ['ceilz','Ceiling',2.4,4,0.05,2.8,[1,' m']],['lamp','Light spacing',1.2,6,0.1,2.4,[1,' m']],
     ['carts','Book carts',0,10,1,2,[1,'/100 m']],
@@ -3528,7 +3528,7 @@ var SPEC={
     ['bridges','Bridges',0,4,1,1,[1,'/100 m']],['bclear','Bridge clearance',1.8,3.5,0.1,2.2,[1,' m']],
     ['boats','Boats',0,12,1,3,[1,'/100 m']],['waves','Waves',0,100,1,35,[100,'%']],
     ['ripple','Ripple',0,30,1,10,[10,' mm']],['rvar','Ripple variety',0,100,1,60,[100,'%']],
-    ['hatch','Tone hatch',0,100,1,55,[100,'%']],['hatchmode','Hatch spacing',0,1,1,0],['hstyle','Hatch style',0,1,1,0],['hdir','Hatch lines',0,3,1,1],
+    ['hatch','Tone hatch',0,100,1,55,[100,'%']],['hatchmode','Hatch spacing',0,1,1,0],['hstyle','Hatch style',0,1,1,1],['hdir','Hatch lines',0,3,1,1],
     ['sun','Light from',0,359,1,300,[1,'°']],['sunel','Sun height',10,80,1,30,[1,'°']],['shad','Cast shadows',0,1,1,1],
     ['cams','Camera along',0,90,1,5,[100,'%']],['camx','Camera side',-100,100,1,15,[100,'%']],
     ['camz','Camera height',0.2,80,0.1,1.2,[1,' m']],['look','Look ahead',5,300,1,50,[1,' m']],['turn','Turn',-90,90,1,0,[1,'°']],
@@ -3561,7 +3561,7 @@ var SPEC={
     ['puddles','Puddles',0,40,1,6],['pudsz','Puddle size',5,100,1,40,[100,'%']],['ripple','Ripple',0,30,1,4,[10,' mm']],
     ['rvar','Ripple variety',0,100,1,60,[100,'%']],['wmk','Water marks',0,100,1,40,[100,'%']],['wglint','Glint gap',0,15,1,5,[10,' mm']],['hero','Front puddle',0,100,1,0,[100,'%']],
     ['hstr','Front puddle stretch',-100,100,1,0,[100,'%']],['hrag','Front puddle edge',0,100,1,50,[100,'%']],['hturn','Front puddle turn',-45,45,1,0,[1,'°']],['hshape','Front puddle shape',0,99,1,0],
-    ['hatch','Tone hatch',0,100,1,55,[100,'%']],['hatchmode','Hatch spacing',0,1,1,0],['hstyle','Hatch style',0,1,1,0],['hdir','Hatch lines',0,3,1,1],
+    ['hatch','Tone hatch',0,100,1,55,[100,'%']],['hatchmode','Hatch spacing',0,1,1,0],['hstyle','Hatch style',0,1,1,1],['hdir','Hatch lines',0,3,1,1],
     ['sun','Light from',0,359,1,300,[1,'°']],['sunel','Sun height',10,80,1,30,[1,'°']],['shad','Cast shadows',0,1,1,1],
     ['cams','Camera along',0,90,1,6,[100,'%']],['camx','Camera side',-100,100,1,-72,[100,'%']],
     ['camz','Camera height',0.2,80,0.1,2.9,[1,' m']],['look','Look ahead',5,300,1,60,[1,' m']],['turn','Turn',-90,90,1,0,[1,'°']],
@@ -3679,7 +3679,7 @@ var SPEC={
     ['shine','Floor shine',0,40,1,8],['pudsz','Shine size',5,100,1,40,[100,'%']],['ripple','Ripple',0,30,1,0,[10,' mm']],
     ['hero','Front shine',0,100,1,0,[100,'%']],
     ['hstr','Front shine stretch',-100,100,1,0,[100,'%']],['hrag','Front shine edge',0,100,1,50,[100,'%']],['hturn','Front shine turn',-45,45,1,0,[1,'°']],['hshape','Front shine shape',0,99,1,0],
-    ['hatch','Tone hatch',0,100,1,40,[100,'%']],['hstyle','Hatch style',0,1,1,0],['hdir','Hatch lines',0,3,1,1],
+    ['hatch','Tone hatch',0,100,1,40,[100,'%']],['hstyle','Hatch style',0,1,1,1],['hdir','Hatch lines',0,3,1,1],
     ['cams','Camera along',0,90,1,2,[100,'%']],['camx','Camera side',-100,100,1,-10,[100,'%']],
     ['camz','Camera height',0.2,11.5,0.1,1.6,[1,' m']],['look','Look ahead',2,100,1,15,[1,' m']],['turn','Turn',-90,90,1,0,[1,'°']],
     ['pitch','Pitch',-45,45,0.5,6,[1,'°']],['fov','Field of view',25,120,1,78,[1,'°']],
@@ -3705,7 +3705,7 @@ var SPEC={
     ['shine','Floor shine',0,40,1,6],['pudsz','Shine size',5,100,1,40,[100,'%']],['ripple','Ripple',0,30,1,0,[10,' mm']],
     ['hero','Front shine',0,100,1,0,[100,'%']],
     ['hstr','Front shine stretch',-100,100,1,0,[100,'%']],['hrag','Front shine edge',0,100,1,50,[100,'%']],['hturn','Front shine turn',-45,45,1,0,[1,'°']],['hshape','Front shine shape',0,99,1,0],
-    ['hatch','Tone hatch',0,100,1,35,[100,'%']],['hstyle','Hatch style',0,1,1,0],['hdir','Hatch lines',0,3,1,1],
+    ['hatch','Tone hatch',0,100,1,35,[100,'%']],['hstyle','Hatch style',0,1,1,1],['hdir','Hatch lines',0,3,1,1],
     ['cams','Camera along',0,90,1,1,[100,'%']],['camx','Camera side',-100,100,1,-63,[100,'%']],
     ['camz','Camera height',0.2,11.6,0.05,1.6,[1,' m']],['look','Look ahead',2,150,1,20,[1,' m']],['turn','Turn',-90,90,1,0,[1,'°']],
     ['pitch','Pitch',-45,45,0.5,4,[1,'°']],['fov','Field of view',25,120,1,78,[1,'°']],
@@ -47850,7 +47850,7 @@ var HELP={
 'harb.wmk':'How many little wave marks lie on the water, in the puddles\u2019 ink. They sit across your view, so they lie flat on the yard, and far puddles get fewer, never a smudge. 0 is a plain mirror.',
 'harb.wglint':'How wide a gap each wave mark cuts in the reflection under it, in millimetres above and below the mark. It is what makes a mark read as a glint over a dark reflection. 0 draws the marks over the reflection with no gap.',
 'harb.hatch':'A tone hatch on the cranes\u2019 and trucks\u2019 faces that look away from the light: ochre on the yellow steel, dark grey on the black. Never on a container -- its ribs are its tone.',
-'harb.hstyle':'0 draws the shading as it always has. 1 is the new hatch: tone grows in three steps as a face turns from the light, lines are spaced on the paper, coplanar walls line up, windows, signs and doors stay clear, and round parts are shaded round. A saved setting without this knob draws as 0.',
+'harb.hstyle':'0 draws the shading as it always has. 1, the default, is the new hatch: tone grows in three steps as a face turns from the light, lines are spaced on the paper, coplanar walls line up, windows, signs and doors stay clear, and round parts are shaded round. A saved setting without this knob draws as 0.',
 'harb.hdir':'Hatch style 1 only. 0 diagonal, 45 degrees in each face, as before. 1 vertical lines, spaced along the wall (round parts: along their axis). 2 courses, horizontal lines that run to the wall\u2019s vanishing point (round parts: rings). 3 vertical everywhere shaded, plus courses in the darkest band.',
 'harb.sun':'Where the light comes from. Hatch style 0: in degrees, a bearing; the faces turned away carry the tone hatch. Hatch style 1: measured from straight down the lane at the camera, clockwise: 0 from ahead, 90 from the right, 180 from behind you, 270 from the left.',
 'harb.sunel':'Hatch style 1 only. How high the sun stands, in degrees above the horizon. Low light throws long shadows across the yard and up the far walls; high light keeps them short, close under what casts them. It also sets how the tone falls on the walls.',
@@ -47878,7 +47878,7 @@ var HELP={
 'libr.fill':'How full the shelves are. Below full, gaps open between books, and a gap two spines wide can let the next book lean into it against its neighbour.',
 'libr.lang':'The script of the titles on the nearest spines. 0 pseudo-kanji, 1 pseudo-hangul, 2 Latin words, 3 a mix. Titles only appear where they would be big enough on the sheet to read.',
 'libr.hatch':'How dense the shading on the back panels is, behind and above the books, so the gaps read as depth. 0 is no shading.',
-'libr.hstyle':'0 draws the shading as it always has. 1 is the new hatch: tone grows in three steps as a face turns from the light, lines are spaced on the paper, coplanar walls line up, windows, signs and doors stay clear, and round parts are shaded round. A saved setting without this knob draws as 0.',
+'libr.hstyle':'0 draws the shading as it always has. 1, the default, is the new hatch: tone grows in three steps as a face turns from the light, lines are spaced on the paper, coplanar walls line up, windows, signs and doors stay clear, and round parts are shaded round. A saved setting without this knob draws as 0.',
 'libr.hdir':'Hatch style 1 only. 0 diagonal, 45 degrees in each face, as before. 1 vertical lines, spaced along the wall (round parts: along their axis). 2 courses, horizontal lines that run to the wall\u2019s vanishing point (round parts: rings). 3 vertical everywhere shaded, plus courses in the darkest band.',
 'libr.cover':'How much of each book\u2019s colour is laid on as ink: books nearer than Outline detail to are hatched in their own colour at a pitch held on the sheet (one pen width at 100, four at 0). Near books show their binding \u2014 cloth, buckram, leather with gilt bands, paperbacks, two-colour jackets \u2014 and a short title in a clear panel. 0 is plain white spines.',
 'libr.vivid':'The share of books that are paperbacks or dust jackets, drawn from a bright palette (red, orange, yellow, light blue, turquoise, pink, green, blue); the rest are cloth, buckram and leather in the library\u2019s own dark colours. Needs Cover texture above 0. 0 is a library of bound books, 100 a paperback shop.',
@@ -48158,7 +48158,7 @@ var HELP={
 'stn.hturn':'Turns the front puddle on the deck, up to 45° either way. Does nothing while Front puddle is 0.',
 'stn.hshape':'Another shape for the front puddle without changing anything else in the drawing. Does nothing while Front puddle is 0.',
 'stn.hatch':"How dense the shading is on the building walls facing away from the light. 0 is no shading. The face of the platform under its edge is hatched dark grey whatever this is.",
-'stn.hstyle':'0 draws the shading as it always has. 1 is the new hatch: tone grows in three steps as a face turns from the light, lines are spaced on the paper, coplanar walls line up, windows, signs and doors stay clear, and round parts are shaded round. A saved setting without this knob draws as 0.',
+'stn.hstyle':'0 draws the shading as it always has. 1, the default, is the new hatch: tone grows in three steps as a face turns from the light, lines are spaced on the paper, coplanar walls line up, windows, signs and doors stay clear, and round parts are shaded round. A saved setting without this knob draws as 0.',
 'stn.hdir':'Hatch style 1 only. 0 diagonal, 45 degrees in each face, as before. 1 vertical lines, spaced along the wall (round parts: along their axis). 2 courses, horizontal lines that run to the wall\u2019s vanishing point (round parts: rings). 3 vertical everywhere shaded, plus courses in the darkest band.',
 'stn.hatchmode':"0: the shading lines are evenly spaced ON THE WALL, so they crowd together into the distance. 1: evenly spaced ON THE PAPER, so a far wall is as light as a near one.",
 'stn.sun':"Where the light comes from. Hatch style 0: a compass bearing, 0 north, 90 east, 180 south, 270 west; the building walls facing away get the tone hatch. Hatch style 1: measured from straight down the line at the camera, clockwise: 0 from ahead, 90 from the right, 180 from behind you, 270 from the left. Under the train shed it is fixed at 300.",
@@ -48204,7 +48204,7 @@ var HELP={
 'whse.hshape':'Another shape for the front shine without changing anything else in the drawing: each number is a different patch.',
 'whse.ripple':'How far the reflection wobbles sideways, in millimetres on the sheet. A polished floor is still, so 0.',
 'whse.hatch':'How dense the shading is on the back rack’s loads, the faces seen through the flue between the two racks.',
-'whse.hstyle':'0 draws the shading as it always has. 1 is the new hatch: tone grows in three steps as a face turns from the light, lines are spaced on the paper, coplanar walls line up, windows, signs and doors stay clear, and round parts are shaded round. A saved setting without this knob draws as 0.',
+'whse.hstyle':'0 draws the shading as it always has. 1, the default, is the new hatch: tone grows in three steps as a face turns from the light, lines are spaced on the paper, coplanar walls line up, windows, signs and doors stay clear, and round parts are shaded round. A saved setting without this knob draws as 0.',
 'whse.hdir':'Hatch style 1 only. 0 diagonal, 45 degrees in each face, as before. 1 vertical lines, spaced along the wall (round parts: along their axis). 2 courses, horizontal lines that run to the wall\u2019s vanishing point (round parts: rings). 3 vertical everywhere shaded, plus courses in the darkest band.',
 'whse.cams':'Where the camera stands, as a share of the aisle length. Near 0 you see the whole aisle ahead.',
 'whse.camx':'The camera across the aisle, as a share of half its width: 0 is the middle.',
@@ -48246,7 +48246,7 @@ var HELP={
 'canal.ripple':'How far the reflection wobbles, in millimetres on the sheet at 5 m. 0 is a still mirror.',
 'canal.rvar':'How much the ripple varies across the water: two wave trains, calm and choppy patches, larger near.',
 'canal.hatch':'A tone hatch on the walls facing away from the light, in each house\u2019s own plaster colour.',
-'canal.hstyle':'0 draws the shading as it always has. 1 is the new hatch: tone grows in three steps as a face turns from the light, lines are spaced on the paper, coplanar walls line up, windows, signs and doors stay clear, and round parts are shaded round. A saved setting without this knob draws as 0.',
+'canal.hstyle':'0 draws the shading as it always has. 1, the default, is the new hatch: tone grows in three steps as a face turns from the light, lines are spaced on the paper, coplanar walls line up, windows, signs and doors stay clear, and round parts are shaded round. A saved setting without this knob draws as 0.',
 'canal.hdir':'Hatch style 1 only. 0 diagonal, 45 degrees in each face, as before. 1 vertical lines, spaced along the wall (round parts: along their axis). 2 courses, horizontal lines that run to the wall\u2019s vanishing point (round parts: rings). 3 vertical everywhere shaded, plus courses in the darkest band.',
 'canal.hatchmode':'0 spaces the hatch in metres on the wall, 1 in millimetres on the sheet.',
 'canal.sun':'Where the light comes from. Hatch style 0: in degrees, a bearing; walls facing away get the tone hatch. Hatch style 1: measured from straight down the canal at the camera, clockwise: 0 from ahead, 90 from the right, 180 from behind you, 270 from the left.',
@@ -48291,7 +48291,7 @@ var HELP={
 'bagh.hturn':'Turns the front shine on the ground, up to 45° either way, so it lies diagonally across the tug road. Does nothing while Front shine is 0.',
 'bagh.hshape':'Another shape for the front shine without changing anything else in the drawing: each number is a different outline, tilt and side. Does nothing while Front shine is 0.',
 'bagh.hatch':'How dense the shading on the walls behind the conveyors is. 0 is no shading.',
-'bagh.hstyle':'0 draws the shading as it always has. 1 is the new hatch: tone grows in three steps as a face turns from the light, lines are spaced on the paper, coplanar walls line up, windows, signs and doors stay clear, and round parts are shaded round. A saved setting without this knob draws as 0.',
+'bagh.hstyle':'0 draws the shading as it always has. 1, the default, is the new hatch: tone grows in three steps as a face turns from the light, lines are spaced on the paper, coplanar walls line up, windows, signs and doors stay clear, and round parts are shaded round. A saved setting without this knob draws as 0.',
 'bagh.hdir':'Hatch style 1 only. 0 diagonal, 45 degrees in each face, as before. 1 vertical lines, spaced along the wall (round parts: along their axis). 2 courses, horizontal lines that run to the wall\u2019s vanishing point (round parts: rings). 3 vertical everywhere shaded, plus courses in the darkest band.',
 'bagh.cams':'Where the camera stands, as a share of the hall length. Near 0 you see the whole hall ahead.',
 'bagh.camx':'The camera across the tug road, as a share of half its width: 0 is the centreline, −63% stands in a lane.',
@@ -48342,7 +48342,7 @@ var HELP={
 'mkt.wglint':'How wide a gap each wave mark cuts in the reflection under it, in millimetres above and below the mark. It is what makes a mark read as a glint over a dark reflection. 0 draws the marks over the reflection with no gap.',
 'mkt.ripple':'How far the reflection wobbles sideways, in millimetres on the sheet. 0 is a still mirror.',
 'mkt.hatch':'How dense the shading is on walls facing away from the light. 0 is no shading.',
-'mkt.hstyle':'0 draws the shading as it always has. 1 is the new hatch: tone grows in three steps as a face turns from the light, lines are spaced on the paper, coplanar walls line up, windows, signs and doors stay clear, and round parts are shaded round. A saved setting without this knob draws as 0.',
+'mkt.hstyle':'0 draws the shading as it always has. 1, the default, is the new hatch: tone grows in three steps as a face turns from the light, lines are spaced on the paper, coplanar walls line up, windows, signs and doors stay clear, and round parts are shaded round. A saved setting without this knob draws as 0.',
 'mkt.hdir':'Hatch style 1 only. 0 diagonal, 45 degrees in each face, as before. 1 vertical lines, spaced along the wall (round parts: along their axis). 2 courses, horizontal lines that run to the wall\u2019s vanishing point (round parts: rings). 3 vertical everywhere shaded, plus courses in the darkest band.',
 'mkt.hatchmode':'0: shading lines evenly spaced on the wall, crowding into the distance. 1: evenly spaced on the paper.',
 'mkt.sun':'Where the light comes from. Hatch style 0: a compass bearing; the walls facing away get the tone hatch. Hatch style 1: measured from straight down the alley at the camera, clockwise: 0 from ahead, 90 from the right, 180 from behind you, 270 from the left.',
@@ -48383,7 +48383,7 @@ var HELP={
 'strt.fire':'How many buildings carry a fire escape: landings at every floor and a zig-zag stair, in one bay of the street face. Only buildings with room in front of the wall and three or more storeys above the shop can have one.',
 'strt.glow':'How many windows are lit, on the street faces and the side walls alike. A lit window gets a yellow hatch inside its frame, so Lit windows is also how much yellow ink the drawing uses.',
 'strt.hatch':'How dense the shading is on walls facing away from the light. 0 is no shading. The side walls of the canyon get it half again as dense, which is what makes one side dark and the other light.',
-'strt.hstyle':'0 draws the shading as it always has. 1 is the new hatch: tone grows in three steps as a face turns from the light, lines are spaced on the paper, coplanar walls line up, windows, signs and doors stay clear, and round parts are shaded round. A saved setting without this knob draws as 0.',
+'strt.hstyle':'0 draws the shading as it always has. 1, the default, is the new hatch: tone grows in three steps as a face turns from the light, lines are spaced on the paper, coplanar walls line up, windows, signs and doors stay clear, and round parts are shaded round. A saved setting without this knob draws as 0.',
 'strt.hdir':'Hatch style 1 only. 0 diagonal, 45 degrees in each face, as before. 1 vertical lines, spaced along the wall (round parts: along their axis). 2 courses, horizontal lines that run to the wall\u2019s vanishing point (round parts: rings). 3 vertical everywhere shaded, plus courses in the darkest band.',
 'strt.hatchmode':'0: the shading lines are evenly spaced ON THE WALL, so they crowd together into the distance. 1: evenly spaced ON THE PAPER, so a far wall is as light as a near one.',
 'strt.sun':'Where the light comes from. Hatch style 0: a compass bearing, 0 north, 90 east, 180 south, 270 west, and walls facing away get the shading. Hatch style 1: measured from straight down the street at the camera, clockwise: 0 from ahead, 90 from the right, 180 from behind you, 270 from the left. The default 300 is ahead-left: the left walls in shade, the right walls lit.',
@@ -50365,6 +50365,14 @@ function restore(o){
         if(sp && !isNaN(v)) STATE.eng[k][pk]=Math.max(sp[2],Math.min(sp[3],v)); }
       else unknown.push(k+'.'+pk);
     });
+  });
+  /* row 144 A4: Hatch style 1 is the default from v394. A preset written before it has no hstyle key and drew at 0, so
+     it loads at 0 and draws as it did -- restore() leaves an absent key at whatever the page holds, which is now 1.
+     One saved at 1 with no Sun height or Cast shadows (between v390 and v391) loads their defaults */
+  Object.keys(o.eng||{}).forEach(function(k){ var e=o.eng[k], st=STATE.eng[k];
+    if(!st || !e || typeof e!=='object' || !('hstyle' in st)) return;
+    if(!('hstyle' in e)) st.hstyle=0;
+    else ['sunel','shad'].forEach(function(pk){ if(pk in st && !(pk in e)){ var sp=specOf(SPEC[k][1],pk); if(sp) st[pk]=sp[5]; } });
   });
   Object.keys(o.g||{}).forEach(function(pk){
     if(pk in STATE.g){ var sp=specOf(GSPEC,pk); var v=+o.g[pk];
