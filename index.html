@@ -462,7 +462,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v399</a> &mdash; Surface hatch: no hatch line reaches below the ground, so none is mirrored in the water above it</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v400</a> &mdash; Street props: planter leaves stop at the rim of the pot, so none is drawn inside it</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <section class="fold" id="fold_pick"><h2>Pick engine<span class="cnt"></span></h2>
@@ -41009,8 +41009,16 @@ function streetTheme(K){
             var LM=solid(para(wp(F,pa,z0+ph,0.05),vec(F,'t',pw),vec(F,'n',pw),vec(F,'z',pw*0.8)),K,COL_LEAFP,{layer:'prop'});
             LM.lines=[]; LM.hides=false; LM.seeThru=true;
             var nlv=5+Math.floor(hsh(W[5],pi)*5), mid=0.05+pw/2;
+            /* row 349: a leaf reaches 0.08 pw under the pot's rim, into the pot, and the leaf mass stands on the pot,
+               so the pot never cuts it: each stroke is cut at the rim (the leaves tuck into the pot) */
+            var zr=z0+ph;
             for(var lv=0;lv<nlv;lv++){ var la=TAU*lv/nlv, lx=pa+pw/2+Math.cos(la)*pw*0.3, lz=z0+ph+pw*0.35+Math.sin(la)*pw*0.25, q2, prv=null;
-              for(q2=0;q2<=4;q2++){ var aa=la-0.8+0.4*q2, pt=wp(F,lx+Math.cos(aa)*pw*0.18,lz+Math.sin(aa)*pw*0.18,mid); if(prv) LM.lines.push({a:prv, b:pt, f0:2, f1:3, col:COL_LEAFP, kind:K}); prv=pt; } }
+              for(q2=0;q2<=4;q2++){ var aa=la-0.8+0.4*q2, lq=[lx+Math.cos(aa)*pw*0.18,lz+Math.sin(aa)*pw*0.18];
+                if(prv && (prv[1]>=zr || lq[1]>=zr)){ var A2=prv, B2=lq, tq;
+                  if(A2[1]<zr){ tq=(zr-A2[1])/(B2[1]-A2[1]); A2=[A2[0]+(B2[0]-A2[0])*tq, zr]; }
+                  else if(B2[1]<zr){ tq=(zr-A2[1])/(B2[1]-A2[1]); B2=[A2[0]+(B2[0]-A2[0])*tq, zr]; }
+                  LM.lines.push({a:wp(F,A2[0],A2[1],mid), b:wp(F,B2[0],B2[1],mid), f0:2, f1:3, col:COL_LEAFP, kind:K}); }
+                prv=lq; } }
           }
           return;
         }
