@@ -119,6 +119,21 @@ body.touch.fly #pad{display:flex}
 #help>div{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:20px 22px;max-width:min(520px,calc(100vw - 32px));max-height:80vh;overflow:auto}
 #help dl{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;margin:10px 0 0;font-size:13px}
 #load{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);font-family:var(--mono);font-size:12px;color:var(--dim)}
+/* SVG preview */
+#svgp{position:fixed;inset:0;z-index:7;display:none;grid-template-columns:1fr min(320px,40vw);background:rgba(0,0,0,.62)}
+#svgp.on{display:grid}
+#pv-sheet{position:relative;display:flex;align-items:center;justify-content:center;min-height:0;overflow:hidden}
+#pv-paper{box-shadow:0 6px 30px rgba(0,0,0,.45);line-height:0}
+#pv-busy{position:absolute;left:50%;top:16px;transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:6px 12px;border-radius:999px;font-weight:700}
+#pv-side{background:var(--panel);border-left:1px solid var(--line);padding:16px 18px;overflow:auto;box-sizing:border-box}
+#pv-side h2{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);margin:2px 0 10px;font-weight:700}
+#pv-side .sl{grid-template-columns:70px 1fr 0}
+#pv-side input[type=number]{width:100%;background:transparent;color:inherit;border:1px solid var(--line);border-radius:8px;padding:4px 6px;font:inherit;box-sizing:border-box}
+#p-custom .sl{grid-template-columns:70px 1fr 0;flex:1 1 120px}
+.pv-l{font-size:12.5px;margin:10px 0 4px}
+.pv-n{font-family:var(--mono);font-size:11px;font-variant-numeric:tabular-nums;margin:14px 0 6px}
+#pv-dl:disabled{opacity:.5;cursor:default}
+@media (max-width:720px){ #svgp{grid-template-columns:1fr;grid-template-rows:52vh 1fr} #pv-side{border-left:0;border-top:1px solid var(--line)} }
 @media (max-width:640px){
   .brand{font-size:18px}
   #hud{display:none}
@@ -205,8 +220,9 @@ body.touch.fly #pad{display:flex}
 
   <h2>Share</h2>
   <div class="row2"><button class="btn" id="b-link">Copy link</button><button class="btn" id="b-photo2">Photo</button><button class="btn" id="b-rec2">Record flight</button><button class="btn" id="b-svg2">SVG</button><button class="btn" id="b-help">Keys</button></div>
-  <label class="sl" for="s-paper">SVG paper <select id="s-paper"><option value="9x12">9×12 in</option><option value="11x14">11×14 in</option><option value="a4">A4</option><option value="a3">A3</option><option value="letter">Letter</option></select><span></span></label>
-  <p class="note">SVG saves what is on screen as lines a pen plotter can draw, the hidden ones removed, one layer per kind.</p>
+  <label class="sl" for="s-paper">SVG paper <select id="s-paper"></select><span></span></label>
+  <p class="note" id="svg-sum"></p>
+  <p class="note">SVG shows what is on screen as lines a pen plotter can draw, the hidden ones removed, one layer per kind, and saves it from the preview.</p>
   <p class="note" style="margin-top:14px">Made with <a href="../" target="_blank" rel="noopener">Plotter Sketchpad</a>, a generative line-art bench for pen plotters. The cities are its Corridor City engine; this page draws the same lines live instead of on paper.</p>
 </aside>
 
@@ -228,6 +244,23 @@ body.touch.fly #pad{display:flex}
   </dl>
   <p class="note" style="margin-top:12px">Click anywhere to close.</p>
 </div></div>
+
+<div id="svgp" role="dialog" aria-modal="true" aria-label="SVG preview">
+  <div id="pv-sheet"><div id="pv-paper"></div><div id="pv-busy" role="status">Exporting…</div></div>
+  <div id="pv-side">
+    <h2>SVG for a pen plotter</h2>
+    <label class="sl" for="p-paper">Paper <select id="p-paper"></select><span></span></label>
+    <div id="p-custom" class="row2"><label class="sl" for="p-cw">Width mm <input type="number" id="p-cw" min="50" max="1000" step="1"><span></span></label><label class="sl" for="p-ch">Height mm <input type="number" id="p-ch" min="50" max="1000" step="1"><span></span></label></div>
+    <p class="pv-l">Orientation</p><div class="seg" id="p-or" role="group" aria-label="Orientation"><button data-v="auto">Auto</button><button data-v="portrait">Portrait</button><button data-v="landscape">Landscape</button></div>
+    <p class="pv-l">Fit</p><div class="seg" id="p-fit" role="group" aria-label="Fit"><button data-v="drawing">Drawing</button><button data-v="window">Window</button></div>
+    <label class="sl" for="p-mg">Margin <select id="p-mg"></select><span></span></label>
+    <label class="sl" for="p-pen">Pen <select id="p-pen"></select><span></span></label>
+    <p class="pv-l">Detail</p><div class="seg" id="p-det" role="group" aria-label="Detail"><button data-v="plot">Plot</button><button data-v="fine">Fine</button><button data-v="all">Everything</button></div>
+    <p class="pv-n" id="pv-n"></p>
+    <p class="note" id="pv-d"></p>
+    <div class="row2"><button class="btn hot" id="pv-dl">Download</button><button class="btn" id="pv-close">Close</button></div>
+  </div>
+</div>
 
 <script>
 (function(){
@@ -832,6 +865,7 @@ function zoom(f){ var S=SPAN(); if(mode==='iso') C.ortho=Math.max(15,Math.min(S*
 cv.addEventListener('wheel',function(e){ e.preventDefault(); touchUser(); zoom(Math.pow(1.0012,e.deltaY*(e.deltaMode===1?30:1))); },{passive:false});
 var held={};
 window.addEventListener('keydown',function(e){
+  if(PV.open){ if(e.key==='Escape') pvClose(); return; }
   if(e.target.tagName==='INPUT') return;
   var k=e.key.toLowerCase();
   if($('help').classList.contains('on')){ $('help').classList.remove('on'); return; }
@@ -917,22 +951,39 @@ function stopRec(){ recAfter=false; if(rec&&rec.state!=='inactive') rec.stop(); 
    depth in front (parapets, deck edges). Testing the faces themselves leaves only what no pixel centre sees.
    SVGBIAS was set on the truth harness: the smallest share of depth that keeps a line lying on its own face (edges and
    faces are both stored to the decimetre). */
-var PAPERS=[{id:'9x12',name:'9×12 in',w:228.6,h:304.8},{id:'11x14',name:'11×14 in',w:279.4,h:355.6},{id:'a4',name:'A4',w:210,h:297},{id:'a3',name:'A3',w:297,h:420},{id:'letter',name:'Letter',w:215.9,h:279.4}];
+/* Papers in the order the spec of 2026-11-14 lists them (w x h in mm, either way round: the orientation decides). */
+var PAPERS=[{id:'9x12',name:'9×12 in',w:228.6,h:304.8},{id:'11x14',name:'11×14 in',w:279.4,h:355.6},{id:'12x16',name:'12×16 in',w:304.8,h:406.4},
+  {id:'18x24',name:'18×24 in',w:457.2,h:609.6},{id:'8x10',name:'8×10 in',w:203.2,h:254},{id:'5x7',name:'5×7 in',w:127,h:177.8},{id:'letter',name:'Letter',w:215.9,h:279.4},
+  {id:'a5',name:'A5',w:148,h:210},{id:'a4',name:'A4',w:210,h:297},{id:'a3',name:'A3',w:297,h:420},{id:'a2',name:'A2',w:420,h:594},
+  {id:'bed',name:'Funssor bed 395×260 mm',w:395,h:260},{id:'sq12',name:'Square 12×12 in',w:304.8,h:304.8},{id:'custom',name:'Custom',w:300,h:200}];
 var SVGLONG=4096, SVGBIAS=0.0001, SVGGRAZE=0.3, SVGON=0.01, SVGSTEP=0.5, SVGJOIN=0.25, SVGMINMM=0.3, SVGMARGIN=10, SVGPEN=0.3;
-/* Facade lines (queue row 333): the lines a building carries on its walls -- windows, floor lines, sills, louvres -- are
-   drawn only where a SVGSTOREY-metre storey is at least SVGFACMM on the paper. Below that a facade is pen widths of ink
-   with nothing legible in it, and on the face buffer its lines are a pixel or two apart and from the walls that hide them.
-   The scale is the paper's fit of the whole face buffer (the drawing is fitted to its ink, which lies inside the buffer,
-   so on the sheet a kept storey is at least that size). Tested at every 0.5 px step, so in a perspective view a facade
-   keeps its lines up to the depth where its storeys get too small. The build writes these lines last in the buildings
-   layer and cities.json counts them (detail.facade).
-   Any other line of the build (not a mover) is drawn only up to the depth where its own length is SVGPARTMM on the paper:
-   a whole-city view of Bay or Freeway is otherwise thousands of sub-millimetre stubs (rails, sign posts, roof kit) that
-   the face buffer cannot tell from the face behind them. And a face of the build whose least height is under SVGFACEMM on
-   the paper is left out of the face buffer (it keeps its number, so nothing else moves): a sliver that thin is narrower
-   than a pixel and hides the lines behind it only by the luck of where it lands. svgcheck.mjs's truth reads the same
-   three sets. */
-var SVGSTOREY=3, SVGFACMM=1.0, SVGPARTMM=0.6, SVGFACEMM=0.05;
+/* Level of detail (queue rows 333 and 358), in multiples of the pen's width, because what a pen can draw is set by its
+   width. Facade lines (the lines a building carries on its walls -- windows, floor lines, sills, louvres) are drawn only
+   where a SVGSTOREY-metre storey is at least `storey` pens on the paper. Below that a facade is pen widths of ink with
+   nothing legible in it, and on the face buffer its lines are a pixel or two apart and from the walls that hide them.
+   Tested at every 0.5 px step, so in a perspective view a facade keeps its lines up to the depth where its storeys get
+   too small. The build writes these lines last in the buildings layer and cities.json counts them (detail.facade).
+   Any other line of the build (not a mover) is drawn only up to the depth where its LINE is `line` pens long on the
+   paper: a whole-city view of Bay or Freeway is otherwise thousands of stubs (rails, sign posts, roof kit) that the face
+   buffer cannot tell from the face behind them. A line is the straight run of stored edges that continue each other
+   (svgChains): the build stores a long rail or deck edge as pieces, and judged piece by piece the far pieces dropped one
+   at a time, which drew the far decks as dashes (row 358, measured). And a face of the build whose least height is under
+   SVGFACEMM on the paper is left out of the face buffer (it keeps its number, so nothing else moves): a sliver that thin
+   is narrower than a pixel and hides the lines behind it only by the luck of where it lands. Everything has no level of
+   detail at all, only the SVGMINMM piece drop. svgcheck.mjs's truth reads the same sets off the returned lod.
+   Row 333 had fixed 1.0 mm (storey) and 0.6 mm (line): at a 0.3 mm pen Plot is 0.6 and 0.45 mm. */
+var SVGSTOREY=3, SVGFACEMM=0.05;
+var SVGDETAIL={plot:{name:'Plot',storey:2,line:1.5},fine:{name:'Fine',storey:1,line:1},all:{name:'Everything'}};
+/* Unbroken lines (row 358): a gap in a visible line up to SVGGAPMM on the paper is closed, and run ends that near are
+   joined, over the whole drawing the straightest continuation first (svgJoin). Both were pixels before (one 0.5 px step,
+   0.25 px, about a hundredth of a millimetre), and joins took the first end found, so a straight line turned into a
+   crossing one at a junction. 0.1 mm was measured on svgcheck.mjs: 0.15 mm, or a floor of two 0.5 px steps, put
+   Freeway's iso or orbit over 1.0 % of its ink drawn where it is hidden (1.22 %, 1.01 %), and a pen width
+   (0.3 mm) bridged real things in front, Bay City's orbit drew 3.0 % of its ink where it is hidden. */
+var SVGGAPMM=0.1, SVGTURN=Math.cos(3*D2R), SVGFITN=3;
+var SVGPENS=[0.1,0.2,0.3,0.5,0.8], SVGMARGINS=[5,10,15,20,25];
+/* the export's settings, remembered in this browser */
+var SVGO={paper:'9x12',orient:'auto',margin:10,fit:'drawing',pen:0.3,detail:'plot',cw:300,ch:200};
 var SVGIDS=['buildings','streets','airfield','water','decks','vehicles','trees','signs'];
 var SVGLAST=null, svgBusy=false, FPROG=null, DU={}, dAP=-1, dAI=-1;
 function faceProgram(){
@@ -961,8 +1012,15 @@ function freezeView(){
   trafficPoses();
   var planes=POSES.map(function(p){ return {i:p.i,m:Array.prototype.slice.call(p.m)}; });
   var traffic=TPOSES.map(function(k){ var a=trafficAt(MOV.list[k],TR.t); return {i:k,a:a}; });
-  return {e:B.e.slice(),f:B.f.slice(),iso:iso,M:mul(P,V),ky:P[5],near:nearP,far:farP,asp:asp,W:W,H:H,planes:MOV&&layOn[5]?planes:[],traffic:MOV&&layOn[5]?traffic:[],lay:layOn.slice(),theme:theme};
+  return {e:B.e.slice(),f:B.f.slice(),iso:iso,M:mul(P,V),P:P,V:V,ky:P[5],near:nearP,far:farP,asp:asp,W:W,H:H,planes:MOV&&layOn[5]?planes:[],traffic:MOV&&layOn[5]?traffic:[],lay:layOn.slice(),theme:theme};
 }
+/* the same camera with its frame grown on its short side to aspect asp: nothing on screen is cut, and what the window's
+   frame cut off on that side comes in (Fit Drawing). Both projections scale x by P[0] and y by P[5]. */
+function svgFrame(Z,sx,sy,tx,ty){ if(sx===1&&sy===1&&!tx&&!ty) return Z;
+  /* ndc' = s * ndc + t on each axis, so clip' = s * clip + t * w: a row operation on P, the same for any projection, and
+     frames compose. s < 1 shows more on that axis; t moves the frame. */
+  var P=Z.P.slice(), o={}, k; for(k=0;k<4;k++){ P[k*4]=sx*P[k*4]+tx*P[k*4+3]; P[k*4+1]=sy*P[k*4+1]+ty*P[k*4+3]; }
+  for(k in Z) o[k]=Z[k]; o.P=P; o.M=mul(P,Z.V); o.ky=P[5]; o.asp=Z.asp*sy/sx; o.W=o.asp; o.H=1; return o; }
 function svgRot(yaw,pitch,roll){ /* the vehicles' pose rotation, column-major, angles in degrees */
   var cy=Math.cos(yaw*D2R),sy=Math.sin(yaw*D2R),cp=Math.cos(-pitch*D2R),sp=Math.sin(-pitch*D2R),cr=Math.cos(roll*D2R),sr=Math.sin(roll*D2R);
   return [cy*cp,sy*cp,-sp, cy*sp*sr-sy*cr,sy*sp*sr+cy*cr,cp*sr, cy*sp*cr+sy*sr,sy*sp*cr-cy*sr,cp*cr]; }
@@ -1038,7 +1096,7 @@ function facePass(Z){
 function svgEdges(Z,each){
   var G=GEO, i;
   for(var l=0;l<8;l++){ if(!Z.lay[l]||!G.cnt[l]) continue; var pos=G.pos, a=G.start[l]*6, b=(G.start[l]+G.cnt[l])*6, fa=l===0?b-(G.fac||0)*6:b;
-    for(i=a;i<b;i+=6) each(pos[i]/10,pos[i+1]/10,pos[i+2]/10,pos[i+3]/10,pos[i+4]/10,pos[i+5]/10,l,i>=fa); }
+    for(i=a;i<b;i+=6) each(pos[i]/10,pos[i+1]/10,pos[i+2]/10,pos[i+3]/10,pos[i+4]/10,pos[i+5]/10,l,i>=fa,false,i/6); }
   if(!MOV||!Z.lay[5]) return;
   Z.planes.forEach(function(P){ var o=MOV.list[P.i], E=o&&o.lE, m=P.m; if(!E) return;
     for(var j=0;j<E.length;j+=6){ var x0=E[j],y0=E[j+1],z0=E[j+2],x1=E[j+3],y1=E[j+4],z1=E[j+5];
@@ -1087,12 +1145,40 @@ function svgPlaneHides(T,o,p,bias,tmin){ if(svgOn(T,p)) return false;
   var dx=p[0]-o[0],dy=p[1]-o[1],dz=p[2]-o[2], den=nx*dx+ny*dy+nz*dz; if(den>-1e-12&&den<1e-12) return false;
   if(Math.abs(den)>SVGGRAZE*Math.hypot(nx,ny,nz)*Math.hypot(dx,dy,dz)) return false; /* only a face seen at a grazing angle */
   var t=(nx*(T[0]-o[0])+ny*(T[1]-o[1])+nz*(T[2]-o[2]))/den; return t>tmin&&t<1-bias; }
-/* the facade lines' level of detail on paper P: mm on the sheet per metre at view depth d is k/d (k in Isometric) */
-function svgLod(Z,D,paperId){ var pp=svgPaper(paperId), land=Z.W>=Z.H, pw=land?Math.max(pp.w,pp.h):Math.min(pp.w,pp.h), ph=land?Math.min(pp.w,pp.h):Math.max(pp.w,pp.h);
-  var mmpx=Math.min((pw-2*SVGMARGIN)/D.w,(ph-2*SVGMARGIN)/D.h); return {k:Z.ky*D.h/2*mmpx, iso:Z.iso, mmpx:mmpx, min:SVGFACMM/SVGSTOREY, storey:SVGSTOREY, mm:SVGFACMM, part:SVGPARTMM, face:SVGFACEMM}; }
+/* the level of detail on sheet sh at settings s: mm on the sheet per metre at view depth d is k/d (k in Isometric).
+   mmpx (mm on the sheet per buffer pixel) is given, or the fit of the whole face buffer (a lower bound on the final one) */
+function svgLod(Z,fb,sh,s,o,mmpx){ if(mmpx==null) mmpx=Math.min((sh.pw-2*sh.m)/fb[0],(sh.ph-2*sh.m)/fb[1]);
+  var d=SVGDETAIL[s.detail]||SVGDETAIL.plot, fac=d.storey*s.pen, part=d.line*s.pen;
+  if(o.facmm!=null) fac=o.facmm; if(o.part!=null) part=o.part;
+  return {k:Z.ky*fb[1]/2*mmpx, iso:Z.iso, mmpx:mmpx, min:fac/SVGSTOREY, storey:SVGSTOREY, mm:fac, part:part, face:o.face!=null?o.face:SVGFACEMM, seg:!!o.seg, detail:d.name, pen:s.pen}; }
 function svgPaper(id){ return PAPERS.filter(function(p){ return p.id===id; })[0]||PAPERS[0]; }
-function svgRuns(Z,D,keepWorld,lod){
-  var M=Z.M, fw=D.w, fh=D.h, ids=D.id, bias=SVGBIAS, runs=[], world=keepWorld?[]:null, e=Z.e, f=Z.f, persp=!Z.iso, nE=0, nF=0, nFk=0, nS=0;
+function svgMm(v,d){ v=Math.round(+v); return isFinite(v)?Math.max(50,Math.min(1000,v)):d; }
+/* the sheet for settings s, landscape or portrait: {id, name, pw, ph (mm), m (margin)} */
+function svgSheet(s,land){ var p=svgPaper(s.paper), w=p.w, h=p.h, name=p.name;
+  if(p.id==='custom'){ w=svgMm(s.cw,300); h=svgMm(s.ch,200); name='Custom '+w+'×'+h+' mm'; }
+  return {id:p.id,name:name,pw:land?Math.max(w,h):Math.min(w,h),ph:land?Math.min(w,h):Math.max(w,h),m:Math.min(s.margin,Math.min(w,h)/4)}; }
+/* every stored edge's LINE length in metres: the edges of one layer that meet end to end and continue each other within
+   3 degrees are one line (at a vertex the straightest pair joins first). Found once a city. */
+function svgChains(){ var G=GEO; if(G.chain) return G.chain;
+  var pos=G.pos, n=G.n, K=new Float64Array(2*n), ord=new Uint32Array(2*n), lay=new Uint8Array(n), par=new Int32Array(n), len=new Float64Array(n), i, j, q;
+  for(var l=0;l<8;l++) for(i=G.start[l];i<G.start[l]+G.cnt[l];i++) lay[i]=l;
+  for(i=0;i<n;i++){ par[i]=i; var b=i*6; len[i]=Math.hypot(pos[b+3]-pos[b],pos[b+4]-pos[b+1],pos[b+5]-pos[b+2])/10;
+    for(var en=0;en<2;en++){ var o=b+en*3; K[2*i+en]=((pos[o]+32768)*65536+(pos[o+1]+32768))*65536+(pos[o+2]+32768); ord[2*i+en]=2*i+en; } }
+  ord.sort(function(a,c){ return K[a]-K[c]; });
+  function root(x){ while(par[x]!==x){ par[x]=par[par[x]]; x=par[x]; } return x; }
+  for(i=0;i<2*n;i=j){ for(j=i+1;j<2*n&&K[ord[j]]===K[ord[i]];j++); if(j-i<2) continue;
+    var ends=[]; for(q=i;q<j;q++){ var a=ord[q], e=a>>1, c=e*6, sg=(a&1)?-1:1, dx=(pos[c+3]-pos[c])*sg, dy=(pos[c+4]-pos[c+1])*sg, dz=(pos[c+5]-pos[c+2])*sg, L=Math.hypot(dx,dy,dz);
+      if(L>0) ends.push([e,dx/L,dy/L,dz/L,0]); }
+    for(;;){ var best=-SVGTURN, bp=-1, bq=-1;
+      for(var p=0;p<ends.length;p++){ var A=ends[p]; if(A[4]) continue; for(q=p+1;q<ends.length;q++){ var B=ends[q]; if(B[4]||lay[A[0]]!==lay[B[0]]||A[0]===B[0]) continue;
+        var dt=A[1]*B[1]+A[2]*B[2]+A[3]*B[3]; if(dt<best){ best=dt; bp=p; bq=q; } } }
+      if(bp<0) break; ends[bp][4]=ends[bq][4]=1; var ra=root(ends[bp][0]), rb=root(ends[bq][0]); if(ra!==rb) par[ra]=rb; } }
+  var tot=new Float64Array(n), out=new Float32Array(n);
+  for(i=0;i<n;i++) tot[root(i)]+=len[i]; for(i=0;i<n;i++) out[i]=tot[root(i)];
+  return G.chain=out; }
+function svgRuns(Z,D,keepWorld,lod,gapN){
+  var M=Z.M, fw=D.w, fh=D.h, ids=D.id, bias=SVGBIAS, runs=[], world=keepWorld?[]:null, wfac=keepWorld?[]:null, wix=keepWorld?[]:null, tail=[], e=Z.e, f=Z.f, persp=!Z.iso, nD=0, nE=0, nF=0, nFk=0, nS=0;
+  var CH=lod&&!lod.seg?svgChains():null; gapN=Math.max(1,gapN||1); /* the longest gap closed, in 0.5 px steps */
   var dMax=lod?(lod.iso?(lod.k>=lod.min?Infinity:-Infinity):lod.k/lod.min):Infinity; /* a facade line is drawn nearer than this depth */
   var cache=new Map(), seen=new Int32Array(9), pt=[0,0,0], org=[0,0,0], adj=svgAdj(GEO.faces), nCity=GEO.faces.n, thin=D.thin;
   function face(n){ var T=cache.get(n); if(!T){ var t=D.tri(n); T=t?Array.prototype.slice.call(t):null; cache.set(n,T); } return T; }
@@ -1104,89 +1190,202 @@ function svgRuns(Z,D,keepWorld,lod){
       var T=face(n); if(T&&svgHides(T,org,p,bias,tmin)) return true;
       if(adj&&n<=nCity) for(var a=0;a<3;a++){ var m=adj[(n-1)*3+a]; if(m>0&&!(thin&&thin[m-1])){ var U=face(m); if(U&&svgHides(U,org,p,bias,tmin)) return true; } } } }
     return false; }
-  svgEdges(Z,function(x0,y0,z0,x1,y1,z1,l,fac,mov){ nE++;
+  svgEdges(Z,function(x0,y0,z0,x1,y1,z1,l,fac,mov,ix){ nE++;
     var d0=(x0-e[0])*f[0]+(y0-e[1])*f[1]+(z0-e[2])*f[2], d1=(x1-e[0])*f[0]+(y1-e[1])*f[1]+(z1-e[2])*f[2];
     var far=fac?dMax:Z.far; if(fac){ nF++; if(Math.min(d0,d1)>=far) return; nFk++; }
-    if(lod&&!mov){ var Lk=Math.hypot(x1-x0,y1-y0,z1-z0)*lod.k, dE=lod.iso?(Lk>=lod.part?Infinity:-Infinity):Lk/lod.part; if(dE<far) far=dE; if(Math.min(d0,d1)>=far){ nS++; return; } }
+    if(lod&&!mov){ var Lk=(CH?CH[ix]:Math.hypot(x1-x0,y1-y0,z1-z0))*lod.k, dE=lod.iso?(Lk>=lod.part?Infinity:-Infinity):Lk/lod.part; if(dE<far) far=dE; if(Math.min(d0,d1)>=far){ nS++; return; } }
     var c=svgNear(d0,d1,Z.near,Math.min(Z.far,far)); if(!c) return;
     var t0=c[0], t1=c[1], P0=[x0+(x1-x0)*t0,y0+(y1-y0)*t0,z0+(z1-z0)*t0], P1=[x0+(x1-x0)*t1,y0+(y1-y0)*t1,z0+(z1-z0)*t1];
     var da=d0+(d1-d0)*t0, db=d0+(d1-d0)*t1;
     var aw=M[3]*P0[0]+M[7]*P0[1]+M[11]*P0[2]+M[15], bw=M[3]*P1[0]+M[7]*P1[1]+M[11]*P1[2]+M[15];
     var ax=((M[0]*P0[0]+M[4]*P0[1]+M[8]*P0[2]+M[12])/aw*0.5+0.5)*fw, ay=((M[1]*P0[0]+M[5]*P0[1]+M[9]*P0[2]+M[13])/aw*0.5+0.5)*fh;
     var bx=((M[0]*P1[0]+M[4]*P1[1]+M[8]*P1[2]+M[12])/bw*0.5+0.5)*fw, by=((M[1]*P1[0]+M[5]*P1[1]+M[9]*P1[2]+M[13])/bw*0.5+0.5)*fh;
-    var sc=svgRect(ax,ay,bx,by,fw,fh); if(!sc) return;
+    var sc=svgRect(ax,ay,bx,by,fw,fh); if(!sc) return; var had=runs.length;
     var s0=sc[0], s1=sc[1], n=Math.max(1,Math.ceil(Math.hypot(bx-ax,by-ay)*(s1-s0)/SVGSTEP)), run=-1, last=-1, gap=0;
     function wAt(s){ return persp?s*da/((1-s)*db+s*da):s; }
-    function emit(k0,k1){ var u0=s0+(s1-s0)*k0/n, u1=s0+(s1-s0)*k1/n; runs.push(ax+(bx-ax)*u0,ay+(by-ay)*u0,ax+(bx-ax)*u1,ay+(by-ay)*u1,l);
-      if(world){ var w0=wAt(u0), w1=wAt(u1);
+    var stepPx=Math.hypot(bx-ax,by-ay)*(s1-s0)/n;
+    function emit(k0,k1){ var u0=s0+(s1-s0)*k0/n, u1=s0+(s1-s0)*k1/n; runs.push(ax+(bx-ax)*u0,ay+(by-ay)*u0,ax+(bx-ax)*u1,ay+(by-ay)*u1,l); tail.push(k0*stepPx,(n-k1)*stepPx);
+      if(world){ var w0=wAt(u0), w1=wAt(u1); wfac.push(fac?1:0); wix.push(ix==null?-1:ix);
         world.push(P0[0]+(P1[0]-P0[0])*w0,P0[1]+(P1[1]-P0[1])*w0,P0[2]+(P1[2]-P0[2])*w0,P0[0]+(P1[0]-P0[0])*w1,P0[1]+(P1[1]-P0[1])*w1,P0[2]+(P1[2]-P0[2])*w1); } }
     for(var k=0;k<=n;k++){ var s=s0+(s1-s0)*k/n, w=wAt(s); pt[0]=P0[0]+(P1[0]-P0[0])*w; pt[1]=P0[1]+(P1[1]-P0[1])*w; pt[2]=P0[2]+(P1[2]-P0[2])*w;
       var vis=!hidden(ax+(bx-ax)*s,ay+(by-ay)*s,pt,da+(db-da)*w);
       if(vis){ if(run<0) run=k; last=k; gap=0; }
-      else if(run>=0){ gap++; if(gap>1){ emit(run,last); run=-1; } } }
+      else if(run>=0){ gap++; if(gap>gapN){ emit(run,last); run=-1; } } }
     if(run>=0) emit(run,last);
+    if(had!==runs.length) nD++;
   });
-  return {r:runs,w:world,edges:nE,fac:nF,facNear:nFk,dMax:dMax,small:nS};
+  return {r:runs,tail:tail,w:world,wfac:wfac,wix:wix,drawn:nD,edges:nE,fac:nF,facNear:nFk,dMax:dMax,small:nS,gapN:gapN};
 }
-/* runs that meet end to end become polylines; returns [{l, pts:[x,y,...], runs:[i,...]}] */
-function svgJoin(R){
-  var r=R.r, n=r.length/5, Q=1/SVGJOIN, map=new Map(), used=new Uint8Array(n), out=[];
+/* runs that meet end to end become polylines; returns [{l, pts:[x,y,...], runs:[i,...], conn:[...]}]. Run ends of one
+   layer within tol px of each other are paired over the whole drawing, straightest continuation first (then nearest), so
+   a straight line goes on through a junction instead of turning into whichever line was found first. With first set it
+   is row 319's join: from each run, the first end found within tol, kept for the Window fit's byte check. A join across a
+   gap draws a connector from one run's end to the other's; it is kept as [run, end, run, end] so the truth harness judges
+   it like any other drawn line. A connector longer than SVGJOIN joins only ends that are within tol of their own edge's
+   end (R.tail, px): the corner a hidden step took off. An end where something in front stopped the line mid-edge is not
+   bridged; on Freeway's orbit that bridging drew 0.35 % of the ink over the things that hide it. */
+function svgJoin(R,tol,first){
+  tol=tol||SVGJOIN; var r=R.r, n=r.length/5, Q=1/tol, map=new Map(), out=[], i, j;
   function key(x,y){ return Math.round(x*Q)*131072+Math.round(y*Q); }
-  for(var i=0;i<n;i++) for(var en=0;en<2;en++){ var k=key(r[i*5+en*2],r[i*5+en*2+1]), L=map.get(k); if(!L) map.set(k,L=[]); L.push(i*2+en); }
-  function find(x,y,l){ var cx=Math.round(x*Q), cy=Math.round(y*Q);
+  for(i=0;i<n;i++) for(var en=0;en<2;en++){ var k=key(r[i*5+en*2],r[i*5+en*2+1]), L=map.get(k); if(!L) map.set(k,L=[]); L.push(i*2+en); }
+  function near(q,each){ var o=(q>>1)*5+(q&1)*2, x=r[o], y=r[o+1], cx=Math.round(x*Q), cy=Math.round(y*Q), l=r[(q>>1)*5+4];
     for(var dx=-1;dx<=1;dx++) for(var dy=-1;dy<=1;dy++){ var L=map.get((cx+dx)*131072+cy+dy); if(!L) continue;
-      for(var j=0;j<L.length;j++){ var q=L[j], ri=q>>1; if(used[ri]||r[ri*5+4]!==l) continue; var o=ri*5+(q&1)*2;
-        if(Math.abs(r[o]-x)<=SVGJOIN&&Math.abs(r[o+1]-y)<=SVGJOIN) return q; } }
-    return -1; }
-  for(i=0;i<n;i++){ if(used[i]) continue; used[i]=1; var l=r[i*5+4], pts=[r[i*5],r[i*5+1],r[i*5+2],r[i*5+3]], ids=[i], q;
-    while((q=find(pts[pts.length-2],pts[pts.length-1],l))>=0){ var ri=q>>1, o=ri*5+(1-(q&1))*2; used[ri]=1; ids.push(ri); pts.push(r[o],r[o+1]); }
-    var head=[]; while((q=find(pts[0],pts[1],l))>=0){ ri=q>>1; o=ri*5+(1-(q&1))*2; used[ri]=1; ids.push(ri); pts.unshift(r[o],r[o+1]); }
-    out.push({l:l,pts:pts,runs:ids}); }
+      for(var j=0;j<L.length;j++){ var p=L[j]; if((p>>1)===(q>>1)||r[(p>>1)*5+4]!==l) continue; var o2=(p>>1)*5+(p&1)*2;
+        if(Math.abs(r[o2]-x)<=tol&&Math.abs(r[o2+1]-y)<=tol) each(p,Math.hypot(r[o2]-x,r[o2+1]-y)); } } }
+  var link=new Int32Array(2*n).fill(-1);
+  if(first){ /* row 319: greedy from each run in order */
+    var used=new Uint8Array(n);
+    function find(x,y,l){ var cx=Math.round(x*Q), cy=Math.round(y*Q);
+      for(var dx=-1;dx<=1;dx++) for(var dy=-1;dy<=1;dy++){ var L=map.get((cx+dx)*131072+cy+dy); if(!L) continue;
+        for(var j=0;j<L.length;j++){ var q=L[j], ri=q>>1; if(used[ri]||r[ri*5+4]!==l) continue; var o=ri*5+(q&1)*2;
+          if(Math.abs(r[o]-x)<=tol&&Math.abs(r[o+1]-y)<=tol) return q; } }
+      return -1; }
+    for(i=0;i<n;i++){ if(used[i]) continue; used[i]=1; var l0=r[i*5+4], pts=[r[i*5],r[i*5+1],r[i*5+2],r[i*5+3]], ids=[i], q, o;
+      while((q=find(pts[pts.length-2],pts[pts.length-1],l0))>=0){ var ri=q>>1; o=ri*5+(1-(q&1))*2; used[ri]=1; ids.push(ri); pts.push(r[o],r[o+1]); }
+      while((q=find(pts[0],pts[1],l0))>=0){ ri=q>>1; o=ri*5+(1-(q&1))*2; used[ri]=1; ids.push(ri); pts.unshift(r[o],r[o+1]); }
+      out.push({l:l0,pts:pts,runs:ids,conn:[]}); }
+    return out; }
+  /* every pair of ends within tol, scored: 0 for a straight continuation, 1 for a right angle, plus a little for distance */
+  var P=[];
+  function out1(q){ var ri=q>>1, o=ri*5+(q&1)*2, p=ri*5+(1-(q&1))*2, x=r[o]-r[p], y=r[o+1]-r[p+1], h=Math.hypot(x,y)||1; return [x/h,y/h]; }
+  var T=R.tail;
+  for(i=0;i<2*n;i++){ var u=out1(i); near(i,function(p,d){ if(p<i) return; if(d>SVGJOIN&&T&&(T[i]>tol||T[p]>tol)) return; var v=out1(p); P.push(1+(u[0]*v[0]+u[1]*v[1])+0.25*d/tol,i,p); }); }
+  var ord=new Uint32Array(P.length/3); for(i=0;i<ord.length;i++) ord[i]=i; ord.sort(function(a,b){ return P[a*3]-P[b*3]; });
+  for(i=0;i<ord.length;i++){ var a=P[ord[i]*3+1], b=P[ord[i]*3+2]; if(link[a]<0&&link[b]<0){ link[a]=b; link[b]=a; } }
+  var done=new Uint8Array(n);
+  function walk(start){ /* from run end `start` (the polyline's first point), through each run and across each link */
+    var ri=start>>1, e=start&1, pts=[r[ri*5+e*2],r[ri*5+e*2+1]], ids=[], conn=[];
+    for(;;){ done[ri]=1; ids.push(ri); var f=1-e, o=ri*5+f*2; pts.push(r[o],r[o+1]); var nx=link[ri*2+f]; if(nx===start&&ids.length>1){ var o3=(start>>1)*5+(start&1)*2; if(Math.hypot(r[o3]-r[o],r[o3+1]-r[o+1])>SVGJOIN){ pts.push(r[o3],r[o3+1]); conn.push(ri,f,start>>1,start&1); } break; } if(nx<0||done[nx>>1]) break;
+      var o2=(nx>>1)*5+(nx&1)*2; if(Math.hypot(r[o2]-r[o],r[o2+1]-r[o+1])>SVGJOIN){ pts.push(r[o2],r[o2+1]); conn.push(ri,f,nx>>1,nx&1); } ri=nx>>1; e=nx&1; }
+    return {l:r[(start>>1)*5+4],pts:pts,runs:ids,conn:conn}; }
+  for(i=0;i<n;i++) if(!done[i]&&(link[i*2]<0||link[i*2+1]<0)) out.push(walk(link[i*2]<0?i*2:i*2+1));
+  for(i=0;i<n;i++) if(!done[i]) out.push(walk(i*2)); /* closed loops */
   return out;
 }
 function svgHex(c){ return '#'+c.map(function(v){ var h=Math.round(Math.max(0,Math.min(1,v))*255).toString(16); return h.length<2?'0'+h:h; }).join(''); }
-/* the polylines onto the paper: fitted with a margin, portrait or landscape as the window is, pieces under 0.3 mm dropped */
-function svgWrite(Z,D,lines,paperId){
-  var pp=svgPaper(paperId), land=Z.W>=Z.H, pw=land?Math.max(pp.w,pp.h):Math.min(pp.w,pp.h), ph=land?Math.min(pp.w,pp.h):Math.max(pp.w,pp.h);
-  var x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;
-  lines.forEach(function(L){ for(var j=0;j<L.pts.length;j+=2){ var x=L.pts[j], y=D.h-L.pts[j+1]; if(x<x0)x0=x; if(x>x1)x1=x; if(y<y0)y0=y; if(y>y1)y1=y; } });
-  if(x0>x1){ x0=0;y0=0;x1=D.w;y1=D.h; }
-  var aw=pw-2*SVGMARGIN, ah=ph-2*SVGMARGIN, s=Math.min(aw/Math.max(1e-6,x1-x0),ah/Math.max(1e-6,y1-y0)), ox=SVGMARGIN+(aw-(x1-x0)*s)/2-x0*s, oy=SVGMARGIN+(ah-(y1-y0)*s)/2-y0*s;
-  var cols=(Z.theme==='blue'?THEMES.blue:THEMES.paper).cols, groups=[], N=0, ink=0, kept=[];
+/* the drawing's extent in buffer pixels, y up as on the sheet: [x0, y0, x1, y1], or null when nothing is drawn */
+function svgExtent(lines,h){ var x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;
+  lines.forEach(function(L){ for(var j=0;j<L.pts.length;j+=2){ var x=L.pts[j], y=h-L.pts[j+1]; if(x<x0)x0=x; if(x>x1)x1=x; if(y<y0)y0=y; if(y>y1)y1=y; } });
+  return x0>x1?null:[x0,y0,x1,y1]; }
+/* the polylines onto sheet sh: the drawing's extent fitted inside the margin, pieces under 0.3 mm dropped */
+function svgWrite(Z,D,lines,sh,pen){
+  var pw=sh.pw, ph=sh.ph, mg=sh.m, X=svgExtent(lines,D.h)||[0,0,D.w,D.h], x0=X[0], y0=X[1], x1=X[2], y1=X[3];
+  var aw=pw-2*mg, ah=ph-2*mg, s=Math.min(aw/Math.max(1e-6,x1-x0),ah/Math.max(1e-6,y1-y0)), ox=mg+(aw-(x1-x0)*s)/2-x0*s, oy=mg+(ah-(y1-y0)*s)/2-y0*s;
+  var cols=(Z.theme==='blue'?THEMES.blue:THEMES.paper).cols, groups=[], N=0, ink=0, kept=[], small=0;
   for(var l=0;l<8;l++){ if(!Z.lay[l]) continue; var body=[];
     lines.forEach(function(L){ if(L.l!==l) return; var len=0, d='';
       for(var j=0;j<L.pts.length;j+=2){ var x=L.pts[j]*s+ox, y=(D.h-L.pts[j+1])*s+oy; if(j){ var px=L.pts[j-2]*s+ox, py=(D.h-L.pts[j-1])*s+oy; len+=Math.hypot(x-px,y-py); }
         d+=(j?(j===2?'L':' '):'M')+x.toFixed(2)+' '+y.toFixed(2); }
-      if(len<SVGMINMM) return; body.push('<path d="'+d+'"/>'); N++; ink+=len; kept.push(L); });
-    groups.push('<g id="'+SVGIDS[l]+'" inkscape:label="'+LAYERS[l]+'" inkscape:groupmode="layer" fill="none" stroke="'+svgHex(cols[l])+'" stroke-width="'+SVGPEN+'" stroke-linecap="round" stroke-linejoin="round">\n'+body.join('\n')+(body.length?'\n':'')+'</g>'); }
+      if(len<SVGMINMM) return; body.push('<path d="'+d+'"/>'); N++; ink+=len; if(len<1) small++; L.path=N-1; kept.push(L); });
+    groups.push('<g id="'+SVGIDS[l]+'" inkscape:label="'+LAYERS[l]+'" inkscape:groupmode="layer" fill="none" stroke="'+svgHex(cols[l])+'" stroke-width="'+pen+'" stroke-linecap="round" stroke-linejoin="round">\n'+body.join('\n')+(body.length?'\n':'')+'</g>'); }
   var svg='<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape" width="'+pw+'mm" height="'+ph+'mm" viewBox="0 0 '+pw+' '+ph+'">\n'+groups.join('\n')+'\n</svg>\n';
-  return {svg:svg,n:N,ink:ink/1000,paper:pp,kept:kept,mm:[pw,ph],scale:s};
+  return {svg:svg,n:N,ink:ink/1000,small:small,paper:sh,kept:kept,mm:[pw,ph],scale:s};
 }
+/* the export's settings: SVGO with any of o's own keys over it, each checked */
+function svgSettings(o){ o=o||{}; var s={}, k; for(k in SVGO) s[k]=o[k]!=null?o[k]:SVGO[k];
+  if(svgPaper(s.paper).id!==s.paper) s.paper=PAPERS[0].id;
+  if(['auto','portrait','landscape'].indexOf(s.orient)<0) s.orient='auto';
+  s.margin=+s.margin; if(!(s.margin>=0&&s.margin<=100)) s.margin=SVGMARGIN;
+  if(s.fit!=='window') s.fit='drawing';
+  s.pen=+s.pen; if(!(s.pen>0&&s.pen<=5)) s.pen=SVGPEN;
+  if(!SVGDETAIL[s.detail]) s.detail='plot';
+  s.cw=svgMm(s.cw,300); s.ch=svgMm(s.ch,200); return s; }
+/* the extent of the faces a face pass saw, in its pixels: [x0, y0, x1, y1] or null */
+function svgIdExtent(D){ var id=D.id, w=D.w, h=D.h, x0=w, x1=-1, y0=h, y1=-1, x, y;
+  for(y=0;y<h;y++){ var row=y*w, a=-1; for(x=0;x<w;x++) if(id[row+x]){ a=x; break; } if(a<0) continue;
+    for(x=w-1;x>a;x--) if(id[row+x]) break; if(a<x0) x0=a; if(x>x1) x1=x; if(y<y0) y0=y; y1=y; }
+  return x1<0?null:[x0,y0,x1+1,y1+1]; }
+/* one export of the frozen view Z0 at settings s (o: the harness's knobs). Window fits the drawing as the window framed
+   it, in the window's orientation (row 319's export). Drawing first reads the drawing's extent off one face pass, takes
+   the orientation that draws it larger (Auto), grows the frame to the sheet's shape (svgFrame), and sets the level of
+   detail at the scale the drawing will have on the sheet, not at the lower bound of the whole buffer. Row 319's export
+   already fitted the ink, not the window: an empty 11x14 of 2026-11-14 was a 2.4:1 drawing on a 1.27:1 sheet. */
+function svgMake(Z0,s,o){
+  var Z=Z0, land, sh=null, mmpx=null, nolod=!!o.nolod||s.detail==='all';
+  if(o.long) Z0.long=o.long;
+  if(s.fit==='window') land=s.orient==='auto'?Z.W>=Z.H:s.orient==='landscape';
+  else {
+    Z0.lod=null; var D0=facePass(Z0), X=svgIdExtent(D0)||[0,0,D0.w,D0.h], bw=Math.max(1,X[2]-X[0]), bh=Math.max(1,X[3]-X[1]);
+    var lo=svgSheet(s,true), po=svgSheet(s,false), sl=Math.min((lo.pw-2*lo.m)/bw,(lo.ph-2*lo.m)/bh), sp=Math.min((po.pw-2*po.m)/bw,(po.ph-2*po.m)/bh);
+    land=s.orient==='auto'?(Math.abs(sl-sp)<1e-9*sl?Z0.W>=Z0.H:sl>sp):s.orient==='landscape';
+    /* the frame grows only on the axis where the sheet has room for more, and by exactly that room, so the drawing's
+       scale on the sheet cannot drop: a drawing wider than the sheet gets more of what lies above and below the window.
+       It grows toward the edges the drawing is cut at (it reaches the frame's edge there), so a low view cut flat at the
+       bottom gets more ground in front and not sky; cut at both edges or at neither, it grows evenly. What the new strip
+       holds is only known after a face pass, so it measures again and grows again while the drawing is still off the
+       sheet's shape by more than 3 % and still cut, up to SVGFITN times. */
+    sh=svgSheet(s,land); var A=(sh.pw-2*sh.m)/(sh.ph-2*sh.m), D=D0, it;
+    for(it=0;it<SVGFITN;it++){ var wide=bw/bh>A, dG=wide?bw/A-bh:bh*A-bw, sz=wide?D.h:D.w; if(dG<0.03*sz) break;
+      var c0=wide?X[1]<=1:X[0]<=1, c1=wide?X[3]>=D.h-1:X[2]>=D.w-1; if(it&&!c0&&!c1) break;
+      var lo0=c0===c1?dG/2:c0?dG:0, k=sz/(sz+dG), t=(lo0-(dG-lo0))/(sz+dG);
+      Z=svgFrame(Z,wide?1:k,wide?k:1,wide?0:t,wide?t:0);
+      D=facePass(Z); X=svgIdExtent(D)||[0,0,D.w,D.h]; bw=Math.max(1,X[2]-X[0]); bh=Math.max(1,X[3]-X[1]); }
+    mmpx=Math.min((sh.pw-2*sh.m)/bw,(sh.ph-2*sh.m)/bh); /* the extent as measured in the last frame's buffer */ }
+  if(!sh) sh=svgSheet(s,land);
+  var fbs=svgFbSize(Z), lod=nolod?null:svgLod(Z,fbs,sh,s,o,mmpx); Z.lod=lod;
+  var px=lod?lod.mmpx:mmpx||Math.min((sh.pw-2*sh.m)/fbs[0],(sh.ph-2*sh.m)/fbs[1]); /* mm on the sheet per buffer pixel */
+  var gapN=o.gap!=null?o.gap:Math.max(1,Math.floor(SVGGAPMM/(px*SVGSTEP))), tol=o.join!=null?o.join:Math.max(SVGJOIN,SVGGAPMM/px);
+  var D=facePass(Z), R=svgRuns(Z,D,!!o.world,lod,gapN), lines=svgJoin(R,tol,!!o.first), out=svgWrite(Z,D,lines,sh,s.pen);
+  return {Z:Z,D:D,R:R,out:out,lod:lod,sh:sh,land:land,gapN:gapN,tol:tol,px:px}; }
+/* what was left out, said in the toast and the preview */
+function svgDetailText(X,s){
+  if(!X.lod) return 'detail Everything: nothing left out but pieces under '+SVGMINMM+' mm';
+  var L=X.lod, R=X.R, n=function(v){ return String(+v.toFixed(2)); };
+  return 'detail '+L.detail+' (pen '+n(s.pen)+' mm): lines under '+n(L.part)+' mm on the paper left out'+(!R.fac||R.dMax===Infinity?'':R.facNear?', windows and floor lines only where a storey is '+n(L.mm)+' mm or more':', and windows and floor lines (a storey is under '+n(L.mm)+' mm)'); }
+function svgSave(svg){ save(new Blob([svg],{type:'image/svg+xml'}),'corridor-city-'+CITY.id+'.svg'); }
+function svgReady(){ var ready=opt.tex&&GEO.faces?Promise.resolve():setTex(true,true);
+  return ready.then(function(){ return new Promise(function(res){ requestAnimationFrame(function(){ setTimeout(res,30); }); }); }).then(function(){ if(!GEO.faces) throw new Error('the solids did not load'); }); }
 function exportSVG(o){
   o=o||{}; if(!GEO||!CITY) return Promise.reject(new Error('no city yet'));
   if(svgBusy) return Promise.reject(new Error('an export is already running')); svgBusy=true;
   var t0=performance.now(), was={playing:playing,paused:TR.paused}; playing=false; TR.paused=true;
   toast('Exporting the view…');
-  var ready=opt.tex&&GEO.faces?Promise.resolve():setTex(true,true);
-  return ready.then(function(){ return new Promise(function(res){ requestAnimationFrame(function(){ setTimeout(res,30); }); }); }).then(function(){
-    if(!GEO.faces) throw new Error('the solids did not load');
-    var paper=o.paper||$('s-paper').value, Z=freezeView(); if(o.long) Z.long=o.long;
-    var fbs=svgFbSize(Z), lod=svgLod(Z,{w:fbs[0],h:fbs[1]},paper); if(o.part!=null) lod.part=o.part; if(o.facmm!=null) lod.min=o.facmm/SVGSTOREY; if(o.face!=null) lod.face=o.face;
-    if(!o.nolod) Z.lod=lod; var D=facePass(Z); SVGLAST={Z:Z,D:D};
-    var R=svgRuns(Z,D,!!o.world,o.nolod?null:lod), lines=svgJoin(R), out=svgWrite(Z,D,lines,paper);
+  return svgReady().then(function(){
+    var s=svgSettings(o), X=svgMake(freezeView(),s,o), Z=X.Z, D=X.D, R=X.R, out=X.out, lod=X.lod; SVGLAST={Z:Z,D:D};
     var ms=performance.now()-t0, small=D.L<SVGLONG?' (depth at '+D.L+' px, the most this browser allows)':'';
-    /* the level of detail, said in the toast: what was left out, in the paper's millimetres */
-    var fac=o.nolod?'':'; detail under '+lod.part+' mm on the paper left out'+(!R.fac||R.dMax===Infinity?'':R.facNear?', windows and floor lines only where a storey is '+SVGFACMM+' mm or more':', and windows and floor lines (a storey is under '+SVGFACMM+' mm)');
-    var msg='SVG saved: '+out.n.toLocaleString()+' lines, '+out.ink.toFixed(1)+' m of ink on '+out.paper.name+fac+small;
-    if(!o.noSave) save(new Blob([out.svg],{type:'image/svg+xml'}),'corridor-city-'+CITY.id+'.svg');
+    var msg='SVG saved: '+out.n.toLocaleString()+' lines, '+out.ink.toFixed(1)+' m of ink on '+out.paper.name+'; '+svgDetailText(X,s)+small;
+    if(!o.noSave) svgSave(out.svg);
     toast(msg);
-    var ret={svg:out.svg,msg:msg,n:out.n,ink:out.ink,paper:out.paper.id,mm:out.mm,fb:[D.w,D.h],prec:D.prec,ms:Math.round(ms),edges:R.edges,runs:R.r.length/5,lod:o.nolod?null:lod,thin:D.nThin,fac:{n:R.fac,near:R.facNear,dMax:R.dMax,small:R.small},
+    var ret={svg:out.svg,msg:msg,n:out.n,ink:out.ink,small:out.small,paper:out.paper.id,mm:out.mm,land:X.land,settings:s,scale:out.scale,px:X.px,gapN:X.gapN,tol:X.tol,fb:[D.w,D.h],prec:D.prec,ms:Math.round(ms),edges:R.edges,drawn:R.drawn,runs:R.r.length/5,lod:lod,thin:D.nThin,fac:{n:R.fac,near:R.facNear,dMax:R.dMax,small:R.small},
       cam:{e:Z.e,f:Z.f,iso:Z.iso,M:Z.M,near:Z.near,far:Z.far,lay:Z.lay}};
-    if(o.world){ var W=[]; out.kept.forEach(function(L){ L.runs.forEach(function(i){ W.push(R.w.slice(i*6,i*6+6).concat([R.r[i*5+4]])); }); }); ret.world=W; }
+    if(o.world){ var W=[], wEnd=function(i,e){ return R.w.slice(i*6+e*3,i*6+e*3+3); };
+      out.kept.forEach(function(L){ L.runs.forEach(function(i){ W.push(R.w.slice(i*6,i*6+6).concat([R.r[i*5+4],L.path,R.wfac[i],R.wix[i]])); });
+        for(var c=0;c<L.conn.length;c+=4) W.push(wEnd(L.conn[c],L.conn[c+1]).concat(wEnd(L.conn[c+2],L.conn[c+3]),[L.l,L.path,0,-1])); }); ret.world=W; }
     return ret;
   }).finally(function(){ svgBusy=false; playing=was.playing; TR.paused=was.paused; lastT=0; dirty=true; });
 }
-function svgButton(){ exportSVG().catch(function(e){ toast('SVG failed: '+e.message); }); }
+/* ---- the preview: SVG and V open it over the page. The view is frozen while it is open (camera, flight, traffic);
+   each change of a control re-exports that same view, showing "Exporting…" and the last sheet until the new one is
+   ready, and a change made during an export runs one more. Download saves the sheet on show, byte for byte. ---- */
+var PV={open:false,running:false,again:false,Z:null,was:null,svg:'',msg:'',res:null};
+function svgButton(){ pvOpen(); }
+function pvOpen(){ if(PV.open||!GEO||!CITY) return; PV.open=true; PV.was={playing:playing,paused:TR.paused}; playing=false; TR.paused=true;
+  PV.svg=''; PV.res=null; $('pv-paper').innerHTML=''; $('svgp').classList.add('on'); svgSync(); pvState('Exporting…');
+  svgReady().then(function(){ if(!PV.open) return; PV.Z=freezeView(); pvRun(); },function(e){ pvState('SVG failed: '+e.message); }); }
+function pvClose(){ if(!PV.open) return; PV.open=false; PV.Z=null; $('svgp').classList.remove('on'); playing=PV.was.playing; TR.paused=PV.was.paused; lastT=0; dirty=true; cv.focus(); }
+function pvState(t){ var b=$('pv-busy'); b.textContent=t||''; b.style.display=t?'block':'none'; $('pv-dl').disabled=!!t||!PV.svg; }
+function pvRun(){ if(!PV.open||!PV.Z) return; if(PV.running){ PV.again=true; return; } PV.running=true; pvState('Exporting…');
+  setTimeout(function(){ var t0=performance.now(), s=svgSettings({});
+    try{ var X=svgMake(PV.Z,s,{}), out=X.out; SVGLAST={Z:X.Z,D:X.D}; PV.svg=out.svg;
+      PV.msg=out.n.toLocaleString()+' lines, '+out.ink.toFixed(1)+' m of ink on '+out.paper.name+'; '+svgDetailText(X,s);
+      PV.res={n:out.n,ink:out.ink,small:out.small,mm:out.mm,paper:out.paper.id,land:X.land,settings:s,ms:Math.round(performance.now()-t0),bytes:out.svg.length};
+      pvShow(); PV.running=false; if(PV.again&&PV.open){ PV.again=false; pvRun(); } else pvState(''); }
+    catch(e){ PV.running=false; PV.again=false; pvState('SVG failed: '+e.message); } },40); }
+function pvFit(){ var box=$('pv-sheet'), p=$('pv-paper'), r=PV.res; if(!r) return; var aw=box.clientWidth-32, ah=box.clientHeight-32, k=Math.max(0.01,Math.min(aw/r.mm[0],ah/r.mm[1]));
+  p.style.width=Math.round(r.mm[0]*k)+'px'; p.style.height=Math.round(r.mm[1]*k)+'px'; }
+function pvShow(){ var r=PV.res, p=$('pv-paper');
+  p.style.background=svgHex((theme==='blue'?THEMES.blue:THEMES.paper).bg);
+  p.innerHTML=PV.svg.replace(/^<\?xml[^>]*>\s*/,'').replace(/width="[\d.]+mm" height="[\d.]+mm"/,'width="100%" height="100%"'); pvFit();
+  $('pv-n').textContent=r.n.toLocaleString()+' lines · '+r.ink.toFixed(1)+' m of ink · '+r.small.toLocaleString()+' under 1 mm ('+(r.n?(100*r.small/r.n).toFixed(1):'0')+' %) · '+(r.bytes/1048576).toFixed(2)+' MB';
+  $('pv-d').textContent=PV.msg; }
+function pvDownload(){ if(!PV.svg||PV.running) return; svgSave(PV.svg); toast('SVG saved: '+PV.msg); }
+/* settings: the drawer and the preview show the same ones; a change is remembered and, with the preview open, re-exports */
+function svgSet(o,quiet){ var s=svgSettings(o); for(var k in SVGO) SVGO[k]=s[k]; if(!quiet){ try{ localStorage.setItem('cc-svg',JSON.stringify(SVGO)); }catch(e){} }
+  svgSync(); if(!quiet&&PV.open) pvRun(); }
+function svgSync(){ var s=SVGO; $('s-paper').value=s.paper; $('p-paper').value=s.paper; $('p-cw').value=s.cw; $('p-ch').value=s.ch; $('p-custom').style.display=s.paper==='custom'?'':'none';
+  $('p-mg').value=String(s.margin); $('p-pen').value=String(s.pen);
+  [['p-or','orient'],['p-fit','fit'],['p-det','detail']].forEach(function(g){ Array.prototype.forEach.call($(g[0]).querySelectorAll('button'),function(b){ b.setAttribute('aria-pressed',String(b.dataset.v===s[g[1]])); }); });
+  var sh=svgSheet(s,true); $('svg-sum').textContent=(s.paper==='custom'?sh.name:svgPaper(s.paper).name)+' · '+{auto:'orientation auto',portrait:'portrait',landscape:'landscape'}[s.orient]+' · margin '+s.margin+' mm · fit '+s.fit+' · pen '+s.pen+' mm · detail '+SVGDETAIL[s.detail].name; }
 
 /* ================= controls ================= */
 var drawer=$('drawer');
@@ -1217,6 +1416,16 @@ function setSolid(on){ opt.solid=on; $('c-solid').checked=on; $('b-sol').setAttr
 $('b-sol').onclick=function(){ setSolid(!opt.solid); };
 $('b-photo').onclick=photo; $('b-photo2').onclick=photo;
 $('b-svg').onclick=svgButton; $('b-svg2').onclick=svgButton;
+$('s-paper').innerHTML=$('p-paper').innerHTML=PAPERS.map(function(p){ return '<option value="'+p.id+'">'+p.name+'</option>'; }).join('');
+$('p-mg').innerHTML=SVGMARGINS.map(function(v){ return '<option value="'+v+'">'+v+' mm</option>'; }).join('');
+$('p-pen').innerHTML=SVGPENS.map(function(v){ return '<option value="'+v+'">'+v+' mm</option>'; }).join('');
+$('s-paper').onchange=$('p-paper').onchange=function(){ svgSet({paper:this.value}); };
+$('p-cw').onchange=function(){ svgSet({cw:this.value}); }; $('p-ch').onchange=function(){ svgSet({ch:this.value}); };
+$('p-mg').onchange=function(){ svgSet({margin:+this.value}); }; $('p-pen').onchange=function(){ svgSet({pen:+this.value}); };
+[['p-or','orient'],['p-fit','fit'],['p-det','detail']].forEach(function(g){ $(g[0]).onclick=function(e){ var b=e.target.closest('button'); if(b){ var o={}; o[g[1]]=b.dataset.v; svgSet(o); } }; });
+$('pv-dl').onclick=pvDownload; $('pv-close').onclick=pvClose;
+window.addEventListener('resize',function(){ if(PV.open) pvFit(); });
+(function(){ var o=null; try{ o=JSON.parse(localStorage.getItem('cc-svg')||'null'); }catch(e){} svgSet(o&&typeof o==='object'?o:{},true); })();
 $('b-rec').onclick=recordRoute; $('b-rec2').onclick=recordRoute;
 $('b-help').onclick=function(){ $('help').classList.add('on'); };
 $('help').onclick=function(){ $('help').classList.remove('on'); };
@@ -1252,7 +1461,7 @@ function tick(ts){
     if(mv&&GEO.faces&&GEO.faces.roof){ var rf=roofAt(GEO.faces.roof,C.eye[0],C.eye[1]); if(rf>0&&C.eye[2]<rf+1.5) C.eye[2]=rf+1.5; }
     if(mv) dirty=true;
   }
-  if(opt.spin&&mode!=='fly'&&!playing&&(idle||ts-lastInput>12000)){ C.az+=dt*3.2; dirty=true; }
+  if(opt.spin&&mode!=='fly'&&!playing&&!PV.open&&(idle||ts-lastInput>12000)){ C.az+=dt*3.2; dirty=true; }
   /* traffic: its own clock; at Plotter frames it steps at 12 fps like a flight */
   if(MOV&&MOV.traffic.length&&opt.traffic&&layOn[5]&&!TR.paused){
     if(opt.plot){ TR.acc+=dt; if(TR.acc>=1/12){ TR.t+=TR.acc; TR.acc=0; dirty=true; } } else { TR.t+=dt; dirty=true; } }
@@ -1291,7 +1500,8 @@ window.__cc={roll:roll,state:function(){return {mode:mode,C:C,city:CITY&&CITY.id
   tnear:function(i,u,t,d){ var r=CITY.routes[i]; prepRoute(r); var q=sample(r,u), n=0, f=q.tg?[q.tg[0]-q.e[0],q.tg[1]-q.e[1]]:[Math.cos((q.y||0)*D2R),Math.sin((q.y||0)*D2R)];
     (MOV?MOV.traffic:[]).forEach(function(k){ var a=trafficAt(MOV.list[k],t), dx=a[0]-q.e[0], dy=a[1]-q.e[1]; if(Math.hypot(dx,dy,a[2]-q.e[2])<d&&dx*f[0]+dy*f[1]>0) n++; }); return n; },
   play:function(i){ playRoute(CITY.routes[i]); }, cam:function(){ return {eye:C.eye,yaw:C.yaw,pitch:C.pitch,poses:POSES.length,route:ROUTE&&ROUTE.id,mode:mode,playing:playing}; }, auto:function(on){ opt.auto=!!on; $('c-auto').checked=opt.auto; }, run:function(t){ rt=t; playing=true; lastT=0; }, ghost:function(on){ setGhost(on); }, key:function(k){ playing=false; rt=ROUTE._u[k]; applyRoute(); render(); }, at:function(t){ playing=false; rt=t; applyRoute(); render(); }, city:setCity, tex:setTex, theme:function(t){ $('t-'+t).click(); },
-  svg:exportSVG, svgposes:function(){ trafficPoses(); return {planes:POSES.map(function(p){ return {i:p.i,m:Array.prototype.slice.call(p.m)}; }),traffic:TPOSES.map(function(k){ return {i:k,a:trafficAt(MOV.list[k],TR.t)}; }),lay:layOn.slice()}; },
+  svg:exportSVG, svgpv:function(){ return {open:PV.open,busy:PV.running||!PV.svg,svg:PV.svg,msg:PV.msg,res:PV.res,settings:SVGO}; }, svgset:function(o){ svgSet(o||{}); }, svgclose:pvClose,
+  svgposes:function(){ trafficPoses(); return {planes:POSES.map(function(p){ return {i:p.i,m:Array.prototype.slice.call(p.m)}; }),traffic:TPOSES.map(function(k){ return {i:k,a:trafficAt(MOV.list[k],TR.t)}; }),lay:layOn.slice()}; },
   frame:function(){ stopRoute(); frameCity(); dirty=true; render(); },
   /* rollcheck.mjs (row 340): the geometry as parsed, edges and solids, for a sha256 against the unsplit build */
   geo:function(){ return GEO&&{n:GEO.n,pos:GEO.pos,faces:GEO.faces?GEO.faces.pos:null}; },
