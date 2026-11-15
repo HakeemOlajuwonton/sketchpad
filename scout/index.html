@@ -956,7 +956,11 @@ var PAPERS=[{id:'9x12',name:'9×12 in',w:228.6,h:304.8},{id:'11x14',name:'11×14
   {id:'18x24',name:'18×24 in',w:457.2,h:609.6},{id:'8x10',name:'8×10 in',w:203.2,h:254},{id:'5x7',name:'5×7 in',w:127,h:177.8},{id:'letter',name:'Letter',w:215.9,h:279.4},
   {id:'a5',name:'A5',w:148,h:210},{id:'a4',name:'A4',w:210,h:297},{id:'a3',name:'A3',w:297,h:420},{id:'a2',name:'A2',w:420,h:594},
   {id:'bed',name:'Funssor bed 395×260 mm',w:395,h:260},{id:'sq12',name:'Square 12×12 in',w:304.8,h:304.8},{id:'custom',name:'Custom',w:300,h:200}];
-var SVGLONG=4096, SVGBIAS=0.0001, SVGGRAZE=0.3, SVGON=0.01, SVGSTEP=0.5, SVGJOIN=0.25, SVGMINMM=0.3, SVGMARGIN=10, SVGPEN=0.3;
+/* SVGDM (row 364): a face hides a point only from more than SVGDM metres plus SVGBIAS of the way in front of it. The
+   build stores every point to the decimetre, so a line drawn on a wall can sit centimetres behind its own wall's plane:
+   Bay's takeoff view lost the far half of a ledge 2.1-3.1 cm behind a wall seen squarely 200 m away (0.01 % of 200 m is
+   2 cm). svgcheck.mjs's truth has the same 0.02 m. */
+var SVGLONG=4096, SVGBIAS=0.0001, SVGDM=0.02, SVGGRAZE=0.3, SVGON=0.01, SVGSTEP=0.5, SVGJOIN=0.25, SVGMINMM=0.3, SVGMARGIN=10, SVGPEN=0.3;
 /* Level of detail (queue rows 333 and 358), in multiples of the pen's width, because what a pen can draw is set by its
    width. Facade lines (the lines a building carries on its walls -- windows, floor lines, sills, louvres) are drawn only
    where a SVGSTOREY-metre storey is at least `storey` pens on the paper. Below that a facade is pen widths of ink with
@@ -1129,6 +1133,11 @@ function svgHides(T,o,p,bias,tmin){ if(svgOn(T,p)) return false;
   var iv=1/det, sx=o[0]-T[0], sy=o[1]-T[1], sz=o[2]-T[2], u=(sx*px+sy*py+sz*pz)*iv; if(u<0||u>1) return false;
   var qx=sy*e1z-sz*e1y, qy=sz*e1x-sx*e1z, qz=sx*e1y-sy*e1x, v=(dx*qx+dy*qy+dz*qz)*iv; if(v<0||u+v>1) return false;
   var t=(e2x*qx+e2y*qy+e2z*qz)*iv; return t>tmin&&t<1-bias; }
+/* does face U, sharing an edge with face T, turn toward eye o? T's corner that is not on U and o lie on opposite sides
+   of U's plane (row 364) */
+function svgTurns(T,U,o){ var e1x=U[3]-U[0],e1y=U[4]-U[1],e1z=U[5]-U[2],e2x=U[6]-U[0],e2y=U[7]-U[1],e2z=U[8]-U[2], nx=e1y*e2z-e1z*e2y, ny=e1z*e2x-e1x*e2z, nz=e1x*e2y-e1y*e2x, l=Math.hypot(nx,ny,nz), best=0, k;
+  if(!l) return false; for(k=0;k<3;k++){ var d=(nx*(T[k*3]-U[0])+ny*(T[k*3+1]-U[1])+nz*(T[k*3+2]-U[2]))/l; if(Math.abs(d)>Math.abs(best)) best=d; }
+  var de=(nx*(o[0]-U[0])+ny*(o[1]-U[1])+nz*(o[2]-U[2]))/l; return Math.abs(best)>SVGON&&best*de<0; }
 /* the build's faces that share an edge with each face (three a face, -1 for none), found once a city: a surface is
    often a strip of triangles thinner than a pixel, and the one the ray crosses may sit beside the one a pixel names */
 function svgAdj(F){
@@ -1180,16 +1189,30 @@ function svgRuns(Z,D,keepWorld,lod,gapN){
   var M=Z.M, fw=D.w, fh=D.h, ids=D.id, bias=SVGBIAS, runs=[], world=keepWorld?[]:null, wfac=keepWorld?[]:null, wix=keepWorld?[]:null, tail=[], e=Z.e, f=Z.f, persp=!Z.iso, nD=0, nE=0, nF=0, nFk=0, nS=0;
   var CH=lod&&!lod.seg?svgChains():null; gapN=Math.max(1,gapN||1); /* the longest gap closed, in 0.5 px steps */
   var dMax=lod?(lod.iso?(lod.k>=lod.min?Infinity:-Infinity):lod.k/lod.min):Infinity; /* a facade line is drawn nearer than this depth */
+  /* row 364's two hide-test changes; the harness turns them off (Z.hz) to show row 319's file is otherwise unchanged */
+  var dm=Z.hz&&Z.hz.dm!=null?Z.hz.dm:SVGDM, crease=!(Z.hz&&Z.hz.crease===false);
   var cache=new Map(), seen=new Int32Array(9), pt=[0,0,0], org=[0,0,0], adj=svgAdj(GEO.faces), nCity=GEO.faces.n, thin=D.thin;
   function face(n){ var T=cache.get(n); if(!T){ var t=D.tri(n); T=t?Array.prototype.slice.call(t):null; cache.set(n,T); } return T; }
   function hidden(sx,sy,p,dp){ var ix=Math.min(fw-1,Math.floor(sx)), iy=Math.min(fh-1,Math.floor(sy)), ns=0;
     if(persp){ org=e; } else { org=[p[0]-f[0]*dp,p[1]-f[1]*dp,p[2]-f[2]*dp]; }
-    var tmin=Z.near/dp, c0=ids[iy*fw+ix], T0=c0?face(c0):null; if(T0&&svgPlaneHides(T0,org,p,bias,tmin)) return true;
+    var tmin=Z.near/dp, c0=ids[iy*fw+ix], T0=c0?face(c0):null, b=bias+dm/Math.max(1e-9,Math.hypot(p[0]-org[0],p[1]-org[1],p[2]-org[2]));
     for(var dy=-1;dy<=1;dy++){ var y=iy+dy; if(y<0||y>=fh) continue; for(var dx=-1;dx<=1;dx++){ var x=ix+dx; if(x<0||x>=fw) continue; var n=ids[y*fw+x]; if(!n) continue;
       var dup=false; for(var k=0;k<ns;k++) if(seen[k]===n){ dup=true; break; } if(dup) continue; seen[ns++]=n;
-      var T=face(n); if(T&&svgHides(T,org,p,bias,tmin)) return true;
-      if(adj&&n<=nCity) for(var a=0;a<3;a++){ var m=adj[(n-1)*3+a]; if(m>0&&!(thin&&thin[m-1])){ var U=face(m); if(U&&svgHides(U,org,p,bias,tmin)) return true; } } } }
-    return false; }
+      var T=face(n); if(T&&svgHides(T,org,p,b,tmin)) return true;
+      if(adj&&n<=nCity) for(var a=0;a<3;a++){ var m=adj[(n-1)*3+a]; if(m>0&&!(thin&&thin[m-1])){ var U=face(m); if(U&&svgHides(U,org,p,b,tmin)) return true; } } } }
+    /* the centre pixel's face extended over its plane, for a face seen at a grazing angle -- but not over a point that lies
+       on a face the buffer shows within two pixels (row 364): there the point is on the surface the buffer sees, and the
+       extension only reaches it across a crease. Freeway's takeoff view lost the first metres of a line on one roof
+       slope to the plane of the slope beyond the ridge. */
+    if(!T0||!svgPlaneHides(T0,org,p,b,tmin)) return false;
+    if(crease) for(var ey=-2;ey<=2;ey++){ var yy=iy+ey; if(yy<0||yy>=fh) continue; for(var ex=-2;ex<=2;ex++){ var xx=ix+ex; if(xx<0||xx>=fw) continue;
+      var q=ids[yy*fw+xx]; if(q){ var V=face(q); if(V&&svgOn(V,p)) return false; } } }
+    /* or on a face sharing an edge with the centre's that turns toward the eye there (the centre face's third corner
+       and the eye on opposite sides of its plane: a ridge, not the back of a deck); a roof slope seen almost edge-on
+       is in no pixel of the buffer. Without the turn test a face that merely shares an edge can be the back of a deck,
+       and exempting points on it drew Bay's deck view 1.04 % hidden. */
+    if(crease&&adj&&c0<=nCity) for(var a2=0;a2<3;a2++){ var m2=adj[(c0-1)*3+a2]; if(m2<=0) continue; var W2=face(m2); if(W2&&svgOn(W2,p)&&svgTurns(T0,W2,org)) return false; }
+    return true; }
   svgEdges(Z,function(x0,y0,z0,x1,y1,z1,l,fac,mov,ix){ nE++;
     var d0=(x0-e[0])*f[0]+(y0-e[1])*f[1]+(z0-e[2])*f[2], d1=(x1-e[0])*f[0]+(y1-e[1])*f[1]+(z1-e[2])*f[2];
     var far=fac?dMax:Z.far; if(fac){ nF++; if(Math.min(d0,d1)>=far) return; nFk++; }
@@ -1325,6 +1348,7 @@ function svgMake(Z0,s,o){
   var fbs=svgFbSize(Z), lod=nolod?null:svgLod(Z,fbs,sh,s,o,mmpx); Z.lod=lod;
   var px=lod?lod.mmpx:mmpx||Math.min((sh.pw-2*sh.m)/fbs[0],(sh.ph-2*sh.m)/fbs[1]); /* mm on the sheet per buffer pixel */
   var gapN=o.gap!=null?o.gap:Math.max(1,Math.floor(SVGGAPMM/(px*SVGSTEP))), tol=o.join!=null?o.join:Math.max(SVGJOIN,SVGGAPMM/px);
+  Z.hz={dm:o.dm, crease:o.crease};
   var D=facePass(Z), R=svgRuns(Z,D,!!o.world,lod,gapN), lines=svgJoin(R,tol,!!o.first), out=svgWrite(Z,D,lines,sh,s.pen);
   return {Z:Z,D:D,R:R,out:out,lod:lod,sh:sh,land:land,gapN:gapN,tol:tol,px:px}; }
 /* what was left out, said in the toast and the preview */
