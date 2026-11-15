@@ -462,7 +462,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v402</a> &mdash; Faster on a real city: the lot arc lookup, the container pairs and the occluder grid, refactor only</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v403</a> &mdash; Corridor city: fields stop at the river, and the access road&rsquo;s pavements stop at the airfield fence</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <section class="fold" id="fold_pick"><h2>Pick engine<span class="cnt"></span></h2>
@@ -24594,6 +24594,11 @@ function townRiver(p,G,plans,J,SX){
   /* row 200: with a site the lots a band meets are cut back, not rebuilt as canal houses:
      rebuilding a 90 m deep lot every 0.1 m is most of the build */
   if(SX||G.FORM) townCarve(G,grid.slice(0,NG),meetsBand,info,'site',700000,LOTMIN,bbox2);
+  /* row 327: and the frame's fields are cut at the band as the lots are, a piece kept on each bank (a field lay over the water) */
+  if(G.FORM) plans.forEach(function(PLf){ if(!PLf.fieldPlan) return; var o=[];
+    PLf.conts.forEach(function(C){ var r=C.kind==='field'?cutAway(C.poly):null; if(r===null){ o.push(C); return; }
+      r.forEach(function(e){ if(e.poly && areaOf(e.poly)>=30) o.push(Object.assign({},C,{poly:e.poly, bb:bbox2(e.poly), cut:true, parts:[], trees:0})); }); });
+    PLf.conts=o; });
   for(k=0;k<(SX||G.FORM?0:G.ROWS);k++){
     var PLk=grid[k], gone=[];
     PLk.lots.forEach(function(L){
@@ -27803,6 +27808,19 @@ function townForm(p,G,plans,J,BLK,SITE){
       else if(isB){ hk.noLots=true; var PB=null; hk.theme=Object.assign({},STHEMES.town,{content:function(K){ return bridgeTheme(K,RDw); }}); }
       else { hk.depthCap=28; hk.fullDepth=true; }
       var PLn=corridorPlan(Object.assign({},p,{len:sg[1]-sg[0], bend:0, width:WA, pave:PA},sg[3]),isB?hk.theme:STHEMES.town,sg[2],hk); PLn.sectShed=sg[2]>=501&&sg[2]<600&&sg[2]%2===1; PLn.bridge=!!isB; if(isB) PLn.conts.forEach(function(C){ C.bare=true; C.bridge=true; }); artPlans.push(PLn); });
+    /* row 327: its slabs stop 0.3 m short of the fence face, whatever angle the road comes in at. The road can meet the
+       face nearly along it (seed 7: 83 degrees off its normal), and then the slabs' outer corners ran up to 3 m past it into
+       the fence (0 to 1 m behind the face) and the forecourt (1 to 31 m behind); the road's own end (ENDa) is unchanged */
+    if(rot){ var nF=[rot.b[0],rot.b[1]]; if((ALINE.a[0]-ALINE.b[0])*nF[0]+(ALINE.a[1]-ALINE.b[1])*nF[1]<0) nF=[-nF[0],-nF[1]];
+      var dF=function(q){ return (q[0]-ALINE.b[0])*nF[0]+(q[1]-ALINE.b[1])*nF[1]-0.3; };
+      artPlans.forEach(function(PLa){ var gapF={'1':[],'-1':[]};
+        PLa.conts=PLa.conts.filter(function(C){ if(C.kind!=='slab' || C.poly.every(function(q){ return dF(q)>=0; })) return true;
+          var Q=[], m; for(m=0;m<C.poly.length;m++){ var A=C.poly[m], B=C.poly[(m+1)%C.poly.length], da=dF(A), db=dF(B);
+            if(da>=0) Q.push(A); if((da>=0)!==(db>=0)){ var t=da/(da-db); Q.push([A[0]+(B[0]-A[0])*t,A[1]+(B[1]-A[1])*t]); } }
+          if(Q.length<3 || townArea(Q)<0.05){ gapF[C.side].push([C.s0,C.s1]); var cell=PLa.slabsBySide[C.side].indexOf(C); if(cell>=0) delete PLa.slabsBySide[C.side][cell]; info.artSlabsGone=(info.artSlabsGone||0)+1; return false; }
+          C.poly0=C.poly; C.poly=Q; C.bb=bbox2(Q); C.cut=true; info.artSlabsCut=(info.artSlabsCut||0)+1; return true; });
+        if(gapF['1'].length||gapF['-1'].length){ var SGf=Array.isArray(PLa.sGaps)?{'1':PLa.sGaps.slice(),'-1':PLa.sGaps.slice()}:{'1':(PLa.sGaps['1']||[]).slice(),'-1':(PLa.sGaps['-1']||[]).slice()};
+          SGf['1']=SGf['1'].concat(gapF['1']); SGf['-1']=SGf['-1'].concat(gapF['-1']); PLa.sGaps=SGf; PLa.hasGap=true; } }); }
     var SLa=[]; artPlans.forEach(function(PLa){ PLa.conts.forEach(function(C){ if(C.kind==='slab') SLa.push(C); }); });
     BAND=townBand(SLa,polyOverlap,bbox2,bbHit);
     grid.forEach(function(PL){ var gapAdd={'1':[],'-1':[]};
