@@ -462,7 +462,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v405</a> &mdash; Corridor city: an access road that runs along the airfield&rsquo;s fence keeps out of it</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v406</a> &mdash; Corridor city: the powerline keeps its pylons out of the airfield</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <section class="fold" id="fold_pick"><h2>Pick engine<span class="cnt"></span></h2>
@@ -26247,6 +26247,8 @@ function townPowerline(p,G,plans,J,RIV,VS,SX,WH){
   if(RIV) RIV.plan.conts.forEach(function(C){ if(C.kind!=='lot') OCC.push(C); });
   VS.forEach(function(V){ if(!V) return; V.plan.conts.forEach(function(C){ OCC.push(C); }); bands.push(V.band); });
   if(WH) WH.FRM.plans.forEach(function(PL){ if(!PL.fieldPlan && PL!==WH.FRM.waterPlan) PL.conts.forEach(function(C){ if(C.kind!=='lot') OCC.push(C); }); });
+  /* row 351: and no plot inside the site's outline (the airfield's fence, stands and forecourt), as row 205 keeps the grid route out */
+  if(WH && WH.SITE && WH.SITE.outline) OCC.push({kind:'site', poly:WH.SITE.outline, bb:townBbox(WH.SITE.outline)});
   /* ONE LINE: through C0 at heading h, its pylons' places from 18-30 m in, every
      120-180 m (the numbers drawn from S whatever is decided), each moved along
      the line to the nearest legal spot within 40 m or dropped; fewer than two
