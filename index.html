@@ -462,7 +462,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v403</a> &mdash; Corridor city: fields stop at the river, and the access road&rsquo;s pavements stop at the airfield fence</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v404</a> &mdash; Corridor city: a power plant on its river: the river comes to the plant&rsquo;s fence, with an intake and an outfall on its quay</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <section class="fold" id="fold_pick"><h2>Pick engine<span class="cnt"></span></h2>
@@ -24443,6 +24443,14 @@ function townRiver(p,G,plans,J,SX){
   else if(SX){ var RQ=SX.rect, BXc=[BX[0],SX.top?BX[1]:RQ[3],BX[2],SX.top?RQ[1]:BX[3]];
     if(SX.harbour){ bottom=SX.top; y0=bottom?BX[1]:BX[3]; x0=RQ[0]+(0.25+0.5*ux)*(RQ[2]-RQ[0]); h0=(bottom?Math.PI/2:-Math.PI/2)+(us<0.5?-1:1)*(4*ua)*Math.PI/180; RB=Math.min(RB,8); }
     else { var WC=BX[2]-BX[0], DC=BXc[3]-BXc[1], FAN=Math.atan2(0.8*DC,0.25*WC); bottom=SX.top; x0=BX[2]-0.25*WC; y0=SX.top?BX[1]:BX[3]; h0=SX.top?FAN:-FAN; RB=Math.min(RB,6); } }
+  /* row 335: a steam plant's river (River 1, no water) comes to the plant: from where row 200 §9 starts it, aimed at its mouth */
+  var PM=SX&&SX.plantMouth&&!HYO?SX.plantMouth:null;
+  var PMst=null;
+  if(PM){ var AL=SX.artLine||null;
+    /* the stretch whose straight course from the source does not cross the arterial (City form 1), the nearest first */
+    var cand=PM.stretches.slice().sort(function(u,v){ return Math.hypot(u.T[0]-x0,u.T[1]-y0)-Math.hypot(v.T[0]-x0,v.T[1]-y0); });
+    PMst=cand.filter(function(st){ return !AL || !townSegX([x0,y0],st.T,AL.a,AL.b); })[0]||cand[0];
+    h0=Math.atan2(PMst.T[1]-y0,PMst.T[0]-x0); RB=Math.min(RB,4); }
   var pr=Object.assign({},p,{bend:RB, width:RW}), hk={spline:{x:x0, y:y0, h:h0, salt:521}, noLots:true, Z0:-RD, theme:RTHM};
   var DIAG=Math.hypot(BX[2]-BX[0],BX[3]-BX[1]), PL0=corridorPlan(Object.assign({},pr,{len:Math.min(4000,4*DIAG)}),RTHM,200,hk);
   /* it ends where its centreline first leaves the box */
@@ -24453,6 +24461,26 @@ function townRiver(p,G,plans,J,SX){
     /* row 200 §9: it stops at the site: past the road and into the water at a small harbour, clear of everything else */
     if(SX){ var RQs=SX.harbour&&SWET?SX.waterEdge:SX.rect, M=SWET?-8:RW/2+25;
       if(xi>RQs[0]-M && xi<RQs[2]+M && yi>RQs[1]-M && yi<RQs[3]+M){ LENr=Math.max(10,i*PL0.DS); info.stopped=true; break; } } }
+  /* row 335: it runs on past the box to the plant's face, re-aimed (up to four times) at the mouth by what the bends
+     did to the last try, and ends just past the face, every container then cut at it */
+  var PMhit=null, PMa=null;
+  if(PM){ var tryA=0, LEN9=Math.min(9000,4*DIAG+2*Math.hypot(PMst.T[0]-x0,PMst.T[1]-y0)), TOLm=Math.max(3,(PMst.aHi-PMst.aLo)/2-12), TR=[];
+    /* where the river meets the face, as a function of its heading: aimed, corrected once by the bends, then secant steps
+       on the last two tries (bisection of the closest bracket when a step leaves it), ten tries at most */
+    for(;;){ var P9=corridorPlan(Object.assign({},pr,{len:LEN9}),RTHM,200,hk), hT=null; PMhit=null;
+      for(i=1;i<P9.NS;i++){ var X9=[P9.SX[i],P9.SY[i]]; if(PM.n[0]*X9[0]+PM.n[1]*X9[1]>=PM.d){ PMhit={i:i, X:X9, DS:P9.DS, F:P9.frame(i*P9.DS)}; break; } }
+      if(!PMhit) break;
+      PMa=PM.aOf(PMhit.X); TR.push({h:hk.spline.h, e:PMa-PMst.aM}); if(Math.abs(PMa-PMst.aM)<=TOLm || ++tryA>9) break;
+      if(TR.length===1){ hT=hk.spline.h+Math.atan2(PMst.T[1]-y0,PMst.T[0]-x0)-Math.atan2(PMhit.X[1]-y0,PMhit.X[0]-x0); }
+      else { var lo=null, hi=null; TR.forEach(function(t){ if(t.e<0 && (!lo || t.e>lo.e)) lo=t; if(t.e>0 && (!hi || t.e<hi.e)) hi=t; });
+        var t1=TR[TR.length-1], t0=TR[TR.length-2];
+        hT=t1.e!==t0.e?t1.h-t1.e*(t1.h-t0.h)/(t1.e-t0.e):t1.h+0.01;
+        if(lo && hi){ var mn=Math.min(lo.h,hi.h), mx=Math.max(lo.h,hi.h); if(!(hT>mn && hT<mx)) hT=(lo.h+hi.h)/2; } }
+      hk.spline.h=hT; }
+    info.pmTries=TR.map(function(t){ return [+t.h.toFixed(4),+t.e.toFixed(1)]; });
+    if(PMhit){ var cs9=Math.abs(PMhit.F[2]*PM.n[0]+PMhit.F[3]*PM.n[1]), tn9=Math.min(3,Math.sqrt(Math.max(0,1-cs9*cs9))/Math.max(0.3,cs9));
+      LENr=(PMhit.i+1)*PMhit.DS+(RW/2+QUAY+2)*tn9; info.stopped=false; }
+    else info.plantMiss='it never reached the plant\u2019s face'; }
   var PLR=corridorPlan(Object.assign({},pr,{len:LENr}),RTHM,200,hk), RS=PLR.conts.slice();
   /* row 200 §9: A SMALL HARBOUR'S RIVER IS ITS WATER: its slabs stop exactly at the water's edge, and the quay opens for it */
   if(SWET){ var WE=SX.waterEdge, YW=SX.top?WE[1]:WE[3], NW=SX.top?[0,-1]:[0,1], DW=SX.top?-YW:YW, xa=1e18, xb=-1e18;
@@ -24462,6 +24490,14 @@ function townRiver(p,G,plans,J,SX){
       if(Q.length!==C.poly.length || townArea(Q)<townArea(C.poly)-1e-6){ C.poly0=C.poly; C.poly=Q; C.bb=PLR.bbox2(Q); C.cut=true; }
       return true; });
     if(xb>xa){ info.mouth=[xa,xb,YW]; if(SX.openQuay) SX.openQuay(xa,xb); } }
+  if(PM && PMhit){ var NPm=[-PM.n[0],-PM.n[1]], DPm=-PM.d;
+    RS=RS.filter(function(C){ var Q=[], m; for(m=0;m<C.poly.length;m++){ var A=C.poly[m], B=C.poly[(m+1)%C.poly.length], da=NPm[0]*A[0]+NPm[1]*A[1]-DPm, db=NPm[0]*B[0]+NPm[1]*B[1]-DPm;
+        if(da>=0) Q.push(A); if((da>=0)!==(db>=0)){ var t=da/(da-db); Q.push([A[0]+(B[0]-A[0])*t,A[1]+(B[1]-A[1])*t]); } }
+      if(Q.length<3 || townArea(Q)<0.05){ if(PLR.slabsBySide[C.side]){ var cell=PLR.slabsBySide[C.side].indexOf(C); if(cell>=0) delete PLR.slabsBySide[C.side][cell]; } PLR.conts=PLR.conts.filter(function(q){ return q!==C; }); return false; }
+      if(Q.length!==C.poly.length || townArea(Q)<townArea(C.poly)-1e-6){ C.poly0=C.poly; C.poly=Q; C.bb=PLR.bbox2(Q); C.cut=true; }
+      return true; });
+    var whyM=PM.lay(PMst,PMa,RW/2+QUAY+0.5); info.plantMouth={a:PMa, aim:PMst.aM, quay:[PMst.aLo,PMst.aHi], laid:!whyM, why:whyM||null, tries:tryA}; }
+  else if(PM) info.plantMouth={laid:false, why:info.plantMiss||'no face'};
   var KO=PLR.KOFF, HW=PLR.HALFW, polyOverlap=PLR.polyOverlap, bbox2=PLR.bbox2, bbHit=PLR.bbHit, convex=PLR.convex;
   /* nothing hangs a cable across the water: a cable piece in a river
      container would be lowered with it (corridorDraw's noCable) */
@@ -27751,7 +27787,7 @@ function townForm(p,G,plans,J,BLK,SITE){
         FILLQ=[fq(fA,-2),fq(fB,-2),fq(fB,150),fq(fA,150)]; FILLQW=[fq(fA-200,-2),fq(fB+200,-2),fq(fB+200,350),fq(fA-200,350)];
         WAT=function(x,y){ var v=W0F(x,y); return v>-20 && townIn(FILLQ,[x,y]) ? -20 : v; }; info.fill=FILLQ; } }
     var TG=SITE.faceAt(SITE.aC);
-    LENa=Math.hypot(TG[0]-A0[0],TG[1]-A0[1]); ALINE={a:A0, b:TG, L:LENa, h:Math.atan2(TG[1]-A0[1],TG[0]-A0[0])}; info.core=core; info.arterial={from:A0, to:TG, L:LENa, h:ALINE.h}; }
+    LENa=Math.hypot(TG[0]-A0[0],TG[1]-A0[1]); ALINE={a:A0, b:TG, L:LENa, h:Math.atan2(TG[1]-A0[1],TG[0]-A0[0])}; if(SITE) SITE.artLine=ALINE; info.core=core; info.arterial={from:A0, to:TG, L:LENa, h:ALINE.h}; }
   function ribbon(x,y){ if(!ALINE || p.noribbon) return [0,0,1e9];
     var dx=ALINE.b[0]-ALINE.a[0], dy=ALINE.b[1]-ALINE.a[1], t=Math.max(0,Math.min(1,((x-ALINE.a[0])*dx+(y-ALINE.a[1])*dy)/(LENa*LENa))), d=Math.hypot(x-ALINE.a[0]-t*dx,y-ALINE.a[1]-t*dy);
     return [0.72*Math.exp(-(d/260)*(d/260))*(1-0.45*t)+0.08*(townNoise(x,y,300,SALT_FORM+2)-0.5),t,d]; }
@@ -28080,7 +28116,7 @@ var PLANT_TYPES={nlen:[0,800,1500,2400,3500],
        {units:2,hrsg:1,stackH:60,steam:1,towers:2,towerH:110,mech:0},{units:6,hrsg:1,stackH:60,steam:2,towers:4,towerH:110,mech:0}],
   nuclear:[null,null,{units:1,dome:60,towers:2,towerH:150,mech:0},{units:2,dome:60,towers:4,towerH:165,mech:0},{units:4,dome:60,towers:6,towerH:170,mech:0}]};
 var SALT_PLANT=667, SALT_PVAR=671;
-var PLANTK={ptower:1, pmech:1, pyard:1, pstk:1, pprecip:1, pconvc:1, pboil:1, pturb:1, pccgt:1, preact:1, pswitch:1, padmin:1,
+var PLANTK={ptower:1, pmech:1, pyard:1, pstk:1, pprecip:1, pconvc:1, pboil:1, pturb:1, pccgt:1, preact:1, pswitch:1, padmin:1, pintake:1, poutfall:1,
             hres:1, hemb:1, hdam:1, hpower:1, hbasin:1, hchan:1};
 /* Plant 3 is hydro (row 115, townHydroPlan) */
 function townPlantType(p){ return Math.max(0,Math.min(3,Math.round(isFinite(p.ptype)?+p.ptype:0))); }
@@ -28586,6 +28622,30 @@ function townSite(p,G,plans,J,BLK,KIND,AT){
                        sGaps:[], hasGap:false, Z0:z, conts:WC, lots:[], slabsBySide:{'1':[],'-1':[]}, dropped:0, pushed:0}); }); }
   SITE.rect=R; SITE.roads=pplans; SITE.pconts=conts; SITE.rot=ROT; SITE.fenceFace=FENCEX; SITE.outline=FOUT; SITE.topSide=ROT?ROT.top:top;
   if(ROT){ SITE.top=ROT.top; SITE.faceAt=function(a){ return M2(a,LB); }; SITE.aC=LA/2; }
+  /* row 335 (town-power §1.3): with River 1 a steam plant's river comes to its city face where the face is free (the ends
+     of the plant, clear of every row and of a street's gate), and ends at the fence; an intake and an outfall stand behind
+     it on the river's quay. townRiver picks a stretch (one its course need not cross the arterial to reach), aims at it,
+     and calls lay() with where it met the face */
+  if(PLN && !PLN.hydro && PLN.river && FENCEX){ var LBF=ROT?LB:LB+FW, LBI2=ROT?LB-1:LB, aLo0=(ROT?1:0)+2, aHi0=LA-(ROT?1:0)-2;
+    var RWp=Math.max(8,Math.min(60,isFinite(p.rwidth)?+p.rwidth:24)), NEEDM=Math.max(30,RWp+3+4), BLKa=[], SQ=lrect(aLo0,aHi0,LBI2-16,LBI2);
+    conts.forEach(function(C){ if(C.kind!=='fence' && C.lr && polyOverlap(SQ,C.poly)) BLKa.push([C.lr[0]-2,C.lr[1]+2]); });
+    if(!ROT) hg.forEach(function(g){ BLKa.push([hx[0]+g[0]-U[0]-RWp/2-6,hx[0]+g[1]-U[0]+RWp/2+6]); });
+    BLKa.sort(function(x,y){ return x[0]-y[0]; }); var FRa=[], atA=aLo0;
+    BLKa.forEach(function(g){ if(g[0]>atA) FRa.push([atA,Math.min(g[0],aHi0)]); atA=Math.max(atA,g[1]); }); if(atA<aHi0) FRa.push([atA,aHi0]);
+    FRa=FRa.filter(function(f){ return f[1]-f[0]>=NEEDM; });
+    info.plantQuays=FRa.slice();
+    if(FRa.length){ var F0=M2(0,LBF), Fn=M2(0,LBF-1), nI=[Fn[0]-F0[0],Fn[1]-F0[1]], Fa=M2(1,LBF), aU=[Fa[0]-F0[0],Fa[1]-F0[1]];
+      SITE.plantMouth={n:nI, d:nI[0]*F0[0]+nI[1]*F0[1], stretches:FRa.map(function(f){ return {aLo:f[0], aHi:f[1], aM:(f[0]+f[1])/2, T:M2((f[0]+f[1])/2,LBF)}; }),
+        aOf:function(X){ return (X[0]-F0[0])*aU[0]+(X[1]-F0[1])*aU[1]; },
+        lay:function(st,aX,hw){ var aLo=st.aLo, aHi=st.aHi;
+          if(!(aX>=aLo+8 && aX<=aHi-8)) return 'the river meets the face at a '+aX.toFixed(1)+' m, off its stretch ('+aLo.toFixed(0)+'-'+aHi.toFixed(0)+' m)';
+          var iA=Math.max(aLo,aX-25), oB=Math.min(aHi,aX+25), Ci=lrect(iA,aX-1,LBI2-16,LBI2), Co=lrect(aX+1,oB,LBI2-16,LBI2), hit=conts.filter(function(C){ return C.kind!=='fence' && (polyOverlap(Ci,C.poly)||polyOverlap(Co,C.poly)); });
+          if(hit.length) return 'its quay is taken by '+hit.map(function(C){ return C.kind; }).join(',');
+          var g0=Math.max(0,aX-hw), g1=Math.min(LA,aX+hw); FENCEX.gaps.push(ROT?[g0,g1]:[U[0]+g0,U[0]+g1]);
+          [['pintake',iA,aX-1],['poutfall',aX+1,oB]].forEach(function(e){ var c=cont(e[0],lrect(e[1],e[2],LBI2-16,LBI2),{lr:[e[1],e[2],LBI2-16,LBI2]});
+            var r={kind:c.kind, poly:c.poly, lr:c.lr}; info.conts.push(r); PLY.info.conts.push(r); });
+          PLY.info.intake=[iA,aX-1]; PLY.info.outfall=[aX+1,oB]; return null; }};
+    } }
   var TA=conts.filter(function(C){ return C.kind==='term'||C.kind==='forecourt'; })[0]; if(TA) SITE.aim=[townMid(TA.poly)[0],top?R[1]:R[3]]; else SITE.aim=[(R[0]+R[2])/2,top?R[1]:R[3]];
   if(ROT) SITE.aim=TA?townMid(TA.poly):M2(LA/2,LB);
   /* row 200 §2: Focus 1 the site, 2 terminal + stands + the runway abeam them, 3 one
@@ -29050,6 +29110,10 @@ function siteTheme(K,SITE){
       /* row 205: a plant on the outskirts sends its grid tie off the switchyard's far end */
       if(C.tie1){ var DE2=lfrus(e[0]+6,e[3]-8,2.4,0.8,4,Math.PI/4,0,32); DE2.hides=false; DE2.seeThru=true; own(DE2,C,'deadend',COLK); }
       paint(C,e[0]+4,e[3]-2,e[1]-4,e[3]-2,COLR,'warning'); return; }
+    /* row 335: the river's intake (a screen house at the fence, its pump house behind) and the outfall's seal well and pipe */
+    if(C.kind==='pintake'){ P=lbox(e[0]+1,e[1]-1,e[3]-9,e[3]-1,0,7); var fi2=faceTo(P,0,1,0); for(k=1;k<3;k++) fline(P,fi2,W3(e[0]+1,e[3]-1,2.4*k),W3(e[1]-1,e[3]-1,2.4*k),COLK,'screen'); own(P,C,'intake',COLK);
+      own(lbox(e[0]+2,e[1]-2,e[2]+1,e[2]+5,0,4.5),C,'pumphouse',COLK); return; }
+    if(C.kind==='poutfall'){ own(lbox(e[0]+2,e[1]-2,e[3]-8,e[3]-1,0,2.5),C,'sealwell',COLK); own(lbox(e[0]+3,e[1]-3,e[2]+2,e[2]+5,0,1.2),C,'outfallpipe',COLK); return; }
     if(C.kind==='padmin'){ own(lbox(e[0]+4,e[0]+10,e[3]-12,e[3]-6,0,4),C,'gatehouse',COLK);
       P=lbox(e[0]+16,e[0]+56,e[2]+6,e[2]+20,0,12); var fw=faceTo(P,0,1,0); for(k=1;k<3;k++) fline(P,fw,W3(e[0]+16,e[2]+20,4*k),W3(e[0]+56,e[2]+20,4*k),COLK,'floor'); own(P,C,'admin',COLK);
       for(var x=e[0]+62;x+2.5<=e[1]-4;x+=2.5) paint(C,x,e[2]+8,x,e[2]+13,COLK,'bay');
