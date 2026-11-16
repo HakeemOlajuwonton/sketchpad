@@ -462,7 +462,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v407</a> &mdash; Baggage hall: the spiral chute&rsquo;s end edges are drawn only where they can be seen</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v408</a> &mdash; Corridor city: the airport station stands off the roads</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <section class="fold" id="fold_pick"><h2>Pick engine<span class="cnt"></span></h2>
@@ -25122,10 +25122,17 @@ function townRailBranches(p,G,plans,J,RIV,VR,WC){
     var HPY=F.harbour&&F.harbour.poly;
     function solidAt(q){ if(HPY&&townIn(HPY,q)) return true; for(var i=0;i<SOL.length;i++){ var b=SOL[i].bb||bbox2(SOL[i].poly); if(q[0]>=b[0]&&q[0]<=b[2]&&q[1]>=b[1]&&q[1]<=b[3]&&townIn(SOL[i].poly,q)) return true; } return false; }
     function solidMeets(Q){ var bq=bbox2(Q); return SOL.some(function(C){ return bbHit(bq,C.bb||bbox2(C.poly)) && polyOverlap(Q,C.poly); }); }
+    /* row 352: and off the city form's arterials. The hall stood on two arterials where they meet before the airfield
+       (tier 2, water 3, harbour 1, seed 7: 1,979 m2 of road under it), the branch being laid after the form */
+    var FART=[]; (WC.FRM.plans||[]).forEach(function(PL){ if(PL.ix>=350 && PL.conts) PL.conts.forEach(function(C){ if((C.kind==='slab'||C.kind==='junction') && C.poly) FART.push(C); }); });
+    var FAG=FART.length?townBandGrid(FART.map(function(C){ return {poly:C.poly, bb:C.bb||bbox2(C.poly)}; })):null;
+    function artMeets(Q){ if(!FAG) return false; var bq=bbox2(Q); return FAG(bq).some(function(C){ return bbHit(bq,C.bb) && polyOverlap(Q,C.poly); }); }
     /* as near the terminal as it can stand: clear of the road, on dry ground (out on fill the gate may be far from it) */
     var aNear=aC+sgA*CLRa, aFar=aNear+sgA*(PLAT+20), bestA=null, tA, CLR0=WA/2+PA+30, vA9=Math.cos(AL9.h)*dA[0]+Math.sin(AL9.h)*dA[1], vB9=Math.cos(AL9.h)*nB[0]+Math.sin(AL9.h)*nB[1], LEAN9=vA9*vB9>=0?1:-1;
-    for(tA=0;tA<=LA;tA+=20) [1,-1].forEach(function(sg2){ var am=tmA+sg2*tA, a0=am-(PLAT+20)/2, a1=am+(PLAT+20)/2; if(bestA!==null||a0<40||a1>LA-40) return; if(Math.min(Math.abs(a0-aC),Math.abs(a1-aC))<((am-aC)*LEAN9>0?CLRa:CLR0) || (a0<aC&&a1>aC)) return;
-      var dry=!WC.wat||[a0,am,a1].every(function(aq){ return [off,off+60].every(function(dq){ var q=fence(aq,dq); return WC.wat(q[0],q[1])<-12; }); }); var sg3=am>=aC?1:-1, aX=sg3>0?a1+200:a0-200; if(dry && !VR.band.meets([fence(a0,off-8),fence(a1,off-8),fence(a1,off+62),fence(a0,off+62)]) && !solidMeets([fence(Math.min(a0,aX),off-8),fence(Math.max(a1,aX),off-8),fence(Math.max(a1,aX),off+62),fence(Math.min(a0,aX),off+62)])) bestA=am; });
+    var bestA1=null; /* row 352: the nearest stretch whose hall is clear of the arterials, taken if it is no more than 50 m further */
+    for(tA=0;tA<=LA;tA+=20) [1,-1].forEach(function(sg2){ var am=tmA+sg2*tA, a0=am-(PLAT+20)/2, a1=am+(PLAT+20)/2; if((bestA!==null&&bestA1!==null)||a0<40||a1>LA-40) return; if(Math.min(Math.abs(a0-aC),Math.abs(a1-aC))<((am-aC)*LEAN9>0?CLRa:CLR0) || (a0<aC&&a1>aC)) return;
+      var dry=!WC.wat||[a0,am,a1].every(function(aq){ return [off,off+60].every(function(dq){ var q=fence(aq,dq); return WC.wat(q[0],q[1])<-12; }); }); var sg3=am>=aC?1:-1, aX=sg3>0?a1+200:a0-200; if(dry && !VR.band.meets([fence(a0,off-8),fence(a1,off-8),fence(a1,off+62),fence(a0,off+62)]) && !solidMeets([fence(Math.min(a0,aX),off-8),fence(Math.max(a1,aX),off-8),fence(Math.max(a1,aX),off+62),fence(Math.min(a0,aX),off+62)]) ) { if(bestA===null) bestA=am; if(bestA1===null && !artMeets([fence(a0,off+KOb+7.4),fence(a1,off+KOb+7.4),fence(a1,off+KOb+7.4+40),fence(a0,off+KOb+7.4+40)])) bestA1=am; } });
+    if(bestA1!==null && Math.abs(bestA1-tmA)<=Math.abs(bestA-tmA)+50) bestA=bestA1;
     if(bestA!==null){ sgA=bestA>=aC?1:-1; aNear=bestA-sgA*(PLAT+20)/2; aFar=bestA+sgA*(PLAT+20)/2; }
     else if(aFar<40||aFar>LA-40){ sgA=-sgA; aNear=aC+sgA*CLRa; aFar=aNear+sgA*(PLAT+20); }
     var Pe=fence(aNear,off), Pv=fence(aFar+sgA*200,off), VIA=[], QH=[fence(aNear,off),fence(aFar,off),fence(aFar,off+70),fence(aNear,off+70)];
@@ -25153,7 +25160,7 @@ function townRailBranches(p,G,plans,J,RIV,VR,WC){
        fillet fits. Then the branch starts for the next waypoint instead, by the same clearStart rules */
     (function(){ for(var it=0;it<3 && VIA.length && Math.hypot(VIA[0][0]-st[0][0],VIA[0][1]-st[0][1])<60;it++){ var nx=VIA.length>1?VIA[1]:Pv, m2=clearStart(nx); if(m2<0) break; VIA.shift(); sm=m2; st=startFrom(sm,nx); } })();
     var cS=fence((aNear+aFar)/2,off), hS=Math.atan2(Pe[1]-Pv[1],Pe[0]-Pv[0]), sv=(-Math.sin(hS)*nB[0]+Math.cos(hS)*nB[1])>=0?1:-1;
-    var Qb=[fence(aNear+sgA*0,off+KOb+7.4),fence(aFar,off+KOb+7.4),fence(aFar,off+KOb+7.4+40),fence(aNear+sgA*0,off+KOb+7.4+40)]; if(VR.band.meets(Qb)) Qb=null;
+    var Qb=[fence(aNear+sgA*0,off+KOb+7.4),fence(aFar,off+KOb+7.4),fence(aFar,off+KOb+7.4+40),fence(aNear+sgA*0,off+KOb+7.4+40)]; if(VR.band.meets(Qb) || artMeets(Qb)) Qb=null; /* row 352: no stretch of the fence clear of the arterials, no hall on them */
     var flat=null, BRa={ix:302, pts:[st[0]].concat(VIA,[Pv,Pe]), R:150, startTop:VR.topAt(st[1]), sta:{c:cS, h:hS, sv:sv, PLAT:PLAT, PW:7, PW2:7, KO:6, DB:40, Qb:Qb, Qp:null, oneSide:true, bldH:10, air:true, lb:13.4, D:53.4, art:-1, along:false}, MODE:1,
       flatAt:function(s){ return flat&&s>flat[0]-40; }};
     /* the flat stretch is what stands along the fence */
