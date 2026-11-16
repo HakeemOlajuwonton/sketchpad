@@ -425,7 +425,11 @@ function pathAt(o,s){ var P=o.P,cum=o.cum,i=0; while(i<P.length-2&&cum[i+1]<s) i
   return [a[0]+(b[0]-a[0])*f,a[1]+(b[1]-a[1])*f,a.length>2?a[2]+(b[2]-a[2])*f:0,(b[0]-a[0])/h,(b[1]-a[1])/h]; }
 /* x, y, z, yaw, pitch, roll of a car or boat at traffic time t (the builder's traffic.js posAt, mirrored) */
 function trafficAt(o,t){ var x,y,z,yaw,pi=0,ro=0,p=o.path;
-  if(p&&p.type==='line'){ var f=frac(o.phase+t*o.speed/o.len); x=p.a[0]+(p.b[0]-p.a[0])*f; y=p.a[1]+(p.b[1]-p.a[1])*f; z=p.z; yaw=o.yaw; }
+  if(p&&p.type==='line'){ var f=frac(o.phase+t*o.speed/o.len); x=p.a[0]+(p.b[0]-p.a[0])*f; y=p.a[1]+(p.b[1]-p.a[1])*f; z=p.z; yaw=o.yaw;
+    /* row 370: a lane over a bridge carries zs (traffic.js lineZ): the wheels 1.4 m ahead and behind stand on it, the car
+       between them, nose pitched to them */
+    if(p.zs){ var zn=p.zs.length-1, zh=function(u){ var q=Math.max(0,Math.min(zn,u/o.len*zn)), i=Math.min(zn-1,Math.floor(q)); return p.zs[i]+(p.zs[i+1]-p.zs[i])*(q-i); }, zf=zh(f*o.len+1.4), zr=zh(f*o.len-1.4);
+      z=(zf+zr)/2; pi=Math.atan2(zf-zr,2.8)/D2R; } }
   else if(p){ var q=pathAt(o,o.len*frac(o.phase+t*o.speed/o.len)),off=p.off||0; x=q[0]-q[4]*off; y=q[1]+q[3]*off; z=q[2]; yaw=Math.atan2(q[4],q[3])/D2R; }
   else { x=o.at[0]; y=o.at[1]; z=o.at[2]||0; yaw=o.th; }
   if(o.bob){ var ph=o.bob.ph; z+=0.12*Math.sin(2*Math.PI*t/4.5+ph); ro=1.5*Math.sin(2*Math.PI*t/3.7+ph); pi=Math.sin(2*Math.PI*t/5.3+ph); }
