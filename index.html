@@ -462,7 +462,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v410</a> &mdash; Corridor city: Plant 3 (hydro) dams the river where it comes in, at the edge of the map</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v411</a> &mdash; Corridor city: a railway leg that starts inside the interchange's clear disc keeps off the airfield</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <section class="fold" id="fold_pick"><h2>Pick engine<span class="cnt"></span></h2>
@@ -24995,12 +24995,18 @@ function townRailRoute(WC,p){ var G=WC.G, core=WC.core, R=townSub(6,WC.lay,SALT_
     return !WC.polyOverlap([[a[0]+n[0],a[1]+n[1]],[b[0]+n[0],b[1]+n[1]],[b[0]-n[0],b[1]-n[1]],[a[0]-n[0],a[1]-n[1]]],townPad(WC.po,70)); }
   var AVS=best.Qb?AVO.concat([townPad([best.Qb[0],best.Qb[1],best.Qp[2],best.Qp[3]],12)]):AVO;
   var OL={margin:10, minLen:300, avoid:AVS, water:townWaterKind(p)===2, disc:WC.X?[WC.X.c[0],WC.X.c[1],480]:null};
-  function legFrom(V,base,su){ var off=(u1<0.5?1:-1)*(10+20*u2)*su, k, best2=null;
-    for(k=0;k<=24;k++){ var d=(k+1>>1)*(k%2?1:-1)*10, a=base+(off+d)*Math.PI/180, tw=Math.abs(townAngWrap(a-base)); if(tw>125*Math.PI/180) continue; var o=townLegOK(WC,V,a,OL); if(o){ best2=o; break; } }
+  function legFrom(V,base,su,O){ var off=(u1<0.5?1:-1)*(10+20*u2)*su, k, best2=null;
+    for(k=0;k<=24;k++){ var d=(k+1>>1)*(k%2?1:-1)*10, a=base+(off+d)*Math.PI/180, tw=Math.abs(townAngWrap(a-base)); if(tw>125*Math.PI/180) continue; var o=townLegOK(WC,V,a,O||OL); if(o){ best2=o; break; } }
     return best2; }
+  /* row 366: A STRAIGHT THAT ENDS INSIDE THE INTERCHANGE'S DISC HAS NO LEG BY THE FULL RULES -- every heading fails its
+     first sample -- and the fallback below keeps off nothing: on seed 41's airfield at Scale 2 the line ran on due north
+     for a kilometre through the field and its fence. So before the fallback, the legs again without the disc, still off
+     the airfield, the harbour and the plant, and still dry. A leg the full rules allow is unchanged, so a city that
+     found one does not move */
+  var OLX=Object.assign({},OL,{disc:null});
   var LB=legFrom(S0,H+Math.PI,-1), LA=MODE===2?null:legFrom(S1,H,1), bad=0;
-  if(!LB){ bad++; LB=townLegOK(WC,S0,H+Math.PI,{margin:0,minLen:1,avoid:[],water:true})||{E:townRayExit(WC.ext,S0,H+Math.PI).slice(0,2)}; }
-  if(!LA && MODE!==2){ bad++; LA=townLegOK(WC,S1,H,{margin:0,minLen:1,avoid:[],water:true})||{E:townRayExit(WC.ext,S1,H).slice(0,2)}; }
+  if(!LB){ bad++; LB=legFrom(S0,H+Math.PI,-1,OLX)||townLegOK(WC,S0,H+Math.PI,{margin:0,minLen:1,avoid:[],water:true})||{E:townRayExit(WC.ext,S0,H+Math.PI).slice(0,2)}; }
+  if(!LA && MODE!==2){ bad++; LA=legFrom(S1,H,1,OLX)||townLegOK(WC,S1,H,{margin:0,minLen:1,avoid:[],water:true})||{E:townRayExit(WC.ext,S1,H).slice(0,2)}; }
   var pts=MODE===2?[LB.E,S0,[best.c[0]+DIR[0]*(PLAT/2+3),best.c[1]+DIR[1]*(PLAT/2+3)]]:[LB.E,S0,S1,LA.E];
   return {pts:pts, R:300, MODE:MODE, sta:MODE?{c:best.c, h:H, sv:best.sv, PLAT:PLAT, PW:PW, KO:KO, DB:DB, Qb:best.Qb, Qp:best.Qp, PZ:best.PZ, lb:best.lb, D:best.D, art:best.art, along:best.along, offCore:offc}:null, bad:bad};
 }
