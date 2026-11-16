@@ -413,8 +413,9 @@ function loadGeo(city,which,onProg){
 /* ================= movers: aircraft, cars and boats drawn with their own pose ================= */
 /* Each city's movers come from <id>-movers.json in their own frame (nose along +x). Planes sit on their stands until a
    flight moves one; POSES holds {i: which mover, m: its model matrix}, and a plane can appear more than once (Ghost).
-   Cars and boats (queue row 243) move on their own clock TR.t: a street car along a line (wrapping at its end), a
-   highway car along a deck's centre line at its lane offset, a boat round a loop or bobbing where it is moored.
+   Cars and boats (queue row 243) move on their own clock TR.t: a street or highway car round a closed loop, out on its
+   own half and back on the other with a U-turn at each end (row 371; an older build's line or open deck path still
+   wraps at its end), a boat round a loop or bobbing where it is moored.
    Space pauses them with the flight; Plotter frames steps them at 12 fps; Traffic off or the Vehicles layer off hides
    them. TPOSES is recomputed every frame they move. */
 var ID4=new Float32Array([1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1]);
