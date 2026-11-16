@@ -462,7 +462,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v406</a> &mdash; Corridor city: the powerline keeps its pylons out of the airfield</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v407</a> &mdash; Baggage hall: the spiral chute&rsquo;s end edges are drawn only where they can be seen</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <section class="fold" id="fold_pick"><h2>Pick engine<span class="cnt"></span></h2>
@@ -39730,9 +39730,13 @@ function baggageTheme(K){
       var fo=faceIx(Wl,(function(){ var a=X(sc,oc,0), b=X(sc+Math.cos(tm),oc+Math.sin(tm),0); return [b[0]-a[0],b[1]-a[1],0]; })());
       Wl.lines=[{a:X(Wq[1][0],Wq[1][1],zOf(Wq[1],1)), b:X(Wq[2][0],Wq[2][1],zOf(Wq[2],1)), f0:fo, f1:faceIx(Wl,[0,0,1]), col:COL_DG, kind:'helix'},
                 {a:X(Wq[1][0],Wq[1][1],zOf(Wq[1],0)), b:X(Wq[2][0],Wq[2][1],zOf(Wq[2],0)), f0:fo, f1:faceIx(Wl,[0,0,-1]), col:COL_DG, kind:'helix'}];
-      if(k===0 || k===N-1){ var e2=k===0?0:3, e3=k===0?1:2;
-        Wl.lines.push({a:X(Wq[e2][0],Wq[e2][1],zOf(Wq[e2],0)), b:X(Wq[e2][0],Wq[e2][1],zOf(Wq[e2],1)), f0:fo, f1:fo, col:COL_DG, kind:'helix'});
-        Wl.lines.push({a:X(Wq[e3][0],Wq[e3][1],zOf(Wq[e3],0)), b:X(Wq[e3][0],Wq[e3][1],zOf(Wq[e3],1)), f0:fo, f1:fo, col:COL_DG, kind:'helix'}); }
+      /* row 354: the end piece's two upright edges each lie between the end face and one of the wall's faces. Both were
+         tagged with the outer face alone, so the INNER one (radius RO) drew whenever the outer face was in view, where the
+         8 cm piece itself stands in front of it */
+      if(k===0 || k===N-1){ var e2=k===0?0:3, e3=k===0?1:2, dW=function(dx,dy){ var a=X(sc,oc,0), b=X(sc+dx,oc+dy,0); return [b[0]-a[0],b[1]-a[1],0]; };
+        var fi=faceIx(Wl,dW(-Math.cos(tm),-Math.sin(tm))), fe=faceIx(Wl,k===0?dW(Math.sin(tm),-Math.cos(tm)):dW(-Math.sin(tm),Math.cos(tm)));
+        Wl.lines.push({a:X(Wq[e2][0],Wq[e2][1],zOf(Wq[e2],0)), b:X(Wq[e2][0],Wq[e2][1],zOf(Wq[e2],1)), f0:fi, f1:fe, col:COL_DG, kind:'helix'});
+        Wl.lines.push({a:X(Wq[e3][0],Wq[e3][1],zOf(Wq[e3],0)), b:X(Wq[e3][0],Wq[e3][1],zOf(Wq[e3],1)), f0:fo, f1:fe, col:COL_DG, kind:'helix'}); }
       parts.push(tag(Wl,'chutewall',COL_DG,'spiral'));
     }
     var col=[]; for(var c=0;c<10;c++){ var a=TAU*c/10; col.push([sc+0.12*Math.cos(a), oc+0.12*Math.sin(a)]); }
