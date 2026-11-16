@@ -462,7 +462,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v404</a> &mdash; Corridor city: a power plant on its river: the river comes to the plant&rsquo;s fence, with an intake and an outfall on its quay</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v405</a> &mdash; Corridor city: an access road that runs along the airfield&rsquo;s fence keeps out of it</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <section class="fold" id="fold_pick"><h2>Pick engine<span class="cnt"></span></h2>
@@ -27847,10 +27847,14 @@ function townForm(p,G,plans,J,BLK,SITE){
     /* row 327: its slabs stop 0.3 m short of the fence face, whatever angle the road comes in at. The road can meet the
        face nearly along it (seed 7: 83 degrees off its normal), and then the slabs' outer corners ran up to 3 m past it into
        the fence (0 to 1 m behind the face) and the forecourt (1 to 31 m behind); the road's own end (ENDa) is unchanged */
-    if(rot){ var nF=[rot.b[0],rot.b[1]]; if((ALINE.a[0]-ALINE.b[0])*nF[0]+(ALINE.a[1]-ALINE.b[1])*nF[1]<0) nF=[-nF[0],-nF[1]];
+    /* row 372: the face's outward normal is the site's own +b (its fence face is b = LB), not the side the road's start
+       lies on: a road that runs along the face (L78's Water 0 seed 12: 0.5 degrees off it for 1.3 km) has its start on the
+       face's own line, the sign flipped, and the clip kept the part of each slab INSIDE the fence and the forecourt. And
+       only a slab that meets the site's outline grown by 1 m is clipped, so a slab past the face's line beyond the site is left alone */
+    if(rot){ var nF=[rot.b[0],rot.b[1]], OUTF=rot.c&&isFinite(rot.LA)?townRingRect(rot.c,rot.a,rot.b,rot.LA,rot.LB,1):null;
       var dF=function(q){ return (q[0]-ALINE.b[0])*nF[0]+(q[1]-ALINE.b[1])*nF[1]-0.3; };
       artPlans.forEach(function(PLa){ var gapF={'1':[],'-1':[]};
-        PLa.conts=PLa.conts.filter(function(C){ if(C.kind!=='slab' || C.poly.every(function(q){ return dF(q)>=0; })) return true;
+        PLa.conts=PLa.conts.filter(function(C){ if(C.kind!=='slab' || C.poly.every(function(q){ return dF(q)>=0; }) || (OUTF && !polyOverlap(C.poly,OUTF))) return true;
           var Q=[], m; for(m=0;m<C.poly.length;m++){ var A=C.poly[m], B=C.poly[(m+1)%C.poly.length], da=dF(A), db=dF(B);
             if(da>=0) Q.push(A); if((da>=0)!==(db>=0)){ var t=da/(da-db); Q.push([A[0]+(B[0]-A[0])*t,A[1]+(B[1]-A[1])*t]); } }
           if(Q.length<3 || townArea(Q)<0.05){ gapF[C.side].push([C.s0,C.s1]); var cell=PLa.slabsBySide[C.side].indexOf(C); if(cell>=0) delete PLa.slabsBySide[C.side][cell]; info.artSlabsGone=(info.artSlabsGone||0)+1; return false; }
