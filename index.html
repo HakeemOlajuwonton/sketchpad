@@ -462,7 +462,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v408</a> &mdash; Corridor city: the airport station stands off the roads</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v409</a> &mdash; Corridor city: where the river enters is its own function (no change to any drawing)</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <section class="fold" id="fold_pick"><h2>Pick engine<span class="cnt"></span></h2>
@@ -24413,6 +24413,19 @@ function townJunctions(K,G,plans,J){
      own content, so no car or pole is placed there.
    Every number here is the river's or Layout's: River 0 is the grid of row
    95 exactly, and Market alleys 0 with it. */
+/* where a town's river enters the network's box BX (row 96), from Layout's numbers; with a site (row 200 §9) a harbour's
+   river comes from the far side of the city straight down into the water and an airfield's runs along the city, across
+   its width. Lifted out of townRiver (queue row 350) so City form can know the upstream point before the river is laid.
+   rb: the bend cap the site puts on the river (Infinity with no site) */
+function townRiverStart(BX,SX,LAY){
+  var RL=townSub(0,LAY,523), ue=RL(), ux=RL(), ua=RL(), us=RL();
+  var bottom=ue<0.5, x0=BX[0]+(0.2+0.6*ux)*(BX[2]-BX[0]), y0=bottom?BX[1]:BX[3];
+  var h0=(bottom?Math.PI/2:-Math.PI/2)+(us<0.5?-1:1)*(10+20*ua)*Math.PI/180, rb=Infinity;
+  if(SX){ var RQ=SX.rect, BXc=[BX[0],SX.top?BX[1]:RQ[3],BX[2],SX.top?RQ[1]:BX[3]];
+    if(SX.harbour){ bottom=SX.top; y0=bottom?BX[1]:BX[3]; x0=RQ[0]+(0.25+0.5*ux)*(RQ[2]-RQ[0]); h0=(bottom?Math.PI/2:-Math.PI/2)+(us<0.5?-1:1)*(4*ua)*Math.PI/180; rb=8; }
+    else { var WC=BX[2]-BX[0], DC=BXc[3]-BXc[1], FAN=Math.atan2(0.8*DC,0.25*WC); bottom=SX.top; x0=BX[2]-0.25*WC; y0=SX.top?BX[1]:BX[3]; h0=SX.top?FAN:-FAN; rb=6; } }
+  return {x:x0, y:y0, h:h0, bottom:bottom, rb:rb};
+}
 function townRiver(p,G,plans,J,SX){
   var RB=Math.max(0,Math.min(60,isFinite(p.rbend)?+p.rbend:24)), RW=Math.max(8,Math.min(60,isFinite(p.rwidth)?+p.rwidth:24));
   var RD=Math.max(0.5,Math.min(6,isFinite(p.rdrop)?+p.rdrop:2.5)), LAY=Math.max(0,Math.min(99,Math.round(isFinite(p.layout)?+p.layout:0)));
@@ -24431,18 +24444,14 @@ function townRiver(p,G,plans,J,SX){
   function grow(Q){ Q.forEach(function(q){ if(q[0]<BX[0])BX[0]=q[0]; if(q[1]<BX[1])BX[1]=q[1]; if(q[0]>BX[2])BX[2]=q[0]; if(q[1]>BX[3])BX[3]=q[1]; }); }
   grid.forEach(function(PL){ PL.conts.forEach(function(C){ grow(C.poly); }); });
   J.forEach(function(C){ grow(C.poly); });
-  /* where it enters, from Layout's numbers */
-  var RL=townSub(0,LAY,523), ue=RL(), ux=RL(), ua=RL(), us=RL();
-  var bottom=ue<0.5, x0=BX[0]+(0.2+0.6*ux)*(BX[2]-BX[0]), y0=bottom?BX[1]:BX[3];
-  var h0=(bottom?Math.PI/2:-Math.PI/2)+(us<0.5?-1:1)*(10+20*ua)*Math.PI/180;
+  /* where it enters (townRiverStart: Layout's numbers, and row 200 §9 with a site) */
+  var ST0=townRiverStart(BX,SX&&!SX.hydroOut?SX:null,LAY), bottom=ST0.bottom, x0=ST0.x, y0=ST0.y, h0=ST0.h;
   /* row 200 §9: with a site. A harbour's river comes from the far side of the city straight down
      into the water; an airfield's runs along the city, across its width */
   var SWET=SX&&SX.harbour&&SX.info.tier<3, HYO=SX&&SX.hydroOut, INB=false;
   /* row 115: a hydro plant's river starts at its channel's mouth in the fence, headed into the city */
   if(HYO){ x0=HYO.x; y0=HYO.y; h0=HYO.h; RB=Math.min(RB,6); RTHM.headClear=40; }
-  else if(SX){ var RQ=SX.rect, BXc=[BX[0],SX.top?BX[1]:RQ[3],BX[2],SX.top?RQ[1]:BX[3]];
-    if(SX.harbour){ bottom=SX.top; y0=bottom?BX[1]:BX[3]; x0=RQ[0]+(0.25+0.5*ux)*(RQ[2]-RQ[0]); h0=(bottom?Math.PI/2:-Math.PI/2)+(us<0.5?-1:1)*(4*ua)*Math.PI/180; RB=Math.min(RB,8); }
-    else { var WC=BX[2]-BX[0], DC=BXc[3]-BXc[1], FAN=Math.atan2(0.8*DC,0.25*WC); bottom=SX.top; x0=BX[2]-0.25*WC; y0=SX.top?BX[1]:BX[3]; h0=SX.top?FAN:-FAN; RB=Math.min(RB,6); } }
+  else if(SX){ RB=Math.min(RB,ST0.rb); }
   /* row 335: a steam plant's river (River 1, no water) comes to the plant: from where row 200 §9 starts it, aimed at its mouth */
   var PM=SX&&SX.plantMouth&&!HYO?SX.plantMouth:null;
   var PMst=null;
