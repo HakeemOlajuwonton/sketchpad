@@ -463,7 +463,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v414</a> &mdash; Corridor city: Classic, the city without the site -- a switch on the panel, on by default and only on this browser, hides Site, its Scale and the Airfield and harbour group (Harbour moves to Essentials)</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v415</a> &mdash; Corridor city: a highway truck stands on its wheels -- eight tyres under the trailer's tail and nose and the cab, at the detail a car gets them, the truck on the deck instead of 0.5-0.9 m over it (queue row 380)</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <section class="fold" id="fold_pick"><h2>Pick engine<span class="cnt"></span></h2>
@@ -25996,6 +25996,7 @@ function viaductTheme(K,VD){
     return {type:ctype, len:rg(CD.len,ul), wid:rg(CD.wid,uw), cab:[uc1,uc2], h:rg(CD.h,uc1), wb:rg(CD.wb,uwb), tyre:CD.tyre, grille:3+Math.min(2,Math.floor(3*ugr))};
   }
   function hwyCars(dn,df){
+    TAL.trucks=[];
     var DEN=Math.max(0,isFinite(p.cars)?+p.cars:6)/100;
     if(!HCARS){ HCARS=[];
       if(DEN>0) [1,-1].forEach(function(sd){ for(var i=0;i<HL;i++){
@@ -26009,7 +26010,23 @@ function viaductTheme(K,VD){
       /* row 204: off the sheet, or on a ramp: no car */
       var LFc=0; if(WH){ var CLn=cr.len/2+1; if(!near([c0[0]-8,c0[1]-8,c0[0]+8,c0[1]+8]).length || Math.abs(LFT(cr.s-CLn)-LFT(cr.s+CLn))>1e-9) return; LFc=LFT(cr.s); }
       if(cr.truck){ var dzT=BZ+LFc, tsg=cr.side; var trB=para([c0[0]-t[0]*8-n[0]*1.25,c0[1]-t[1]*8-n[1]*1.25,dzT+0.9],[t[0]*12.6,t[1]*12.6,0],[n[0]*2.5,n[1]*2.5,0],[0,0,3.1]), trC=para([c0[0]+t[0]*4.9-n[0]*1.25,c0[1]+t[1]*4.9-n[1]*1.25,dzT+0.5],[t[0]*3.1,t[1]*3.1,0],[n[0]*2.5,n[1]*2.5,0],[0,0,2.5]);
-        commit(trB,'truck',COL,'car',{body:'truck'+cr.id+':0', car:cr.id}); commit(trC,'truck',COL,'car',{body:'truck'+cr.id+':1', car:cr.id}); return; }
+        var tq=commit(trB,'truck',COL,'car',{body:'truck'+cr.id+':0', car:cr.id}).concat(commit(trC,'truck',COL,'car',{body:'truck'+cr.id+':1', car:cr.id})), nWt=0;
+        /* row 380: its wheels, at the detail a car gets them (carSolids: inside Outline detail to, 24 sides near, 12 beyond):
+           the trailer's tandem at the back, a drive axle under its nose, the steer axle under the cab. Tubes 0.96 m across
+           and 0.30 m wide, 0.03 m inside the bodies' sides, a flat at the bottom on the deck, so the truck stands on it
+           (it floated 0.5 m under the cab and 0.9 m under the trailer); a tube's top runs up into the body above it */
+        if(dc<df){ var NWt=dc<dn?24:12, rtT=0.48, czT=rtT*Math.cos(Math.PI/NWt);
+          [-6.9,-5.7,3.9,7.1].forEach(function(xw,ai){ [-1,1].forEach(function(ey){
+            var yo=1.22, yi=0.92, y0=ey>0?yi:-yo, y1=ey>0?yo:-yi, WA=[], WB=[], k;
+            for(k=0;k<NWt;k++){ var an=TAU*(k+0.5)/NWt, xx=xw+Math.cos(an)*rtT, zz=dzT+czT+Math.sin(an)*rtT;
+              WA.push([c0[0]+t[0]*xx+n[0]*y0,c0[1]+t[1]*xx+n[1]*y0,zz]); WB.push([c0[0]+t[0]*xx+n[0]*y1,c0[1]+t[1]*xx+n[1]*y1,zz]); }
+            var lp=[WA,WB]; for(k=0;k<NWt;k++){ var k2=(k+1)%NWt; lp.push([WA[k],WA[k2],WB[k2],WB[k]]); }
+            var Wt=polyFromLoops(lp); Wt.cpart='wheel';
+            var wq=commit(Wt,'wheel',COL,'car',{body:'truck'+cr.id+':'+(2+ai*2+(ey>0?1:0)), car:cr.id}); if(wq.length) nWt++; tq=tq.concat(wq); }); }); }
+        /* tally only: each truck drawn, its lowest point against its deck, and its wheels (strtcheck L71 T1) */
+        if(tq.length){ var zlT=1e9; tq.forEach(function(q){ q.faces.forEach(function(f){ f.pts.forEach(function(v){ if(v[2]<zlT) zlT=v[2]; }); }); });
+          TAL.trucks.push({id:cr.id, s:cr.s, mid:dc<df, near:dc<dn, deck:dzT, zlo:zlT, wheels:nWt}); }
+        return; }
       var ps=carSolids(K,cr,c0,t,n,dc<dn,dc<df), body='car'+cr.id;
       ps.forEach(function(pp,k2){ var Q=lift(pp[1],BZ+LFc); commit(Q,pp[0],COL,'car',{body:body+':'+k2, car:cr.id}); });
     });
