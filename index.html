@@ -225,6 +225,7 @@
   .row.kpar label{font-weight:700; color:var(--ink);}
   .kidle{font-size:11.5px; color:var(--dim); opacity:.8; margin:2px 2px 6px; line-height:1.35;}
   .kread{font-size:11.5px; color:var(--dim); margin:0 2px 6px; line-height:1.35;}
+  .engx.kclassic{grid-column:1/-1; margin:0;} .engx.kclassic .kread{flex-basis:100%; margin:0;}
   /* Phone. The canvas used to sit BELOW every slider, so on a 412 px wide screen
      you were always looking at one or the other. It now leads, and sticks. */
   @media (max-width:820px){
@@ -462,7 +463,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v413</a> &mdash; Corridor city: the harbour's spur road stops at the access arterial's pavement, and the water stops at the harbour site's quay road</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v414</a> &mdash; Corridor city: Classic, the city without the site -- a switch on the panel, on by default and only on this browser, hides Site, its Scale and the Airfield and harbour group (Harbour moves to Essentials)</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <section class="fold" id="fold_pick"><h2>Pick engine<span class="cnt"></span></h2>
@@ -47667,6 +47668,16 @@ var KGROUPS=[
 var KHOME={layout:'plan',form:'plan',rows:'plan',nlen:'plan',site:'site',tier:'site',water:'site',
            rail:'lines',hwy:'lines',river:'lines',floors:'bld',archlots:'bld',isoaz:'cam',isoel:'cam',zoom:'cam'};
 function kGroupOf(k){ for(var i=0;i<KGROUPS.length;i++) if(KGROUPS[i][2].indexOf(k)>=0) return KGROUPS[i][0]; return 'other'; }
+/* ROW 379: CLASSIC, Corridor City without the site (docs/specs/2026-11-15-town-classic_v1.md). Albert, on v405: Site
+   in Essentials swaps the city for an airfield, a harbour or a power plant at half the plan. Classic is on by default
+   and per viewer: `localStorage['kclassic.town']`, '1' or '0', missing = on, never STATE, a preset or a file. It lays
+   out no row for Site, its Scale or the Airfield and harbour group -- except Harbour (`harb`), which is live at Site 0
+   with Water on and goes into Essentials after Water. Turning it on sets Site and Power plant to 0; a drawing that
+   comes in with either on turns it off (kBuild). Hiding never changes a value, and no build reads it. The site
+   group's part is read from KGROUPS, so a knob added to that group later is hidden too. */
+var KCLASSIC_HIDE=['site','tier'].concat(KGROUPS.filter(function(g){ return g[0]==='site'; })[0][2].filter(function(k){ return k!=='harb'; }));
+function kClassic(eng){ if(eng!=='town') return false; try{ return localStorage.getItem('kclassic.town')!=='0'; }catch(e){ return true; } }
+function kSetClassic(on){ try{ localStorage.setItem('kclassic.town', on?'1':'0'); }catch(e){} }
 function kPins(eng){
   var o={add:[],drop:[]};
   try{ var v=JSON.parse(localStorage.getItem('kpins.'+eng)||'null');
@@ -47676,18 +47687,23 @@ function kPins(eng){
 function kSetPins(eng,o){ try{ localStorage.setItem('kpins.'+eng, JSON.stringify(o)); }catch(e){} }
 /* The panel for one engine: [{id,title,keys}], table order inside a group, a
    starred knob last in Essentials, Other last of all, empty groups dropped. */
-function kLayout(eng,pins){
+function kLayout(eng,pins,cls){
   pins=pins||{add:[],drop:[]};
+  /* row 379: `cls` undefined reads the viewer's Classic switch */
+  if(cls===undefined) cls=kClassic(eng);
   var keys=SPEC[eng][1].filter(function(sp){ return sp[1]!=='—'; }).map(function(sp){ return sp[0]; });
+  if(cls) keys=keys.filter(function(k){ return KCLASSIC_HIDE.indexOf(k)<0; });
   var out=KGROUPS.map(function(g){ return {id:g[0],title:g[1],keys:[]}; });
   out.push({id:'other',title:'Other',keys:[]});
   var by={}; out.forEach(function(g){ by[g.id]=g; });
   function home(k){ var g=kGroupOf(k);
     if(pins.add.indexOf(k)>=0) return 'ess';
+    if(cls && k==='harb') return pins.drop.indexOf(k)>=0?g:'ess';
     if(g==='ess' && pins.drop.indexOf(k)>=0) return KHOME[k]||'other';
     return g; }
   KGROUPS.forEach(function(g){ g[2].forEach(function(k){ if(keys.indexOf(k)>=0 && home(k)===kGroupOf(k)) by[g[0]].keys.push(k); }); });
   keys.forEach(function(k){ var h=home(k); if(by[h].keys.indexOf(k)<0) by[h].keys.push(k); });
+  if(cls){ var EK=by.ess.keys, ih=EK.indexOf('harb'); if(ih>=0 && EK.indexOf('water')>=0){ EK.splice(ih,1); EK.splice(EK.indexOf('water')+1,0,'harb'); } }
   return out.filter(function(g){ return g.keys.length; });
 }
 /* KIDLE[eng]: rules {keys, par (the knobs the rule reads), why, on(E,S)}.
@@ -47822,10 +47838,25 @@ var KPANEL=null;
 function kBuild(box){
   box.innerHTML='';
   var eng=mode, pins=kPins(eng), par=kParents(eng), S=SPEC[eng][1];
-  KPANEL={eng:eng, rows:{}, groups:[], box:box};
+  /* row 379 §5: a drawing that comes in with a site or a plant on (a preset, a slot, restore()) turns Classic off */
+  var cls=kClassic(eng), cnote='';
+  if(cls){ var Et=STATE.eng[eng]||{}, sN=+Et.site||0, pN=+Et.plant||0;
+    if(sN!==0 || pN!==0){ kSetClassic(false); cls=false; cnote='Classic is off: this drawing uses '+(sN!==0?'Site '+sN:'Power plant '+pN); } }
+  KPANEL={eng:eng, rows:{}, groups:[], box:box, classic:cls};
   function get(k){ return STATE.eng[eng][k]; }
   function set(k,v){ STATE.eng[eng][k]=v; liveBack(k); if(ENGSET[eng]) ENGSET[eng](k,v); kpanelIdle(); }
-  kLayout(eng,pins).forEach(function(g){
+  /* row 379 §3-4: the switch, at the top of the Engine fold, on `town` alone */
+  if(eng==='town'){ var cx=document.createElement('div'); cx.className='engx kclassic';
+    var cb=document.createElement('button'); cb.type='button'; cb.id='kclassic';
+    cb.textContent=cls?'Classic: city only':'Full: airfield, harbour site, power plant';
+    cb.title='Classic hides Site, its Scale and the Airfield and harbour group. Only on this browser; never in a preset or a file.';
+    cb.addEventListener('click',function(){
+      if(cls){ kSetClassic(false); kBuild(box); kpanelIdle(); mountVarySel(); foldSummaries(); return; }
+      set('site',0); set('plant',0); kSetClassic(true); kBuild(box); kpanelIdle(); mountVarySel(); draw(); });
+    cx.appendChild(cb);
+    if(cnote){ var cr=document.createElement('div'); cr.className='kread'; cr.id='kread_classic'; cr.textContent=cnote; cx.appendChild(cr); }
+    box.appendChild(cx); }
+  kLayout(eng,pins,cls).forEach(function(g){
     var body=makeFold(box,'k_'+g.id,g.title,g.id==='ess'), sec=body.parentNode;
     sec.classList.add('kgrp');
     g.keys.forEach(function(k){
@@ -49540,7 +49571,8 @@ function foldSummaries(){
     var el=document.querySelector('#fold_'+id+' .cnt');
     if(el) el.textContent=txt;
   }
-  put('eng', SPEC[mode]?SPEC[mode][1].length+' knobs':'');
+  /* row 379 §7: under Classic, the rows the panel lays out */
+  put('eng', SPEC[mode]?(KPANEL && KPANEL.eng===mode && KPANEL.classic?kLayout(mode,kPins(mode),true).reduce(function(a,g){ return a+g.keys.length; },0)+' knobs \u00b7 classic':SPEC[mode][1].length+' knobs'):'');
   /* ROW 71: THE PICKER'S HEADER NAMES WHAT IS PICKED, from here and not from
      the tab handler -- a preset slot or restore() changes `mode` without a tab
      click, and this runs on every draw. The family is the first FAMILIES entry
