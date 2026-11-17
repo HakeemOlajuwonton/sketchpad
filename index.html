@@ -462,7 +462,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v412</a> &mdash; Corridor city: the knob panel hides what changes nothing -- Script, Cables and Cable sag on every dressed lot, Hatch lines only with Hatch style 1, the highway's knobs with no highway in view</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v413</a> &mdash; Corridor city: the harbour's spur road stops at the access arterial's pavement, and the water stops at the harbour site's quay road</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <section class="fold" id="fold_pick"><h2>Pick engine<span class="cnt"></span></h2>
@@ -27985,6 +27985,19 @@ function townForm(p,G,plans,J,BLK,SITE){
           for(k=J.length-1;k>=0;k--) if(BS.meets(J[k].poly)) J.splice(k,1);
           townCarve(G,grid,BS.meets,info,'site',900000,LOTMIN,bbox2);
           out.forEach(function(PLa){ var gone=new Set(); PLa.lots.forEach(function(L){ if(BS.meets(L.poly)) gone.add(L); }); if(gone.size){ PLa.lots=PLa.lots.filter(function(L){ return !gone.has(L); }); PLa.conts=PLa.conts.filter(function(C){ return !gone.has(C); }); } });
+          /* row 374: the spur ends at the arterial's kerb, so its pavements ran on over the arterial's (L78's seed 7: 17, 86 and
+             100 m2 at (499, 381), where the harbour lies behind the arterial's start and the spur comes in nearly along it).
+             Each spur slab gives up what lies on the arterial's band, its line from start to end and WA/2 + PA either side,
+             keeping its largest piece; a slab left with nothing is a gap */
+          var uA9=[Math.cos(ALINE.h),Math.sin(ALINE.h)], nA9=[-uA9[1],uA9[0]], OFF9=WA/2+PA, RB9=[[0,-1],[LENa,-1],[LENa,1],[0,1]].map(function(e){ return [ALINE.a[0]+uA9[0]*e[0]+nA9[0]*OFF9*e[1],ALINE.a[1]+uA9[1]*e[0]+nA9[1]*OFF9*e[1]]; }), RB9b=bbox2(RB9);
+          SPP.forEach(function(P9){ var gapS={'1':[],'-1':[]};
+            P9.conts=P9.conts.filter(function(C){ if(C.kind!=='slab' || !bbHit(C.bb||bbox2(C.poly),RB9b) || !polyOverlap(C.poly,RB9)) return true;
+              var keep=townMinus(C.poly,RB9).filter(function(q){ return townArea(q)>=0.05; });
+              if(!keep.length){ gapS[C.side].push([C.s0,C.s1]); var cell=P9.slabsBySide[C.side].indexOf(C); if(cell>=0) delete P9.slabsBySide[C.side][cell]; info.spurSlabsGone=(info.spurSlabsGone||0)+1; return false; }
+              keep.sort(function(x,y){ return townArea(y)-townArea(x); });
+              C.poly0=C.poly; C.poly=keep[0]; C.bb=bbox2(keep[0]); C.cut=true; info.spurSlabsCut=(info.spurSlabsCut||0)+1; return true; });
+            if(gapS['1'].length||gapS['-1'].length){ var SGs=Array.isArray(P9.sGaps)?{'1':P9.sGaps.slice(),'-1':P9.sGaps.slice()}:{'1':(P9.sGaps['1']||[]).slice(),'-1':(P9.sGaps['-1']||[]).slice()};
+              SGs['1']=SGs['1'].concat(gapS['1']); SGs['-1']=SGs['-1'].concat(gapS['-1']); P9.sGaps=SGs; P9.hasGap=true; } });
           SPP.forEach(function(P9){ out.push(P9); }); info.spur={from:QB, to:PA9, L:L9, hw:HW9, plan:510}; BAND=(function(B0,B1){ return {meets:function(Q){ return B0.meets(Q)||B1.meets(Q); }}; })(BAND,BS); } }
       if(WK===4){ SITE.frameOf=function(k){ if(k===1) return townGrow(townBbox(HPOLY.concat([[core[0],core[1]]])),0.3); if(k===2) return townGrow(townBbox(HPOLY),0.08); if(k===3){ var fr=hinfo; return townGrow(townBbox(HPOLY),-0.4); } return null; }; SITE.aim=FP(QL/2,DP+AD/2+1); SITE.rect=townBbox(HPOLY); SITE.top=SITE.top; hinfo.water=QL*DP; hinfo.inside=0; hinfo.met=0; hinfo.split=0; hinfo.dropped=0; }
     }
@@ -28060,6 +28073,9 @@ function townForm(p,G,plans,J,BLK,SITE){
     function wCut(Q){ var P=[Q], blk=[]; if(OUT) blk.push(OUT.map(function(q){ return q; })); if(HPOLY) blk.push(HPOLY); blk.forEach(function(B){ var nx=[]; P.forEach(function(q){ if(!polyOverlap(q,B)){ nx.push(q); return; } townMinus(q,B).forEach(function(r){ if(townArea(r)>1) nx.push(r); }); }); P=nx; }); return P; }
     /* the arterial's bridges and spur stand on their own containers */
     var BRC=[]; out.forEach(function(PLa){ if(PLa.ix>=350&&PLa.ix<400) PLa.conts.forEach(function(C){ if(C.kind==='slab') BRC.push(C); }); });
+    /* row 374: and the harbour site's quay road: it runs 2 m in from the shore found every 40 m, and between those the
+       contour bulges in under it (Site 2 seed 41: 143 m2 at (330, 772)); the water stops at the road */
+    QROAD.forEach(function(C){ BRC.push(C); });
     var BRG=townBandGrid(BRC), XA=Math.floor((FB[0])/CS)*CS, YA=Math.floor((FB[1])/CS)*CS, xc, yc;
     for(yc=YA;yc<FB[3];yc+=CS){ var run=null; for(xc=XA;xc<=FB[2]+CS;xc+=CS){
         var cs=[WAT(xc,yc),WAT(xc+CS,yc),WAT(xc+CS,yc+CS),WAT(xc,yc+CS)], full=xc<=FB[2]&&cs.every(function(v){ return v>0; }), anyw=xc<=FB[2]&&cs.some(function(v){ return v>0; });
