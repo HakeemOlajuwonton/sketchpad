@@ -462,7 +462,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v411</a> &mdash; Corridor city: a railway leg that starts inside the interchange's clear disc keeps off the airfield</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v412</a> &mdash; Corridor city: the knob panel hides what changes nothing -- Script, Cables and Cable sag on every dressed lot, Hatch lines only with Hatch style 1, the highway's knobs with no highway in view</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <section class="fold" id="fold_pick"><h2>Pick engine<span class="cnt"></span></h2>
@@ -46140,6 +46140,9 @@ function corridorDraw(p,plans,THM,camera){
   STRTTALLY.acDrawn=Object.keys(acDrawn).length;
   STRTSTATS={lots:lots.length, dropped:dropped, pushed:pushed, conts:live.length, solidConts:solidConts, dressed:dressed, reflDrawn:reflDrawn,
              railSeen:viaDrawn.rail||0,
+             /* row 362: the highway drawn, and the lots Lot min/max, Storeys, Step-back and Cantilever shape -- not the
+                access arterial's sheds and parking, which take their own sizes and heights */
+             hwySeen:viaDrawn.hwy||0, shapedLots:lots.filter(function(L){ return !L.shed && !L.park; }).length,
              parts:committed.length, paths:res.length, points:npts,
              cycles:cycles, ccycles:ccycles, splits:splits, unsep:unsep,
              unsepParts:RR.unsepParts, budget:BUDG, tries:tries, dnear:DN, dfar:DF, lod:LODE,
@@ -47686,6 +47689,8 @@ function kN(S){ return !!(S && S.solidConts>0); }
 /* KIDLE-BEGIN */
 function kD(S){ return !S || S.dressed===undefined || S.dressed>0; }
 function kW(E){ return townWholeOn(E); }
+/* row 362: a piece of the railway or the highway drawn */
+function kV(S){ return !!S && ((S.railSeen||0)>0 || (S.hwySeen||0)>0); }
 /* row 205: the power plant on the outskirts (townRingOn) */
 function kP(E){ return townRingOn(E); }
 /* A rule may also read STRTTALLY, the same build's tally (its `town` record says
@@ -47717,10 +47722,11 @@ var KIDLE={town:[
   {keys:'trains', par:['rail'], why:'Railway 0', on:function(E){ return kR(E,'rail')===1; }},
   {keys:'ncar', par:['rail','trains'], why:'no trains, or no piece of the railway in view', on:function(E,S){ return kR(E,'rail')===1 && kR(E,'trains')>0 && (!S || S.railSeen===undefined || S.railSeen>0); }},
   {keys:'railbend', par:['rail','form','site','nlen','hwy','pline'], why:'Railway 0, or the whole-city line runs edge to edge', on:function(E){ return kR(E,'rail')===1 && !kW(E); }},
-  {keys:'hwyz hlanes', par:['hwy'], why:'Highway 0', on:function(E){ return kR(E,'hwy')===1; }},
+  /* row 362: and a piece of it drawn -- a Site's Focus window on the aircraft can leave the highway off the sheet */
+  {keys:'hwyz hlanes', par:['hwy'], why:'Highway 0, or no piece of the highway in view', on:function(E,S){ return kR(E,'hwy')===1 && (!S || S.hwySeen===undefined || S.hwySeen>0); }},
   {keys:'hwybend', par:['hwy','form','site','nlen','rail','pline'], why:'Highway 0, or the whole-city line runs edge to edge', on:function(E){ return kR(E,'hwy')===1 && !kW(E); }},
   {keys:'rstn', par:['rail','form','site','nlen','hwy','pline'], why:'only on the whole-city railway (a Site, City form 1)', on:function(E){ return kR(E,'rail')===1 && kW(E); }},
-  {keys:'ixtype', par:['hwy','form','site','nlen','rail','pline'], why:'only on the whole-city highway (a Site, City form 1)', on:function(E){ return kR(E,'hwy')===1 && kW(E); }},
+  {keys:'ixtype', par:['hwy','form','site','nlen','rail','pline'], why:'only on the whole-city highway (a Site, City form 1), with a piece of it in view', on:function(E,S){ return kR(E,'hwy')===1 && kW(E) && (!S || S.hwySeen===undefined || S.hwySeen>0); }},
   {keys:'sitepct tier sscale', par:['site'], why:'Site 0', on:function(E){ return kR(E,'site')>0; }},
   {keys:'stands hangars rwyhdg', par:['site'], why:'Site is not the airfield', on:function(E){ return kR(E,'site')===1; }},
   /* row 256 */
@@ -47746,18 +47752,29 @@ var KIDLE={town:[
   {keys:'dsplit', par:['dpen'], why:'Depth pens 0', on:function(E){ return kR(E,'dpen')===1; }},
   {keys:'signs neon puddles hero', par:[], why:'no dressed lot in view (none, or every one a massed box)', on:function(E,S){ return kD(S); }},
   {keys:'cars dots', par:['proj'], why:'every lot is a massed box at this scale', on:function(E,S){ return kR(E,'proj')===0 || kD(S); }},
-  {keys:'lotmin lotmax alley floors stepb canti corez', par:[], why:'no lot in view', on:function(E,S){ return !S || S.lots===undefined || S.lots>0; }},
+  /* row 362: a lot they shape -- the access arterial's sheds and parking take their own sizes and heights */
+  {keys:'lotmin lotmax floors stepb canti corez', par:[], why:'no lot in view (the arterial\'s sheds aside)', on:function(E,S){ return !S || (S.shapedLots===undefined?(S.lots===undefined || S.lots>0):S.shapedLots>0); }},
+  /* Alley chance splits every block, so it moves an arterial shed lot too (row 362, F-b) */
+  {keys:'alley', par:[], why:'no lot in view', on:function(E,S){ return !S || S.lots===undefined || S.lots>0; }},
   {keys:'parks', par:[], why:'no block Parks could take is in view', on:function(E,S){ return !S || ((S.lots===undefined || S.lots>0) && (S.parkSeen===undefined || S.parkSeen>0)); }},
   {keys:'ripple', par:['puddles'], why:'no water and no puddle in view', on:function(E,S){ return kR(E,'puddles')>0 || !S || S.reflRuns===undefined || S.reflRuns>0; }},
   {keys:'rvar', par:['puddles','ripple'], why:'no reflection reaches the sheet, or Ripple 0', on:function(E,S){ return kR(E,'ripple')>0 && (!S || S.reflDrawn===undefined || S.reflDrawn>0); }},
   {keys:'budg', par:[], why:'the drawing is under the smallest budget (10k points)', on:function(E,S){ return !S || S.points===undefined || S.points>10000 || S.tries>0; }},
   {keys:'look', par:['proj','mscale'], why:'the town camera looks level along its street (Pitch tilts it), so how far ahead changes nothing without a Map scale', on:function(E){ return kR(E,'proj')===0 && kR(E,'mscale')>0; }},
-  {keys:'dfar', par:['proj'], why:'every lot is a massed box at this scale', on:function(E,S){ return kR(E,'proj')===0 || kD(S); }},
+  /* row 362: in Isometric the bands read D_EFF = FF*HW/S, so Field of view moves them too, and the railway's and the
+     highway's parts take them as a lot does (sleepers, posts, a station's fascia) */
+  {keys:'dfar', par:['proj'], why:'every lot is a massed box at this scale, and no railway or highway in view', on:function(E,S){ return kR(E,'proj')===0 || kD(S) || kV(S); }},
   /* row 255: in perspective a Map scale sets the lens, so Field of view is not read */
-  {keys:'fov', par:['proj','mscale'], why:'every lot is a massed box at this scale, or a Map scale sets the lens', on:function(E,S){ return kR(E,'proj')===0?kR(E,'mscale')===0:kD(S); }},
-  {keys:'fire glow uvar shopv props lang cables graff hatch hatchmode sun', par:['dnear'], why:'no dressed lot inside Solid detail', on:function(E,S){ return kN(S) && kD(S); }},
+  {keys:'fov', par:['proj','mscale'], why:'every lot is a massed box at this scale and no railway or highway in view, or a Map scale sets the lens', on:function(E,S){ return kR(E,'proj')===0?kR(E,'mscale')===0:(kD(S) || kV(S)); }},
+  {keys:'fire glow uvar shopv props graff hatch hatchmode hstyle sun', par:['dnear'], why:'no dressed lot inside Solid detail', on:function(E,S){ return kN(S) && kD(S); }},
+  /* row 362: Hatch lines draws only the surface hatch (Hatch style 1) */
+  {keys:'hdir', par:['dnear','hstyle'], why:'no dressed lot inside Solid detail, or Hatch style 0', on:function(E,S){ return kN(S) && kD(S) && kR(E,'hstyle')===1; }},
+  /* row 362: a sign's script and the cables draw on every dressed lot, inside Solid detail or not (measured: a whole
+     town at Map scale 0, City form 0, nothing inside Solid detail, 92 dressed lots -- Script, Cables and Cable sag all
+     change the drawing) */
+  {keys:'lang cables', par:[], why:'no dressed lot in view (none, or every one a massed box)', on:function(E,S){ return kD(S); }},
   {keys:'wmk wglint', par:['dnear','puddles'], why:'no dressed lot inside Solid detail, or Puddles 0', on:function(E,S){ return kN(S) && kD(S) && kR(E,'puddles')>0; }},
-  {keys:'sag', par:['dnear','cables'], why:'no dressed lot inside Solid detail, or Cables 0', on:function(E,S){ return kN(S) && kD(S) && kR(E,'cables')>0; }},
+  {keys:'sag', par:['cables'], why:'no dressed lot in view, or Cables 0', on:function(E,S){ return kD(S) && kR(E,'cables')>0; }},
   {keys:'pnear', par:['dnear','dots'], why:'nothing inside Solid detail, or Particles 0', on:function(E,S){ return kN(S) && kR(E,'dots')>0; }}
 ]};
 /* KIDLE-END */
