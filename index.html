@@ -463,7 +463,7 @@
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v415</a> &mdash; Corridor city: a highway truck stands on its wheels -- eight tyres under the trailer's tail and nose and the cab, at the detail a car gets them, the truck on the deck instead of 0.5-0.9 m over it (queue row 380)</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v416</a> &mdash; the cellar barrel's stain and bung drawn by a shared function, ready for the new hatch on the cellar, shrine, greenhouse, data hall, garage and nave; nothing you can see changes</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <section class="fold" id="fold_pick"><h2>Pick engine<span class="cnt"></span></h2>
@@ -33245,35 +33245,12 @@ function cellarTheme(K){
     var RG=BT.map(function(t,i){ var r=[], k; for(k=0;k<NB;k++){ var a=(k+0.5)*DA;
       r.push(add3(add3(add3(c,ax,t),up,BR[i]*Math.cos(a)),e1,BR[i]*Math.sin(a))); } return r; });
     var P=loft(RG);
-    P.RG=RG; P.c=c; P.ax=ax; P.e1=e1;
+    P.RG=RG; P.c=c; P.ax=ax; P.e1=e1; P.BT=BT; P.NB=NB; P.DA=DA;
     return P;
   }
-  /* A POINT ON THE BARREL'S FACETED SURFACE at axial t and angle a from the
-     top, on the face it falls in (bilinear on a planar trapezoid), lifted
-     `off` along that face's normal; and the face's index */
-  function surfPt(B,t,a,off){
-    var i=0; while(i<BT.length-2 && t>BT[i+1]) i++;
-    var f=Math.max(0,Math.min(1,(t-BT[i])/(BT[i+1]-BT[i])));
-    var u=a/DA-0.5; u=((u%NB)+NB)%NB; var k=Math.floor(u), g=u-k, k2=(k+1)%NB;
-    var A=lerp3(B.RG[i][k],B.RG[i][k2],g), D=lerp3(B.RG[i+1][k],B.RG[i+1][k2],g), X=lerp3(A,D,f);
-    var fi=B.sf(i,k), n=B.faces[fi].n;
-    return {P:add3(X,n,off||0), f:fi};
-  }
-  /* a line on the barrel through surface samples, cut into steps of 0.02 rad
-     and 1 cm, each on the face of its midpoint. A longer chord across the
-     girth sags inside the barrel: a 14-degree step of the stain sagged 2.6 mm,
-     past its 2 mm lift, and its own barrel hid it (Y2, Turn 90, measured) */
-  function surfLine(B,pts,kind,col,off){
-    for(var m=1;m<pts.length;m++){
-      var t0=pts[m-1][0], a0=pts[m-1][1], t1=pts[m][0], a1=pts[m][1];
-      var n=Math.max(1,Math.ceil(Math.max(Math.abs(a1-a0)/0.02,Math.abs(t1-t0)/0.01))), j, prev=surfPt(B,t0,a0,off);
-      for(j=1;j<=n;j++){
-        var f=j/n, cur=surfPt(B,t0+(t1-t0)*f,a0+(a1-a0)*f,off), mid=surfPt(B,t0+(t1-t0)*(j-0.5)/n,a0+(a1-a0)*(j-0.5)/n,off);
-        B.lines.push({a:prev.P, b:cur.P, f0:mid.f, f1:mid.f, kind:kind, col:col});
-        prev=cur;
-      }
-    }
-  }
+  /* a line on the barrel's faceted surface, through (t, angle from the top)
+     samples: the kit's loftLine (row 145 B1 lifted it from here) */
+  var surfLine=K.loftLine;
   /* a hoop at axial t: a ring of chords, each exactly on its own face */
   function hoop(B,t){
     var i=0; while(i<BT.length-2 && t>BT[i+1]) i++;
@@ -43617,6 +43594,34 @@ function corridorDraw(p,plans,THM,camera){
     return {o:o, ax:ax, e1:e1, e2:e2, prof:[[0,r0],[len,r1]], n:n, ph:0, face:function(i,k){ return 2+k; }};
   }
   function asRound(P,o){ P.round=o||roundOf(P); return P; }
+  /* ROW 145 B1: A POINT AND A LINE ON A LOFT'S FACETED SURFACE, lifted from the cellar's barrel (surfPt/surfLine, v320),
+     byte for byte. B carries its rings RG (m rings of NB points, vertex k at (k + 0.5) DA from the frame's first axis),
+     their axial stations BT, NB, DA and the loft's face map sf. loftPt(B,t,a,off): the point at axial t and angle a,
+     bilinear on the planar facet it falls in, lifted off along that facet's normal, and the facet's index. NOT the
+     round hatch's pt(), which puts the point on the ray at a: the same surface, other points. loftLine(B,pts,...):
+     through those samples in steps of 0.02 rad and 1 cm, each on the facet of its midpoint (a 14-degree step of the
+     stain sagged 2.6 mm inside the barrel, past its 2 mm lift, row 108 Y2). */
+  function loftPt(B,t,a,off){
+    function L3(a,b,t){ return [a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t,a[2]+(b[2]-a[2])*t]; }
+    var BT=B.BT, NB=B.NB, DA=B.DA;
+    var i=0; while(i<BT.length-2 && t>BT[i+1]) i++;
+    var f=Math.max(0,Math.min(1,(t-BT[i])/(BT[i+1]-BT[i])));
+    var u=a/DA-0.5; u=((u%NB)+NB)%NB; var k=Math.floor(u), g=u-k, k2=(k+1)%NB;
+    var A=L3(B.RG[i][k],B.RG[i][k2],g), D=L3(B.RG[i+1][k],B.RG[i+1][k2],g), X=L3(A,D,f);
+    var fi=B.sf(i,k), n=B.faces[fi].n, o=off||0;
+    return {P:[X[0]+n[0]*o,X[1]+n[1]*o,X[2]+n[2]*o], f:fi};
+  }
+  function loftLine(B,pts,kind,col,off){
+    for(var m=1;m<pts.length;m++){
+      var t0=pts[m-1][0], a0=pts[m-1][1], t1=pts[m][0], a1=pts[m][1];
+      var n=Math.max(1,Math.ceil(Math.max(Math.abs(a1-a0)/0.02,Math.abs(t1-t0)/0.01))), j, prev=loftPt(B,t0,a0,off);
+      for(j=1;j<=n;j++){
+        var f=j/n, cur=loftPt(B,t0+(t1-t0)*f,a0+(a1-a0)*f,off), mid=loftPt(B,t0+(t1-t0)*(j-0.5)/n,a0+(a1-a0)*(j-0.5)/n,off);
+        B.lines.push({a:prev.P, b:cur.P, f0:mid.f, f1:mid.f, kind:kind, col:col});
+        prev=cur;
+      }
+    }
+  }
   /* ROW 144 A3: THE SURFACE HATCH AT hstyle 1 (docs/specs/2026-10-18-surface-hatch_v5.md §1). At hstyle 0
      (the default until A4) none of this draws: surfHatch takes the A1 path above, byte for byte.
      - LIGHT (§1.1): measured from the street. h_c is the street's heading at the camera's station sC (Turn
@@ -46210,7 +46215,7 @@ function corridorDraw(p,plans,THM,camera){
   function facesEye(f){ return (HOLD||[KCAM]).some(function(Kc){ var E=Kc.CE; return f.n[0]*E[0]+f.n[1]*E[1]+f.n[2]*E[2]-f.d>1e-9; }); }
   /* and the sheet's across direction at P -- held, the nearest frame's */
   function rtAt(P){ return HOLD?holdK(P).RT:RT; }
-  function KIT(PL){ var K={planRef:PL, poleOut:PL.wireLow?function(q){ return PL.wireLow.some(function(Q){ return townIn(Q,q); }) && !(PL.wireKeep||[]).some(function(Q){ return townIn(Q,q); }); }:null, facesEye:facesEye, rtAt:rtAt, massedAt:MASSED&&MASSED.get(PL)?function(sd,s){ return MASSED.get(PL)[sd].some(function(L){ return s>=L.s0-1 && s<=L.s1+1; }); }:null, sGaps:PL.sGaps, hasGap:PL.hasGap, slabPieces:slabPieces, bbHit:bbHit, MINSP:0.7, FW:FW, UP:UP, PAD:PAD, NS:PL.NS, THM:PL.theme||THM, P3:PL.P3, add3:add3, addCable:addCable, cam:camK, dist3:dist3, project:project, drawOn:drawOn, surfHatch:surfHatch, hstyle:HSTY, reserve:reserve, reserveDrawn:reserveDrawn, asRound:asRound, faceC:faceC, faceIx:faceIx, frame:PL.frame, hitsAny:hitsAny, inConv:inConv, lateral:PL.lateral, mmPerM:mmPerM, paperGap:paperGap, para:para, polyFromLoops:polyFromLoops, prism:prism, prismN:prismN, splitPart:splitPart, sub:PL.sub, surf:surf, vec:vec, verts:verts, wallOf:wallOf, wp:wp, CANTI:PL.CANTI, CANYON:PL.CANYON, CE:CE, FF:FF, FLOORS:PL.FLOORS, HALFW:PL.HALFW, HW:HW, KERB:PL.KERB, KOFF:PL.KOFF, LEN:PL.LEN, NEAR:NEAR, PBACK:PL.PBACK, RT:RT, SALT_BLD:PL.SALT_BLD, STEPB:PL.STEPB, ZUP:ZUP, cables:cables, conts:conts, lots:PL.lots, slabsBySide:PL.slabsBySide, p:p};
+  function KIT(PL){ var K={planRef:PL, poleOut:PL.wireLow?function(q){ return PL.wireLow.some(function(Q){ return townIn(Q,q); }) && !(PL.wireKeep||[]).some(function(Q){ return townIn(Q,q); }); }:null, facesEye:facesEye, rtAt:rtAt, massedAt:MASSED&&MASSED.get(PL)?function(sd,s){ return MASSED.get(PL)[sd].some(function(L){ return s>=L.s0-1 && s<=L.s1+1; }); }:null, sGaps:PL.sGaps, hasGap:PL.hasGap, slabPieces:slabPieces, bbHit:bbHit, MINSP:0.7, FW:FW, UP:UP, PAD:PAD, NS:PL.NS, THM:PL.theme||THM, P3:PL.P3, add3:add3, addCable:addCable, cam:camK, dist3:dist3, project:project, drawOn:drawOn, surfHatch:surfHatch, hstyle:HSTY, reserve:reserve, reserveDrawn:reserveDrawn, asRound:asRound, loftLine:loftLine, faceC:faceC, faceIx:faceIx, frame:PL.frame, hitsAny:hitsAny, inConv:inConv, lateral:PL.lateral, mmPerM:mmPerM, paperGap:paperGap, para:para, polyFromLoops:polyFromLoops, prism:prism, prismN:prismN, splitPart:splitPart, sub:PL.sub, surf:surf, vec:vec, verts:verts, wallOf:wallOf, wp:wp, CANTI:PL.CANTI, CANYON:PL.CANYON, CE:CE, FF:FF, FLOORS:PL.FLOORS, HALFW:PL.HALFW, HW:HW, KERB:PL.KERB, KOFF:PL.KOFF, LEN:PL.LEN, NEAR:NEAR, PBACK:PL.PBACK, RT:RT, SALT_BLD:PL.SALT_BLD, STEPB:PL.STEPB, ZUP:ZUP, cables:cables, conts:conts, lots:PL.lots, slabsBySide:PL.slabsBySide, p:p};
     /* row 96: a plan with a theme of its own reads its own knobs and cables */
     if(PL.theme){ K.p=PL.p; K.addCable=PL.addCable||addCable; K.cables=PL.cables||cables; }
     return K; }
