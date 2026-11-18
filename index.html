@@ -581,7 +581,7 @@ html.ui-corridors, html.ui-corridors body{margin:0; height:100%; overflow:hidden
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v425</a> &mdash; Rocket assembly, the trades: every floor makes one kind of part (engines, fins, tank rings, domes, skin, avionics, fairings) on a rail track through workshop stations, with carts that run out along a spur to its access arm, and robot arms on every ring platform hold the floor's part against the rocket; carts on the transfer bridges, corner stairs, a freight lift and a store of rings and domes; Arms per platform and Parts on the move</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v426</a> &mdash; Rocket assembly, the ground: a tank farm under the floors with its line to the pad, four propellant silos round a service tower whose umbilical reaches the stack, pallet racking, parts staged on stands and skids, forklifts and a dashed hazard ring round the pad; people 1.75 m tall on the floors, platforms, bridges and ground; Floor staging and People, and the Hall, Tower and Massive presets</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <section class="fold" id="fold_pick"><h2>Pick engine<span class="cnt"></span></h2>
@@ -3367,6 +3367,7 @@ var SPEC={
     ['rflr','Floors',2,7,1,5],['rwid','Hall width',40,64,4,56,[1,' m']],
     ['rboost','Boosters',0,4,1,2],['rdone','Build progress',0,100,5,60,[1,'%']],
     ['rarm','Arms per platform',0,3,1,2],['rpart','Parts on the move',0,100,1,60,[1,'%']],
+    ['rstage','Floor staging',0,100,1,60,[1,'%']],['rppl','People',0,100,1,40,[1,'%']],
     ['lod','LOD cutoff',0,60,1,5,[10,' mm']],['budg','Size budget',10,300,5,200,[1,' k points']],
     ['occ','Occlusion gap',0,80,1,5,[10,' mm']]]],
   /* STREET, queue rows 30-33. ONLY THE KNOBS A BUILT ROW READS ARE DECLARED --
@@ -23919,7 +23920,14 @@ function buildFactoryOnce(p,DROP){
    measures: a SPUR of track from the main line to the floor's free edge,
    because the main line ends 4.2 m short of the access arm §3's contract
    says it meets; and robots that stand BESIDE the part they hold, not
-   behind it, because a part reaches past the 2.7 m platform's edge. */
+   behind it, because a part reaches past the 2.7 m platform's edge.
+
+   ROW 412, THE GROUND (§4): every ground item and every person has a FIXED
+   SLOT, laid out against keep-outs that do not depend on what is filled,
+   and `rstage` / `rppl` only choose which slots are filled -- so either at 0
+   takes its own things away and moves nothing else. The umbilical runs at
+   31.5 m (or 1.5 m under the top floor) and steps down 0.5 m until it
+   clears the bridges, pylons, platforms, robots and the parts they hold. */
 var RKTINFO='';
 var RKTSTATS={solids:0,paths:0,points:0};
 var RKTTALLY={cells:[],boxes:[],order:[],tubes:[],polys:[],rkt:null};
@@ -23972,7 +23980,7 @@ function buildRocketOnce(p,DROP){
     var pcs=K.cutAtLattice(K.polySolid(V,F,o));
     pcs.forEach(function(s){
       if(o.dropc) s.dc=o.dropc;
-      if(s.pi!==undefined){ var E=T.polys[s.pi]; E.lay=o.lay; if(o.dropc) E.dc=o.dropc; }
+      if(s.pi!==undefined){ var E=T.polys[s.pi]; E.lay=o.lay; if(o.dropc) E.dc=o.dropc; if(o.paint) E.paint=o.marks; }
     });
     return pcs;
   }
@@ -24523,6 +24531,185 @@ function buildRocketOnce(p,DROP){
     }
   });
 
+  /* ================= §4: THE GROUND (row 412) ============================== */
+  /* EVERY GROUND ITEM AND EVERY PERSON HAS A FIXED SLOT, AND A KNOB ONLY
+     PICKS WHICH SLOTS ARE FILLED: one draw per slot from its own stream, so
+     `rstage` 0 and `rppl` 0 take their own things away and move nothing
+     else (G3). Nothing's place depends on whether another slot is filled. */
+  var QSTAGE=knob(p.rstage,60,0,100)/100, QPPL=knob(p.rppl,40,0,100)/100;
+  var RKT_SALT_STAGE=839, RKT_SALT_PPL=853;
+  function slotDraw(salt,a,b){ return statRng(SEED,salt,a,b)(); }
+  function circPoly(x,y,r){ return discPoly(x,y,r); }
+  function cDist(P2){ return ptPoly([C[0],C[1]],P2); }       /* plan distance from C to a polygon, 0 inside */
+  /* the ground's keep-outs: the pad, the pylons, the crane column (0.6 m round) */
+  var GK=[rectPts([C[0]-8.1,C[0]+8.1,C[1]-8.1,C[1]+8.1])];
+  PYL.forEach(function(Py){ GK.push(rectPts([Py.x-1.2,Py.x+1.2,Py.y-1.2,Py.y+1.2])); });
+  GK.push(rectPts([W-3.8,W-0.2,C[1]-1.8,C[1]+1.8]));
+  var RHZ=[11.5,12.6], HZOUT=13.0;                          /* the hazard ring, and what staging keeps out of */
+  function gFree(P2,hz){
+    for(var j=0;j<GK.length;j++) if(ovl2(P2,GK[j])) return false;
+    return !hz || cDist(P2)>=HZOUT;
+  }
+  /* ---- the tank farm under the L floors: two rows of ⌀4.6 m tanks, a
+     header between the rows, one line from it along y = C[1] to the pad.
+     A tank slot that would meet the line is left empty. */
+  var GTANKS=[], TKR=2.3, TKH=4.6, HDR=[5.8,6.2], LINEY=C[1];
+  /* the line keeps 0.3 m off every pylon: it moves 1 m at a time across the
+     pad's west face to the first y that does */
+  (function(){ var dy=[0,1,-1,2,-2,3,-3,4,-4,5,-5,6,-6], j;
+    for(j=0;j<dy.length;j++){ var yy=C[1]+dy[j], SP=rectPts([HDR[0],C[0]-7.5,yy-0.2,yy+0.2]);
+      if(!PYL.some(function(Py){ return polyDist(SP,rectPts([Py.x-0.6,Py.x+0.6,Py.y-0.6,Py.y+0.6]))<0.3; })){ LINEY=yy; return; } } })();
+  (function(){
+    var y, xs=[3.2,8.8], k=0;
+    for(y=12.6+TKR; y+TKR<=D-0.6; y+=2*TKR+0.6){
+      if(Math.abs(y-LINEY)<TKR+0.7) continue;
+      xs.forEach(function(x){ GTANKS.push({k:k++, x:x, y:y, on:slotDraw(RKT_SALT_STAGE,1,k)<QSTAGE}); });
+    }
+  })();
+  var HDR_Y0=GTANKS.length?GTANKS[0].y-1.0:LINEY-1, HDR_Y1=GTANKS.length?GTANKS[GTANKS.length-1].y+1.0:LINEY+1;
+  HDR_Y0=Math.min(HDR_Y0,LINEY-0.2); HDR_Y1=Math.max(HDR_Y1,LINEY+0.2);
+  GK.push(rectPts([0,12,12,D]));                            /* the farm, filled or not */
+  GK.push(rectPts([HDR[0],C[0]-7.5,LINEY-0.6,LINEY+0.6]));  /* the line to the pad */
+  /* ---- the propellant battery in the open floor's back corner: four silos
+     round a service tower that carries the umbilical to the stack */
+  var BSIL=[[13.6,13.6],[16.8,13.6],[13.6,16.8],[16.8,16.8]], BSR=1.2, BSH=8, TWR=[15.2,15.2];
+  GK.push(rectPts([12.1,18.3,12.1,18.3]));
+  /* THE UMBILICAL: at 31.5 m, or 1.5 m under the top floor if that is lower,
+     stepped down 0.5 m at a time until it clears every bridge (4.2 m over a
+     deck, for its carts, their parts and people, or 0.3 m under it), every pylon top it
+     passes and every platform's rails (1.3 m over a platform, or 0.7 m under
+     its deck). It ends 0.02 m off the stack's 24-gon, or off a booster in its
+     way. None if no height clears. */
+  var UMB=null;
+  (function(){
+    var dx=C[0]-TWR[0], dy=C[1]-TWR[1], L=Math.hypot(dx,dy), e=[dx/L,dy/L], nn=[-e[1],e[0]], zu, j, s;
+    var send=L-4.22;
+    function sendAt(zu2){ var rs=stackRAt(zu2-0.2,zu2+0.2); return L-(rs?rs:2.9)-0.02; }
+    function strip(s0,s1){ return [[TWR[0]+e[0]*s0-nn[0]*0.25,TWR[1]+e[1]*s0-nn[1]*0.25],[TWR[0]+e[0]*s1-nn[0]*0.25,TWR[1]+e[1]*s1-nn[1]*0.25],
+                                  [TWR[0]+e[0]*s1+nn[0]*0.25,TWR[1]+e[1]*s1+nn[1]*0.25],[TWR[0]+e[0]*s0+nn[0]*0.25,TWR[1]+e[1]*s0+nn[1]*0.25]]; }
+    function ok(zu2){
+      var lo=zu2-0.2, hi=zu2+0.2, i2, k2;
+      for(i2=0;i2<BRIDGES.length;i2++){
+        var Bg=BRIDGES[i2], zmx=-1e9, zmn=1e9, hit=false;
+        for(k2=0;k2<=Math.ceil(send/0.1);k2++){ var ss=Math.min(send,k2*0.1);
+          [-0.25,0,0.25].forEach(function(w){ var px=TWR[0]+e[0]*ss+nn[0]*w, py=TWR[1]+e[1]*ss+nn[1]*w;
+            if(ptPoly([px,py],Bg.plan)<1e-9){ hit=true; var t=((px-A[0])*ABx+(py-A[1])*ABy)/(ABL*ABL), z=bridgeZ(Bg,t); zmx=Math.max(zmx,z); zmn=Math.min(zmn,z-0.5); } }); }
+        if(hit && !(lo>=zmx+4.2 || hi<=zmn-0.3)) return false;
+      }
+      var SP=strip(0,send);
+      for(i2=0;i2<PYL.length;i2++){ var Py=PYL[i2];
+        if(polyDist(SP,rectPts([Py.x-0.6,Py.x+0.6,Py.y-0.6,Py.y+0.6]))<0.3 && lo<Py.top+0.3) return false; }
+      for(i2=1;i2<=N;i2++){ var zp=10*i2; if(!(lo>=zp+1.3-1e-9 || hi<=zp-0.7+1e-9)) return false; }
+      /* the robots and the parts they hold, on every platform */
+      var US=[];
+      for(k2=0;k2<=Math.ceil(send/0.25);k2++){ var s5=Math.min(send,k2*0.25);
+        [-0.25,0.25].forEach(function(w){ [lo,hi].forEach(function(z5){ US.push([TWR[0]+e[0]*s5+nn[0]*w,TWR[1]+e[1]*s5+nn[1]*w,z5]); }); }); }
+      for(i2=0;i2<HELD.length;i2++){ var H2=HELD[i2];
+        if(partHit(US,0.3,H2.hull,H2.pb)) return false;
+        if(H2.smp.some(function(u5){ return US.some(function(v5){ return Math.hypot(u5[0]-v5[0],u5[1]-v5[1],u5[2]-v5[2])<0.7; }); })) return false; }
+      return true;
+    }
+    for(zu=Math.min(31.5,10*N-1.5); zu>=11; zu-=0.5){ send=sendAt(zu); if(ok(zu)) break; }
+    if(zu<11) return;
+    /* a booster in the way: the umbilical ends 0.05 m short of it */
+    boostsAt(zu-0.2,zu+0.2).forEach(function(b){
+      var bd=discPoly(b.x,b.y,2.0);
+      while(send>0.5 && polyDist(strip(0,send),bd)<0.05) send-=0.05;
+    });
+    var deg=(Math.atan2(TWR[1]-C[1],TWR[0]-C[0])*180/Math.PI+360)%360;
+    UMB={z:zu, e:e, nn:nn, s1:send, deg:deg, plat:Math.floor(zu/10), P:strip(0,send)};
+  })();
+  /* ---- pallet racking along the x = W edge, bays 2.7 m, three levels; a
+     bay goes wherever its 1.2 m strip clears the keep-outs and the hazard
+     ring. The loads on it are the `rackitems` class and `rstage` picks them. */
+  var RACK=[];
+  (function(){
+    var y=0.6, k=0;
+    while(y+2.7<=D-0.6){
+      if(gFree(rectPts([W-1.3,W-0.1,y,y+2.7]),true)){ RACK.push({k:k++, y0:y, y1:y+2.7}); y+=2.7; }
+      else y=Math.round((y+0.3)*10)/10;
+    }
+    RACK.forEach(function(Rb,j){ Rb.first=!j || RACK[j-1].y1<Rb.y0-1e-9; Rb.last=j+1===RACK.length || RACK[j+1].y0>Rb.y1+1e-9;
+      Rb.loads=[]; [0,1.6,3.2].forEach(function(zl,l){ [0,1].forEach(function(h){ Rb.loads.push({z:zl, h:h, on:slotDraw(RKT_SALT_STAGE,2,Rb.k*6+l*2+h)<QSTAGE}); }); }); });
+    RACK.forEach(function(Rb){ GK.push(rectPts([W-1.6,W,Rb.y0,Rb.y1])); });
+  })();
+  /* ---- staged parts in two rows along the y = D edge: bells on stands,
+     ring stacks and domes on skids, nose sections on cradles ---- */
+  var STAGED=[];
+  (function(){
+    var k=0;
+    [D-2.0,D-5.6].forEach(function(y){
+      for(var x=13.6; x+1.6<=W-2.0; x+=3.8){
+        var P2=rectPts([x-1.6,x+1.6,y-1.6,y+1.6]);
+        k++;
+        if(!gFree(P2,true)) continue;
+        var u=slotDraw(RKT_SALT_STAGE,3,k);
+        STAGED.push({k:k, x:x, y:y, kind:Math.floor(slotDraw(RKT_SALT_STAGE,4,k)*4), n:2+Math.floor(u*1000)%2, on:u<QSTAGE});
+        GK.push(P2);
+      }
+    });
+  })();
+  /* ---- forklifts: slots in the racking aisle and in front of the staged
+     rows, each 1.4 x 3.8 m with its forks ---- */
+  var FORKS=[];
+  (function(){
+    var k=0, y, x;
+    for(y=6; y+1.9<=D-8; y+=11){ k++; var P2=rectPts([W-4.4,W-3.0,y-1.9,y+1.9]);
+      if(gFree(P2,true)){ FORKS.push({k:k, x:W-3.7, y:y, ax:1, on:slotDraw(RKT_SALT_STAGE,5,k)<QSTAGE}); GK.push(P2); } }
+    for(x=16; x+1.9<=W-6; x+=12){ k++; var P3=rectPts([x-1.9,x+1.9,D-9.3,D-7.9]);
+      if(gFree(P3,true)){ FORKS.push({k:k, x:x, y:D-8.6, ax:0, on:slotDraw(RKT_SALT_STAGE,5,k)<QSTAGE}); GK.push(P3); } }
+  })();
+
+  /* ---- people (row 412): fixed slots on the floors, the platforms, the
+     bridges' level decks and the ground; `rppl` fills a share of them. A
+     slot keeps off everything that could be there, filled or not. ---- */
+  var PPL=[];
+  function addPerson(where,a,b,x,y,z,ax){ PPL.push({where:where, x:x, y:y, z:z, ax:ax, on:slotDraw(RKT_SALT_PPL,a,b)<QPPL}); }
+  function angD(a,b){ var d=Math.abs(a-b)%360; return Math.min(d,360-d); }
+  FLOORS.forEach(function(f){
+    for(var s=f.t0+1.0; s<=f.t1-1.0; s+=4.5){
+      if(f.spur && !f.spur.off && Math.abs(s-f.spur.s)<1.6) continue;
+      if(bandHit(f,s-0.35,10.2,s+0.35,11.0)) continue;
+      var c=lw(f,s,10.6); addPerson('floor',f.i,Math.round(s*10),c[0],c[1],f.z,f.R?0:1);
+    }
+  });
+  PLAT.forEach(function(fl){
+    var i2=fl.i, arm=ARMS[i2-1], k;
+    for(k=0;k<24;k++){
+      var deg=7.5+15*k, an=deg*Math.PI/180, x=C[0]+5.6*Math.cos(an), y=C[1]+5.6*Math.sin(an);
+      var FP=rectPts([x-0.35,x+0.35,y-0.35,y+0.35]), okp=true, j;
+      FP.forEach(function(v){ var rr=Math.hypot(v[0]-C[0],v[1]-C[1]); if(rr<RIN+0.15||rr>ROUT-0.25) okp=false; });
+      for(j=0;j<NSEC && okp;j++) if(fl.drop[j] && ovl2(FP,secPoly(j))) okp=false;
+      if(!okp) continue;
+      if(arm.s!==null && polyDist(FP,rectPts(armRect(arm.side,arm.s,10*i2)))<0.5) continue;
+      if(UMB && UMB.plat===i2 && angD(deg,UMB.deg)<25) continue;
+      if(HELD.some(function(H2){ return H2.i===i2 && (polyDist(FP,H2.hull)<0.6 || polyDist(FP,H2.ped)<0.6 ||
+           H2.smp.some(function(q){ return q[2]<10*i2+2.4 && ptPoly([q[0],q[1]],FP)<0.6; })); })) continue;
+      if(boostsAt(10*i2,10*i2+1.75).some(function(b){ return polyDist(FP,discPoly(b.x,b.y,2.0))<0.3; })) continue;
+      addPerson('plat',100+i2,k,x,y,10*i2,k%2);
+    }
+  });
+  BRIDGES.forEach(function(Bg){
+    [0.3,0.7].forEach(function(fr,j){
+      var t=Bg.tA*fr, w=0.8, x=A[0]+ABx*t-NRM[0]*w, y=A[1]+ABy*t-NRM[1]*w, okb=true;
+      rectPts([x-0.35,x+0.35,y-0.35,y+0.35]).forEach(function(v){
+        var tt=((v[0]-A[0])*ABx+(v[1]-A[1])*ABy)/(ABL*ABL), ww=-((v[0]-A[0])*NRM[0]+(v[1]-A[1])*NRM[1]);
+        if(tt<0.3/ABL || tt>Bg.tA || ww<0.1 || ww>1.5) okb=false; });
+      if(!okb || Bg.carts.some(function(c6){ return Math.abs(c6.t-t)<2.0/ABL; })) return;
+      if(PYL.some(function(Py){ return Math.abs(Py.t-t)<1.5/ABL; })) return;
+      addPerson('bridge',200+Bg.i,j,x,y,Bg.zA,0);
+    });
+  });
+  (function(){
+    var x, y, k=0;
+    for(x=13.5; x<=W-2.5; x+=4.4) for(y=13.5; y<=D-1.0; y+=4.4){
+      k++;
+      if(!gFree(rectPts([x-0.6,x+0.6,y-0.6,y+0.6]),true)) continue;
+      if(UMB && polyDist(rectPts([x-0.35,x+0.35,y-0.35,y+0.35]),UMB.P)<0.3 && UMB.z-0.2<2.2) continue;
+      addPerson('ground',300,k,x,y,0,k%2);
+    }
+  })();
+
   /* ================= BUILD ================================================= */
   var RAIL=0.05;
   /* A HANDRAIL: two rails at 0.55 and 1.1 m and posts at most 2 m apart, along
@@ -24563,7 +24750,28 @@ function buildRocketOnce(p,DROP){
   /* ---- the hall: ground, two back walls, the floors and their brackets ---- */
   /* the ground stops at the walls' inner faces, so ITS back edge is the
      junction line and is drawn before the wall cell above it (see the order) */
-  rbox(0,0,-0.6,W,D,0,{kind:'ground', id:'ground'});
+  /* THE HAZARD RING (row 412): two dashed circles, 11.5 and 12.6 m round C,
+     drawn as MARKS on the ground's top face -- 1.2 m dashes, 0.8 m gaps, in
+     0.3 m chords. A chord under the pad line, the crane column or a pylon is
+     left out: it would lie under a solid standing on the ground. The ground's
+     pieces carry them as `paint`, so rktcheck N1 knows them from its edges. */
+  var RINGMK=[];
+  (function(){
+    var UNDER=[[HDR[1],C[0]-7.5,LINEY-0.2,LINEY+0.2],[W-3.2,W-0.8,C[1]-1.2,C[1]+1.2]];
+    PYL.forEach(function(Py){ UNDER.push([Py.x-0.6,Py.x+0.6,Py.y-0.6,Py.y+0.6]); });
+    function under(q){ return UNDER.some(function(a){ return rdDist(a,q[0],q[1])<0.1; }); }
+    RHZ.forEach(function(r){
+      var Lc=TAU*r, nd=Math.round(Lc/2.0), per=Lc/nd, k, j;
+      for(k=0;k<nd;k++) for(j=0;j<4;j++){
+        var s0=k*per+j*0.3, s1=s0+0.3, a0=s0/r, a1=s1/r;
+        var p0=[C[0]+r*Math.cos(a0),C[1]+r*Math.sin(a0),0], p1=[C[0]+r*Math.cos(a1),C[1]+r*Math.sin(a1),0];
+        if(p0[0]<0||p1[0]<0||p0[1]<0||p1[1]<0||p0[0]>W||p1[0]>W||p0[1]>D||p1[1]>D) continue;
+        if(under(p0)||under(p1)||under([(p0[0]+p1[0])/2,(p0[1]+p1[1])/2])) continue;
+        RINGMK.push([p0,p1,1]);
+      }
+    });
+  })();
+  rbox(0,0,-0.6,W,D,0,{kind:'ground', id:'ground', marks:RINGMK, paint:true});
   rbox(-0.4,-0.4,0,0,D,H,{kind:'wall', id:'wall.x'});
   rbox(0,-0.4,0,W,0,H,{kind:'wall', id:'wall.y'});
   for(i=1;i<=N;i++){
@@ -24817,6 +25025,92 @@ function buildRocketOnce(p,DROP){
   rbox(C[0]-0.4,C[1]-0.4,HOOK,C[0]+0.4,C[1]+0.4,HOOK+0.6,{kind:'hook', id:'crane.hook'});
   rbar(C[0]-0.03,C[1]-0.03,HOOK+0.6,C[0]+0.03,C[1]+0.03,GZ,{kind:'rope', id:'crane.rope'});
 
+  /* ---- the ground (row 412): §4, from the plan above -------------------- */
+  var SV={lay:'services'};
+  function sv(kind,id,x){ return Object.assign({kind:kind, id:id},SV,x||{}); }
+  /* the tank farm: a tank is a 16-gon on a plinth with a conical roof; the
+     header between the rows and the line to the pad are low pipe trenches */
+  var NGT=0;
+  GTANKS.forEach(function(Tk){
+    if(!Tk.on) return;
+    NGT++;
+    var id='gtank'+Tk.k;
+    rprism([Tk.x,Tk.y,0],[Tk.x,Tk.y,TKH],TKR,TKR,16,sv('gtank',id,{seam1:true}));
+    rprism([Tk.x,Tk.y,TKH],[Tk.x,Tk.y,TKH+0.6],TKR,1.0,16,sv('gtank',id,{seam0:true}));
+    var rc=TKR/Math.cos(Math.PI/16), xe=Tk.x<HDR[0]?[Tk.x+rc,HDR[0]]:[HDR[1],Tk.x-rc];
+    rbox(xe[0],Tk.y-0.15,0.3,xe[1],Tk.y+0.15,0.6,sv('pipe',id+'.p'));
+  });
+  rbox(HDR[0],HDR_Y0,0,HDR[1],HDR_Y1,0.6,sv('pipe','header'));
+  rbox(HDR[1],LINEY-0.2,0,C[0]-7.5,LINEY+0.2,0.6,sv('pipe','padline'));
+  /* the propellant battery and its service tower */
+  var NSIL=0;
+  BSIL.forEach(function(q,k){
+    if(slotDraw(RKT_SALT_STAGE,6,k)>=QSTAGE) return;
+    NSIL++;
+    rprism([q[0],q[1],0],[q[0],q[1],BSH],BSR,BSR,16,sv('silo','silo'+k,{seam1:true}));
+    rprism([q[0],q[1],BSH],[q[0],q[1],BSH+0.8],BSR,0.35,16,sv('silo','silo'+k,{seam0:true}));
+  });
+  var TWTOP=UMB?UMB.z-0.2:BSH+2;
+  rbox(TWR[0]-0.6,TWR[1]-0.6,0,TWR[0]+0.6,TWR[1]+0.6,TWTOP,sv('tower','umbtower'));
+  if(UMB){
+    var UV=[], uq=[[0,-0.25],[UMB.s1,-0.25],[UMB.s1,0.25],[0,0.25]], ju;
+    [UMB.z-0.2,UMB.z+0.2].forEach(function(zz){ uq.forEach(function(q){
+      UV.push([TWR[0]+UMB.e[0]*q[0]+UMB.nn[0]*q[1],TWR[1]+UMB.e[1]*q[0]+UMB.nn[1]*q[1],zz]); }); });
+    rhex(UV,sv('umbilical','umbilical'));
+  }
+  /* the racking: an upright frame at each end of a bay, two beam decks, and
+     two pallet loads per level -- the loads are the `rackitems` class */
+  var NRL=0;
+  RACK.forEach(function(Rb){
+    var id='rack'+Rb.k;
+    if(Rb.first) rbox(W-1.3,Rb.y0,0,W-0.1,Rb.y0+0.1,4.6,sv('rack',id));
+    rbox(W-1.3,Rb.y1-0.1,0,W-0.1,Rb.y1,4.6,sv('rack',id));
+    [1.48,3.08].forEach(function(zd){ rbox(W-1.3,Rb.y0+(Rb.first?0.1:0),zd,W-0.1,Rb.y1-0.1,zd+0.12,sv('rack',id)); });
+    if(!DROPS.rackitems) Rb.loads.forEach(function(Ld){
+      if(!Ld.on) return;
+      NRL++;
+      var ya=Rb.y0+0.15+Ld.h*1.25, zb=Ld.z===0?0:Ld.z;
+      rbox(W-1.25,ya,zb,W-0.15,ya+1.1,zb+0.15,sv('pallet',id+'.l',{dropc:'rackitems'}));
+      rbox(W-1.2,ya+0.05,zb+0.15,W-0.2,ya+1.05,zb+1.2,sv('load',id+'.l',{dropc:'rackitems'}));
+    });
+  });
+  /* the staged parts: a stand or skid, and the part (or a stack of rings) on it */
+  var STKIND=[[0,'stand',0.5,1.0],[2,'skid',0.2,1.3],[3,'skid',0.2,1.3],[6,'cradle',0.4,1.0]];
+  STAGED.forEach(function(St){
+    if(!St.on) return;
+    var sk=STKIND[St.kind], id='stage'+St.k, zb=sk[2], nn2=St.kind===1?St.n:1, j;
+    rbox(St.x-sk[3],St.y-sk[3],0,St.x+sk[3],St.y+sk[3],sk[2],sv(sk[1],id));
+    var on=id;
+    for(j=0;j<nn2;j++){
+      var pid=newPart(sk[0],null,j?'part':sk[1],on);
+      zb=drawPart(sk[0],[St.x,St.y],zb,[1,0],pid);
+      on=pid;
+    }
+  });
+  /* the forklifts: a body, the overhead guard on four posts, the mast and forks */
+  var NFK=0;
+  FORKS.forEach(function(Fk){
+    if(!Fk.on) return;
+    NFK++;
+    var id='fork'+Fk.k, o=function(){ return sv('forklift',id); };
+    function fb(s0,d0,z0,s1,d1,z1){ if(Fk.ax) rbox(Fk.x+d0,Fk.y+s0,z0,Fk.x+d1,Fk.y+s1,z1,o()); else rbox(Fk.x+s0,Fk.y+d0,z0,Fk.x+s1,Fk.y+d1,z1,o()); }
+    fb(-1.9,-0.7,0,0.7,0.7,1.2);
+    fb(-1.4,-0.7,1.2,-1.3,-0.6,2.1); fb(-1.4,0.6,1.2,-1.3,0.7,2.1);
+    fb(0.0,-0.7,1.2,0.1,-0.6,2.1); fb(0.0,0.6,1.2,0.1,0.7,2.1);
+    fb(-1.4,-0.7,2.1,0.1,0.7,2.2);
+    fb(0.7,-0.6,0,0.85,0.6,2.6);
+    fb(0.85,-0.45,0.05,1.9,-0.3,0.15); fb(0.85,0.3,0.05,1.9,0.45,0.15);
+  });
+  /* people: 1.75 m, legs, body and head as three boxes, the `people` class */
+  var NPPL=0;
+  if(!DROPS.people) PPL.forEach(function(Pp,k){
+    if(!Pp.on) return;
+    NPPL++;
+    var id='person'+k, o=function(){ return {lay:'people', kind:'person', id:id, dropc:'people'}; };
+    function pb(a,b,z0,z1){ var hx=Pp.ax?b:a, hy=Pp.ax?a:b; rbox(Pp.x-hx,Pp.y-hy,Pp.z+z0,Pp.x+hx,Pp.y+hy,Pp.z+z1,o()); }
+    pb(0.18,0.1,0,0.85); pb(0.22,0.13,0.85,1.5); pb(0.11,0.11,1.5,1.75);
+  });
+
   T.rkt={W:W, D:D, N:N, H:H, Q:Q, NB:NB, A:A, B:B, C:C, U:U, NRM:NRM, M:M,
          bridges:BRIDGES.map(function(Bg){ return {i:Bg.i, zA:Bg.zA, zB:Bg.zB, tA:Bg.tA, plan:Bg.plan}; }), dland:DLAND,
          pylons:PYL, boosters:BOOST, skin:SKIN, ztop:ZTOP, fbase:FBASE, fhang:FHANG, bzt:BZT,
@@ -24826,7 +25120,10 @@ function buildRocketOnce(p,DROP){
          floors:FLOORS.map(function(f){ return {i:f.i, R:f.R, trade:f.trade, t0:f.t0, t1:f.t1,
            spur:(f.spur&&!f.spur.off)?f.spur.s:null, stations:f.stations.map(function(st){ return {s0:st.s0, s1:st.s1, kind:st.kind}; }),
            robots:(f.robots||[]).length}; }),
-         robots:ROBOTS, parts:PARTS, carts:CARTS, shelves:SHELF};
+         robots:ROBOTS, parts:PARTS, carts:CARTS, shelves:SHELF,
+         qstage:QSTAGE, qppl:QPPL, people:PPL, ring:RHZ,
+         ground:{tanks:GTANKS, tkr:TKR, tkh:TKH, header:HDR, lineY:LINEY, silos:BSIL, tower:TWR, umb:UMB,
+                 rack:RACK, staged:STAGED, forks:FORKS}};
 
   /* ---- inside a cell: the exact order, `fact`'s rule in rkt's copy ------- */
   function rktCellOrder(){
@@ -24962,7 +25259,7 @@ function buildRocketOnce(p,DROP){
   RKTINFO=W+' × '+D+' m · '+N+' floors · '+Math.round(Q*100)+' % built · '+
           RKTSTATS.boosters+(RKTSTATS.boosters<NB?' of '+NB:'')+' booster'+(NB===1?'':'s')+' · '+
           (nBl?nBl+' access arm'+(nBl===1?'':'s')+' blocked by a booster · ':'')+
-          PARTS.length+' parts · '+ROBOTS.length+' robot'+(ROBOTS.length===1?'':'s')+
+          PARTS.length+' parts · '+NPPL+' people · '+ROBOTS.length+' robot'+(ROBOTS.length===1?'':'s')+
           (ROBOTS.length<NARM*N?' (of '+NARM*N+')':'')+' · '+
           (RKTSTATS.drops.length?'over budget: dropped '+RKTSTATS.drops.join(', ')+(RKTSTATS.over?' (still over)':'')+' · ':'')+
           solids.length.toLocaleString()+' solids · '+out.length.toLocaleString()+' paths · '+
@@ -49969,6 +50266,31 @@ ENGEXTRA.real=function(box){
     u.addEventListener('click',function(){ REALB=null; mount(); msg('Real ground: the demo bundle'); }); d.appendChild(u); }
   box.appendChild(d);
 };
+/* ROW 412: Rocket assembly's three presets (spec §4) -- Hall, Tower and
+   Massive. Each writes Floors and Hall width and nothing else: the page, the
+   camera and every other knob stay. ONE FUNCTION, called by the buttons and
+   by the gate (G4); it returns the status message. */
+var RKTPRESETS={hall:{rflr:3,rwid:40}, tower:{rflr:5,rwid:56}, massive:{rflr:7,rwid:64}};
+var RKTPRESETNAME={hall:'Hall', tower:'Tower', massive:'Massive'};
+function applyRktPreset(name){
+  var V=RKTPRESETS[name], E=STATE.eng.rkt, n=0;
+  if(!V||!E) return false;
+  Object.keys(V).forEach(function(k){ if(E[k]!==V[k]){ E[k]=V[k]; n++; } });
+  return RKTPRESETNAME[name]+': '+n+' of '+Object.keys(V).length+' knobs changed';
+}
+ENGEXTRA.rkt=function(box){
+  var d=document.createElement('div');
+  d.className='engx'; d.id='rktx';
+  [['hall','Three floors in a 40 m hall.'],['tower','Five floors in a 56 m hall, the defaults.'],
+   ['massive','Seven floors in a 64 m hall, for an A2 sheet.']].forEach(function(pr){
+    var b=document.createElement('button');
+    b.type='button'; b.textContent=RKTPRESETNAME[pr[0]];
+    b.title=pr[1]+' Writes Floors and Hall width and nothing else.';
+    b.addEventListener('click',function(){ var m=applyRktPreset(pr[0]); mountG(); mount(); if(m) msg(m); });
+    d.appendChild(b);
+  });
+  box.appendChild(d);
+};
 var HELP={
 'real.contour':'Contour interval of the ground, in metres. Every fifth contour is drawn as two strokes 0.3 mm apart, so it reads heavier with one pen.',
 'real.isoaz':'Which way the camera faces, in degrees from north (positive turns it left). The tilt runs along this heading: the near edge of the map stays a plan, the far edge stands up.',
@@ -50350,6 +50672,8 @@ var HELP={
 'rkt.rdone':'How far the rocket has been put together. The core is skinned from the bottom up to this share of its height and is bare ring frames, stringers and a tank above it; the boosters arrive one by one as it rises; at 100 % the fairing sits on top, otherwise it hangs on the crane hook above the stack.',
 'rkt.rarm':'How many robot arms stand on each ring platform, 0 to 3. Each holds a part of its floor’s trade against the rocket, a few centimetres off its surface, posed by the engine’s own reach; they stand beside the part, clear of the boosters, the access arm and each other.',
 'rkt.rpart':'How many of the transfer carts are out with a part on them: the share of the cart places on every floor’s track (the spur to the access arm first) and on the bridges between floors. 0 % leaves the tracks bare; the parts the robots hold and the stored rings and domes stay.',
+'rkt.rstage':'How full the ground floor is: the share of its places that are taken -- tanks in the farm under the floors, the four propellant silos, pallets on the racking, parts staged on their stands and skids along the far edge, and the forklifts. 0 % leaves the ground bare but for the racking, the pipes and the service tower; nothing moves when it changes.',
+'rkt.rppl':'How many people there are: the share of the places for a figure on the floors, the ring platforms, the bridges and the ground that have one. Each is 1.75 m tall. Nothing else moves when it changes.',
 'rkt.lod':'The smallest detail still drawn, as its size on the SHEET. A bar thinner than this (handrails, posts, stringers, the crane rope) is drawn as one of its own edges and hides nothing behind it.',
 'rkt.budg':'The most points the drawing may have, in thousands. Over it, whole classes of fine detail are left out in this order until it fits: track sleepers, handrail posts, stringers, rack items, people, the wall row. The structure, the rocket, the platforms and the access arms never go. The stat line names what was dropped. The page’s own ceiling caps it.',
 'rkt.occ':'How wide a white gap a nearer solid opens in a line passing behind it. The hall hides itself exactly -- every solid is cut to the 1 m lattice and drawn front to back -- so this is only the breathing room at each crossing.',
