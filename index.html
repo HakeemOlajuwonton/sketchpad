@@ -571,7 +571,7 @@ html.ui-corridors, html.ui-corridors body{margin:0; height:100%; overflow:hidden
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v420</a> &mdash; the new hatch on round parts asks whether a line is drawn before placing it, so barrels, posts and piers hatch faster; nothing you can see changes</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v421</a> &mdash; the new hatch on the cellar, shrine path, greenhouse, garage and nave: tone in three steps from the light, lines spaced on the paper, the barrels, posts, cedars, pots and round piers shaded round</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <section class="fold" id="fold_pick"><h2>Pick engine<span class="cnt"></span></h2>
@@ -3480,7 +3480,7 @@ var SPEC={
     ['pane','Pane width',0.5,1.2,0.05,0.75,[1,' m']],['shade','Shade screen',0,100,1,30,[100,'%']],['mist','Misting lines',0,1,1,1],
     ['fill','Occupancy',0,100,1,85,[100,'%']],['pot','Pot size',0.09,0.30,0.01,0.14,[100,' cm']],
     ['bask','Hanging baskets',0,100,1,30,[100,'%']],['troll','Trolleys',0,10,1,3,[1,'/100 m']],
-    ['lang','Script',0,3,1,2],['hatch','Tone hatch',0,100,1,30,[100,'%']],
+    ['lang','Script',0,3,1,2],['hatch','Tone hatch',0,100,1,30,[100,'%']],['hstyle','Hatch style',0,1,1,1],['hdir','Hatch lines',0,3,1,1],
     ['puddles','Puddles',0,40,1,25],['pudsz','Puddle size',5,100,1,40,[100,'%']],['ripple','Ripple',0,30,1,0,[10,' mm']],
     ['rvar','Ripple variety',0,100,1,60,[100,'%']],
     ['wmk','Water marks',0,100,1,40,[100,'%']],['wglint','Glint gap',0,15,1,5,[10,' mm']],
@@ -3505,7 +3505,7 @@ var SPEC={
     ['tiers','Tiers',1,3,1,3],['fill','Occupancy',0,100,1,90,[100,'%']],['racks','Steel racks',0,100,1,25,[100,'%']],
     ['chalk','Chalk marks',0,100,1,60,[100,'%']],['bins','Bottle bins',0,100,1,20,[100,'%']],
     ['lamp','Lamp spacing',1.5,8,0.5,3,[1,' m']],
-    ['lang','Script',0,3,1,2],['hatch','Tone hatch',0,100,1,45,[100,'%']],
+    ['lang','Script',0,3,1,2],['hatch','Tone hatch',0,100,1,45,[100,'%']],['hstyle','Hatch style',0,1,1,1],['hdir','Hatch lines',0,3,1,1],
     ['shine','Floor shine',0,40,1,0],['pudsz','Shine size',5,100,1,40,[100,'%']],['ripple','Ripple',0,30,1,0,[10,' mm']],
     ['hero','Front shine',0,100,1,0,[100,'%']],
     ['hstr','Front shine stretch',-100,100,1,0,[100,'%']],['hrag','Front shine edge',0,100,1,50,[100,'%']],['hturn','Front shine turn',-45,45,1,0,[1,'°']],['hshape','Front shine shape',0,99,1,0],
@@ -3530,7 +3530,7 @@ var SPEC={
     ['lant','Lanterns along runs',0,100,1,15,[100,'%']],
     ['moss','Moss',0,100,1,40,[100,'%']],['trees','Trees',0,6,0.1,1.2,[1,' /100 m²']],['fence','Bamboo fence',0,1,1,1],
     ['puddles','Puddles',0,40,1,15],['pudsz','Puddle size',5,100,1,40,[100,'%']],['ripple','Ripple',0,30,1,0,[10,' mm']],
-    ['rvar','Ripple variety',0,100,1,60,[100,'%']],['hatch','Tone hatch',0,100,1,25,[100,'%']],
+    ['rvar','Ripple variety',0,100,1,60,[100,'%']],['hatch','Tone hatch',0,100,1,25,[100,'%']],['hstyle','Hatch style',0,1,1,1],['hdir','Hatch lines',0,3,1,1],
     ['wmk','Water marks',0,100,1,40,[100,'%']],['wglint','Glint gap',0,15,1,5,[10,' mm']],
     ['cams','Camera along',0,90,1,1,[100,'%']],['camx','Camera side',-100,100,1,0,[100,'%']],
     ['camz','Camera height',0.2,10,0.05,1.6,[1,' m']],['look','Look ahead',5,300,1,20,[1,' m']],['turn','Turn',-90,90,1,0,[1,'°']],
@@ -3580,7 +3580,7 @@ var SPEC={
     ['park','Occupancy',0,100,1,70,[100,'%']],['moving','Moving cars',0,4,1,1,[1,'/100 m']],
     ['ev','EV chargers',0,100,1,15,[100,'%']],
     ['fans','Jet fans',0,10,1,4,[1,'/100 m']],['lamp','Light spacing',2,10,0.5,5,[1,' m']],
-    ['walk','Walkway',0,1,1,1],['hatch','Tone hatch',0,100,1,35,[100,'%']],
+    ['walk','Walkway',0,1,1,1],['hatch','Tone hatch',0,100,1,35,[100,'%']],['hstyle','Hatch style',0,1,1,1],['hdir','Hatch lines',0,3,1,1],
     ['puddles','Puddles',0,40,1,10],['pudsz','Puddle size',5,100,1,30,[100,'%']],['ripple','Ripple',0,30,1,0,[10,' mm']],
     ['rvar','Ripple variety',0,100,1,60,[100,'%']],
     ['wmk','Water marks',0,100,1,40,[100,'%']],['wglint','Glint gap',0,15,1,5,[10,' mm']],
@@ -3605,7 +3605,7 @@ var SPEC={
     ['width','Central aisle',1.6,4,0.1,2.4,[1,' m']],['bay','Bay length',5,9,0.1,6.5,[1,' m']],
     ['arcz','Capitals at',5,12,0.1,8,[1,' m']],['vz','Vault springing',16,30,0.5,22,[1,' m']],['vk','Vault rise',0.5,1.0,0.01,0.6],
     ['glass','Stained glass',0,100,1,60,[100,'%']],['pews','Pews per bay',3,8,1,6],['chand','Chandelier every',1,4,1,2],
-    ['lang','Script',0,3,1,1],['hatch','Tone hatch',0,100,1,30,[100,'%']],
+    ['lang','Script',0,3,1,1],['hatch','Tone hatch',0,100,1,30,[100,'%']],['hstyle','Hatch style',0,1,1,1],['hdir','Hatch lines',0,3,1,1],
     ['shine','Floor shine',0,40,1,15],['pudsz','Shine size',5,100,1,40,[100,'%']],['ripple','Ripple',0,30,1,0,[10,' mm']],
     ['hero','Front shine',0,100,1,0,[100,'%']],
     ['hstr','Front shine stretch',-100,100,1,0,[100,'%']],['hrag','Front shine edge',0,100,1,50,[100,'%']],['hturn','Front shine turn',-45,45,1,0,[1,'°']],['hshape','Front shine shape',0,99,1,0],
@@ -32580,7 +32580,7 @@ function greenhouseTheme(K){
           if(b2==='far'){ if(!run) run={o:co2, s0:cs2, s1:cs2}; else run.s1=cs2; continue; }
           if(run){ rows.push(run); run=null; }
           nearMid++;
-          if(b2==='near') add(smooth(tag(frustum(cW,rb,rt,zTop,zt,12),'pot',potCol,'plant'),2));
+          if(b2==='near') add(smooth(tag(K.asRound(frustum(cW,rb,rt,zTop,zt,12)),'pot',potCol,'plant'),2));
           else add(tag(bx(sd,cs2-0.45*POT,cs2+0.45*POT,co2-0.45*POT,co2+0.45*POT,zTop,zt),'pot',potCol,'plant'));
           /* the plant: its own stream, keyed on its place, so Occupancy moves
              which pots there are and never what grows in one */
@@ -32691,14 +32691,17 @@ function greenhouseTheme(K){
     if(L.ghFirst) fcs.push({s:L.s0, pos:'first'});
     fcs.forEach(function(f){
       var r=colRange(f);
-      inLot(tag(bx(sd,r[0],r[1],fe+OCOL0,fe+OCOL1,0,GUTZ-GUTH),'column',COL_GREY,'struct'),L);
-      inLot(tag(bx(sd,r[0],r[1],BK-0.17,BK-0.09,0,GUTZ-GUTH),'column',COL_GREY,'struct'),L);
+      /* row 145 B2: the columns' four sides carry the tone at Hatch style 1 */
+      var colH=function(Cm){ if(K.hstyle) K.surfHatch(Cm,[2,3,4,5],{hatch:HATCH, near:dn, far:df, col:'#4a4a4a', tally:STRTTALLY.hfaces}); return Cm; };
+      inLot(colH(tag(bx(sd,r[0],r[1],fe+OCOL0,fe+OCOL1,0,GUTZ-GUTH),'column',COL_GREY,'struct')),L);
+      inLot(colH(tag(bx(sd,r[0],r[1],BK-0.17,BK-0.09,0,GUTZ-GUTH),'column',COL_GREY,'struct')),L);
       TAL.columns.push({side:sd, idx:L.idx, s:f.s, pos:f.pos, path:[fe+OCOL0,fe+OCOL1], wall:[BK-0.17,BK-0.09], z1:GUTZ-GUTH});
     });
     /* the sill between the wall columns, the tone hatch on its path face */
     var w0=L.s0+(L.ghFirst?COLW:0), w1=L.s1-COLW;
     var Sl=tag(bx(sd,w0,w1,BK-0.23,BK-0.03,0,0.6),'sill',COL_GREY,'struct');
-    if(HATCH>0){
+    if(K.hstyle) K.surfHatch(Sl,[2],{hatch:HATCH, near:dn, far:df, col:'#4a4a4a', tally:STRTTALLY.hfaces});
+    else if(HATCH>0){
       var Pm=PS(sd,(w0+w1)/2,BK-0.23,0.3), gp=paperGap(Pm,sub3(PS(sd,(w0+w1)/2+1,BK-0.23,0.3),PS(sd,(w0+w1)/2,BK-0.23,0.3)),[0,0,1]);
       var sp=Math.max(0.02+0.08*(1-HATCH), gp>0?MINSP/gp:1e9);
       if(gp>0) for(var zh=sp/2; zh<0.6-0.01; zh+=sp) ln(Sl,PS(sd,w0,BK-0.23,zh),PS(sd,w1,BK-0.23,zh),'hatch','#4a4a4a',2);
@@ -32887,7 +32890,7 @@ function greenhouseTheme(K){
           var ps=sA+0.04+POT*1.25*(pi+0.5), po=oA+0.02+POT*1.25*(pj+0.5), zt=zs+0.9*POT;
           if(zt>zn-0.02) continue;
           var C4=X(ps,po,zs);
-          parts.push(band==='near'?smooth(tag(frustum(C4,0.75*POT/2,POT/2,zs,zt,12),'pot',pc,'cart'),2):tag(b1(ps-0.45*POT,ps+0.45*POT,po-0.45*POT,po+0.45*POT,zs,zt),'pot',pc,'cart'));
+          parts.push(band==='near'?smooth(tag(K.asRound(frustum(C4,0.75*POT/2,POT/2,zs,zt,12)),'pot',pc,'cart'),2):tag(b1(ps-0.45*POT,ps+0.45*POT,po-0.45*POT,po+0.45*POT,zs,zt),'pot',pc,'cart'));
           if(band==='near'){
             var RP=sub(1000+j,i*64+pi*8+pj,SALT_TROLL), segs=plantLines(crop,RP,[ps,po],zt,'mid',COL_GRN,FLOWC[j%FLOWC.length]), kept=[], bb=[1e18,1e18,1e18,-1e18,-1e18,-1e18];
             var RECT=[ps-POT*0.6,po-POT*0.6,ps+POT*0.6,po+POT*0.6];
@@ -33354,6 +33357,9 @@ function cellarTheme(K){
       r.push(add3(add3(add3(c,ax,t),up,BR[i]*Math.cos(a)),e1,BR[i]*Math.sin(a))); } return r; });
     var P=loft(RG);
     P.RG=RG; P.c=c; P.ax=ax; P.e1=e1; P.BT=BT; P.NB=NB; P.DA=DA;
+    /* row 145 B2: the round hatch's record. Vertex k at (k + 0.5) DA from the top (e1 = up, e2 = the barrel's e1), so
+       facet k runs (k + 0.5)..(k + 1.5) DA: ph 0.5. Five rings, so the profile is the stations BT at radii BR */
+    K.asRound(P,{o:c, ax:ax, e1:up, e2:e1, prof:BT.map(function(t,i){ return [t,BR[i]]; }), n:NB, ph:0.5, face:P.sf});
     return P;
   }
   /* a line on the barrel's faceted surface, through (t, angle from the top)
@@ -33587,7 +33593,8 @@ function cellarTheme(K){
     var W=tag(bx(sd,L.s0,L.s1,BK-WALLT,BK,0,SPRING),'wall',COL_SEP,'struct',{gapless:true});
     var Xw=function(s,z){ return PS(sd,s,BK-WALLT,z); }, Pm=Xw((L.s0+L.s1)/2,SPRING/2);
     brickLines(W,2,Xw,L.s0,L.s1,0,SPRING,dn,Pm,sub3(Xw(L.s0+1,0),Xw(L.s0,0)),[0,0,1]);
-    if(HATCH>0 && dist3(Pm)<df){
+    if(K.hstyle) K.surfHatch(W,[2],{hatch:HATCH, near:dn, far:df, col:COL_DG, tally:STRTTALLY.hfaces});
+    else if(HATCH>0 && dist3(Pm)<df){
       var gp=paperGap(Pm,sub3(Xw(L.s0+1,1),Xw(L.s0,0)),sub3(Xw(L.s0+1,-1),Xw(L.s0,0)));
       var sp=Math.max(0.02+0.08*(1-HATCH), gp>0?MINSP/gp*Math.SQRT2:1e9), Wl=L.s1-L.s0, Hl=SPRING, uu;
       if(gp>0) for(uu=sp; uu<Wl+Hl-1e-6; uu+=sp){
@@ -33602,7 +33609,9 @@ function cellarTheme(K){
     if(L.cFirst) fcs.push({s:L.s0, pos:'first'});
     fcs.forEach(function(f){
       var r=pierRange(f);
-      inLot(tag(bx(sd,r[0],r[1],BK-WALLT-WALLG-PIERP,BK-WALLT-WALLG,0,SPRING),'pier',COL_SEP,'struct'),L);
+      var Pr=tag(bx(sd,r[0],r[1],BK-WALLT-WALLG-PIERP,BK-WALLT-WALLG,0,SPRING),'pier',COL_SEP,'struct');
+      if(K.hstyle) K.surfHatch(Pr,[2,3,5],{hatch:HATCH, near:dn, far:df, col:COL_DG, tally:STRTTALLY.hfaces});
+      inLot(Pr,L);
       TAL.piers.push({side:sd, idx:L.idx, s:f.s, pos:f.pos, s0:r[0], s1:r[1], o0:BK-WALLT-WALLG-PIERP, o1:BK-WALLT-WALLG, z1:SPRING});
     });
     /* THE BAY: the stack's aisle head 0.1 m behind the lot front, and never
@@ -33653,6 +33662,12 @@ function cellarTheme(K){
             }
           }
         }
+        /* row 145 B2: the vault brick hatched as a wall, on its intrados (the face turned to the vault's axis); the
+           kit leaves the faces flatter than |n.z| 0.3, so only the haunches carry it */
+        if(K.hstyle){ var cx=SP((sa+sb)/2,0,ZC), fI=[];
+          G.faces.forEach(function(f,fi){ if(fi<2) return; var fc=K.faceC(f), v=sub3(cx,fc), lv=Math.hypot(v[0],v[1],v[2]);
+            if(lv>1e-9 && (f.n[0]*v[0]+f.n[1]*v[1]+f.n[2]*v[2])/lv>0.9) fI.push(fi); });
+          K.surfHatch(G,fI,{hatch:HATCH, near:dn, far:df, col:COL_DG, tally:STRTTALLY.hfaces}); }
         put(G,TAL.plates,{k:k, sa:sa, sb:sb});
       }
     }
@@ -33836,7 +33851,8 @@ function cellarTheme(K){
     var TW=sub3(X(WS1,0,0),X(WS0,0,0)), XD=function(o,z){ return add3(X(WS0,o,z),TW,DF); };
     var Pd=XD(0,1.1), gd=paperGap(Pd,sub3(XD(1,1),XD(0,0)),sub3(XD(1,-1),XD(0,0)));
     var spd=Math.max(0.02+0.08*0.2, gd>0?MINSP/gd*Math.SQRT2:1e9), u;
-    if(gd>0) for(u=-DW-2.2+spd; u<DW+1e-9; u+=spd){
+    /* row 145 B2: at Hatch style 1, Tone hatch 0 draws no hatch at all (spec §1.1), this fill included */
+    if(gd>0 && (!K.hstyle || HATCH>0)) for(u=-DW-2.2+spd; u<DW+1e-9; u+=spd){
       /* the line o - z = u, inside the doorway */
       var pts=[], zz;
       for(zz=0; zz<=doorZ(Math.max(-DW,Math.min(DW,u+zz)))+1e-9 && zz<2.3; zz+=0.02){ var oo=u+zz; if(oo>=-DW && oo<=DW && zz<=doorZ(oo)) pts.push([oo,zz]); }
@@ -34126,8 +34142,11 @@ function shrineTheme(K){
       var nG=band==='near'?12:8, F=PS(sd,s,postO(SLVH),SLVH), Tp=PS(sd,s,postO(zS0),zS0);
       var Pst=smooth(tag(tube(F,Tp,RPOST,nG,s),'post',COL_ORG,'gate'),2);
       var Sl=smooth(tag(tube(PS(sd,s,OPOST,0),PS(sd,s,postO(SLVH),SLVH),RSLV,nG,s),'sleeve',COL_K,'gate'),2);
+      /* row 145 B2: at Hatch style 1 the post and its sleeve are hatched round by the kit; the inscribed face (the
+         last) is left clear for the inscription, as below */
+      if(K.hstyle){ K.asRound(Pst); if(g.insc) Pst.round.skip=[nG-1]; K.asRound(Sl); }
       /* the tone hatch on the post's shaded faces */
-      if(HATCH>0 && band==='near'){
+      if(HATCH>0 && band==='near' && !K.hstyle){
         /* THE GATES ARE BACKLIT: light from ahead, a little left, above. Looking up
            the tunnel the camera sees the posts' backs, so those are the faces in
            shade; lit from the side, the shaded faces were the ones seen edge-on
@@ -34339,6 +34358,11 @@ function shrineTheme(K){
       placed.forEach(function(q){
         var d=dist3([q.c[0],q.c[1],1.5]), nT=d<dn?12:8, P=tube([q.c[0],q.c[1],0],[q.c[0],q.c[1],200],q.r,nT,q.s);
         tag(P,'trunk',COL_BRN,'forest'); smooth(P,2);
+        /* row 145 B2: hatched round, its profile cut 2 m above where its axis leaves the sheet's top (bisected on the
+           projection), so the pitch and the detail band are read on the trunk that is seen, not 100 m up */
+        if(K.hstyle){ var zlo=0, zhi=200, pj=K.project([q.c[0],q.c[1],200]);
+          if(!pj || pj[1]<K.PAD){ for(var it=0;it<30;it++){ var zm=(zlo+zhi)/2, pm=K.project([q.c[0],q.c[1],zm]); if(!pm || pm[1]<K.PAD) zhi=zm; else zlo=zm; } }
+          var Rt=K.asRound(P).round, zc=Math.min(200,zhi+2); Rt.prof=[[0,Rt.prof[0][1]],[zc,Rt.prof[1][1]]]; }
         if(d<dn){ var nb=6+Math.floor(R()*5);
           for(var b=0;b<nb;b++){ var a2=-Math.PI/2+Math.PI*(b+0.5)/nb, dir=nrm(sub3(CE,q.c)), ang=Math.atan2(dir[1],dir[0])+a2*0.9;
             var bx0=q.c[0]+q.r*1.002*Math.cos(ang), by0=q.c[1]+q.r*1.002*Math.sin(ang);
@@ -35501,7 +35525,9 @@ function garageTheme(K){
     function Wf(s,z){ return PS(sd,s,WALL0,z); }
     if(dm<df){
       ln(Wl,Wf(sA,0.85),Wf(sB,0.85),'band',COL_DG,2); ln(Wl,Wf(sA,1.0),Wf(sB,1.0),'band',COL_DG,2);
-      if(HATCH>0){
+      /* row 145 B2: at Hatch style 1 the kit hatches the whole wall, clear of the painted band and the bay's number */
+      if(K.hstyle) K.reserve(Wl,2,[Wf(sA,0.85),Wf(sB,0.85),Wf(sB,1.0),Wf(sA,1.0)]);
+      if(!K.hstyle && HATCH>0){
         var gz=paperGap(Wf((sA+sB)/2,1.6),nrm(sub3(Wf(sB,1.6),Wf(sA,1.6))),[0,0,1]);
         if(gz>0){ var sp=Math.max(0.04,MINSP/(gz*HATCH));
           for(var z=1.0+sp; z<SOFF-0.02; z+=sp) ln(Wl,Wf(sA,z),Wf(sB,z),'hatch',COL_GREY,2); }
@@ -35509,7 +35535,13 @@ function garageTheme(K){
       if(dm<dn && 0.22*mm>=1.2){
         var num=String(L.idx+1), sm=(sA+sB)/2;
         glyphs(Wl,function(u,v){ return Wf(sm+(sd>0?1:-1)*u,v); },num,0,1.35,0.22,'baynum',COL_K,2);
+        if(K.hstyle){ var A0=Wf(sA,0), tw=nrm(sub3(Wf(sB,0),A0)), u0=1e9, u1=-1e9, z0=1e9, z1=-1e9;
+          Wl.lines.forEach(function(Ln){ if(Ln.kind!=='baynum') return; [Ln.a,Ln.b].forEach(function(q){
+            var u=(q[0]-A0[0])*tw[0]+(q[1]-A0[1])*tw[1]; if(u<u0) u0=u; if(u>u1) u1=u; if(q[2]<z0) z0=q[2]; if(q[2]>z1) z1=q[2]; }); });
+          var Xu=function(u,z){ return [A0[0]+tw[0]*u, A0[1]+tw[1]*u, z]; };
+          if(u1>=u0) K.reserve(Wl,2,[Xu(u0,z0),Xu(u1,z0),Xu(u1,z1),Xu(u0,z1)]); }
       }
+      if(K.hstyle) K.surfHatch(Wl,[2],{hatch:HATCH, near:dn, far:df, col:COL_GREY, tally:STRTTALLY.hfaces});
     }
     inLot(Wl,L);
     /* THE COLUMN in the bay's front corner, toward the higher s */
@@ -36332,9 +36364,9 @@ function naveTheme(K){
     function keep(P){ inLot(P,L); parts.push(rec(P)); return P; }
     var sq=function(h,z){ return [[pc-h,PO-h],[pc+h,PO-h],[pc+h,PO+h],[pc-h,PO+h]].map(function(q){ return PS(sd,q[0],q[1],z); }); };
     keep(tag(loftN([sq(PLH,0),sq(PLH,0.3),sq(PLH-0.06,0.4)]),'plinth',C_STONE,'struct'));
-    keep(smooth(tag(prismSO(sd,ngon(pc,PO,CORE,16,TAU/32),0.4,ARCZ),'core',C_STONE,'struct'),2));
+    keep(smooth(tag(K.asRound(prismSO(sd,ngon(pc,PO,CORE,16,TAU/32),0.4,ARCZ)),'core',C_STONE,'struct'),2));
     [0,1,2,3].forEach(function(q){ var t=q*TAU/4;
-      keep(smooth(tag(prismSO(sd,ngon(pc+SHC*Math.cos(t),PO+SHC*Math.sin(t),SHR,12,TAU/24),0.4,ARCZ),'shaft',C_STONE,'struct'),2)); });
+      keep(smooth(tag(K.asRound(prismSO(sd,ngon(pc+SHC*Math.cos(t),PO+SHC*Math.sin(t),SHR,12,TAU/24),0.4,ARCZ)),'shaft',C_STONE,'struct'),2)); });
     var cr0=ngon(pc,PO,CAP0,16,TAU/32).map(function(q){ return PS(sd,q[0],q[1],ARCZ); }), cr1=ngon(pc,PO,CAP1,16,TAU/32).map(function(q){ return PS(sd,q[0],q[1],SPR); });
     var Cap=smooth(tag(loftN([cr0,cr1]),'capital',C_STONE,'struct'),2);
     var leaves=4+Math.floor(R()*5);
@@ -36344,7 +36376,7 @@ function naveTheme(K){
     }
     keep(Cap);
     /* the vaulting shaft, the nave-side shaft carried on from the capital */
-    var Vs=keep(smooth(tag(prismSO(sd,ngon(pc,VA,SHR,12,TAU/24),SPR,VZE),'vshaft',C_STONE,'struct'),2));
+    var Vs=keep(smooth(tag(K.asRound(prismSO(sd,ngon(pc,VA,SHR,12,TAU/24),SPR,VZE)),'vshaft',C_STONE,'struct'),2));
     TAL.piers.push({side:sd, idx:L.idx, s:pc, respond:!!info.respond, west:!!info.west, lot:{s0:L.s0, s1:L.s1, poly:L.poly},
                     arcz:ARCZ, spr:SPR, vtop:VZE, leaves:band==='near'?leaves:0, parts:parts});
   }
@@ -36352,7 +36384,9 @@ function naveTheme(K){
      voussoirs of each arch, a slice of wall over each, and a column of wall
      over each pier; all hatched on the nave face */
   var spP=null;
+  var NDN=0;                            /* row 145 B2: the pass's Solid detail to, for hatchOn at Hatch style 1 */
   function hatchOn(P,f,Q,oF,sd,mid,df){
+    if(K.hstyle){ K.surfHatch(P,[f],{hatch:HATCH, near:NDN, far:df, col:C_DG, tally:STRTTALLY.hfaces}); return; }
     if(!(HATCH>0) || dist3(mid)>=df) return;
     var dl=nrm(sub3(PS(sd,1,oF,1),PS(sd,0,oF,0))), dn=nrm(sub3(PS(sd,1,oF,-1),PS(sd,0,oF,0)));
     var pt=hatchPitch(mid,dl,dn); if(!(pt>0)) return;
@@ -36387,6 +36421,7 @@ function naveTheme(K){
   }
   var WPL=[];                           /* the upper walls' plates, for their lines */
   function dress(L,dn,df){
+    NDN=dn;
     if(L===lots[0]){ TAL.lots=[]; TAL.piers=[]; TAL.arches=[]; TAL.spandrels=[]; TAL.walls=[]; TAL.pews=[]; TAL.books=0; TAL.miss=0; WPL=[]; }
     var sd=L.side, Ls=bySide[sd], i=Ls.indexOf(L), Pl=PIERS[sd], mid=PS(sd,(L.s0+L.s1)/2,PO,6), band=dist3(mid)<dn?'near':dist3(mid)<df?'mid':'far';
     TAL.lots.push({side:sd, idx:L.idx, s0:L.s0, s1:L.s1, fe:L.fe, back:L.back, poly:L.poly});
@@ -36775,7 +36810,7 @@ function naveTheme(K){
     /* the choir screen: nine slender shafts and a beam with eight pointed openings */
     var sc0=E0+1.10, sc1=E0+1.26, nsh=9, wsp=2*(IW-0.3)/(nsh-1);
     for(k=0;k<nsh;k++){ var ox=-(IW-0.3)+wsp*k;
-      keep(smooth(tag(prismSO(1,ngon((sc0+sc1)/2,ox,0.05,8,TAU/16),FZ,2.6),'screenshaft',C_STONE,'east'),2)); }
+      keep(smooth(tag(K.asRound(prismSO(1,ngon((sc0+sc1)/2,ox,0.05,8,TAU/16),FZ,2.6)),'screenshaft',C_STONE,'east'),2)); }
     var Bm=tag(bx(1,sc0,sc1,-IW,IW,2.6,3.4),'screen',C_STONE,'east');
     for(k=0;k+1<nsh;k++){
       /* a pointed opening between two shafts: two arcs from the springing at
@@ -36791,7 +36826,7 @@ function naveTheme(K){
     var Al=tag(bx(1,E0+2.0,E0+2.9,-1.2,1.2,FZ,FZ+1.0),'altar',C_STONE,'east');
     ln(Al,PX(E0+2.0,-1.2,FZ+0.82),PX(E0+2.0,1.2,FZ+0.82),'cloth',C_DRED,5);
     keep(Al); rec2.altar={s0:E0+2.0, s1:E0+2.9, z1:FZ+1.0};
-    [-0.9,0.9].forEach(function(o){ keep(smooth(tag(prismSO(1,ngon(E0+2.45,o,0.03,8,0),FZ+1.0,FZ+1.5),'candlestick',C_OCH,'east'),2)); });
+    [-0.9,0.9].forEach(function(o){ keep(smooth(tag(K.asRound(prismSO(1,ngon(E0+2.45,o,0.03,8,0),FZ+1.0,FZ+1.5)),'candlestick',C_OCH,'east'),2)); });
     /* THE END WALL, hiding, hatched outside the rose window */
     var EWall=tag(bx(1,EW0,EW1,-BK,BK,0,CROWN+0.2),'endwall',C_STONE,'struct');
     var RO=4.8, RC2=[0,VZE], dw=dist3(PX(EW0,0,VZE));
@@ -36821,8 +36856,16 @@ function naveTheme(K){
         }
         TAL.panels.push(pr); rec2.panels++;
       }
-      /* the tone hatch on the wall outside the window */
-      if(HATCH>0){
+      /* the tone hatch on the wall outside the window. Row 145 B2: at Hatch style 1 the kit hatches the face, clear of
+         the rose: its outer circle (RO, the old cut) as 16 horizontal strips, each as wide as the circle anywhere in it,
+         because the kit cuts a wall's hatch by boxes */
+      if(K.hstyle){
+        for(var js=0;js<16;js++){ var za=VZE-RO+2*RO*js/16, zb=VZE-RO+2*RO*(js+1)/16, zw=(za<=VZE && zb>=VZE)?VZE:(zb<VZE?zb:za),
+          hw=Math.sqrt(Math.max(0,RO*RO-(zw-VZE)*(zw-VZE)));
+          K.reserve(EWall,5,[Ew(-hw,za),Ew(hw,za),Ew(hw,zb),Ew(-hw,zb)]); }
+        K.surfHatch(EWall,[5],{hatch:HATCH, near:dn, far:df, col:C_DG, tally:STRTTALLY.hfaces});
+      }
+      else if(HATCH>0){
         var dl=nrm(sub3(Ew(1,1),Ew(0,0))), dn2=nrm(sub3(Ew(1,-1),Ew(0,0))), pt2=hatchPitch(Ew(0,VZE),dl,dn2);
         if(pt2>0) hatch2([[-BK,0],[BK,0],[BK,CROWN+0.2],[-BK,CROWN+0.2]],Math.PI/4,pt2).forEach(function(sg){
           /* split at the rose's outer circle */
@@ -43742,6 +43785,7 @@ function corridorDraw(p,plans,THM,camera){
      - Each line is cut out of the face's reserves (A2), grown by 0.6 mm on the sheet (§1.5).
      - Solid detail band: every band; outline band: the darkest only; beyond Outline detail to: none (§1.6).
      - Round parts (asRound) are hatched by roundHatch, per render pass, and their side faces get no flat hatch.
+       (Row 145 B2) A record's `skip` lists facets left clear: the shrine's inscribed post face.
      - The budget (§1.6): before the reflections go, the lightest band, then the middle, then the darkest
        (HDROP); HN counts each band's lines in the pass. */
   var HSTY=Math.round(isFinite(p.hstyle)?+p.hstyle:0)===1, HDIR=Math.max(0,Math.min(3,Math.round(isFinite(p.hdir)?+p.hdir:1)));
@@ -43954,6 +43998,7 @@ function corridorDraw(p,plans,THM,camera){
       var nA=Math.floor(TAU*rm/(Bmm/gA));
       if(nA>=4) for(var j=0;j<nA;j++){
         var a=TAU*j/nA, k=facet(a);
+        if(R.skip && R.skip.indexOf(k)>=0) continue;
         for(var i=0;i<pr.length-1;i++){
           var tA=pr[i][0], tB=pr[i+1][0], ns=Math.max(1,Math.ceil((tB-tA)/0.01)), run=null, rb=3, bS=bandOf(tauAt(tA,a,i),j,false,false);
           if(!bS) continue;
@@ -43971,6 +44016,7 @@ function corridorDraw(p,plans,THM,camera){
       if(nT>=2) for(var j2=0;j2<nT;j2++){
         var tr=t0+(t1-t0)*(j2+0.5)/nT, i2=seg(tr), rr=rad(tr,i2), da=Math.min(0.02,0.01/Math.max(rr,1e-6));
         for(var k2=0;k2<n;k2++){
+          if(R.skip && R.skip.indexOf(k2)>=0) continue;
           var a0=TAU*(k2+ph)/n, a1=TAU*(k2+ph+1)/n, ns2=Math.max(1,Math.ceil((a1-a0)/da)), run2=null, rb2=3;
           for(var q2=0;q2<ns2;q2++){
             var aa=a0+(a1-a0)*q2/ns2, ab=a0+(a1-a0)*(q2+1)/ns2, am=(aa+ab)/2,
@@ -49138,6 +49184,8 @@ var HELP={
 'grnh.troll':'Danish trolleys on the path per 100 m: a base on four castors, four posts and shelves of potted plants, never within 3 m of the camera.',
 'grnh.lang':'The script on the bench signs. 0 pseudo-kanji, 1 pseudo-hangul, 2 Latin words, 3 a mix. Signs are only lettered where the letters would be big enough on the sheet.',
 'grnh.hatch':'How dense the shading is on the low wall under the side glass. 0 is no shading.',
+'grnh.hstyle':'0 draws the shading as it always has. 1, the default, is the new hatch: tone grows in three steps as a face turns from the light, lines are spaced on the paper, coplanar walls line up, and the pots are shaded round. A saved setting without this knob draws as 0.',
+'grnh.hdir':'Hatch style 1 only. 0 diagonal, 45 degrees in each face, as before. 1 vertical lines, spaced along the wall (round parts: along their axis). 2 courses, horizontal lines that run to the wall\u2019s vanishing point (round parts: rings). 3 vertical everywhere shaded, plus courses in the darkest band.',
 'grnh.puddles':'How many puddles lie on the wet path. Each shows the benches and the roof reflected in it, upside down.',
 'grnh.pudsz':'How big the puddles are.',
 'grnh.ripple':'How far the reflection wobbles sideways, in millimetres on the sheet. 0 is still water.',
@@ -49172,6 +49220,8 @@ var HELP={
 'celr.lamp':'How far apart the bare bulbs hang along the crown, in metres. Each hangs from the cable that runs along the vault under the arches.',
 'celr.lang':'The script of the chalk marks. 0 pseudo-kanji, 1 pseudo-hangul, 2 Latin words, 3 a mix.',
 'celr.hatch':'How dense the shading is on the side walls behind the stacks. 0 is no shading.',
+'celr.hstyle':'0 draws the shading as it always has. 1, the default, is the new hatch: tone grows in three steps as a face turns from the light, lines are spaced on the paper, coplanar walls line up, and the barrels are shaded round. A saved setting without this knob draws as 0.',
+'celr.hdir':'Hatch style 1 only. 0 diagonal, 45 degrees in each face, as before. 1 vertical lines, spaced along the wall (round parts: along their axis). 2 courses, horizontal lines that run to the wall\u2019s vanishing point (round parts: rings). 3 vertical everywhere shaded, plus courses in the darkest band.',
 'celr.shine':'How many damp patches the stone floor has. Each shows the barrels and the vault reflected in it, upside down, with no edge drawn. A cellar floor is matte, so 0.',
 'celr.pudsz':'How big the damp patches are.',
 'celr.ripple':'How far the reflection wobbles sideways, in millimetres on the sheet. A damp floor is still, so 0.',
@@ -49214,6 +49264,8 @@ var HELP={
 'tori.wmk':'How many little wave marks lie on the water, in the puddles\u2019 ink. They sit across your view, so they lie flat on the path, and far puddles get fewer, never a smudge. 0 is a plain mirror.',
 'tori.wglint':'How wide a gap each wave mark cuts in the reflection under it, in millimetres above and below the mark. It is what makes a mark read as a glint over a dark reflection. 0 draws the marks over the reflection with no gap.',
 'tori.hatch':'How dense the shading is on the posts\u2019 shaded faces. 0 is no shading.',
+'tori.hstyle':'0 draws the shading as it always has. 1, the default, is the new hatch: tone grows in three steps as a face turns from the light, lines are spaced on the paper, and the posts and cedars are shaded round, the inscribed face left clear. A saved setting without this knob draws as 0.',
+'tori.hdir':'Hatch style 1 only. 0 diagonal, 45 degrees in each face, as before. 1 vertical lines, spaced along the wall (round parts: along their axis). 2 courses, horizontal lines that run to the wall\u2019s vanishing point (round parts: rings). 3 vertical everywhere shaded, plus courses in the darkest band.',
 'tori.cams':'Where the camera stands, as a share of the path length. Near 0 you look up the whole tunnel.',
 'tori.camx':'The camera across the path, as a share of half its width: 0 is the middle.',
 'tori.camz':'The camera height in metres. 1.6 is eye height; higher looks down on the tops of the gates.',
@@ -49277,6 +49329,8 @@ var HELP={
 'garg.lamp':'How far apart the light fittings are over each lane, in metres. A fitting that would meet a beam moves along.',
 'garg.walk':'1 paints a hatched pedestrian walkway along the down lane’s edge, as far as the crossing before the ramp.',
 'garg.hatch':'How dense the shading is on the walls above the painted band. 0 is no shading.',
+'garg.hstyle':'0 draws the shading as it always has. 1, the default, is the new hatch: tone grows in three steps as a face turns from the light, lines are spaced on the paper, coplanar walls line up, the painted band and bay numbers stay clear, and wheels are shaded round. A saved setting without this knob draws as 0.',
+'garg.hdir':'Hatch style 1 only. 0 diagonal, 45 degrees in each face, as before. 1 vertical lines, spaced along the wall (round parts: along their axis). 2 courses, horizontal lines that run to the wall\u2019s vanishing point (round parts: rings). 3 vertical everywhere shaded, plus courses in the darkest band.',
 'garg.puddles':'How many puddles lie on the drive aisle, the water off the tyres. Each shows the cars, the beams and the deck reflected in it, upside down.',
 'garg.pudsz':'How big the puddles are.',
 'garg.ripple':'How far the reflection wobbles sideways, in millimetres on the sheet. 0 is still water.',
@@ -49309,6 +49363,8 @@ var HELP={
 'nave.chand':'A chandelier hangs over the aisle in every this-many bays, on a long chain from the vault: a ring of candles 5 m up, over one half of the aisle so it never crosses the middle.',
 'nave.lang':'The script on the ledger stones in the floor. 0 pseudo-kanji, 1 pseudo-hangul, 2 Latin words, 3 a mix. Lettered only near the camera.',
 'nave.hatch':'How dense the shading is on the stone walls over the arches and on the end wall around the rose window. 0 is no shading.',
+'nave.hstyle':'0 draws the shading as it always has. 1, the default, is the new hatch: tone grows in three steps as a face turns from the light, lines are spaced on the paper, coplanar walls line up, the rose window stays clear, and the round piers and shafts are shaded round. A saved setting without this knob draws as 0.',
+'nave.hdir':'Hatch style 1 only. 0 diagonal, 45 degrees in each face, as before. 1 vertical lines, spaced along the wall (round parts: along their axis). 2 courses, horizontal lines that run to the wall\u2019s vanishing point (round parts: rings). 3 vertical everywhere shaded, plus courses in the darkest band.',
 'nave.shine':'How many polished patches the stone floor has. Each shows the piers, the pews and the vault reflected in it, upside down, with no edge drawn.',
 'nave.pudsz':'How big the polished patches are.',
 'nave.ripple':'How far the reflection wobbles sideways, in millimetres on the sheet. A polished floor is still, so 0.',
