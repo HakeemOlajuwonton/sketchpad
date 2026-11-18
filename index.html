@@ -571,7 +571,7 @@ html.ui-corridors, html.ui-corridors body{margin:0; height:100%; overflow:hidden
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v419</a> &mdash; Corridors: Pop out puts the knob panel in a window of its own, for a second screen -- it changes the drawing here, follows every change made here, and docks again when it closes</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v420</a> &mdash; the new hatch on round parts asks whether a line is drawn before placing it, so barrels, posts and piers hatch faster; nothing you can see changes</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <section class="fold" id="fold_pick"><h2>Pick engine<span class="cnt"></span></h2>
@@ -43940,9 +43940,13 @@ function corridorDraw(p,plans,THM,camera){
       if(k!==nCk || i!==nCi){ nCk=k; nCi=i; var ec=eA0(th), s=slope(i); nCv=nrmz([ec[0]-s*cPn*ax[0],ec[1]-s*cPn*ax[1],ec[2]-s*cPn*ax[2]]); }
       var Nf=nCv;
       return [R.o[0]+ax[0]*t+e[0]*ro+Nf[0]*OFF, R.o[1]+ax[1]*t+e[1]*ro+Nf[1]*OFF, R.o[2]+ax[2]*t+e[2]*ro+Nf[2]*OFF]; }
-    function keepBand(tau,j,stepAll,need3,M){ var b=hBand(tau,T); if(!b || b<=HDROP) return 0;
-      if(need3 && b<3) return 0; var st=stepAll?1:(b===1?3:b===2?2:1); if(((j%st)+st)%st) return 0;
-      var dm=dist3(M); if(!(dm<df) || (!(dm<dn) && b<3)) return 0; return b; }
+    /* whether a step is kept is decided in two halves: bandOf, from the tone and the line's index only, and nearOf,
+       from the step's distance. tauAt does not read t, so along one generator's profile segment bandOf is one answer
+       for every step, and a segment it refuses is skipped without placing a point (row 145 B2's cost: the point was
+       placed before the tone was asked, on every 1 cm step of every generator) */
+    function bandOf(tau,j,stepAll,need3){ var b=hBand(tau,T); if(!b || b<=HDROP) return 0;
+      if(need3 && b<3) return 0; var st=stepAll?1:(b===1?3:b===2?2:1); if(((j%st)+st)%st) return 0; return b; }
+    function nearOf(b,M){ var dm=dist3(M); if(!(dm<df) || (!(dm<dn) && b<3)) return 0; return b; }
     function emit(A,B,fi,b){ var AB=hzClip(A,B); if(AB) P.lines.push({a:AB[0], b:AB[1], f0:fi, f1:fi, col:P.col, kind:'hatch', rh:1, hb:b}); }
     var gA=paperGap(c,ax,lat), gR=paperGap(c,lat,ax);
     /* along: generators */
@@ -43951,9 +43955,10 @@ function corridorDraw(p,plans,THM,camera){
       if(nA>=4) for(var j=0;j<nA;j++){
         var a=TAU*j/nA, k=facet(a);
         for(var i=0;i<pr.length-1;i++){
-          var tA=pr[i][0], tB=pr[i+1][0], ns=Math.max(1,Math.ceil((tB-tA)/0.01)), run=null, rb=3;
+          var tA=pr[i][0], tB=pr[i+1][0], ns=Math.max(1,Math.ceil((tB-tA)/0.01)), run=null, rb=3, bS=bandOf(tauAt(tA,a,i),j,false,false);
+          if(!bS) continue;
           for(var q=0;q<ns;q++){
-            var ta=tA+(tB-tA)*q/ns, tb=tA+(tB-tA)*(q+1)/ns, tm=(ta+tb)/2, b=keepBand(tauAt(tm,a,i),j,false,false,pt(tm,a,i,k));
+            var ta=tA+(tB-tA)*q/ns, tb=tA+(tB-tA)*(q+1)/ns, tm=(ta+tb)/2, b=nearOf(bS,pt(tm,a,i,k));
             if(b){ if(!run) run=ta; rb=Math.min(rb,b); }
             if((!b || q===ns-1) && run!==null){ emit(pt(run,a,i,k),pt(b?tb:ta,a,i,k),R.face(i,k),rb); run=null; rb=3; }
           }
@@ -43969,7 +43974,7 @@ function corridorDraw(p,plans,THM,camera){
           var a0=TAU*(k2+ph)/n, a1=TAU*(k2+ph+1)/n, ns2=Math.max(1,Math.ceil((a1-a0)/da)), run2=null, rb2=3;
           for(var q2=0;q2<ns2;q2++){
             var aa=a0+(a1-a0)*q2/ns2, ab=a0+(a1-a0)*(q2+1)/ns2, am=(aa+ab)/2,
-                b2=keepBand(tauAt(tr,am,i2),j2,HDIR===3,HDIR===3,pt(tr,am,i2,k2));
+                b2=bandOf(tauAt(tr,am,i2),j2,HDIR===3,HDIR===3); if(b2) b2=nearOf(b2,pt(tr,am,i2,k2));
             if(b2){ if(run2===null) run2=aa; rb2=Math.min(rb2,b2); }
             if((!b2 || q2===ns2-1) && run2!==null){ emit(pt(tr,run2,i2,k2),pt(tr,b2?ab:aa,i2,k2),R.face(i2,k2),rb2); run2=null; rb2=3; }
           }
