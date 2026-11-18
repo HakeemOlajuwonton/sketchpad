@@ -581,7 +581,7 @@ html.ui-corridors, html.ui-corridors body{margin:0; height:100%; overflow:hidden
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v427</a> &mdash; Rocket assembly, the tone hatch: faces turned away from the light take parallel lines and round things take lines along their length, closer the further they turn and never nearer than 0.7 mm on paper, each in its solid's own ink; Tone hatch and Light from</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v429</a> &mdash; Rocket assembly, View: Isometric or Perspective, the same corner seen from a point beyond the hall, the far end smaller and the uprights leaning in; the hall still hides itself exactly and the shading keeps its spacing on paper</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <section class="fold" id="fold_pick"><h2>Pick engine<span class="cnt"></span></h2>
@@ -3362,7 +3362,9 @@ var SPEC={
      §2). ONLY THE KNOBS A BUILT ROW READS ARE DECLARED, `fact`'s rule: rows
      411-413 add arms, parts, staging, people, hatch and light with the parts
      that read them. Thirteen rows at the end and no more (Albert, on Corridor
-     City's 140 knobs: "a nightmare"). */
+     City's 140 knobs: "a nightmare"), and row 416's View makes fourteen (Albert, 2026-11-18: "add
+     perspective button too"). View is 0 Isometric, 1 Perspective: the named-values control is
+     the corridor panel's (CORCHOICE) and mkRow has none, so the unit says which is which. */
   rkt:['Rocket assembly',[
     ['rflr','Floors',2,7,1,5],['rwid','Hall width',40,64,4,56,[1,' m']],
     ['rboost','Boosters',0,4,1,2],['rdone','Build progress',0,100,5,60,[1,'%']],
@@ -3370,7 +3372,8 @@ var SPEC={
     ['rstage','Floor staging',0,100,1,60,[1,'%']],['rppl','People',0,100,1,40,[1,'%']],
     ['hatch','Tone hatch',0,100,1,40,[1,'%']],['sun','Light from',0,359,1,300,[1,'°']],
     ['lod','LOD cutoff',0,60,1,5,[10,' mm']],['budg','Size budget',10,300,5,200,[1,' k points']],
-    ['occ','Occlusion gap',0,80,1,5,[10,' mm']]]],
+    ['occ','Occlusion gap',0,80,1,5,[10,' mm']],
+    ['rview','View',0,1,1,0,[1,' iso / persp']]]],
   /* STREET, queue rows 30-33. ONLY THE KNOBS A BUILT ROW READS ARE DECLARED --
      the spec's §7 lists forty, and row 33 added the last three (puddles, pudsz,
      ripple) with the reflections that read them, so no knob here is dead. Ranges and defaults are §7's verbatim.
@@ -19349,7 +19352,26 @@ function ISOKIT(p,T){
      for exactly this reason, so the duplication is the established shape here
      rather than a new one. What is NOT duplicated is the expensive half: `hlr`,
      `hlrConvex` and its v238 index are module-level and shared. */
-  function proj(x,y,z){ return [(x-y)*COS30, (x+y)*0.5-z]; }
+  /* ROW 416: THE EYE (docs/specs/2026-11-18-rocket-assembly-perspective_v1.md §2, §4).
+     `T.eye` is null or {E, Cb, t}; only `rkt` sets it, at View Perspective. With it, `proj` is an
+     exact pinhole on the kit's own axis: the eye E = Cb + t (1,1,1)/sqrt3 looks along -(1,1,1),
+     depth(p) = t - ((x-Cb.x)+(y-Cb.y)+(z-Cb.z))/sqrt3, f(p) = t/depth(p), and
+     proj(p) = iso(Cb) + f(p) (iso(p) - iso(Cb)), so Cb keeps its place and f -> 1 as t -> inf.
+     WITHOUT IT `proj` EVALUATES THE EXPRESSION IT ALWAYS DID, character for character: the two
+     views are two code paths, never one formula with a large t (one ulp moves a cell boundary).
+     `fAt` is f at a point (1 with no eye): rkt reads millimetres on paper as mmPerCell x f at the
+     farthest vertex of the thing in question. vis() and the hull are not changed: the eye is
+     beyond the hall on all three axes, so the lattice order holds (spec §3). */
+  var EYE=T.eye||null, EYECX=0, EYECY=0, EYER3=1/Math.sqrt(3);
+  if(EYE){ EYECX=(EYE.Cb[0]-EYE.Cb[1])*COS30; EYECY=(EYE.Cb[0]+EYE.Cb[1])*0.5-EYE.Cb[2]; }
+  function fAt(x,y,z){
+    if(!EYE) return 1;
+    return EYE.t/(EYE.t-((x-EYE.Cb[0])+(y-EYE.Cb[1])+(z-EYE.Cb[2]))*EYER3);
+  }
+  function proj(x,y,z){
+    if(EYE){ var f=fAt(x,y,z); return [EYECX+f*((x-y)*COS30-EYECX), EYECY+f*((x+y)*0.5-z-EYECY)]; }
+    return [(x-y)*COS30, (x+y)*0.5-z];
+  }
   function vis(nx,ny,nz){ return (nx+ny+nz)>1e-9; }
   /* Monotone-chain hull of the projected vertices, byte for byte buildIso's.
      Convexity is what lets the occluder stay a list rather than a union. */
@@ -19727,6 +19749,15 @@ function ISOKIT(p,T){
     for(dq=0;dq<solids.length;dq++){
       var DS=solids[dq];
       dsum=0;
+      if(EYE && DS.h.length){
+        /* ROW 416 (spec §3): under the eye the nearer piece is the one nearer E, so the
+           tie-break is minus the distance from the hull's centroid to E */
+        var dcx=0, dcy=0, dcz=0;
+        for(dh=0;dh<DS.h.length;dh++){ dcx+=DS.h[dh][0]; dcy+=DS.h[dh][1]; dcz+=DS.h[dh][2]; }
+        dcx=dcx/DS.h.length-EYE.E[0]; dcy=dcy/DS.h.length-EYE.E[1]; dcz=dcz/DS.h.length-EYE.E[2];
+        DS.dep=-Math.sqrt(dcx*dcx+dcy*dcy+dcz*dcz);
+        continue;
+      }
       for(dh=0;dh<DS.h.length;dh++) dsum+=DS.h[dh][0]+DS.h[dh][1]+DS.h[dh][2];
       DS.dep=DS.h.length?dsum/DS.h.length:DS.top;
     }
@@ -20065,7 +20096,7 @@ function ISOKIT(p,T){
     return poly.length>=3?poly:null;
   }
 
-  K.proj=proj; K.vis=vis; K.hull=hull; K.Solid=Solid; K.addE=addE; K.push=push;
+  K.proj=proj; K.fAt=fAt; K.eye=EYE; K.vis=vis; K.hull=hull; K.Solid=Solid; K.addE=addE; K.push=push;
   K.depth3=depth3; K.centre=centre; K.keyed=keyed;
   K.boxSolid=boxSolid; K.ballSolid=ballSolid; K.segTube=segTube; K.domeSolid=domeSolid;
   K.cutRun=cutRun; K.plateSolid=plateSolid; K.trussBayW=trussBayW;
@@ -23968,13 +23999,29 @@ function buildRocketOnce(p,DROP){
   var Q=knob(p.rdone,60,0,100)/100;
   var out=[];
   var T={cells:[],boxes:[],order:[],tubes:[],polys:[],rkt:null};
+  /* ROW 416: THE VIEW (docs/specs/2026-11-18-rocket-assembly-perspective_v1.md). At Perspective the
+     kit gets an eye: Cb the hall box's centre, t = 2.2 x its diagonal, E = Cb + t (1,1,1)/sqrt3, so
+     E.x > W, E.y > D, E.z > H (t/sqrt3 >= 1.27 x the diagonal) and i+j+k stays an exact painter
+     order (§3). At Isometric T has no eye and the kit runs the code it always ran. */
+  var VIEW=Math.round(knob(p.rview,0,0,1))===1, RCB=[W/2,D/2,H/2], RT=2.2*Math.sqrt(W*W+D*D+H*H);
+  if(VIEW) T.eye={E:[RCB[0]+RT/Math.sqrt(3), RCB[1]+RT/Math.sqrt(3), RCB[2]+RT/Math.sqrt(3)], Cb:RCB, t:RT};
   var K=ISOKIT(p,T), solids=K.solids;
   RKTINFO=''; RKTSTATS={solids:0,paths:0,points:0};
 
   var bbr=[[-1,-1,-1],[W,D,H]], cnr=[], cq;
   for(cq=0;cq<8;cq++) cnr.push([bbr[cq&1][0],bbr[(cq>>1)&1][1],bbr[(cq>>2)&1][2]]);
   K.mmest=K.mmPerCell(cnr);
-  function shows(sz){ return K.lodVis(sz); }
+  /* SIZES ON PAPER UNDER THE EYE (§3). K.mmest is exact only at Isometric; at Perspective a metre at
+     p is K.mmest x f(p) on paper, and the LOD cutoff and the hatch spacing take f at the FARTHEST of
+     the points they are given, so nothing is drawn finer than its floor. hfar is 1 with no eye, and
+     x 1 is exact, so Isometric's numbers do not move. */
+  function hfar(pts){
+    if(!K.eye) return 1;
+    var m=1e18, i;
+    for(i=0;i<pts.length;i++){ var f=K.fAt(pts[i][0],pts[i][1],pts[i][2]); if(f<m) m=f; }
+    return m;
+  }
+  function shows(sz,pts){ return K.eye?K.lodVis(sz*hfar(pts)):K.lodVis(sz); }
   /* ---- THE TONE HATCH (row 413, §5) --------------------------------------
      Hatch lines are MARKS on the solid's own faces, so the kit cuts them at
      the lattice and hides them like any other edge. The light comes from
@@ -23991,10 +24038,22 @@ function buildRocketOnce(p,DROP){
   var HATCH=knob(p.hatch,40,0,100)/100, SUNB=knob(p.sun,300,0,359)*Math.PI/180;
   var SUNV=[Math.cos(Math.PI/6)*Math.cos(SUNB), Math.cos(Math.PI/6)*Math.sin(SUNB), Math.sin(Math.PI/6)];
   var HC30=Math.cos(Math.PI/6), HVIS=0.05*Math.sqrt(3);
-  function hpj(v){ return [(v[0]-v[1])*HC30, (v[0]+v[1])/2-v[2]]; }
+  /* ROW 416: UNDER THE EYE the lines are laid out in the drawing's own projection, the pinhole, and
+     lifted back onto the face along the ray from E -- so s is s on paper there too, exactly. The
+     spec's first rule (lay out on the isometric page, divide by f at the farthest vertex) measured
+     0.42 mm at A2 Massive: the pinhole also moves a point radially by (iso(p) - iso(Cb)) df, which a
+     per-face scale cannot see. With no eye both functions are row 413's. */
+  function hpj(v){ return K.eye?K.proj(v[0],v[1],v[2]):[(v[0]-v[1])*HC30, (v[0]+v[1])/2-v[2]]; }
   function hspace(nS){ var t=HATCH*Math.min(1,-nS/0.8); return Math.max(0.7,2.6*(1-0.75*t))/K.mmest; }
   /* the point of plane n.p = d that projects to (X, Y) */
-  function hlift(X,Y,n,d){ var a=X/HC30, b=Y, y=(d-n[0]*a-n[2]*(a/2-b))/(n[0]+n[1]+n[2]); return [y+a,y,y+a/2-b]; }
+  function hlift(X,Y,n,d){
+    if(K.eye){
+      var E=K.eye.E, Cb=K.eye.Cb, bx=(X/HC30+2*Y)/2, by=(2*Y-X/HC30)/2, lam=((Cb[0]-bx)+(Cb[1]-by)+Cb[2])/3;
+      var dx=bx+lam-E[0], dy=by+lam-E[1], dz=lam-E[2], s=(d-n[0]*E[0]-n[1]*E[1]-n[2]*E[2])/(n[0]*dx+n[1]*dy+n[2]*dz);
+      return [E[0]+s*dx, E[1]+s*dy, E[2]+s*dz];
+    }
+    var a=X/HC30, b=Y, y=(d-n[0]*a-n[2]*(a/2-b))/(n[0]+n[1]+n[2]); return [y+a,y,y+a/2-b];
+  }
   function hface(V,f,cen){
     var nx=0, ny=0, nz=0, k;
     for(k=0;k<f.length;k++){ var a=V[f[k]], b=V[f[(k+1)%f.length]];
@@ -24084,7 +24143,7 @@ function buildRocketOnce(p,DROP){
      a centreline lies on no face, and N1 asks that every structure line lie
      on its own solid's hull. */
   function rbar(x0,y0,z0,x1,y1,z1,o){
-    if(!shows(Math.min(x1-x0,y1-y0,z1-z0))){
+    if(!shows(Math.min(x1-x0,y1-y0,z1-z0),[[x0,y0,z0],[x1,y1,z1]])){
       var dx=x1-x0, dy=y1-y0, dz=z1-z0;
       o.wire=dz>=dx&&dz>=dy?[[x1,y1,z0],[x1,y1,z1]]:(dx>=dy?[[x0,y1,z1],[x1,y1,z1]]:[[x1,y0,z1],[x1,y1,z1]]);
       o.hides=false;
@@ -24966,7 +25025,7 @@ function buildRocketOnce(p,DROP){
     [0.55,1.1].forEach(function(h){
       var V=[[Pa[0]-ox,Pa[1]-oy],[Pb[0]-ox,Pb[1]-oy],[Pb[0]+ox,Pb[1]+oy],[Pa[0]+ox,Pa[1]+oy]];
       var o={kind:'rail', lay:'rocket', id:'plat.h', sides:[false,true,false,true]};
-      if(!shows(RAIL)){ o.wire=[[Pa[0],Pa[1],zp+h],[Pb[0],Pb[1],zp+h]]; o.hides=false; }
+      if(!shows(RAIL,[[Pa[0],Pa[1],zp+h-RAIL],[Pb[0],Pb[1],zp+h-RAIL]])){ o.wire=[[Pa[0],Pa[1],zp+h],[Pb[0],Pb[1],zp+h]]; o.hides=false; }
       rplan(V,zp+h-RAIL,zp+h,o);
     });
     if(!DROPS.handrailposts && k2%3===0)
@@ -25219,7 +25278,25 @@ function buildRocketOnce(p,DROP){
   /* ---- inside a cell: the exact order, `fact`'s rule in rkt's copy ------- */
   function rktCellOrder(){
     var c30=Math.cos(Math.PI/6), st={pairs:0, planes:0, rays:0, cycles:0};
-    function pj(v){ return [(v[0]-v[1])*c30, (v[0]+v[1])/2-v[2]]; }
+    /* ROW 416: UNDER THE EYE the same rule, judged from E. Silhouettes are the kit's pinhole
+       projection; a face plane that separates two pieces puts the nearer one on E's side of it
+       (n.E - d > 0 rather than n.(1,1,1) > 0); the rays run from E, the nearer entry winning.
+       With no eye every line below is the one row 410 wrote. */
+    var EY=K.eye;
+    function pj(v){ return EY?K.proj(v[0],v[1],v[2]):[(v[0]-v[1])*c30, (v[0]+v[1])/2-v[2]]; }
+    function rayE(Qp,u,v){
+      var E=EY.E, Cb=EY.Cb, b=[(u/c30+2*v)/2,(2*v-u/c30)/2,0], lam=((Cb[0]-b[0])+(Cb[1]-b[1])+(Cb[2]-b[2]))/3;
+      var d=[b[0]+lam-E[0], b[1]+lam-E[1], b[2]+lam-E[2]], L=Math.sqrt(d[0]*d[0]+d[1]*d[1]+d[2]*d[2]), lo=0, hi=1e18, j, ax;
+      d=[d[0]/L,d[1]/L,d[2]/L];
+      function cut(n,dd){
+        var sv=n[0]*d[0]+n[1]*d[1]+n[2]*d[2], ne=n[0]*E[0]+n[1]*E[1]+n[2]*E[2];
+        if(Math.abs(sv)<1e-14){ if(ne>dd+1e-12){ lo=1; hi=0; } return; }
+        var t=(dd-ne)/sv; if(sv>0){ if(t<hi) hi=t; } else if(t>lo) lo=t;
+      }
+      for(j=0;j<Qp.P.length;j++) cut(Qp.P[j].n,Qp.P[j].d);
+      for(ax=0;ax<3;ax++){ var n1=[0,0,0]; n1[ax]=1; cut(n1,Qp.cell[ax]+1); n1[ax]=-1; cut(n1,-Qp.cell[ax]); }
+      return hi-lo>1e-9?-lo:null;
+    }
     function hullR(pts){
       var q=pts.slice().sort(function(a,b){ return a[0]-b[0]||a[1]-b[1]; }), lo=[], up=[], j;
       function cr(o,a,b){ return (a[0]-o[0])*(b[1]-o[1])-(a[1]-o[1])*(b[0]-o[0]); }
@@ -25236,7 +25313,7 @@ function buildRocketOnce(p,DROP){
       for(kk=0;kk<2;kk++){
         var Xs=sd[kk][0], Ys=sd[kk][1], sgn=sd[kk][2];
         for(j=0;j<Xs.P.length;j++){
-          var nn=Xs.P[j].n, dd=Xs.P[j].d, sv=nn[0]+nn[1]+nn[2], allOut=true;
+          var nn=Xs.P[j].n, dd=Xs.P[j].d, sv=EY?nn[0]*EY.E[0]+nn[1]*EY.E[1]+nn[2]*EY.E[2]-dd:nn[0]+nn[1]+nn[2], allOut=true;
           if(Math.abs(sv)<1e-12) continue;
           for(m=0;m<Ys.h.length && allOut;m++) if(nn[0]*Ys.h[m][0]+nn[1]*Ys.h[m][1]+nn[2]*Ys.h[m][2]<dd-1e-7) allOut=false;
           if(allOut) return (sv>0)?sgn:-sgn;
@@ -25245,6 +25322,7 @@ function buildRocketOnce(p,DROP){
       return 0;
     }
     function rayT(Qp,u,v){
+      if(EY) return rayE(Qp,u,v);
       var b=[(u/c30+2*v)/2,(2*v-u/c30)/2,0], lo=-1e18, hi=1e18, j, ax;
       function cut(n,d){
         var sv=n[0]+n[1]+n[2], nb=n[0]*b[0]+n[1]*b[1]+n[2]*b[2];
@@ -25336,6 +25414,8 @@ function buildRocketOnce(p,DROP){
   K.tallyOrder();
   for(ii=0;ii<solids.length;ii++) if(solids[ii].pi!==undefined) T.polys[solids[ii].pi].ord=ii;
   var fsc=K.render(out);
+  /* the drawing's own projector, for the gate's V3 and its hatch spacing on paper (row 416) */
+  T.proj=K.proj;
   RKTTALLY=T;
   var nBl=ARMS.filter(function(a){ return a.blocked||a.none; }).length;
   RKTSTATS={solids:solids.length, points:K.points(), paths:out.length, mmest:K.mmest, order:rord,
@@ -25354,7 +25434,7 @@ function buildRocketOnce(p,DROP){
           (ROBOTS.length<NARM*N?' (of '+NARM*N+')':'')+' · '+
           (RKTSTATS.drops.length?'over budget: dropped '+RKTSTATS.drops.join(', ')+(RKTSTATS.over?' (still over)':'')+' · ':'')+
           solids.length.toLocaleString()+' solids · '+out.length.toLocaleString()+' paths · '+
-          (fsc*PAGEMM).toFixed(1)+' mm/m';
+          (fsc*PAGEMM).toFixed(1)+' mm/m'+(VIEW?' at the eye\'s plane · perspective':'');
   return out;
 }
 
@@ -50770,6 +50850,7 @@ var HELP={
 'rkt.lod':'The smallest detail still drawn, as its size on the SHEET. A bar thinner than this (handrails, posts, stringers, the crane rope) is drawn as one of its own edges and hides nothing behind it.',
 'rkt.budg':'The most points the drawing may have, in thousands. Over it, whole classes of fine detail are left out in this order until it fits: track sleepers, handrail posts, stringers, rack items, people, the wall row. The structure, the rocket, the platforms and the access arms never go. The stat line names what was dropped. The page’s own ceiling caps it.',
 'rkt.occ':'How wide a white gap a nearer solid opens in a line passing behind it. The hall hides itself exactly -- every solid is cut to the 1 m lattice and drawn front to back -- so this is only the breathing room at each crossing.',
+'rkt.rview':'0 Isometric, 1 Perspective. Perspective looks from the same corner as Isometric, from a point beyond the hall about twice its diagonal away, so the far end draws smaller and the uprights lean in toward the bottom. The hall still hides itself exactly. Sizes on paper (the LOD cutoff, the shading’s spacing) are read at the far end, so nothing is drawn finer than its floor.',
 'harb.len':'How far the yard lane runs, in metres. The camera stands part-way along it and the stacks recede toward the far end.',
 'harb.bend':'How much the lane curves, in degrees per 100 m. A container yard is laid out straight, so 0; on a bend the deep rows narrow on the inside and a container that no longer fits its row is left out.',
 'harb.width':'The yard lane between the two lines of container rows, in metres. The gantry cranes span it on legs at its edges and the yard trucks drive down it.',
