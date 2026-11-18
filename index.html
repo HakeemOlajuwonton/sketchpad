@@ -541,6 +541,18 @@ html.ui-corridors, html.ui-corridors body{margin:0; height:100%; overflow:hidden
 #cor .corpen{display:inline-flex; align-items:center; gap:5px; padding:2px 8px 2px 4px; border:1px solid var(--line2); border-radius:99px; background:var(--field);}
 #cor .corpen i{width:14px; height:14px; border-radius:50%; display:inline-block; border:1px solid var(--line2);}
 @media (max-width:820px){ #cor{grid-template-columns:52px 260px minmax(0,1fr);} #corBig{display:none;} }
+/* row 390: the panel in its own window. In the main window the rail and panel give way to a chip; the panel's own
+   window is the rail and the panel and the big four, nothing else */
+#corChip{position:absolute; right:16px; bottom:6px; z-index:5; padding:8px 10px 8px 14px; border:1px solid var(--line2); border-radius:99px; color:var(--dim); font-size:13px; background:var(--field); box-shadow:var(--shadow);}
+#corChip[hidden]{display:none;}
+#corChip button{padding:2px 10px; margin-left:4px; color:var(--text); border-radius:99px;}
+#cor.cor-popped #corRail, #cor.cor-popped #corPanel{display:none;}
+#cor.cor-popped #corSheet{grid-column:1/-1;}
+#cor.cor-panelonly{grid-template-rows:auto minmax(0,1fr); grid-template-columns:56px minmax(0,1fr);}
+#cor.cor-panelonly #corTop{flex-wrap:wrap; padding:8px 12px; min-height:48px;}
+#cor.cor-panelonly #corBig{flex-wrap:wrap; display:flex;}
+#cor.cor-panelonly #corRail{grid-row:2;}
+#cor.cor-panelonly #corPanel{grid-row:2; border-right:0;}
 </style>
 </head>
 <body>
@@ -559,7 +571,7 @@ html.ui-corridors, html.ui-corridors body{margin:0; height:100%; overflow:hidden
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v418</a> &mdash; Corridors: the corridor engines on a page of their own at #corridors -- scene menu, Next to the city, City shape, Water and View up top, a section rail, a one-line knob panel you can search and float, the sheet with its paper size and pens, and five looks; the same knobs, the same SVG</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v419</a> &mdash; Corridors: Pop out puts the knob panel in a window of its own, for a second screen -- it changes the drawing here, follows every change made here, and docks again when it closes</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <section class="fold" id="fold_pick"><h2>Pick engine<span class="cnt"></span></h2>
@@ -46857,7 +46869,7 @@ function drawVariations(){
    hash of STATE: a hash that misses a field is the failure that stays silent.
    Decimation stays in paint (its budget follows the zoom). */
 var BUILDGEN=0, BUILT=null, PINCV=null, PAINTED=null;
-function draw(){ BUILDGEN++; paint(); }
+function draw(){ if(UIMODE==='corridors-panel') return; BUILDGEN++; paint(); }
 /* the tag, on the canvas only: a build is running and this is the last one */
 function paintBuilding(){
   ctx.save();
@@ -47665,7 +47677,7 @@ function decimateGroups(groups,budget){
 var pendBuild=false;
 function sched(){ pendBuild=true; queueFrame(); }
 function schedPaint(){ queueFrame(); }
-function queueFrame(){ if(pend)return; pend=true; requestAnimationFrame(function(){ pend=false; var b=pendBuild; pendBuild=false; if(b) draw(); else paint(); }); }
+function queueFrame(){ if(pend || UIMODE==='corridors-panel')return; pend=true; requestAnimationFrame(function(){ pend=false; var b=pendBuild; pendBuild=false; if(b) draw(); else paint(); }); }
 /* EXPORT AND PIN READ A FULL BUILD. The DRAFT clamp is a build input: inside
    the 220 ms after a poke the cache can hold a 45,000-point drawing, and the
    file must never be that. */
@@ -48052,11 +48064,21 @@ function mount(){
    button, so a drawing cannot depend on which chrome made it: corcheck.js U1 exports both and compares the bytes.
    The look and the panel's place are per viewer in localStorage ('corridors.look', 'corridors.panel'), never STATE,
    a preset or a file. Labels are renamed on `town` only and only on screen (CORLABEL): keys and values are the same. */
-var UIMODE='sketchpad', COR=null;
+var UIMODE=(corWantMode()==='corridors-panel')?'corridors-panel':'sketchpad', COR=null;
 function corWantMode(){
-  try{ return (location.hash==='#corridors' || /corridors\.html$/.test(location.pathname))?'corridors':'sketchpad'; }
+  try{ if(location.hash==='#corridors-panel') return 'corridors-panel';
+       return (location.hash==='#corridors' || /corridors\.html$/.test(location.pathname))?'corridors':'sketchpad'; }
   catch(e){ return 'sketchpad'; }
 }
+/* ROW 390: THE PANEL IN ITS OWN WINDOW (spec §Row 2). Pop-out opens this file at #corridors-panel, which mounts the
+   panel alone and never builds a drawing. It has no STATE worth the name: what it shows is CORREMOTE, the engine,
+   its SPEC rows, the values and the idle set the main window broadcasts on BroadcastChannel('corridors') after every
+   paint, and a change it makes goes back as {k, v}, which the main window writes through corSet -- kSet, the knob
+   panel's own write. The main window is the only writer. */
+var CORREMOTE=null;
+function corSpec(){ return CORREMOTE?CORREMOTE.spec:SPEC[mode][1]; }
+function corVals(){ return CORREMOTE?CORREMOTE.vals:STATE.eng[mode]; }
+function corIdle(){ return CORREMOTE?CORREMOTE.idle:kIdleSet(mode,STATE.eng[mode],STRTSTATS); }
 var CORLOOKS=[['paper','Paper','#c2185b','CORRIDORS'],['night','Night shift','#ff5fa2','CORRIDORS'],
               ['cyan','Cyanotype','#ffd166','corridors.'],['kraft','Kraft and pencil','#c2410c','Corridors'],
               ['swiss','Swiss signal','#111111','CORRIDORS']];
@@ -48106,7 +48128,7 @@ function corChoices(sp){
 }
 /* the engine's sections: KGROUPS order, then Other for a theme's own knobs; a group with no knob here is left out */
 function corSections(eng){
-  var S=SPEC[eng][1], have={}, out=[];
+  var S=corSpec(), have={}, out=[];
   S.forEach(function(sp){ if(sp[1]!=='\\u2014') have[sp[0]]=1; });
   KGROUPS.forEach(function(g){ var ks=g[2].filter(function(k){ return have[k]; }); if(ks.length) out.push({id:g[0], title:g[1], keys:ks}); });
   var rest=S.filter(function(sp){ return have[sp[0]] && kGroupOf(sp[0])==='other'; }).map(function(sp){ return sp[0]; });
@@ -48115,7 +48137,12 @@ function corSections(eng){
 }
 function corPress(id){ var b=document.getElementById(id); if(b) b.click(); }
 /* a knob, the way the knob panel writes it, then the draw the panel's slider would schedule */
-function corSet(k,v){ kSet(mode,k,v); corSync(); sched(); }
+function corSet(k,v){
+  /* row 390: in the panel's own window, the change goes to the main window; the value shown follows at once and is
+     overwritten by the main window's next broadcast */
+  if(CORREMOTE){ CORREMOTE.vals[k]=v; corSync(); if(COR && COR.ch) COR.ch.postMessage({type:'set', eng:CORREMOTE.eng, k:k, v:v}); return; }
+  kSet(mode,k,v); corSync(); sched();
+}
 function corRow(host,eng,sp,hint){
   var k=sp[0], mn=sp[2], mx=sp[3], st=sp[4], fmt=sp[6]||null, div=fmt?fmt[0]:1, unit=fmt?fmt[1]:'';
   var dec=(div===1)?(String(st).split('.')[1]||'').length:2, sdec=(String(st).split('.')[1]||'').length;
@@ -48155,8 +48182,8 @@ function corRow(host,eng,sp,hint){
 }
 /* values, the selected choice and the idle set, from STATE as it stands */
 function corSync(){
-  if(!COR || !STATE.eng[mode]) return;
-  var E=STATE.eng[mode], idle=kIdleSet(mode,E,STRTSTATS), act=document.activeElement, nIdle=0;
+  if(!COR || !corVals()) return;
+  var E=corVals(), idle=corIdle(), act=document.activeElement, nIdle=0;
   COR.rows.forEach(function(R){
     var v=E[R.k];
     if(R.rg){ if(act!==R.rg) R.rg.value=v; R.show(v); }
@@ -48174,7 +48201,7 @@ function corSync(){
 function corRenderBig(){
   var host=document.getElementById('corBig'); host.innerHTML='';
   COR.rows=COR.rows.filter(function(R){ return !R.big; });
-  var S=SPEC[mode][1];
+  var S=corSpec();
   CORBIG.forEach(function(k){
     var sp=specOf(S,k); if(!sp || !corChoices(sp)) return;
     var R=corRow(host,mode,sp,null); R.big=true; R.el.className='corbig'; R.el.setAttribute('data-k',k);
@@ -48183,7 +48210,7 @@ function corRenderBig(){
 function corRenderRows(){
   var host=document.getElementById('corRows'); host.innerHTML='';
   COR.rows=COR.rows.filter(function(R){ return R.big; });
-  var S=SPEC[mode][1], secs=corSections(mode), name=document.getElementById('corSecName');
+  var S=corSpec(), secs=corSections(mode), name=document.getElementById('corSecName');
   [].forEach.call(document.querySelectorAll('#corRail button'),function(b){ b.className=(!COR.q && b.getAttribute('data-sec')===COR.sec)?'on':''; });
   if(COR.q){
     var q=COR.q.toLowerCase(), hits=0;
@@ -48233,7 +48260,7 @@ function corAfterPaint(){
   if(!COR) return;
   if(KCORR.indexOf(mode)<0 || !SPEC[mode]) return;
   if(COR.eng!==mode) corBuildEngine();
-  corSync();
+  corSync(); corBroadcast();
   var g=gvals(), w=PGW*PAGEMM, h=PGH*PAGEMM, pn=corPaper(w,h), parts=[(pn?pn+' · ':'')+corMm(w)+' × '+corMm(h)+' mm'];
   if(mode==='town'){ var ts=townScaleText(typeof STRTTALLY!=='undefined'&&STRTTALLY&&STRTTALLY.town?STRTTALLY.town.mscale:null); if(ts) parts.push(ts); }
   var stt=(document.getElementById('stat')||{}).textContent||''; if(stt) parts.push(stt);
@@ -48310,9 +48337,10 @@ function corMount(){
     '<nav id="corRail"></nav>'+
     '<div id="corPanel"><div id="corHead"><span id="corSecName"></span>'+
       '<button type="button" class="corib" id="corDetach"></button>'+
-      '<button type="button" class="corib" id="corPop" disabled title="Pop out — row 2">'+corSvg('popout')+'</button></div>'+
+      '<button type="button" class="corib" id="corPop" title="Pop out: the panel in its own window">'+corSvg('popout')+'</button></div>'+
       '<label id="corFind">'+corSvg('search')+'<input type="search" id="corSearch" placeholder="Find a knob" autocomplete="off"></label>'+
       '<div id="corRows"></div><div id="corIdle"></div></div>'+
+    '<div id="corChip" hidden>Panel is in its own window · <button type="button" id="corBring">Bring it back</button></div>'+
     '<div id="corSheet"><div id="corMeta"></div><div id="corMsg"></div><div id="corStageHost"></div><div id="corPens"></div></div>';
   document.body.appendChild(root);
   COR={root:root, eng:null, sec:'ess', q:'', rows:[], moved:[], float:false, x:80, y:100, look:'paper'};
@@ -48347,6 +48375,8 @@ function corMount(){
   /* the panel's place: docked, or floating where it was left, dragged by its header */
   try{ var P=JSON.parse(corLS('corridors.panel')||'null'); if(P){ COR.float=!!P.float; if(isFinite(P.x)) COR.x=+P.x; if(isFinite(P.y)) COR.y=+P.y; } }catch(e){}
   document.getElementById('corDetach').addEventListener('click',function(){ corFloat(!COR.float); });
+  document.getElementById('corPop').addEventListener('click',corPopOut);
+  document.getElementById('corBring').addEventListener('click',function(){ corPopIn(true); });
   var head=document.getElementById('corHead');
   head.addEventListener('pointerdown',function(e){
     if(!COR.float || (e.target.closest && e.target.closest('button'))) return;
@@ -48375,6 +48405,8 @@ function corMount(){
 }
 function corUnmount(){
   if(!COR) return;
+  corPopIn(true);
+  if(COR.ch){ try{ COR.ch.close(); }catch(e){} }
   if(COR.obs) COR.obs.disconnect();
   COR.moved.forEach(function(m){ m[1].insertBefore(m[0], m[2] && m[2].parentNode===m[1]?m[2]:null); });
   if(COR.root.parentNode) COR.root.parentNode.removeChild(COR.root);
@@ -48382,7 +48414,90 @@ function corUnmount(){
   document.documentElement.classList.remove('ui-corridors');
   corLinkSync();
 }
+/* ---- row 390: the main window's half of the pop-out. It sends the panel what it shows after every paint, applies
+   each {k, v} through corSet, and docks the panel again when that window closes (polled, so a crash counts too) */
+function corBroadcast(){
+  if(!COR || !COR.pop || !COR.ch || !STATE.eng[mode]) return;
+  COR.ch.postMessage({type:'state', eng:mode, label:SPEC[mode][0], spec:SPEC[mode][1], look:COR.look,
+                      vals:JSON.parse(JSON.stringify(STATE.eng[mode])), idle:kIdleSet(mode,STATE.eng[mode],STRTSTATS)});
+}
+function corOnMsg(e){
+  var d=(e&&e.data)||{};
+  if(!COR) return;
+  if(d.type==='hello') corBroadcast();
+  else if(d.type==='bye') corPopIn(false);
+  else if(d.type==='set' && COR.pop && d.eng===mode && STATE.eng[mode] && (d.k in STATE.eng[mode])){
+    var sp=specOf(SPEC[mode][1],d.k), v=+d.v;
+    /* a stream of values (a slider dragged over there) builds in draft, and in full once it stops, as here */
+    if(sp && !isNaN(v)){ draftPoke(); corSet(d.k, Math.max(sp[2],Math.min(sp[3],v))); }
+  }
+}
+function corPopOut(){
+  if(!COR || COR.pop) return;
+  if(typeof BroadcastChannel==='undefined'){ msg('this browser cannot talk between windows: the panel stays here'); return; }
+  if(!COR.ch){ COR.ch=new BroadcastChannel('corridors'); COR.ch.onmessage=corOnMsg; }
+  var w=null;
+  try{ w=window.open(location.pathname+location.search+'#corridors-panel','corridorsPanel','popup,width=400,height=900'); }catch(e){}
+  if(!w){ msg('the browser blocked the panel window'); return; }
+  COR.pop={w:w};
+  COR.pop.t=setInterval(function(){
+    if(!COR || !COR.pop) return;
+    var gone=true; try{ gone=!!COR.pop.w.closed; }catch(e){}
+    if(gone) corPopIn(false);
+  },300);
+  COR.root.classList.add('cor-popped'); document.getElementById('corChip').hidden=false;
+  corBroadcast(); schedPaint();
+}
+function corPopIn(closeIt){
+  if(!COR || !COR.pop) return;
+  clearInterval(COR.pop.t);
+  if(closeIt){ if(COR.ch) COR.ch.postMessage({type:'close'}); try{ COR.pop.w.close(); }catch(e){} }
+  COR.pop=null;
+  COR.root.classList.remove('cor-popped'); document.getElementById('corChip').hidden=true;
+  corSync(); schedPaint();
+}
+/* ---- row 390: the panel's own window. The same file, booted without the engine: no mount, no draw (paint() returns
+   at once in this mode), only the rail, the search, the rows and the big four */
+function corFonts(){
+  if(document.getElementById('corfonts')) return;
+  var fl=document.createElement('link'); fl.id='corfonts'; fl.rel='stylesheet';
+  fl.href='https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Big+Shoulders+Display:wght@800'+
+    '&family=DM+Mono&family=IBM+Plex+Mono&family=Instrument+Sans:wght@400;600&family=Instrument+Serif:ital@1'+
+    '&family=Inter+Tight:wght@400;600;900&family=JetBrains+Mono&family=Space+Grotesk:wght@400;700&family=Space+Mono&display=swap';
+  document.head.appendChild(fl);
+}
+function corPanelBoot(){
+  UIMODE='corridors-panel';
+  document.documentElement.classList.add('ui-corridors');
+  corFonts();
+  var root=document.createElement('div'); root.id='cor'; root.className='cor-panelonly';
+  root.innerHTML=
+    '<div id="corTop"><span id="corMark"></span><select id="corScene" hidden></select><div id="corBig"></div></div>'+
+    '<nav id="corRail"></nav>'+
+    '<div id="corPanel"><div id="corHead"><span id="corSecName">Waiting for the Corridors window…</span></div>'+
+      '<label id="corFind">'+corSvg('search')+'<input type="search" id="corSearch" placeholder="Find a knob" autocomplete="off"></label>'+
+      '<div id="corRows"></div><div id="corIdle"></div></div>';
+  document.body.appendChild(root);
+  COR={root:root, eng:null, sec:'ess', q:'', rows:[], moved:[], float:false, x:0, y:0, look:'paper'};
+  corLook(corLS('corridors.look')||'paper');
+  var se=document.getElementById('corSearch');
+  se.addEventListener('input',function(){ COR.q=se.value.trim(); if(CORREMOTE) corRenderRows(); });
+  if(typeof BroadcastChannel==='undefined'){ document.getElementById('corSecName').textContent='This browser cannot talk between windows'; return; }
+  COR.ch=new BroadcastChannel('corridors');
+  COR.ch.onmessage=function(e){
+    var d=(e&&e.data)||{};
+    if(d.type==='state'){
+      CORREMOTE={eng:d.eng, spec:d.spec, vals:d.vals, idle:d.idle||{}};
+      mode=d.eng; document.title='Corridors panel · '+(d.label||d.eng);
+      if(d.look && d.look!==COR.look) corLook(d.look);
+      if(COR.eng!==d.eng) corBuildEngine(); else corSync();
+    } else if(d.type==='close'){ try{ window.close(); }catch(err){} }
+  };
+  window.addEventListener('pagehide',function(){ try{ COR.ch.postMessage({type:'bye'}); }catch(err){} });
+  COR.ch.postMessage({type:'hello'});
+}
 function corApplyMode(){
+  if(UIMODE==='corridors-panel') return;
   var m=corWantMode(); if(m===UIMODE) return;
   UIMODE=m;
   if(m==='corridors') corMount(); else corUnmount();
@@ -48392,6 +48507,7 @@ function corBoot(){
   UIMODE=corWantMode();
   window.addEventListener('hashchange',corApplyMode);
   window.addEventListener('popstate',corApplyMode);
+  if(UIMODE==='corridors-panel'){ corPanelBoot(); return; }
   if(UIMODE==='corridors') corMount(); else corLinkSync();
 }
 /* ==== CORRIDORS UI END ==== */
