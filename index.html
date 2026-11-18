@@ -581,7 +581,7 @@ html.ui-corridors, html.ui-corridors body{margin:0; height:100%; overflow:hidden
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v424</a> &mdash; Rocket assembly, a new 3D engine: a hall whose floors alternate up its two back walls round one rocket on its pad, with transfer bridges on plain pylons, ring platforms and an access arm at every floor, and a crane holding the fairing over the stack; Floors, Hall width, Boosters and Build progress</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v425</a> &mdash; Rocket assembly, the trades: every floor makes one kind of part (engines, fins, tank rings, domes, skin, avionics, fairings) on a rail track through workshop stations, with carts that run out along a spur to its access arm, and robot arms on every ring platform hold the floor's part against the rocket; carts on the transfer bridges, corner stairs, a freight lift and a store of rings and domes; Arms per platform and Parts on the move</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <section class="fold" id="fold_pick"><h2>Pick engine<span class="cnt"></span></h2>
@@ -3366,6 +3366,7 @@ var SPEC={
   rkt:['Rocket assembly',[
     ['rflr','Floors',2,7,1,5],['rwid','Hall width',40,64,4,56,[1,' m']],
     ['rboost','Boosters',0,4,1,2],['rdone','Build progress',0,100,5,60,[1,'%']],
+    ['rarm','Arms per platform',0,3,1,2],['rpart','Parts on the move',0,100,1,60,[1,'%']],
     ['lod','LOD cutoff',0,60,1,5,[10,' mm']],['budg','Size budget',10,300,5,200,[1,' k points']],
     ['occ','Occlusion gap',0,80,1,5,[10,' mm']]]],
   /* STREET, queue rows 30-33. ONLY THE KNOBS A BUILT ROW READS ARE DECLARED --
@@ -23912,7 +23913,13 @@ function buildFactoryOnce(p,DROP){
      the offset and the gate re-derives the rule itself.
    - THE FAIRING HANGS 2.5 m ABOVE THE STACK, NOT 7. With H = 10N + 22 the
      girder's underside is at 10N + 18 and a 14.3 m fairing 7 m up would end
-     3.3 m inside it; the hook needs 1.2 m under the girder. */
+     3.3 m inside it; the hook needs 1.2 m under the girder.
+
+   ROW 411, THE TRADES (§3), adds two departures the spec's row-411 note
+   measures: a SPUR of track from the main line to the floor's free edge,
+   because the main line ends 4.2 m short of the access arm §3's contract
+   says it meets; and robots that stand BESIDE the part they hold, not
+   behind it, because a part reaches past the 2.7 m platform's edge. */
 var RKTINFO='';
 var RKTSTATS={solids:0,paths:0,points:0};
 var RKTTALLY={cells:[],boxes:[],order:[],tubes:[],polys:[],rkt:null};
@@ -24161,8 +24168,19 @@ function buildRocketOnce(p,DROP){
     var y0=C[1]+s, y1=y0+1.6;
     return [12,Math.max(polyLow(1,y0),polyLow(1,y1))+0.05,y0,y1];
   }
+  /* THE ARM'S SPUR (row 411): floor i's track reaches its arm through a spur
+     from the main line to the free edge, 0.8 m along from the arm's axis
+     offset. An offset whose spur, or the main line up to it, would meet the
+     band of the bridge landing on that floor is refused -- the band keeps
+     the floor clear (rflr 5-7 at rwid 40 put an arm's root under the ramp) */
+  function spurFits(side,s,i2){
+    var f={R:side==='R', i:i2}, ss=(f.R?C[0]:C[1])+s+0.8;
+    if(ss-1.1<12.6 || ss+1.1>(f.R?W:D)-1.0) return false;
+    return !bandHit(f,12.6,6.0,ss+1.5,8.2) && !bandHit(f,ss-1.1,7.9,ss+1.1,12);
+  }
   function armOK(side,s,fl,wantBoost){
     if(Math.abs(s)>ROUT-1.0 || Math.abs(s+1.6)>ROUT-1.0) return false;
+    if(!spurFits(side,s,fl.i)) return false;
     var zi=10*fl.i, R=armRect(side,s,zi), j;
     for(j=0;j<PYL.length;j++) if(rrDist(R,[PYL[j].x-0.6,PYL[j].x+0.6,PYL[j].y-0.6,PYL[j].y+0.6])<1.0) return false;
     if(wantBoost){ var bs2=boostsAt(zi-0.4,zi+1.1);
@@ -24192,6 +24210,318 @@ function buildRocketOnce(p,DROP){
     }
     ARMS.push({i:i, side:side, s:pick, blocked:blocked&&pick!==null, none:pick===null});
   }
+
+  /* the fairing's profile: §2's ogive, base r 4.2, 14.3 m (the robots read it) */
+  var FPROF=[[0,4.2],[4,4.15],[7.5,3.6],[10.5,2.6],[13,1.3],[14.3,0.1]];
+
+  /* ================= §3: THE TRADES (row 411) ============================== */
+  /* Floor i has ONE trade, TRADE[round((i-1)*6/(N-1))], so the top floor is
+     always fairings. On every floor, from the wall out: a wall row (0-5 m), a
+     rail track (rails 6.4 and 7.8 m from the wall), workshop stations
+     straddling it every 6.2-7.6 m, carts on it, each with one part of the
+     floor's trade; a SPUR of track from the main line to the floor's free
+     edge where the access arm starts, so the track meets the arm (§3 contract
+     2: the main line is 4.2 m short of the edge). Nothing on a floor stands
+     under the transfer bridge that lands on it (its band, 0.3 m round). */
+  var NARM=Math.round(knob(p.rarm,2,0,3)), QPART=knob(p.rpart,60,0,100)/100;
+  var SEED=Math.round(rnd(0)*1e6), RKT_SALT_FLOOR=811, RKT_SALT_PICK=823;
+  var TRADES=['engines','fins','rings','domes','skin','avionics','fairings'];
+  var PARTKIND=['bell','fin','ring','dome','panel','pod','nose'];
+  function tradeOf(i2){ return Math.round((i2-1)*6/(N-1)); }
+  function lw(f,s,d){ return f.R?[s,d]:[d,s]; }
+  function lbox(f,s0,d0,z0,s1,d1,z1,o){ return f.R?rbox(s0,d0,z0,s1,d1,z1,o):rbox(d0,s0,z0,d1,s1,z1,o); }
+  function lbar(f,s0,d0,z0,s1,d1,z1,o){ return f.R?rbar(s0,d0,z0,s1,d1,z1,o):rbar(d0,s0,z0,d1,s1,z1,o); }
+  function lrectPts(f,s0,d0,s1,d1){ var a=lw(f,s0,d0), b=lw(f,s1,d1);
+    return rectPts([Math.min(a[0],b[0]),Math.max(a[0],b[0]),Math.min(a[1],b[1]),Math.max(a[1],b[1])]); }
+  /* the bridge that lands on floor f: its band and its two end piers */
+  function bandHit(f,s0,d0,s1,d1){
+    var RP=lrectPts(f,s0-0.3,d0-0.3,s1+0.3,d1+0.3), j;
+    for(j=0;j<BRIDGES.length;j++){
+      var Bg=BRIDGES[j];
+      if((f.R && Bg.i===f.i) || (!f.R && Bg.i===f.i+1)) if(ovl2(RP,Bg.plan)) return true;
+    }
+    return false;
+  }
+  var FLOORS=[];
+  for(i=1;i<=N;i++){
+    var f={i:i, R:(i%2===1), z:10*i, trade:tradeOf(i)}, rngF=statRng(SEED,RKT_SALT_FLOOR,i,1), sx;
+    f.len=f.R?W:D;
+    f.arm=ARMS[i-1];
+    f.spur=f.arm.s!==null?{s:(f.R?C[0]:C[1])+f.arm.s+0.8}:null;
+    f.t0=12.6; f.t1=f.len-1.0;
+    for(sx=f.t0;sx<f.len-1.0;sx+=0.1) if(bandHit(f,sx,6.0,sx+0.1,8.2)){ f.t1=Math.floor((sx-0.2)*10)/10; break; }
+    if(f.spur && (f.spur.s-1.1<f.t0 || f.spur.s+1.1>f.t1)) f.spur.off=true;
+    /* the stations: every 7 m (§3: 6.2-7.6), 3.5 m wide, never over the
+       spur. A station starts 0.25 m into a lattice cell, so each 0.5 m post
+       lies inside one cell: a solid costs a piece per cell it spans, and
+       the build's time is the kit's time per piece (row 411's note). */
+    f.stations=[];
+    var a2=Math.ceil(f.t0+0.4)+0.25, kinds=['autoclave','press','weld','arch','cell','hopper'];
+    while(a2+3.5<=f.t1){
+      var b2=a2+3.5;
+      if(f.spur && !f.spur.off && b2>f.spur.s-1.5 && a2<f.spur.s+1.5){ a2=Math.ceil(f.spur.s+1.5-0.25)+0.25; continue; }
+      var kd=kinds[Math.floor(rngF()*6)];
+      if(!bandHit(f,a2,5.1,b2,8.9)) f.stations.push({s0:a2, s1:b2, kind:kd});
+      a2+=7;
+    }
+    /* the wall row: tanks, silos and cabinets, 0.3-4.7 m from the wall */
+    f.wall=[];
+    var ws=13.0;
+    while(ws<f.len-1.5){
+      var u2=rngF(), it;
+      if(u2<0.4) it={kind:'tank', r:0.8+0.2*rngF(), h:2.4+rngF()};
+      else if(u2<0.6) it={kind:'silo', r:1.2, h:4.5};
+      else it={kind:'cabinet', l:2.0+1.6*rngF(), h:1.9};
+      var span=it.kind==='cabinet'?it.l:2*it.r;
+      if(ws+span>f.len-1.0) break;
+      it.s0=ws; it.s1=ws+span;
+      if(!bandHit(f,it.s0,0.3,it.s1,4.7)) f.wall.push(it);
+      ws+=span+1.4+1.4*rngF();
+    }
+    /* cart slots: the gaps between stations a 2.7 m cart fits in, then the spur */
+    var edges=[f.t0].concat(), slots=[], j2, lo2=f.t0;
+    f.stations.forEach(function(st){ edges.push(st.s0, st.s1); });
+    edges.push(f.t1);
+    for(j2=0;j2+1<edges.length;j2+=2){
+      var g0=edges[j2]+0.3, g1=edges[j2+1]-0.3, c2;
+      for(c2=g0+1.35;c2+1.35<=g1;c2+=3.3){
+        if(f.spur && !f.spur.off && c2+1.35>f.spur.s-1.2 && c2-1.35<f.spur.s+1.2) continue;
+        slots.push({s:c2});
+      }
+    }
+    if(f.spur && !f.spur.off) slots.unshift({spur:true, s:f.spur.s});
+    var want=Math.round(QPART*slots.length), rk=statRng(SEED,RKT_SALT_PICK,i,2);
+    slots.forEach(function(sl){ sl.r=rk(); });
+    var order2=slots.slice().sort(function(u3,v3){ return u3.r-v3.r; });
+    order2.forEach(function(sl,j3){ sl.used=sl.spur?QPART>0:j3<want; });
+    f.carts=slots.filter(function(sl){ return sl.used; });
+    FLOORS.push(f);
+  }
+
+  /* ---- the parts: §3's table, as plain convex solids ---------------------- */
+  /* Each part is a list of primitives in its own frame (a along its length, b
+     across, z up from its base): a vertical n-gon frustum, or a hexahedron. */
+  function partShape(tr){
+    switch(tr){
+      case 0: return {h:1.9, P:[{t:'pr', z0:0, z1:1.9, r0:0.95, r1:0.4}]};
+      case 1: return {h:1.4, P:[{t:'hx', V:[[-1.25,-0.075,0],[1.25,-0.075,0],[1.25,0.075,0],[-1.25,0.075,0],
+                                             [0.05,-0.075,1.4],[1.25,-0.075,1.4],[1.25,0.075,1.4],[0.05,0.075,1.4]]}]};
+      case 2: return {h:0.9, P:[{t:'pr', z0:0, z1:0.9, r0:1.15, r1:1.15}]};
+      case 3: return {h:1.2, P:[{t:'pr', z0:0, z1:0.6, r0:1.2, r1:1.04},{t:'pr', z0:0.6, z1:1.2, r0:1.04, r1:0.45}]};
+      case 4: return {h:2.3, P:[{t:'bx', a:0.9, b:0.06, z0:0, z1:2.3}]};
+      case 5: return {h:0.8, P:[{t:'bx', a:0.55, b:0.45, z0:0, z1:0.8}]};
+      default: return {h:2.9, P:[{t:'pr', z0:0, z1:2.9, r0:1.45, r1:0.6}]};
+    }
+  }
+  var PN=16;
+  /* the world vertices of a part at plan centre c, base zb, long axis a */
+  function partVerts(sh,c,zb,a){
+    var b=[-a[1],a[0]], out2=[], q;
+    sh.P.forEach(function(pr){
+      if(pr.t==='pr'){
+        for(q=0;q<PN;q++){ var an=TAU*(q+0.5)/PN, dx=-Math.sin(an), dy=Math.cos(an);
+          out2.push([c[0]+pr.r0*dx,c[1]+pr.r0*dy,zb+pr.z0]); out2.push([c[0]+pr.r1*dx,c[1]+pr.r1*dy,zb+pr.z1]); }
+      } else {
+        var V=pr.t==='hx'?pr.V:[[-pr.a,-pr.b,pr.z0],[pr.a,-pr.b,pr.z0],[pr.a,pr.b,pr.z0],[-pr.a,pr.b,pr.z0],
+                                 [-pr.a,-pr.b,pr.z1],[pr.a,-pr.b,pr.z1],[pr.a,pr.b,pr.z1],[-pr.a,pr.b,pr.z1]];
+        V.forEach(function(v){ out2.push([c[0]+v[0]*a[0]+v[1]*b[0], c[1]+v[0]*a[1]+v[1]*b[1], zb+v[2]]); });
+      }
+    });
+    return out2;
+  }
+  function drawPart(tr,c,zb,a,id){
+    var sh=partShape(tr), b=[-a[1],a[0]], o0={lay:'parts', kind:PARTKIND[tr], id:id};
+    sh.P.forEach(function(pr,j4){
+      var o=Object.assign({},o0);
+      if(pr.t==='pr'){
+        o.seam0=j4>0; o.seam1=j4+1<sh.P.length;
+        rprism([c[0],c[1],zb+pr.z0],[c[0],c[1],zb+pr.z1],pr.r0,pr.r1,PN,o);
+      } else {
+        var V=pr.t==='hx'?pr.V:[[-pr.a,-pr.b,pr.z0],[pr.a,-pr.b,pr.z0],[pr.a,pr.b,pr.z0],[-pr.a,pr.b,pr.z0],
+                                 [-pr.a,-pr.b,pr.z1],[pr.a,-pr.b,pr.z1],[pr.a,pr.b,pr.z1],[-pr.a,pr.b,pr.z1]];
+        rhex(V.map(function(v){ return [c[0]+v[0]*a[0]+v[1]*b[0], c[1]+v[0]*a[1]+v[1]*b[1], zb+v[2]]; }),o);
+      }
+    });
+    return zb+sh.h;
+  }
+  function hull2d(pts){
+    var q=pts.map(function(v){ return [v[0],v[1]]; }).sort(function(u,v){ return u[0]-v[0]||u[1]-v[1]; }), lo=[], up=[], j;
+    function cr(o,a,b){ return (a[0]-o[0])*(b[1]-o[1])-(a[1]-o[1])*(b[0]-o[0]); }
+    for(j=0;j<q.length;j++){ while(lo.length>=2 && cr(lo[lo.length-2],lo[lo.length-1],q[j])<=1e-12) lo.pop(); lo.push(q[j]); }
+    for(j=q.length-1;j>=0;j--){ while(up.length>=2 && cr(up[up.length-2],up[up.length-1],q[j])<=1e-12) up.pop(); up.push(q[j]); }
+    return lo.slice(0,-1).concat(up.slice(0,-1));
+  }
+  function segPt(p,a,b){ var dx=b[0]-a[0], dy=b[1]-a[1], L2=dx*dx+dy*dy, t=L2?((p[0]-a[0])*dx+(p[1]-a[1])*dy)/L2:0;
+    t=Math.max(0,Math.min(1,t)); return Math.hypot(a[0]+dx*t-p[0], a[1]+dy*t-p[1]); }
+  /* the plan distance between two convex polygons, 0 when they overlap */
+  function polyDist(P1,P2){
+    if(ovl2(P1,P2)) return 0;
+    var best=1e18, i3, j3;
+    for(i3=0;i3<P1.length;i3++) for(j3=0;j3<P2.length;j3++){
+      best=Math.min(best, segPt(P1[i3],P2[j3],P2[(j3+1)%P2.length]), segPt(P2[j3],P1[i3],P1[(i3+1)%P1.length]));
+    }
+    return best;
+  }
+  /* THE STACK'S SURFACE, as the gate measures it: at a height, the 24-gon of
+     the core (frames and skin share it, vertices at 7.5° + 15° k) or of the
+     fairing's band there; over a height range, the widest. 0 where none. */
+  function stackRAt(z0,z1){
+    var r=0, j;
+    if(z1>4.6 && z0<ZTOP) r=4.2;
+    for(j=0;j+1<FPROF.length;j++){
+      var a0=FBASE+FPROF[j][0], a1=FBASE+FPROF[j+1][0];
+      if(z1>a0 && z0<a1){ var zz=Math.max(z0,a0); r=Math.max(r, FPROF[j][1]+(FPROF[j+1][1]-FPROF[j][1])*(zz-a0)/(a1-a0)); }
+    }
+    return r;
+  }
+  function stackPoly(r){ var o2=[], j; for(j=0;j<24;j++){ var an=(7.5+15*j)*Math.PI/180; o2.push([C[0]+r*Math.cos(an),C[1]+r*Math.sin(an)]); } return o2; }
+  /* IN AN UNSKINNED BAY WITH NO RING FRAME IN THE BAND, THE STACK'S DRAWN
+     SURFACE IS THE 16 STRINGERS: a part held there is placed against their
+     hull, not the frames' 24-gon (F2; a pod at rflr 6 rwid 40 sat 0.08 m off
+     them). The frames' heights are the BUILD's, 2.5 m up from the skin. */
+  var FRAMEZ=[];
+  if(SKIN<ZTOP-1e-9){ (function(){ var zf=SKIN+2.5; while(zf<ZTOP-0.3){ FRAMEZ.push(zf); zf+=2.5; } FRAMEZ.push(ZTOP); })(); }
+  function stackSurf(z0,z1,rs){
+    if(SKIN<ZTOP-1e-9 && z0>=SKIN-1e-9 && z1<=ZTOP+1e-9 &&
+       !FRAMEZ.some(function(z2){ return z2>z0+1e-9 && z2-0.25<z1-1e-9; })){
+      var pts=[], k;
+      for(k=0;k<16;k++){ var as=TAU*k/16, sx=C[0]+4.07*Math.cos(as), sy=C[1]+4.07*Math.sin(as);
+        pts.push([sx-0.06,sy-0.06],[sx+0.06,sy-0.06],[sx+0.06,sy+0.06],[sx-0.06,sy+0.06]); }
+      return hull2d(pts);
+    }
+    return stackPoly(rs);
+  }
+
+  /* ---- the platform robots: §3 contract 4 -------------------------------- */
+  /* rarm arms on platform i, each holding a part of floor i's trade with its
+     inner face 0.03 m from the stack's surface (within §3's 0.05). A robot is
+     a pedestal on the platform, beside the part (never behind it: a part
+     reaches past the platform's edge), and two links in the vertical plane
+     from its shoulder to a wrist over the part's centre; a gripper hangs from
+     the wrist onto the part's top. The pose is solved here, elbow up, and the
+     joint angles are recorded: rktcheck F3 rebuilds the wrist from them with
+     its own forward kinematics. */
+  var RL1=3.2, RL2=2.8, RJ=0.35, RPED=0.55;
+  var ROBOTS=[], HELD=[];
+  /* a part's long axis: radial (a fin and a panel are offered edge-on, so
+     the hand above them stays clear of the stack), tangent for a pod */
+  function partFrame(tr,e){ return tr===5?[-e[1],e[0]]:[e[0],e[1]]; }
+  function placeHeld(tr,phi,zb){
+    var e=[Math.cos(phi),Math.sin(phi)], a=partFrame(tr,e), sh=partShape(tr), rs=stackRAt(zb,zb+sh.h);
+    if(!rs) return null;
+    /* the part's plan hull once, then only translated along e: 30 halvings
+       of 4 m leave the gap within 4e-9 m of 0.03 */
+    var SP=stackSurf(zb,zb+sh.h,rs), lo=rs*0.9, hi=rs+4, it2, H0=hull2d(partVerts(sh,[0,0],zb,a));
+    function gap(rc){ var cx=C[0]+rc*e[0], cy=C[1]+rc*e[1]; return polyDist(H0.map(function(v){ return [v[0]+cx,v[1]+cy]; }),SP); }
+    for(it2=0;it2<30;it2++){ var mid=(lo+hi)/2; if(gap(mid)<0.03) lo=mid; else hi=mid; }
+    var rc=hi, c=[C[0]+rc*e[0],C[1]+rc*e[1]];
+    return {c:c, rc:rc, a:a, zb:zb, h:sh.h, V:partVerts(sh,c,zb,a), gap:gap(rc)};
+  }
+  /* a sampled link against a part: its plan hull and its height, exact for
+     an upright part (the AABB of a part at a diagonal bearing is ~1.4 x too
+     wide and refused every top-floor pose) */
+  /* hull2d's polygons run counter-clockwise */
+  function ptPoly(q,P2){ var ins=true, best=1e18, j;
+    for(j=0;j<P2.length;j++){ var a=P2[j], b=P2[(j+1)%P2.length];
+      if((b[0]-a[0])*(q[1]-a[1])-(b[1]-a[1])*(q[0]-a[0])<0) ins=false;
+      best=Math.min(best,segPt(q,a,b)); }
+    return ins?0:best; }
+  function partHit(pts,rad,PH,PB){
+    for(var j=0;j<pts.length;j++){ var q=pts[j];
+      if(q[2]>PB[2]-rad && q[2]<PB[5]+rad && ptPoly(q,PH)<rad) return true; }
+    return false;
+  }
+  function capsHit(pts,rad,box){
+    for(var j=0;j<pts.length;j++){ var q=pts[j];
+      if(q[0]>box[0]-rad && q[0]<box[3]+rad && q[1]>box[1]-rad && q[1]<box[4]+rad && q[2]>box[2]-rad && q[2]<box[5]+rad) return true; }
+    return false;
+  }
+  function bbox3(V){ var b=[1e18,1e18,1e18,-1e18,-1e18,-1e18]; V.forEach(function(v){ for(var a3=0;a3<3;a3++){ b[a3]=Math.min(b[a3],v[a3]); b[a3+3]=Math.max(b[a3+3],v[a3]); } }); return b; }
+  PLAT.forEach(function(fl){
+    var fi=FLOORS[fl.i-1], zp=fl.z, tr=fi.trade, got=[], cand=[], q;
+    if(!NARM) return;
+    for(q=0;q<72;q++) cand.push(((45+5*Math.ceil(q/2)*(q%2?1:-1))%360+360)%360);
+    var landR=fi.arm.s!==null?armRect(fi.arm.side,fi.arm.s,zp):null;
+    for(q=0;q<cand.length && got.length<NARM;q++){
+      var phi=cand[q]*Math.PI/180;
+      if(got.some(function(g){ var dd=Math.abs(g.deg-cand[q])%360; return Math.min(dd,360-dd)<70; })) continue;
+      var zb=zp+1.3, sh=partShape(tr);
+      if(!stackRAt(zb,zb+sh.h) && FBASE+0.05>=zb) zb=FBASE+0.05;
+      /* cheap first: no bearing within 40° of a booster standing at this height */
+      if(boostsAt(zb,zb+sh.h).some(function(b){ var dd=Math.abs(b.bear-cand[q])%360; return Math.min(dd,360-dd)<40; })) continue;
+      var P=placeHeld(tr,phi,zb);
+      if(!P) continue;
+      var PB=bbox3(P.V), PH=hull2d(P.V), bad=false;
+      boostsAt(PB[2],PB[5]).forEach(function(b){ if(polyDist(PH,discPoly(b.x,b.y,2.0))<0.4) bad=true; });
+      if(landR && polyDist(PH,rectPts(landR))<0.3 && PB[2]<zp+1.25) bad=true;
+      HELD.forEach(function(H2){ if(Math.abs(H2.zp-zp)<1 && polyDist(PH,H2.hull)<0.6) bad=true; });
+      if(bad) continue;
+      var e=[Math.cos(phi),Math.sin(phi)], tv=[-e[1],e[0]], lat=0;
+      P.V.forEach(function(v){ lat=Math.max(lat,Math.abs((v[0]-P.c[0])*tv[0]+(v[1]-P.c[1])*tv[1])); });
+      var pose=null;
+      [[1,0.9,0.4],[-1,0.9,0.4],[1,1.5,0.4],[-1,1.5,0.4],[1,0.9,1.0],[-1,0.9,1.0],[1,1.5,1.0],[-1,1.5,1.0]].forEach(function(sv){
+        if(pose) return;
+        var sg=sv[0], dl=Math.asin(Math.min(0.95,(lat+sv[1])/6.15))*sg, bb=phi+dl, Bx=C[0]+6.15*Math.cos(bb), By=C[1]+6.15*Math.sin(bb);
+        var eb=[Math.cos(bb),Math.sin(bb)], tb=[-eb[1],eb[0]];
+        var ped=[[Bx-0.4*eb[0]-0.4*tb[0],By-0.4*eb[1]-0.4*tb[1]],[Bx+0.4*eb[0]-0.4*tb[0],By+0.4*eb[1]-0.4*tb[1]],
+                 [Bx+0.4*eb[0]+0.4*tb[0],By+0.4*eb[1]+0.4*tb[1]],[Bx-0.4*eb[0]+0.4*tb[0],By-0.4*eb[1]+0.4*tb[1]]];
+        var okp=true, j5;
+        for(j5=0;j5<NSEC;j5++) if(fl.drop[j5] && ovl2(ped,secPoly(j5))) okp=false;
+        ped.forEach(function(v){ var rr=Math.hypot(v[0]-C[0],v[1]-C[1]); if(rr<RIN+0.1||rr>ROUT-0.15) okp=false; });
+        if(landR && polyDist(ped,rectPts(landR))<0.3) okp=false;
+        if(polyDist(ped,PH)<0.3) okp=false;
+        HELD.forEach(function(H2){ if(Math.abs(H2.zp-zp)<1 && (polyDist(ped,H2.hull)<0.3 || polyDist(ped,H2.ped)<0.3)) okp=false; });
+        if(!okp) return;
+        var Sz=zp+RPED+RJ, Wz=P.zb+P.h+sv[2]+RJ, hx=P.c[0]-Bx, hy=P.c[1]-By, Hh=Math.hypot(hx,hy);
+        if(Hh<1e-6) return;
+        var hd=[hx/Hh,hy/Hh], dz=Wz-Sz, dd2=Math.hypot(Hh,dz);
+        if(dd2>RL1+RL2-0.05 || dd2<Math.abs(RL1-RL2)+0.05) return;
+        var c2=(dd2*dd2-RL1*RL1-RL2*RL2)/(2*RL1*RL2), th2=-Math.acos(Math.max(-1,Math.min(1,c2)));
+        var th1=Math.atan2(dz,Hh)-Math.atan2(RL2*Math.sin(th2),RL1+RL2*Math.cos(th2));
+        var S3=[Bx,By,Sz], E3=[Bx+RL1*Math.cos(th1)*hd[0],By+RL1*Math.cos(th1)*hd[1],Sz+RL1*Math.sin(th1)];
+        var W3=[E3[0]+RL2*Math.cos(th1+th2)*hd[0],E3[1]+RL2*Math.cos(th1+th2)*hd[1],E3[2]+RL2*Math.sin(th1+th2)];
+        /* the links, sampled: clear of the part, the stack, the boosters, the
+           access arm's rails and every robot already placed */
+        var smp=[], k5;
+        for(k5=0;k5<=12;k5++){ var t5=k5/12;
+          smp.push([S3[0]+(E3[0]-S3[0])*t5,S3[1]+(E3[1]-S3[1])*t5,S3[2]+(E3[2]-S3[2])*t5]);
+          if(t5<0.86) smp.push([E3[0]+(W3[0]-E3[0])*t5,E3[1]+(W3[1]-E3[1])*t5,E3[2]+(W3[2]-E3[2])*t5]); }
+        if(partHit(smp,0.3,PH,PB)) return;
+        for(k5=0;k5<smp.length;k5++){ var q5=smp[k5], rr5=stackRAt(q5[2]-0.3,q5[2]+0.3);
+          if(rr5 && Math.hypot(q5[0]-C[0],q5[1]-C[1])<rr5+0.35) return;
+          if(boostsAt(q5[2]-0.3,q5[2]+0.3).some(function(b){ return Math.hypot(q5[0]-b.x,q5[1]-b.y)<2.35; })) return;
+          if(landR && q5[2]<zp+1.5 && rdDist(landR,q5[0],q5[1])<0.4) return;
+          if(Math.hypot(q5[0]-C[0],q5[1]-C[1])>ROUT-0.2 && q5[2]<zp+1.5) return; }
+        if(HELD.some(function(H2){ return Math.abs(H2.zp-zp)<1 && (partHit(smp,0.4,H2.hull,H2.pb) || H2.smp.some(function(u5){ return smp.some(function(v5){ return Math.hypot(u5[0]-v5[0],u5[1]-v5[1],u5[2]-v5[2])<0.8; }); })); })) return;
+        /* the hand: the wrist joint (r RJ) and the gripper (0.4 m square, from
+           the part's top up to the joint) keep 0.05 m off the stack */
+        var rW=Math.hypot(W3[0]-C[0],W3[1]-C[1]), rsW=stackRAt(W3[2]-RJ,W3[2]+RJ), rsG=stackRAt(P.zb+P.h,W3[2]-RJ);
+        if(rsW && rW<rsW+RJ+0.05) return;
+        if(rsG && rW<rsG+0.2*Math.SQRT2+0.05) return;
+        pose={B:[Bx,By], eb:eb, ped:ped, S:S3, E:E3, W:W3, hd:hd, th1:th1, th2:th2, smp:smp};
+      });
+      if(!pose) continue;
+      var rec={i:fl.i, j:got.length, deg:cand[q], phi:phi, trade:tr, part:P, pose:pose, zp:zp, hull:PH, pb:PB, ped:pose.ped, smp:pose.smp};
+      got.push(rec); HELD.push(rec);
+    }
+    fi.robots=got;
+  });
+
+  /* ---- the bridges carry carts: §3 "between floors" ---------------------- */
+  /* rpart of two slots per bridge, on the ramp, clear of the pylons standing
+     on it. A cart's underside lies on the sloped deck and its top is level,
+     so the part on it stands upright. It carries the upper floor's trade. */
+  BRIDGES.forEach(function(Bg){
+    Bg.carts=[];
+    var nb2=Math.round(QPART*2), cands=[0.45,0.7,0.3,0.85,0.55], j6;
+    for(j6=0;j6<cands.length && Bg.carts.length<nb2;j6++){
+      var tc=cands[j6], half=1.35/ABL;
+      if(tc-half<Bg.tA+0.2/ABL || tc+half>1-1.2/ABL) continue;
+      if(PYL.some(function(Py){ return Math.abs(Py.t-tc)<(1.35+0.9+1.6)/ABL; })) continue;
+      if(Bg.carts.some(function(c6){ return Math.abs(c6.t-tc)<4.5/ABL; })) continue;
+      Bg.carts.push({t:tc});
+    }
+  });
 
   /* ================= BUILD ================================================= */
   var RAIL=0.05;
@@ -24311,7 +24641,6 @@ function buildRocketOnce(p,DROP){
     }
   });
   /* the fairing: §2's ogive, base r 4.2, 14.3 m */
-  var FPROF=[[0,4.2],[4,4.15],[7.5,3.6],[10.5,2.6],[13,1.3],[14.3,0.1]];
   for(k=0;k+1<FPROF.length;k++)
     rprism([C[0],C[1],FBASE+FPROF[k][0]],[C[0],C[1],FBASE+FPROF[k+1][0]],FPROF[k][1],FPROF[k+1][1],24,
            {lay:'rocket', kind:'fairing', id:'fairing', seam0:k>0, seam1:k+2<FPROF.length});
@@ -24364,6 +24693,121 @@ function buildRocketOnce(p,DROP){
     arm.far=far;
   });
 
+  /* ---- the trades on the floors (row 411) ------------------------------- */
+  var PARTS=[], NPART=0, CARTS=[];
+  function newPart(tr,floor,where,on){ var n=NPART++; PARTS.push({n:n, id:'part'+n, trade:tr, kind:PARTKIND[tr], floor:floor, where:where, on:on}); return 'part'+n; }
+  FLOORS.forEach(function(f){
+    var z=f.z, j, aS=f.R?[1,0]:[0,1], aD=f.R?[0,1]:[1,0];
+    /* the wall row */
+    if(!DROPS.wallrow) f.wall.forEach(function(it,j7){
+      var o={lay:'works', kind:it.kind, id:'wall'+f.i+'.'+j7, dropc:'wallrow'}, c=lw(f,(it.s0+it.s1)/2,2.5);
+      if(it.kind==='cabinet') lbox(f,it.s0,2.05,z,it.s1,2.95,z+it.h,o);
+      else if(it.kind==='tank') rprism([c[0],c[1],z],[c[0],c[1],z+it.h],it.r,it.r,12,o);
+      else { rprism([c[0],c[1],z],[c[0],c[1],z+it.h],it.r,it.r,12,Object.assign({},o,{seam1:true}));
+             rprism([c[0],c[1],z+it.h],[c[0],c[1],z+it.h+1.2],it.r,0.3,12,Object.assign({},o,{seam0:true})); }
+    });
+    /* the track: sleepers every 1.1 m, two rails on them */
+    if(f.t1-f.t0>3){
+      if(!DROPS.sleepers) for(j=f.t0;j+0.25<=f.t1;j+=1.1) lbox(f,j,6.1,z,j+0.25,7.9,z+0.12,{lay:'works', kind:'sleeper', id:'trk'+f.i+'.s', dropc:'sleepers'});
+      lbar(f,f.t0,6.35,z+0.12,f.t1,6.45,z+0.24,{lay:'works', kind:'trackrail', id:'trk'+f.i+'.r'});
+      lbar(f,f.t0,7.75,z+0.12,f.t1,7.85,z+0.24,{lay:'works', kind:'trackrail', id:'trk'+f.i+'.r'});
+    }
+    /* the spur, from the main line's outer rail to the floor's free edge */
+    if(f.spur && !f.spur.off){
+      var ss=f.spur.s;
+      if(!DROPS.sleepers) for(j=8.2;j+0.25<=11.9;j+=1.1) lbox(f,ss-1.0,j,z,ss+1.0,j+0.25,z+0.12,{lay:'works', kind:'sleeper', id:'trk'+f.i+'.sp.s', dropc:'sleepers'});
+      lbar(f,ss-0.75,7.9,z+0.12,ss-0.65,12,z+0.24,{lay:'works', kind:'trackrail', id:'trk'+f.i+'.sp.r'});
+      lbar(f,ss+0.65,7.9,z+0.12,ss+0.75,12,z+0.24,{lay:'works', kind:'trackrail', id:'trk'+f.i+'.sp.r'});
+    }
+    /* the stations, each a plain portal on four posts over the track, and its head */
+    f.stations.forEach(function(st,j8){
+      var o={lay:'works', kind:'station', id:'stn'+f.i+'.'+j8}, s0=st.s0, s1=st.s1, hz=z+3.1, sc=(s0+s1)/2;
+      lbox(f,s0,5.1,z,s0+0.5,5.6,hz,o); lbox(f,s1-0.5,5.1,z,s1,5.6,hz,o);
+      lbox(f,s0,8.4,z,s0+0.5,8.9,hz,o); lbox(f,s1-0.5,8.4,z,s1,8.9,hz,o);
+      lbox(f,s0,5.1,hz,s1,8.9,z+3.9,o);                              /* the roof, 0.8 m, in one storey of cells */
+      if(st.kind==='autoclave'){ var c0=lw(f,sc,5.1), c1=lw(f,sc,8.9);
+        rprism([c0[0],c0[1],z+4.75],[c1[0],c1[1],z+4.75],0.85,0.85,16,o); }
+      else if(st.kind==='press'){ lbox(f,sc-1.25,5.6,z+3.9,sc+1.25,8.4,z+4.9,o); lbox(f,sc-0.45,6.6,z+2.3,sc+0.45,7.4,hz,o); }
+      else if(st.kind==='weld'){ lbox(f,sc-0.2,6.8,z+2.2,sc+0.2,7.2,hz,o); }
+      else if(st.kind==='arch'){ lbox(f,sc-1.25,5.1,z+3.9,sc+1.25,8.9,z+4.4,o); }
+      else if(st.kind==='cell'){ lbox(f,sc-0.4,6.6,z+2.0,sc+0.4,7.4,hz,o); }
+      else { var ch=lw(f,sc,7.0);
+        rprism([ch[0],ch[1],z+3.9],[ch[0],ch[1],z+5.9],0.4,1.4,16,o); }
+    });
+    /* carts, each with one part of the floor's trade */
+    f.carts.forEach(function(sl){
+      var n=CARTS.length, cid='cart'+n, top=z+0.84, c, a;
+      if(sl.spur){ lbox(f,sl.s-1.05,8.6,z+0.24,sl.s+1.05,11.3,top,{lay:'works', kind:'cart', id:cid}); c=lw(f,sl.s,9.95); a=aD; }
+      else { lbox(f,sl.s-1.35,6.05,z+0.24,sl.s+1.35,8.15,top,{lay:'works', kind:'cart', id:cid}); c=lw(f,sl.s,7.1); a=aS; }
+      CARTS.push({n:n, id:cid, floor:f.i, spur:!!sl.spur, s:sl.s, top:top});
+      drawPart(f.trade,c,top,a,newPart(f.trade,f.i,'cart',cid));
+    });
+  });
+  /* the stairs: a plain stair core in the corner square between every
+     adjacent pair of floors, its door facing the hall */
+  for(i=1;i<N;i++){
+    rbox(0,0,10*i,2.8,4,10*(i+1)-0.7,{kind:'stair', id:'stair'+i});
+    rbox(2.8,1.4,10*i,2.88,2.6,10*i+2.2,{kind:'door', id:'stair'+i+'.d'});
+  }
+  /* the freight lift: an enclosed shaft past the x = 0 wall's far end, a
+     landing door at every storey and no car in sight */
+  rbox(-0.4,D,0,2.0,D+2.4,H,{kind:'lift', id:'lift'});
+  for(i=0;i<=N;i++) rbox(2.0,D+0.5,10*i,2.08,D+1.9,10*i+2.6,{kind:'door', id:'lift.d'});
+  /* the stores: three shelves of rings and domes on the x = 0 wall, above the
+     top L floor and its wall row */
+  var ZL=10*(N%2===0?N:N-1), SHELF=[];
+  [8.4,10.8,13.2].forEach(function(dzs,k7){
+    var zs=ZL+dzs, y0=13, y1=Math.min(D-3.5,31), yy, alt=0;
+    if(y1-y0<3) return;
+    rbox(0,y0,zs-0.15,2.6,y1,zs,{lay:'works', kind:'shelf', id:'shelf'+k7});
+    SHELF.push({k:k7, z:zs});
+    for(yy=y0+1.5;yy+1.3<=y1;yy+=4.0){
+      var trs=(alt++%2)?3:2;
+      drawPart(trs,[1.3,yy],zs,[0,1],newPart(trs,null,'shelf','shelf'+k7));
+    }
+  });
+  /* the carts on the bridges */
+  var BCARTS=[];
+  BRIDGES.forEach(function(Bg){
+    var tr=tradeOf(Bg.i);
+    Bg.carts.forEach(function(cc){
+      var h2=1.35/ABL, w0=0.15, w1=1.45, V=[], j9, zt=-1e18;
+      var cor=[[cc.t-h2,w0],[cc.t+h2,w0],[cc.t+h2,w1],[cc.t-h2,w1]];
+      cor.forEach(function(q9){ zt=Math.max(zt,bridgeZ(Bg,q9[0])); });
+      zt+=0.5;
+      cor.forEach(function(q9){ V.push([A[0]+ABx*q9[0]-NRM[0]*q9[1], A[1]+ABy*q9[0]-NRM[1]*q9[1], bridgeZ(Bg,q9[0])]); });
+      cor.forEach(function(q9){ V.push([A[0]+ABx*q9[0]-NRM[0]*q9[1], A[1]+ABy*q9[0]-NRM[1]*q9[1], zt]); });
+      var n=CARTS.length, cid='cart'+n;
+      rhex(V,{lay:'works', kind:'cart', id:cid});
+      CARTS.push({n:n, id:cid, floor:null, bridge:Bg.i, t:cc.t, top:zt});
+      BCARTS.push(cid);
+      var c=[A[0]+ABx*cc.t-NRM[0]*0.8, A[1]+ABy*cc.t-NRM[1]*0.8];
+      drawPart(tr,c,zt,U,newPart(tr,Bg.i,'bridge',cid));
+    });
+  });
+  /* the platform robots and the parts they hold */
+  HELD.forEach(function(Rb){
+    var P=Rb.part, ps=Rb.pose, id='rbt'+Rb.i+'.'+Rb.j, o=function(k8){ return {lay:'works', kind:'robot', id:id+'.'+k8}; };
+    var eb=ps.eb, tb=[-eb[1],eb[0]], B2=ps.B, zp=Rb.zp, lat=[-ps.hd[1],ps.hd[0]];
+    rplan(ps.ped,zp,zp+RPED,o('p'));
+    function joint(J,k8){ rprism([J[0]-0.25*lat[0],J[1]-0.25*lat[1],J[2]],[J[0]+0.25*lat[0],J[1]+0.25*lat[1],J[2]],RJ,RJ,12,o(k8)); }
+    function link(J0,J1,k8){
+      var dx=J1[0]-J0[0], dy=J1[1]-J0[1], dz=J1[2]-J0[2], L=Math.sqrt(dx*dx+dy*dy+dz*dz), X=[dx/L,dy/L,dz/L];
+      var Y=[lat[0],lat[1],0], Z=[X[1]*Y[2]-X[2]*Y[1], X[2]*Y[0]-X[0]*Y[2], X[0]*Y[1]-X[1]*Y[0]];
+      var P0=[J0[0]+X[0]*(RJ+0.01),J0[1]+X[1]*(RJ+0.01),J0[2]+X[2]*(RJ+0.01)], P1=[J1[0]-X[0]*(RJ+0.01),J1[1]-X[1]*(RJ+0.01),J1[2]-X[2]*(RJ+0.01)];
+      function cn(Pq,sy,sz){ return [Pq[0]+0.15*(sy*Y[0]+sz*Z[0]), Pq[1]+0.15*(sy*Y[1]+sz*Z[1]), Pq[2]+0.15*(sy*Y[2]+sz*Z[2])]; }
+      rhex([cn(P0,-1,-1),cn(P1,-1,-1),cn(P1,1,-1),cn(P0,1,-1),cn(P0,-1,1),cn(P1,-1,1),cn(P1,1,1),cn(P0,1,1)],o(k8));
+    }
+    joint(ps.S,'s'); link(ps.S,ps.E,'l1'); joint(ps.E,'e'); link(ps.E,ps.W,'l2'); joint(ps.W,'w');
+    var hd=ps.hd, top=P.zb+P.h, W2=ps.W;
+    rplan([[W2[0]-0.2*hd[0]-0.2*lat[0],W2[1]-0.2*hd[1]-0.2*lat[1]],[W2[0]+0.2*hd[0]-0.2*lat[0],W2[1]+0.2*hd[1]-0.2*lat[1]],
+           [W2[0]+0.2*hd[0]+0.2*lat[0],W2[1]+0.2*hd[1]+0.2*lat[1]],[W2[0]-0.2*hd[0]+0.2*lat[0],W2[1]-0.2*hd[1]+0.2*lat[1]]],
+          top,W2[2]-RJ,o('g'));
+    drawPart(Rb.trade,P.c,P.zb,P.a,newPart(Rb.trade,Rb.i,'arm',id+'.g'));
+    ROBOTS.push({i:Rb.i, j:Rb.j, id:id, bearing:Rb.deg, base:[B2[0],B2[1]], shoulder:ps.S.slice(), hdir:hd.slice(),
+                 L1:RL1, L2:RL2, th1:ps.th1, th2:ps.th2, wrist:ps.W.slice(), elbow:ps.E.slice(), gap:P.gap});
+  });
+
   /* ---- the crane: a box column, a box girder, a trolley, the hook ------- */
   var GZ=H-4;
   rbox(W-3.2,C[1]-1.2,0,W-0.8,C[1]+1.2,GZ+1.8,{kind:'crane', id:'crane.col'});
@@ -24378,7 +24822,11 @@ function buildRocketOnce(p,DROP){
          pylons:PYL, boosters:BOOST, skin:SKIN, ztop:ZTOP, fbase:FBASE, fhang:FHANG, bzt:BZT,
          plat:PLAT.map(function(fl){ return {i:fl.i, z:fl.z, drop:fl.drop.slice()}; }),
          arms:ARMS.map(function(a){ return {i:a.i, side:a.side, s:a.s, blocked:a.blocked, none:a.none}; }),
-         crane:{gz:GZ, hook:HOOK}};
+         crane:{gz:GZ, hook:HOOK}, narm:NARM, qpart:QPART, trades:TRADES, partkinds:PARTKIND,
+         floors:FLOORS.map(function(f){ return {i:f.i, R:f.R, trade:f.trade, t0:f.t0, t1:f.t1,
+           spur:(f.spur&&!f.spur.off)?f.spur.s:null, stations:f.stations.map(function(st){ return {s0:st.s0, s1:st.s1, kind:st.kind}; }),
+           robots:(f.robots||[]).length}; }),
+         robots:ROBOTS, parts:PARTS, carts:CARTS, shelves:SHELF};
 
   /* ---- inside a cell: the exact order, `fact`'s rule in rkt's copy ------- */
   function rktCellOrder(){
@@ -24514,6 +24962,8 @@ function buildRocketOnce(p,DROP){
   RKTINFO=W+' × '+D+' m · '+N+' floors · '+Math.round(Q*100)+' % built · '+
           RKTSTATS.boosters+(RKTSTATS.boosters<NB?' of '+NB:'')+' booster'+(NB===1?'':'s')+' · '+
           (nBl?nBl+' access arm'+(nBl===1?'':'s')+' blocked by a booster · ':'')+
+          PARTS.length+' parts · '+ROBOTS.length+' robot'+(ROBOTS.length===1?'':'s')+
+          (ROBOTS.length<NARM*N?' (of '+NARM*N+')':'')+' · '+
           (RKTSTATS.drops.length?'over budget: dropped '+RKTSTATS.drops.join(', ')+(RKTSTATS.over?' (still over)':'')+' · ':'')+
           solids.length.toLocaleString()+' solids · '+out.length.toLocaleString()+' paths · '+
           (fsc*PAGEMM).toFixed(1)+' mm/m';
@@ -49898,6 +50348,8 @@ var HELP={
 'rkt.rwid':'How wide the hall is along the right-hand back wall, in metres; its depth is 4 m less. The rocket stands 7.5 m out from the line the transfer bridges run on, wherever that falls, so a wider hall gives the floors and the rocket more room rather than moving the rocket into a corner.',
 'rkt.rboost':'How many strap-on boosters the rocket has, 0 to 4, round the core at 135° and evenly from there. Each pierces the ring platforms it passes, which are cut away round it, and an access arm that would land on one is moved along until it lands on clear platform.',
 'rkt.rdone':'How far the rocket has been put together. The core is skinned from the bottom up to this share of its height and is bare ring frames, stringers and a tank above it; the boosters arrive one by one as it rises; at 100 % the fairing sits on top, otherwise it hangs on the crane hook above the stack.',
+'rkt.rarm':'How many robot arms stand on each ring platform, 0 to 3. Each holds a part of its floor’s trade against the rocket, a few centimetres off its surface, posed by the engine’s own reach; they stand beside the part, clear of the boosters, the access arm and each other.',
+'rkt.rpart':'How many of the transfer carts are out with a part on them: the share of the cart places on every floor’s track (the spur to the access arm first) and on the bridges between floors. 0 % leaves the tracks bare; the parts the robots hold and the stored rings and domes stay.',
 'rkt.lod':'The smallest detail still drawn, as its size on the SHEET. A bar thinner than this (handrails, posts, stringers, the crane rope) is drawn as one of its own edges and hides nothing behind it.',
 'rkt.budg':'The most points the drawing may have, in thousands. Over it, whole classes of fine detail are left out in this order until it fits: track sleepers, handrail posts, stringers, rack items, people, the wall row. The structure, the rocket, the platforms and the access arms never go. The stat line names what was dropped. The page’s own ceiling caps it.',
 'rkt.occ':'How wide a white gap a nearer solid opens in a line passing behind it. The hall hides itself exactly -- every solid is cut to the 1 m lattice and drawn front to back -- so this is only the breathing room at each crossing.',
