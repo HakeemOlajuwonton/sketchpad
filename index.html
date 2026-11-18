@@ -581,7 +581,7 @@ html.ui-corridors, html.ui-corridors body{margin:0; height:100%; overflow:hidden
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v430</a> &mdash; Corridor city: Spread pulls the airfield, the harbour&rsquo;s bay and the plant on the outskirts toward the core, the plant never among the city&rsquo;s lots; at a fixed Map scale the page centres on what it aims at, its height included, so a plant&rsquo;s towers keep their tops and Port at Focus 1 looks at the quay</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v431</a> &mdash; Rocket assembly: View is a menu, Isometric or Perspective; any knob can now show its values by name</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <section class="fold" id="fold_pick"><h2>Pick engine<span class="cnt"></span></h2>
@@ -3363,8 +3363,8 @@ var SPEC={
      411-413 add arms, parts, staging, people, hatch and light with the parts
      that read them. Thirteen rows at the end and no more (Albert, on Corridor
      City's 140 knobs: "a nightmare"), and row 416's View makes fourteen (Albert, 2026-11-18: "add
-     perspective button too"). View is 0 Isometric, 1 Perspective: the named-values control is
-     the corridor panel's (CORCHOICE) and mkRow has none, so the unit says which is which. */
+     perspective button too"). View is 0 Isometric, 1 Perspective, shown by name: `names` is
+     mkRow's named-values row (row 423), the number underneath is still 0 or 1. */
   rkt:['Rocket assembly',[
     ['rflr','Floors',2,7,1,5],['rwid','Hall width',40,64,4,56,[1,' m']],
     ['rboost','Boosters',0,4,1,2],['rdone','Build progress',0,100,5,60,[1,'%']],
@@ -3373,7 +3373,7 @@ var SPEC={
     ['hatch','Tone hatch',0,100,1,40,[1,'%']],['sun','Light from',0,359,1,300,[1,'°']],
     ['lod','LOD cutoff',0,60,1,5,[10,' mm']],['budg','Size budget',10,300,5,200,[1,' k points']],
     ['occ','Occlusion gap',0,80,1,5,[10,' mm']],
-    ['rview','View',0,1,1,0,[1,' iso / persp']]]],
+    ['rview','View',0,1,1,0,null,{names:['Isometric','Perspective']}]]],
   /* STREET, queue rows 30-33. ONLY THE KNOBS A BUILT ROW READS ARE DECLARED --
      the spec's §7 lists forty, and row 33 added the last three (puddles, pudsz,
      ripple) with the reflections that read them, so no knob here is dead. Ranges and defaults are §7's verbatim.
@@ -48572,6 +48572,9 @@ function drawVariations(){
       /* the value is the whole point of a sweep, so it goes on the cell */
       var div=(sweep.spec[6]&&sweep.spec[6][0])||1, unit=(sweep.spec[6]&&sweep.spec[6][1])||'';
       var lab=(div===1?String(cellVal):(cellVal/div).toFixed(2))+unit;
+      /* a named row (row 423) shows the name */
+      var swn=sweep.spec[7]&&sweep.spec[7].names, swi=swn?Math.round((cellVal-sweep.spec[2])/sweep.spec[4]):-1;
+      if(swn && swn[swi]!==undefined) lab=swn[swi];
       ctx.fillStyle=isCur?'#c96f3a':'#8c8378';
       ctx.font=Math.round(Math.min(cw,ch)*0.085)+'px ui-sans-serif,sans-serif';
       ctx.textBaseline='top';
@@ -50948,7 +50951,7 @@ var HELP={
 'rkt.lod':'The smallest detail still drawn, as its size on the SHEET. A bar thinner than this (handrails, posts, stringers, the crane rope) is drawn as one of its own edges and hides nothing behind it.',
 'rkt.budg':'The most points the drawing may have, in thousands. Over it, whole classes of fine detail are left out in this order until it fits: track sleepers, handrail posts, stringers, rack items, people, the wall row. The structure, the rocket, the platforms and the access arms never go. The stat line names what was dropped. The page’s own ceiling caps it.',
 'rkt.occ':'How wide a white gap a nearer solid opens in a line passing behind it. The hall hides itself exactly -- every solid is cut to the 1 m lattice and drawn front to back -- so this is only the breathing room at each crossing.',
-'rkt.rview':'0 Isometric, 1 Perspective. Perspective looks from the same corner as Isometric, from a point beyond the hall about twice its diagonal away, so the far end draws smaller and the uprights lean in toward the bottom. The hall still hides itself exactly. Sizes on paper (the LOD cutoff, the shading’s spacing) are read at the far end, so nothing is drawn finer than its floor.',
+'rkt.rview':'Isometric or Perspective. Perspective looks from the same corner as Isometric, from a point beyond the hall about twice its diagonal away, so the far end draws smaller and the uprights lean in toward the bottom. The hall still hides itself exactly. Sizes on paper (the LOD cutoff, the shading’s spacing) are read at the far end, so nothing is drawn finer than its floor.',
 'harb.len':'How far the yard lane runs, in metres. The camera stands part-way along it and the stacks recede toward the far end.',
 'harb.bend':'How much the lane curves, in degrees per 100 m. A container yard is laid out straight, so 0; on a bend the deep rows narrow on the inside and a container that no longer fits its row is left out.',
 'harb.width':'The yard lane between the two lines of container rows, in metres. The gantry cranes span it on legs at its edges and the yard trucks drive down it.',
@@ -51952,6 +51955,26 @@ function mkRow(box,spec,prefix,get,set){
     d.insertBefore(sel, rst);
     d.querySelector('label').setAttribute('for', sel.id);
     sel.addEventListener('change',function(){ push(+sel.value,true); });
+  }
+  /* A NAMED ROW (row 423): spec[7].names is one name per value, mn, mn+st, ... mx, and
+     a <select> of them drives the hidden range input as the two menus above do, so
+     presets, snapshot()/restore() and every harness still write the number. A list
+     whose length is not the number of values leaves the row a slider rather than
+     guess which name is which value; data-names lets smoke.js --names see that. */
+  if(spec[7] && spec[7].names){
+    var names=spec[7].names, nval=Math.round((mx-mn)/st)+1;
+    d.setAttribute('data-names', names.join('|'));
+    if(names.length>=2 && names.length===nval){
+      sel=document.createElement('select'); sel.id=prefix+'sel_'+key; sel.className='menu names';
+      names.forEach(function(nm,i){
+        var o=document.createElement('option'); o.value=String(+(mn+i*st).toFixed((String(st).split('.')[1]||'').length));
+        o.textContent=nm; sel.appendChild(o);
+      });
+      rg.hidden=true; nu.hidden=true;
+      d.insertBefore(sel, rst);
+      d.querySelector('label').setAttribute('for', sel.id);
+      sel.addEventListener('change',function(){ push(Number(sel.value),true); });
+    }
   }
   /* pointerup can land outside the thumb, so listen on the window; change fires
      on release for a range and is the reliable backstop on touch. */
