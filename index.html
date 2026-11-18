@@ -581,7 +581,7 @@ html.ui-corridors, html.ui-corridors body{margin:0; height:100%; overflow:hidden
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v426</a> &mdash; Rocket assembly, the ground: a tank farm under the floors with its line to the pad, four propellant silos round a service tower whose umbilical reaches the stack, pallet racking, parts staged on stands and skids, forklifts and a dashed hazard ring round the pad; people 1.75 m tall on the floors, platforms, bridges and ground; Floor staging and People, and the Hall, Tower and Massive presets</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v427</a> &mdash; Rocket assembly, the tone hatch: faces turned away from the light take parallel lines and round things take lines along their length, closer the further they turn and never nearer than 0.7 mm on paper, each in its solid's own ink; Tone hatch and Light from</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <section class="fold" id="fold_pick"><h2>Pick engine<span class="cnt"></span></h2>
@@ -3368,6 +3368,7 @@ var SPEC={
     ['rboost','Boosters',0,4,1,2],['rdone','Build progress',0,100,5,60,[1,'%']],
     ['rarm','Arms per platform',0,3,1,2],['rpart','Parts on the move',0,100,1,60,[1,'%']],
     ['rstage','Floor staging',0,100,1,60,[1,'%']],['rppl','People',0,100,1,40,[1,'%']],
+    ['hatch','Tone hatch',0,100,1,40,[1,'%']],['sun','Light from',0,359,1,300,[1,'°']],
     ['lod','LOD cutoff',0,60,1,5,[10,' mm']],['budg','Size budget',10,300,5,200,[1,' k points']],
     ['occ','Occlusion gap',0,80,1,5,[10,' mm']]]],
   /* STREET, queue rows 30-33. ONLY THE KNOBS A BUILT ROW READS ARE DECLARED --
@@ -23927,7 +23928,10 @@ function buildFactoryOnce(p,DROP){
    and `rstage` / `rppl` only choose which slots are filled -- so either at 0
    takes its own things away and moves nothing else. The umbilical runs at
    31.5 m (or 1.5 m under the top floor) and steps down 0.5 m until it
-   clears the bridges, pylons, platforms, robots and the parts they hold. */
+   clears the bridges, pylons, platforms, robots and the parts they hold.
+
+   ROW 413, THE TONE HATCH (§5): MARKS on each solid's own faces, laid out in
+   the drawing's projection so the spacing holds on paper (see hatchOf). */
 var RKTINFO='';
 var RKTSTATS={solids:0,paths:0,points:0};
 var RKTTALLY={cells:[],boxes:[],order:[],tubes:[],polys:[],rkt:null};
@@ -23971,16 +23975,103 @@ function buildRocketOnce(p,DROP){
   for(cq=0;cq<8;cq++) cnr.push([bbr[cq&1][0],bbr[(cq>>1)&1][1],bbr[(cq>>2)&1][2]]);
   K.mmest=K.mmPerCell(cnr);
   function shows(sz){ return K.lodVis(sz); }
+  /* ---- THE TONE HATCH (row 413, §5) --------------------------------------
+     Hatch lines are MARKS on the solid's own faces, so the kit cuts them at
+     the lattice and hides them like any other edge. The light comes from
+     bearing `sun` (degrees counter-clockwise from +x) at 30° up; S points
+     toward it. A face whose outward normal n has n.S < 0 is turned away and
+     takes lines; an up-face never does. Spacing on paper is
+     s = max(0.7, 2.6 (1 - 0.75 t)) mm, t = hatch/100 * min(1, -n.S / 0.8).
+     FLAT FACES: lines parallel to the face's steepest edge, laid out in the
+     drawing's own projection so s holds on paper, and lifted back onto the
+     face's plane. ROUND SOLIDS (radius >= 0.6 m): generators along the facets,
+     each drawn when it is s on paper from the last one drawn. Only faces the
+     camera sees take lines; each piece of a hatched solid carries the list
+     (`hatch` on its T.polys entry, [a, b, face], a generator [a, b, facet, 1]) for rktcheck H1-H5 and N1. */
+  var HATCH=knob(p.hatch,40,0,100)/100, SUNB=knob(p.sun,300,0,359)*Math.PI/180;
+  var SUNV=[Math.cos(Math.PI/6)*Math.cos(SUNB), Math.cos(Math.PI/6)*Math.sin(SUNB), Math.sin(Math.PI/6)];
+  var HC30=Math.cos(Math.PI/6), HVIS=0.05*Math.sqrt(3);
+  function hpj(v){ return [(v[0]-v[1])*HC30, (v[0]+v[1])/2-v[2]]; }
+  function hspace(nS){ var t=HATCH*Math.min(1,-nS/0.8); return Math.max(0.7,2.6*(1-0.75*t))/K.mmest; }
+  /* the point of plane n.p = d that projects to (X, Y) */
+  function hlift(X,Y,n,d){ var a=X/HC30, b=Y, y=(d-n[0]*a-n[2]*(a/2-b))/(n[0]+n[1]+n[2]); return [y+a,y,y+a/2-b]; }
+  function hface(V,f,cen){
+    var nx=0, ny=0, nz=0, k;
+    for(k=0;k<f.length;k++){ var a=V[f[k]], b=V[f[(k+1)%f.length]];
+      nx+=(a[1]-b[1])*(a[2]+b[2]); ny+=(a[2]-b[2])*(a[0]+b[0]); nz+=(a[0]-b[0])*(a[1]+b[1]); }
+    var L=Math.sqrt(nx*nx+ny*ny+nz*nz)||1; nx/=L; ny/=L; nz/=L;
+    var d=nx*V[f[0]][0]+ny*V[f[0]][1]+nz*V[f[0]][2];
+    if(nx*cen[0]+ny*cen[1]+nz*cen[2]>d){ nx=-nx; ny=-ny; nz=-nz; d=-d; }
+    return {n:[nx,ny,nz], d:d};
+  }
+  function hsegd(a,b,c,e){
+    function pd(p,q,r){ var dx=r[0]-q[0], dy=r[1]-q[1], L2=dx*dx+dy*dy, t=L2?((p[0]-q[0])*dx+(p[1]-q[1])*dy)/L2:0;
+      t=Math.max(0,Math.min(1,t)); return Math.hypot(q[0]+dx*t-p[0], q[1]+dy*t-p[1]); }
+    return Math.min(pd(a,c,e),pd(b,c,e),pd(c,a,b),pd(e,a,b));
+  }
+  function hatchOf(V,F,o){
+    if(!(HATCH>0) || o.wire || o.hides===false) return [];
+    var out=[], cen=[0,0,0], i, k;
+    V.forEach(function(v){ cen[0]+=v[0]/V.length; cen[1]+=v[1]/V.length; cen[2]+=v[2]/V.length; });
+    for(i=0;i<F.length;i++){
+      if((o.seam&&o.seam.length===F.length&&o.seam[i]) || (o.smooth&&o.smooth.length===F.length&&o.smooth[i])) continue;
+      var f=F[i], pl=hface(V,f,cen), n=pl.n, nS=n[0]*SUNV[0]+n[1]*SUNV[1]+n[2]*SUNV[2];
+      if(n[0]+n[1]+n[2]<HVIS || !(nS<0) || n[2]>1-1e-9) continue;
+      var best=-1, dir=null;
+      for(k=0;k<f.length;k++){ var a=V[f[k]], b=V[f[(k+1)%f.length]], L=Math.hypot(b[0]-a[0],b[1]-a[1],b[2]-a[2]);
+        if(L<1e-9) continue; var sl=Math.abs(b[2]-a[2])/L; if(sl>best+1e-12){ best=sl; dir=[a,b]; } }
+      if(!dir) continue;
+      var pa=hpj(dir[0]), pb=hpj(dir[1]), ul=Math.hypot(pb[0]-pa[0],pb[1]-pa[1]);
+      if(ul<1e-9) continue;
+      var u=[(pb[0]-pa[0])/ul,(pb[1]-pa[1])/ul], w=[-u[1],u[0]], P2=f.map(function(q){ return hpj(V[q]); });
+      var omin=1e18, omax=-1e18;
+      P2.forEach(function(q){ var o2=q[0]*w[0]+q[1]*w[1]; if(o2<omin) omin=o2; if(o2>omax) omax=o2; });
+      var s=hspace(nS), nl=Math.floor((omax-omin)/s+1e-9);
+      if(nl<1) continue;
+      var o0=omin+((omax-omin)-(nl-1)*s)/2, j;
+      for(j=0;j<nl;j++){
+        var oo=o0+j*s, t0=1e18, t1=-1e18;
+        for(k=0;k<P2.length;k++){
+          var q0=P2[k], q1=P2[(k+1)%P2.length], d0=q0[0]*w[0]+q0[1]*w[1]-oo, d1=q1[0]*w[0]+q1[1]*w[1]-oo;
+          if((d0<0&&d1<0)||(d0>0&&d1>0)||d0===d1) continue;
+          var tt=d0/(d0-d1), X=q0[0]+(q1[0]-q0[0])*tt, Y=q0[1]+(q1[1]-q0[1])*tt, along=X*u[0]+Y*u[1];
+          if(along<t0) t0=along; if(along>t1) t1=along;
+        }
+        if(!(t1-t0>1e-6)) continue;
+        out.push([hlift(oo*w[0]+t0*u[0],oo*w[1]+t0*u[1],n,pl.d), hlift(oo*w[0]+t1*u[0],oo*w[1]+t1*u[1],n,pl.d), i]);
+      }
+    }
+    /* round: generators on the facets, nearest-first round the solid */
+    if(o.round && o.round.V===V && o.round.r>=0.6 && o.smooth){
+      var nf=o.round.n, M=4, cand=[], st=-1;
+      for(i=0;i<nf;i++){
+        var fi=o.round.f0+i, fp=hface(V,F[fi],cen), nn=fp.n, ns=nn[0]*SUNV[0]+nn[1]*SUNV[1]+nn[2]*SUNV[2];
+        var ok=nn[0]+nn[1]+nn[2]>=HVIS && ns<0 && nn[2]<=1-1e-9, A0=V[F[fi][0]], A1=V[F[fi][1]], B1=V[F[fi][2]], B0=V[F[fi][3]];
+        for(k=0;k<M;k++){ var ff=(k+0.5)/M;
+          var A=[A0[0]+(A1[0]-A0[0])*ff, A0[1]+(A1[1]-A0[1])*ff, A0[2]+(A1[2]-A0[2])*ff];
+          var B=[B0[0]+(B1[0]-B0[0])*ff, B0[1]+(B1[1]-B0[1])*ff, B0[2]+(B1[2]-B0[2])*ff];
+          cand.push({A:A, B:B, fi:fi, ok:ok, s:ok?hspace(ns):0});
+          if(!ok && st<0) st=cand.length-1; }
+      }
+      if(st<0) st=0;
+      var last=null;
+      for(k=0;k<cand.length;k++){ var c=cand[(st+k)%cand.length];
+        if(!c.ok) continue;
+        if(!last || hsegd(hpj(c.A),hpj(c.B),hpj(last.A),hpj(last.B))>=c.s){ out.push([c.A,c.B,c.fi,1]); last=c; } }
+    }
+    return out;
+  }
 
   /* ---- the makers: polySolid + cutAtLattice, `fact`'s shape, rkt's copies -- */
   var RBOX=[[0,3,2,1],[4,5,6,7],[0,1,5,4],[1,2,6,5],[2,3,7,6],[3,0,4,7]];
   function rsolid(V,F,o){
     if(!o.lay) o.lay='structure';
     if(o.col===undefined) o.col=RKTCOL[o.lay];
-    var pcs=K.cutAtLattice(K.polySolid(V,F,o));
+    var hm=hatchOf(V,F,o), o2=hm.length?Object.assign({},o,{marks:(o.marks||[]).concat(hm)}):o;
+    var pcs=K.cutAtLattice(K.polySolid(V,F,o2));
     pcs.forEach(function(s){
       if(o.dropc) s.dc=o.dropc;
-      if(s.pi!==undefined){ var E=T.polys[s.pi]; E.lay=o.lay; if(o.dropc) E.dc=o.dropc; if(o.paint) E.paint=o.marks; }
+      if(s.pi!==undefined){ var E=T.polys[s.pi]; E.lay=o.lay; if(o.dropc) E.dc=o.dropc; if(o.paint) E.paint=o.marks; if(hm.length) E.hatch=hm; }
     });
     return pcs;
   }
@@ -24034,7 +24125,7 @@ function buildRocketOnce(p,DROP){
     F.push(lo); sm.push(false); sea.push(!!o.seam0);
     F.push(hi); sm.push(false); sea.push(!!o.seam1);
     for(i=0;i<n;i++){ F.push([i,(i+1)%n,n+(i+1)%n,n+i]); sm.push(true); sea.push(false); }
-    o.smooth=sm; o.seam=sea;
+    o.smooth=sm; o.seam=sea; o.round={n:n, r:Math.max(r0,r1), f0:2, V:V};
     var rec=rsolid(V,F,o);
     T.tubes.push({p0:p0, p1:p1, r0:r0, r1:r1, n:n, cap0:!o.seam0, cap1:!o.seam1, V:V,
                   kind:o.kind||'', id:o.id||'', pieces:rec.map(function(s){ return s.e; })});
@@ -25121,7 +25212,7 @@ function buildRocketOnce(p,DROP){
            spur:(f.spur&&!f.spur.off)?f.spur.s:null, stations:f.stations.map(function(st){ return {s0:st.s0, s1:st.s1, kind:st.kind}; }),
            robots:(f.robots||[]).length}; }),
          robots:ROBOTS, parts:PARTS, carts:CARTS, shelves:SHELF,
-         qstage:QSTAGE, qppl:QPPL, people:PPL, ring:RHZ,
+         qstage:QSTAGE, qppl:QPPL, people:PPL, ring:RHZ, hatch:HATCH, sun:SUNV,
          ground:{tanks:GTANKS, tkr:TKR, tkh:TKH, header:HDR, lineY:LINEY, silos:BSIL, tower:TWR, umb:UMB,
                  rack:RACK, staged:STAGED, forks:FORKS}};
 
@@ -50674,6 +50765,8 @@ var HELP={
 'rkt.rpart':'How many of the transfer carts are out with a part on them: the share of the cart places on every floor’s track (the spur to the access arm first) and on the bridges between floors. 0 % leaves the tracks bare; the parts the robots hold and the stored rings and domes stay.',
 'rkt.rstage':'How full the ground floor is: the share of its places that are taken -- tanks in the farm under the floors, the four propellant silos, pallets on the racking, parts staged on their stands and skids along the far edge, and the forklifts. 0 % leaves the ground bare but for the racking, the pipes and the service tower; nothing moves when it changes.',
 'rkt.rppl':'How many people there are: the share of the places for a figure on the floors, the ring platforms, the bridges and the ground that have one. Each is 1.75 m tall. Nothing else moves when it changes.',
+'rkt.hatch':'How dark the shading is. Faces turned away from the light get parallel lines, and round things lines along their length; the further a face turns away, the closer the lines, never nearer than 0.7 mm on paper. Each line is in its solid’s own ink. 0 % draws no shading at all.',
+'rkt.sun':'Which way the light comes from, in degrees round the hall (0 along the right-hand back wall, 90 along the left-hand one), from 30° above the floor. The faces turned away from it are the ones shaded.',
 'rkt.lod':'The smallest detail still drawn, as its size on the SHEET. A bar thinner than this (handrails, posts, stringers, the crane rope) is drawn as one of its own edges and hides nothing behind it.',
 'rkt.budg':'The most points the drawing may have, in thousands. Over it, whole classes of fine detail are left out in this order until it fits: track sleepers, handrail posts, stringers, rack items, people, the wall row. The structure, the rocket, the platforms and the access arms never go. The stat line names what was dropped. The page’s own ceiling caps it.',
 'rkt.occ':'How wide a white gap a nearer solid opens in a line passing behind it. The hall hides itself exactly -- every solid is cut to the 1 m lattice and drawn front to back -- so this is only the breathing room at each crossing.',
