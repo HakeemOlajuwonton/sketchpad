@@ -583,7 +583,7 @@ html.ui-corridors, html.ui-corridors body{margin:0; height:100%; overflow:hidden
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v434</a> &mdash; Corridor city: below Spread 100 the airfield stands beside the city, out in the bay, so the whole city reads as a block; Spread 100 draws as before</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v435</a> &mdash; Corridor city: below Spread 100 a small city's station slides off the core, so the railway keeps off the airfield beside it</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <section class="fold" id="fold_pick"><h2>Pick engine<span class="cnt"></span></h2>
@@ -26783,6 +26783,23 @@ function townRailRoute(WC,p){ var G=WC.G, core=WC.core, R=townSub(6,WC.lay,SALT_
   /* row 424: under Spread 100 the airfield stands beside the city, out in the bay, and a leg with no dry way out may run
      out over the water to the frame's edge before it may cross the airfield */
   var OLW=townSpread(p)<1?Object.assign({},OLX,{margin:0,minLen:1,water:true,anyEnd:true}):null;
+  /* row 406: under Spread 100 a small city can have no station by the rules, and its platforms alone stand on the core
+     with a straight longer than the city (FR each way): Metropolis on the town at its defaults (seed 41, 75 to 30 %)
+     ran it into the airfield beside the city, no leg could leave it, and the last fallback ran on across the runway
+     (at 75 among the hangars). There the platforms slide off the core, up to 400 m along and 180 m across, either way
+     round, to the first spot whose straight keeps off the plant, the harbour and the airfield (padded 70 m, as the legs
+     keep off it) and whose legs leave by the rules (WC.info.sta.slid). The station's own search is unchanged */
+  function legsOK(c,h){ var d=[Math.cos(h),Math.sin(h)], a=[c[0]-d[0]*FR,c[1]-d[1]*FR], b=[c[0]+d[0]*FR,c[1]+d[1]*FR], one=function(V,base,su){ return legFrom(V,base,su)||legFrom(V,base,su,OLX)||legFrom(V,base,su,OLW); };
+    return !!one(a,h+Math.PI,-1) && (MODE===2 || !!one(b,h,1)); }
+  function offAir(c,h){ if(!WC.out) return true; var d=[Math.cos(h),Math.sin(h)], n=[-d[1]*20,d[0]*20], a=[c[0]-d[0]*FR,c[1]-d[1]*FR], b=[c[0]+d[0]*FR,c[1]+d[1]*FR];
+    return !WC.polyOverlap([[a[0]+n[0],a[1]+n[1]],[b[0]+n[0],b[1]+n[1]],[b[0]-n[0],b[1]-n[1]],[a[0]-n[0],a[1]-n[1]]],townPad(WC.out,70)); }
+  function slideOK(c,h){ return strOK(c,h) && offAir(c,h) && legsOK(c,h); }
+  if(OLW && !best.Qb && !slideOK(best.c,best.h)){ var SL=null;
+    [0,Math.PI/2].some(function(h){ var d=[Math.cos(h),Math.sin(h)];
+      return [0,60,-60,120,-120,180,-180,240,-240,300,-300,400,-400].some(function(du){ return [0,60,-60,120,-120,180,-180].some(function(dv){
+        var c=[core[0]+d[0]*du-d[1]*dv, core[1]+d[1]*du+d[0]*dv]; if(!slideOK(c,h)) return false; SL={c:c, h:h}; return true; }); }); });
+    if(SL){ best=Object.assign({},best,{c:SL.c, h:SL.h, along:SL.h===0}); WC.info.sta.slid=[Math.round(SL.c[0]-core[0]),Math.round(SL.c[1]-core[1]),SL.h?90:0];
+      H=best.h; DIR=[Math.cos(H),Math.sin(H)]; S0=[best.c[0]-DIR[0]*FR,best.c[1]-DIR[1]*FR]; S1=[best.c[0]+DIR[0]*FR,best.c[1]+DIR[1]*FR]; } }
   if(!LB){ bad++; LB=legFrom(S0,H+Math.PI,-1,OLX)||(OLW&&legFrom(S0,H+Math.PI,-1,OLW))||townLegOK(WC,S0,H+Math.PI,{margin:0,minLen:1,avoid:[],water:true})||{E:townRayExit(WC.ext,S0,H+Math.PI).slice(0,2)}; }
   if(!LA && MODE!==2){ bad++; LA=legFrom(S1,H,1,OLX)||(OLW&&legFrom(S1,H,1,OLW))||townLegOK(WC,S1,H,{margin:0,minLen:1,avoid:[],water:true})||{E:townRayExit(WC.ext,S1,H).slice(0,2)}; }
   var pts=MODE===2?[LB.E,S0,[best.c[0]+DIR[0]*(PLAT/2+3),best.c[1]+DIR[1]*(PLAT/2+3)]]:[LB.E,S0,S1,LA.E];
