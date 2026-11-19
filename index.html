@@ -583,7 +583,7 @@ html.ui-corridors, html.ui-corridors body{margin:0; height:100%; overflow:hidden
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v432</a> &mdash; Ink schemes: four new pen boxes (Black plus one, Night city, Blueprint plus red, Brick and moss), and an Ink row in Corridors</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v434</a> &mdash; Corridor city: below Spread 100 the airfield stands beside the city, out in the bay, so the whole city reads as a block; Spread 100 draws as before</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <section class="fold" id="fold_pick"><h2>Pick engine<span class="cnt"></span></h2>
@@ -26724,7 +26724,8 @@ function townLegOK(WC,V,a,o){ var E=townRayExit(WC.ext,V,a), L=E[2], dx=Math.cos
     for(var k=0;k<AV.length;k++) if(townIn(AV[k],q)) return null;
     if(o.disc && Math.hypot(q[0]-o.disc[0],q[1]-o.disc[1])<o.disc[2]) return null;
     if(W){ var v=W(q[0],q[1]); n++; if(v>-30) wet++; if(t>L-1000){ nEnd++; if(v>0) wetEnd++; } } }
-  if(W){ if(W(E[0],E[1])>-50) return null; if(nEnd && wetEnd/nEnd>0.12) return null; if(!o.water && wet>0) return null; }
+  /* o.anyEnd: the leg may end anywhere, wet or dry (row 424's fallbacks under Spread 100; no caller sets it at 100) */
+  if(W && !o.anyEnd){ if(W(E[0],E[1])>-50) return null; if(nEnd && wetEnd/nEnd>0.12) return null; if(!o.water && wet>0) return null; }
   return {E:[E[0],E[1]], L:L, a:a, wet:wet/Math.max(1,n)};
 }
 /* the railway: the station first (where it can stand and open onto an arterial), its legs from it */
@@ -26762,8 +26763,11 @@ function townRailRoute(WC,p){ var G=WC.G, core=WC.core, R=townSub(6,WC.lay,SALT_
   var H=best.h, DIR=[Math.cos(H),Math.sin(H)], S0=[best.c[0]-DIR[0]*FR,best.c[1]-DIR[1]*FR], S1=[best.c[0]+DIR[0]*FR,best.c[1]+DIR[1]*FR];
   /* row 350: and the station's straight, FR each way, keeps off the power plant: a hydro plant stands at the frame's edge
      where the river comes in, as near the core as the city's box, and a straight into it leaves its leg no way out */
-  function strOK(c,h){ if(!WC.po) return true; var d=[Math.cos(h),Math.sin(h)], n=[-d[1]*20,d[0]*20], a=[c[0]-d[0]*FR,c[1]-d[1]*FR], b=[c[0]+d[0]*FR,c[1]+d[1]*FR];
-    return !WC.polyOverlap([[a[0]+n[0],a[1]+n[1]],[b[0]+n[0],b[1]+n[1]],[b[0]-n[0],b[1]-n[1]],[a[0]-n[0],a[1]-n[1]]],townPad(WC.po,70)); }
+  /* row 424: under Spread 100 the harbour moves with the airfield beside the city, and the straight could run through its
+     apron among the container stacks (the recipe at 25 %): there it keeps off the harbour too, as its legs do */
+  function strOK(c,h){ var HP424=townSpread(p)<1&&WC.hp; if(!WC.po && !HP424) return true; var d=[Math.cos(h),Math.sin(h)], n=[-d[1]*20,d[0]*20], a=[c[0]-d[0]*FR,c[1]-d[1]*FR], b=[c[0]+d[0]*FR,c[1]+d[1]*FR], Q=[[a[0]+n[0],a[1]+n[1]],[b[0]+n[0],b[1]+n[1]],[b[0]-n[0],b[1]-n[1]],[a[0]-n[0],a[1]-n[1]]];
+    if(WC.po && WC.polyOverlap(Q,townPad(WC.po,70))) return false;
+    return !(HP424 && WC.polyOverlap(Q,townPad(WC.hp,20))); }
   var AVS=best.Qb?AVO.concat([townPad([best.Qb[0],best.Qb[1],best.Qp[2],best.Qp[3]],12)]):AVO;
   var OL={margin:10, minLen:300, avoid:AVS, water:townWaterKind(p)===2, disc:WC.X?[WC.X.c[0],WC.X.c[1],480]:null};
   function legFrom(V,base,su,O){ var off=(u1<0.5?1:-1)*(10+20*u2)*su, k, best2=null;
@@ -26776,8 +26780,11 @@ function townRailRoute(WC,p){ var G=WC.G, core=WC.core, R=townSub(6,WC.lay,SALT_
      found one does not move */
   var OLX=Object.assign({},OL,{disc:null});
   var LB=legFrom(S0,H+Math.PI,-1), LA=MODE===2?null:legFrom(S1,H,1), bad=0;
-  if(!LB){ bad++; LB=legFrom(S0,H+Math.PI,-1,OLX)||townLegOK(WC,S0,H+Math.PI,{margin:0,minLen:1,avoid:[],water:true})||{E:townRayExit(WC.ext,S0,H+Math.PI).slice(0,2)}; }
-  if(!LA && MODE!==2){ bad++; LA=legFrom(S1,H,1,OLX)||townLegOK(WC,S1,H,{margin:0,minLen:1,avoid:[],water:true})||{E:townRayExit(WC.ext,S1,H).slice(0,2)}; }
+  /* row 424: under Spread 100 the airfield stands beside the city, out in the bay, and a leg with no dry way out may run
+     out over the water to the frame's edge before it may cross the airfield */
+  var OLW=townSpread(p)<1?Object.assign({},OLX,{margin:0,minLen:1,water:true,anyEnd:true}):null;
+  if(!LB){ bad++; LB=legFrom(S0,H+Math.PI,-1,OLX)||(OLW&&legFrom(S0,H+Math.PI,-1,OLW))||townLegOK(WC,S0,H+Math.PI,{margin:0,minLen:1,avoid:[],water:true})||{E:townRayExit(WC.ext,S0,H+Math.PI).slice(0,2)}; }
+  if(!LA && MODE!==2){ bad++; LA=legFrom(S1,H,1,OLX)||(OLW&&legFrom(S1,H,1,OLW))||townLegOK(WC,S1,H,{margin:0,minLen:1,avoid:[],water:true})||{E:townRayExit(WC.ext,S1,H).slice(0,2)}; }
   var pts=MODE===2?[LB.E,S0,[best.c[0]+DIR[0]*(PLAT/2+3),best.c[1]+DIR[1]*(PLAT/2+3)]]:[LB.E,S0,S1,LA.E];
   return {pts:pts, R:300, MODE:MODE, sta:MODE?{c:best.c, h:H, sv:best.sv, PLAT:PLAT, PW:PW, KO:KO, DB:DB, Qb:best.Qb, Qp:best.Qp, PZ:best.PZ, lb:best.lb, D:best.D, art:best.art, along:best.along, offCore:offc}:null, bad:bad};
 }
@@ -26993,6 +27000,8 @@ function townHwyRoute(WC,p,W){ var G=WC.G, R=townSub(7,WC.lay,SALT_HWY), u1=R(),
   function clearC(F){ for(var t=-F;t<=F;t+=20){ var q=[c[0]+D[0]*t,c[1]+D[1]*t]; for(var k=0;k<AVO.length;k++) if(townIn(AVO[k],q)) return false; } return true; }
   for(pass=0;pass<2&&!(A&&Bq);pass++){ var mx=pass?120:60, FRh=380+300*Math.tan((mx/2+2.5)*Math.PI/180); var cC=clearC(FRh); if(!cC && pass===0) continue; S0=[c[0]-D[0]*FRh,c[1]-D[1]*FRh]; S1=[c[0]+D[0]*FRh,c[1]+D[1]*FRh]; A=legFrom(S0,h+Math.PI,mx); Bq=legFrom(S1,h,mx); }
   if(!S0){ var FR0=570; S0=[c[0]-D[0]*FR0,c[1]-D[1]*FR0]; S1=[c[0]+D[0]*FR0,c[1]+D[1]*FR0]; }
+  /* row 424: under Spread 100, a leg that finds no way by the rules may end out over the water, still off the airfield */
+  if(townSpread(p)<1 && (!A||!Bq)){ OL=Object.assign({},OL,{margin:0,minLen:1,anyEnd:true}); if(!A){ A=legFrom(S0,h+Math.PI,120); if(A) bad++; } if(!Bq){ Bq=legFrom(S1,h,120); if(Bq) bad++; } }
   if(!A){ bad++; A={E:townRayExit(WC.ext,S0,h+Math.PI).slice(0,2)}; } if(!Bq){ bad++; Bq={E:townRayExit(WC.ext,S1,h).slice(0,2)}; }
   return {pts:[A.E,S0,S1,Bq.E], R:300, c:c, h:h, bad:bad};
 }
@@ -29009,8 +29018,18 @@ function townGridRoute(p,G,plans,J,RIV,VS,SX,FRM,WH){
       if(KK5>12) for(kk=0;kk<=KK5 && !LG;kk++) LG=townLegOK(WH,V,aO+((kk+1)>>1)*Math.PI/12*(kk%2?1:-1),{margin:10, minLen:240, avoid:first.kind==='dead'?TAVO:TAVOP, water:false, disc:null});
       for(kk=0;kk<=KK5 && !LG;kk++) LG=townLegOK(WH,V,aO+((kk+1)>>1)*Math.PI/12*(kk%2?1:-1),{margin:10, minLen:150, avoid:first.kind==='dead'?TAVO:TAVOP, water:false, disc:null});
       if(!LG) return undo('no dry way to the edge');
-      if(!steer(LG.E)) return undo('no turn toward the edge');
+      /* row 424: under Spread 100 the first dry leg can be one the line cannot turn to (the recipe at 50 % with the airfield
+         beside the city); then each other dry leg, in the same order, before the tie gives up */
+      if(!steer(LG.E)){ var LG5=null, OL5=function(mL){ return {margin:10, minLen:mL, avoid:first.kind==='dead'?TAVO:TAVOP, water:false, disc:null}; };
+        if(townSpread(p)<1) [240,150].some(function(mL){ for(var k5=0;k5<=KK5;k5++){ var L5=townLegOK(WH,V,aO+((k5+1)>>1)*Math.PI/12*(k5%2?1:-1),OL5(mL)); if(L5 && steer(L5.E)){ LG5=L5; return true; } } return false; });
+        if(!LG5) return undo('no turn toward the edge'); LG=LG5; }
       var dE=townUnit(cur.c,LG.E), XE=[LG.E[0]+dE[0]*40,LG.E[1]+dE[1]*40]; if(WAT && WAT(XE)) XE=[LG.E[0]+dE[0]*0.5,LG.E[1]+dE[1]*0.5];
+      /* row 424: under Spread 100 the city's streets can run on past the frame's edge (the frame is drawn round its lots), so
+         where they meet the last tower it steps aside, 12 m at a time to 36 m, and then back toward the edge, 10 m at a time, to
+         the edge itself (as where past it is wet): a leg can run out along one of those streets */
+      /* a stepped tower stays outside the frame, by 0.5 m to 40 m (row 205 W2: a span past its edge, the last tower outside) */
+      if(townSpread(p)<1){ var E5=WH.ext, ou5=function(c){ var x=c[0]<E5[0]-0.25||c[0]>E5[2]+0.25||c[1]<E5[1]-0.25||c[1]>E5[3]+0.25; return x && Math.min(Math.abs(c[0]-E5[0]),Math.abs(c[0]-E5[2]),Math.abs(c[1]-E5[1]),Math.abs(c[1]-E5[3]))<=40; }, fr5=function(c){ var Qc=sq(c,5.3,dE), b=bbox2(Qc); return !(WAT && WAT(c)) && !OQ(b).some(function(C){ return bbHit(b,C.bb) && polyOverlap(Qc,C.poly); }) && !OC.bands.some(function(B){ return B.meets(Qc); }); };
+        if(!fr5(XE)) [40,30,20,10,0.5].some(function(t5){ return [0,12,-12,24,-24,36,-36].some(function(o5){ var c5=[LG.E[0]+dE[0]*t5-dE[1]*o5,LG.E[1]+dE[1]*t5+dE[0]*o5]; if(ou5(c5) && fr5(c5)){ XE=c5; return true; } return false; }); }); }
       chain.push({kind:'pylon', c:XE, plot:mkPlot(XE,5,dE,'edge'), d:dE, edge:true});
       var F=[chain[0]], i5;
       for(i5=0;i5+1<chain.length;i5++){
@@ -29590,6 +29609,8 @@ function townForm(p,G,plans,J,BLK,SITE){
   var NG=G.ROWS+G.UX.length, grid=plans.slice(0,NG), P0=grid[0], bbox2=P0.bbox2, polyOverlap=P0.polyOverlap, bbHit=P0.bbHit, LOTMIN=Math.max(3,+p.lotmin||5);
   var LAY=Math.max(0,Math.min(99,Math.round(isFinite(p.layout)?+p.layout:0)));
   var SPR=Math.max(0,Math.min(100,isFinite(p.sprawl)?+p.sprawl:45)), LIFT=Math.max(0,1-SPR/45), COREZ=Math.max(1,Math.min(4,(isFinite(p.corez)?+p.corez:250)/100));
+  /* row 424: under Spread 100 a street that meets the water goes, and so does the network within 40 m of an airfield beside the city */
+  var SPR424=townSpread(p);
   var rot=SITE&&SITE.rot, SHORE2=SITE&&SITE.formShore, core=townCore(p,G,rot?rot.top:undefined), RHO=townRho(p,G,core);
   /* ---- §5, §5b: THE WATER, w > 0, its shoreline the zero contour ---- */
   var WK=SHORE2?4:(rot?townWaterKind(p):townWaterKind(p)===3?3:0), WQ=null, WAT=null, FILLQ=null, FILLQW=null, RDw=Math.max(0.5,Math.min(6,isFinite(p.rdrop)?+p.rdrop:2.5));
@@ -29644,7 +29665,7 @@ function townForm(p,G,plans,J,BLK,SITE){
   /* row 204 §A2: the station stands at the core; lots within 200 m of it take one more band of height */
   if(townWholeOn(p) && Math.round(isFinite(p.rail)?+p.rail:1)===1 && Math.round(isFinite(p.rstn)?+p.rstn:1)>0) grid.forEach(function(PL){ PL.lots.forEach(function(L){ if(!L.fm||L.tower) return; var c=townMid(L.poly), d=Math.hypot(c[0]-core[0],c[1]-core[1]); if(d<200) L.fm=Math.min(COREZ,L.fm+0.45*Math.exp(-(d/200)*(d/200))); }); });
   /* ---- the streets: only where a block touches them ---- */
-  function wetAt(Q){ if(!WAT) return false; var m=townMid(Q); return WAT(m[0],m[1])>-4; }
+  function wetAt(Q){ if(!WAT) return false; var m=townMid(Q); return WAT(m[0],m[1])>-4 || (SPR424<1 && Q.some(function(q){ return WAT(q[0],q[1])>0; })); }
   function segGone(PL,gi,sa,sb){ if(gi<G.ROWS){ if(G.ART[gi]) return false; var m=(sa+sb)/2, i2=0; for(k=0;k<NI;k++) if(m>=BND[k]) i2=k; return ST[i2][gi].s===0 && ST[i2][gi+1].s===0; }
     var ci=gi-G.ROWS; if(G.XART[ci]) return false; var m2=(sa+sb)/2+G.VY[0], j2=0; for(k=0;k<NJ;k++) if(m2>=YB[k]) j2=k; return ST[ci][j2].s===0 && ST[ci+1][j2].s===0; }
   grid.forEach(function(PL,gi){ var gapAdd={'1':[],'-1':[]};
@@ -29654,6 +29675,10 @@ function townForm(p,G,plans,J,BLK,SITE){
       SG['1']=SG['1'].concat(gapAdd['1']); SG['-1']=SG['-1'].concat(gapAdd['-1']); PL.sGaps=SG; PL.hasGap=true; } });
   for(k=J.length-1;k>=0;k--){ var Jk=J[k], ci=Jk.cross, rj=Jk.row, cells=[ST[ci][rj],ST[ci+1][rj],ST[ci][rj+1],ST[ci+1][rj+1]];
     if((!G.ART[rj] && !G.XART[ci] && cells.every(function(c){ return c.s===0; })) || wetAt(Jk.poly)){ J.splice(k,1); info.juncGone++; } }
+  if(SPR424<1 && rot && isFinite(rot.LA)){ var PGA=townRingRect(rot.c,rot.a,rot.b,rot.LA,rot.LB,40), PBA=bbox2(PGA);
+    grid.forEach(function(PL){ var gone=new Set(); PL.conts.forEach(function(C){ if(bbHit(PBA,C.bb) && polyOverlap(C.poly,PGA)) gone.add(C); });
+      if(gone.size){ PL.conts=PL.conts.filter(function(C){ return !gone.has(C); }); PL.lots=PL.lots.filter(function(L){ return !gone.has(L); }); [1,-1].forEach(function(sd){ var SB=PL.slabsBySide[sd]; Object.keys(SB).forEach(function(k2){ if(gone.has(SB[k2])) delete SB[k2]; }); }); info.airGone=(info.airGone||0)+gone.size; } });
+    for(k=J.length-1;k>=0;k--) if(polyOverlap(J[k].poly,PGA)){ J.splice(k,1); info.juncGone++; } }
   /* ---- the access arterial: its band cuts what it meets; its own lots are the ribbon ---- */
   var out=[], artPlans=[], BAND=null;
   if(ALINE){ var L1=Math.max(10,0.72*LENa), WA=G.WID*1.8, PA=G.PAVE*1.5, ENDa=2;
@@ -29798,6 +29823,16 @@ function townForm(p,G,plans,J,BLK,SITE){
               C.poly0=C.poly; C.poly=keep[0]; C.bb=bbox2(keep[0]); C.cut=true; info.spurSlabsCut=(info.spurSlabsCut||0)+1; return true; });
             if(gapS['1'].length||gapS['-1'].length){ var SGs=Array.isArray(P9.sGaps)?{'1':P9.sGaps.slice(),'-1':P9.sGaps.slice()}:{'1':(P9.sGaps['1']||[]).slice(),'-1':(P9.sGaps['-1']||[]).slice()};
               SGs['1']=SGs['1'].concat(gapS['1']); SGs['-1']=SGs['-1'].concat(gapS['-1']); P9.sGaps=SGs; P9.hasGap=true; } });
+          /* row 424: under Spread 100 the harbour stands where the spur leaves it at a slant (seed 7, tier 2, water 3 at 90 %: a
+             slab's corner 2-3 m2 into the apron), so each spur slab gives up what lies in the harbour too, as at the arterial */
+          if(townSpread(p)<1){ var HPb9=bbox2(HPOLY); SPP.forEach(function(P9){ var gapH={'1':[],'-1':[]};
+            P9.conts=P9.conts.filter(function(C){ if(C.kind!=='slab' || !bbHit(C.bb||bbox2(C.poly),HPb9) || !polyOverlap(C.poly,HPOLY)) return true;
+              var keep=townMinus(C.poly,HPOLY).filter(function(q){ return townArea(q)>=0.05; });
+              if(!keep.length){ gapH[C.side].push([C.s0,C.s1]); var cell=P9.slabsBySide[C.side].indexOf(C); if(cell>=0) delete P9.slabsBySide[C.side][cell]; return false; }
+              keep.sort(function(x,y){ return townArea(y)-townArea(x); });
+              if(!C.poly0) C.poly0=C.poly; C.poly=keep[0]; C.bb=bbox2(keep[0]); C.cut=true; info.spurSlabsCut=(info.spurSlabsCut||0)+1; return true; });
+            if(gapH['1'].length||gapH['-1'].length){ var SGh=Array.isArray(P9.sGaps)?{'1':P9.sGaps.slice(),'-1':P9.sGaps.slice()}:{'1':(P9.sGaps['1']||[]).slice(),'-1':(P9.sGaps['-1']||[]).slice()};
+              SGh['1']=SGh['1'].concat(gapH['1']); SGh['-1']=SGh['-1'].concat(gapH['-1']); P9.sGaps=SGh; P9.hasGap=true; } }); }
           SPP.forEach(function(P9){ out.push(P9); }); info.spur={from:QB, to:PA9, L:L9, hw:HW9, plan:510}; BAND=(function(B0,B1){ return {meets:function(Q){ return B0.meets(Q)||B1.meets(Q); }}; })(BAND,BS); } }
       if(WK===4){ SITE.frameOf=function(k){ if(k===1) return townGrow(townBbox(HPOLY.concat([[core[0],core[1]]])),0.3); if(k===2) return townGrow(townBbox(HPOLY),0.08); if(k===3){ var fr=hinfo; return townGrow(townBbox(HPOLY),-0.4); } return null; }; SITE.aim=FP(QL/2,DP+AD/2+1); SITE.aimBoxes=HBF.aimBoxes; SITE.rect=townBbox(HPOLY); SITE.top=SITE.top; hinfo.water=QL*DP; hinfo.inside=0; hinfo.met=0; hinfo.split=0; hinfo.dropped=0; }
     }
@@ -29877,6 +29912,9 @@ function townForm(p,G,plans,J,BLK,SITE){
     /* row 374: and the harbour site's quay road: it runs 2 m in from the shore found every 40 m, and between those the
        contour bulges in under it (Site 2 seed 41: 143 m2 at (330, 772)); the water stops at the road */
     QROAD.forEach(function(C){ BRC.push(C); });
+    /* row 424: under Spread 100 a plate is a straight cut per 60 m cell, and a street whose corners are dry by the contour can
+       still meet one (tier 4, seed 41, at 40 %: up to 399 m2); the water stops at the street, as at the quay road */
+    if(SPR424<1){ grid.forEach(function(PL){ PL.conts.forEach(function(C){ if(C.kind==='slab') BRC.push(C); }); }); J.forEach(function(C){ BRC.push(C); }); }
     var BRG=townBandGrid(BRC), XA=Math.floor((FB[0])/CS)*CS, YA=Math.floor((FB[1])/CS)*CS, xc, yc;
     for(yc=YA;yc<FB[3];yc+=CS){ var run=null; for(xc=XA;xc<=FB[2]+CS;xc+=CS){
         var cs=[WAT(xc,yc),WAT(xc+CS,yc),WAT(xc+CS,yc+CS),WAT(xc,yc+CS)], full=xc<=FB[2]&&cs.every(function(v){ return v>0; }), anyw=xc<=FB[2]&&cs.some(function(v){ return v>0; });
@@ -30272,7 +30310,16 @@ function townSite(p,G,plans,J,BLK,KIND,AT){
     var CX7=Math.max(BX[0]+HX7*0.2,Math.min(BX[2]-HX7*0.2,BX[0]+(0.25+0.5*uC7)*W)), CY7=top7?BX[3]+GAP7+HY7:BX[1]-GAP7-HY7;
     var CORE7=townCore(p,G,top7), C07=[CX7,CY7], WT7=townWaterKind(p), SD7=townSub(2,LAY,SALT_FORM)()<0.5?1:-1;
     /* §5b water 1: the airfield stands 820 m off the core-airfield axis, out in the bay */
-    if(WT7===1){ var ax7=[CX7-CORE7[0],CY7-CORE7[1]], al7=Math.hypot(ax7[0],ax7[1]); ax7=[ax7[0]/al7,ax7[1]/al7]; CX7+=-ax7[1]*SD7*820; CY7+=ax7[0]*SD7*820; }
+    /* row 424 (spec v2 §1b): under Spread 100 the airfield stands BESIDE the city, not off the end of its axis, so the whole
+       city reads as a block. ax4 runs from the core to the seat above (C07, which the water still reads: the bay stays where
+       it was); the airfield's centre is level with the middle of the grid's box along ax4 and out along the normal n4 -- on
+       the bay's side with Water 1, out in the bay past its shore (the bay's offset, the shore's 160 m of noise and the
+       airfield clearance), else on the dry side, GAP7 past the grid's box. It is in the bay already: no 820 m shift */
+    if(SPR7<1){ var ax4=townUnit(CORE7,C07), n4=WT7===1?[-ax4[1]*SD7,ax4[0]*SD7]:[ax4[1]*SD7,-ax4[0]*SD7], BXC4=[[BX[0],BX[1]],[BX[2],BX[1]],[BX[2],BX[3]],[BX[0],BX[3]]];
+      var hn4=(Math.abs(Ax[0]*n4[0]+Ax[1]*n4[1])*LA7+Math.abs(-Ax[1]*n4[0]+Ax[0]*n4[1])*LB7)/2, tA4=BXC4.map(function(q){ return (q[0]-CORE7[0])*ax4[0]+(q[1]-CORE7[1])*ax4[1]; }), tm4=(Math.min.apply(null,tA4)+Math.max.apply(null,tA4))/2;
+      var off4=WT7===1?Math.max(150,520*SPR7)+160+Math.max(60,300*SPR7):Math.max.apply(null,BXC4.map(function(q){ return (q[0]-CORE7[0])*n4[0]+(q[1]-CORE7[1])*n4[1]; }))+GAP7;
+      CX7=CORE7[0]+ax4[0]*tm4+n4[0]*(off4+hn4); CY7=CORE7[1]+ax4[1]*tm4+n4[1]*(off4+hn4); }
+    else if(WT7===1){ var ax7=[CX7-CORE7[0],CY7-CORE7[1]], al7=Math.hypot(ax7[0],ax7[1]); ax7=[ax7[0]/al7,ax7[1]/al7]; CX7+=-ax7[1]*SD7*820; CY7+=ax7[0]*SD7*820; }
     var sg7=(CORE7[0]-CX7)*Bx[0]+(CORE7[1]-CY7)*Bx[1]>=0?1:-1; Bx=[Bx[0]*sg7,Bx[1]*sg7];
     ROT={o:[CX7-Ax[0]*LA7/2-Bx[0]*LB7/2,CY7-Ax[1]*LA7/2-Bx[1]*LB7/2], a:Ax, b:Bx, LA:LA7, LB:LB7, flip:Ax[0]*Bx[1]-Ax[1]*Bx[0]<0, top:top7, gap:GAP7, c:[CX7,CY7], c0:C07, side:SD7};
   }
@@ -51896,7 +51943,7 @@ var HELP={
     sscale:'Multiplies the city’s length and block depth that the site’s Scale sets.',
     ptype:'With Site 3, or Power plant 1 at City form 1, the power plant: 0 coal (boilers, a coal yard, precipitators, stacks), 1 gas (gas turbines with their heat-recovery boilers and stacks; a peaker at Scale 1), 2 nuclear (domed containments; from Scale 2), 3 hydro (a dam across the river: the site is its reservoir, Head above the river below the dam, and River is turned on).',
     plant:'With City form 1 and an airfield or a harbour: 1 puts a power plant on the outskirts, its type and size from Plant, Units, Cooling towers and Stacks. It stands 1.7 to 2.2 km from the core on dry land, clear of the airfield and the harbour, by the water where it can. A substation at the city\u2019s edge takes its line in, and two lines run off the map. Hydro (Plant 3) has no place out there yet.',
-    spread:'With City form 1 and an airfield or harbour beside the city: pulls the airfield, the harbour’s bay and the plant on the outskirts toward the core. 100 % is where they stood before; 50 % halves the distances. They never overlap the city or each other.',
+    spread:'With City form 1 and an airfield or harbour beside the city: pulls the airfield, the harbour’s bay and the plant on the outskirts toward the core. 100 % is where they stood before; 50 % halves the distances. Below 100 the airfield also moves to the city’s side — out in the bay with Water Bay, else on dry land — instead of past its far end, so the whole city reads as a block. They never overlap the city or each other.',
     punits:'How many generating units, up to what the plant’s Scale holds: coal 1/2/4/6, gas 1/1/2/6 gas turbines, nuclear 1/2/4 from Scale 2.',
     towers:'Natural-draft cooling towers, up to what the Scale holds. 0 cools from the river; with no river a plant that has towers keeps one.',
     pstack:'A coal plant’s chimneys, one per unit at most, up to 1/1/2/3 by Scale. Each has red aviation bands. A gas plant has one per gas turbine.',
