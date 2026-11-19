@@ -583,7 +583,7 @@ html.ui-corridors, html.ui-corridors body{margin:0; height:100%; overflow:hidden
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v436</a> &mdash; Corridors: Metropolis, a fifth button in Next to the city, sets the whole city with its airfield, harbour and plant on the outskirts, pulled in to Spread 30, in one redraw; None, Airport, Port and Power plant take the outskirts plant away, and its row is now Plant on the outskirts</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v437</a> &mdash; Corridor city in an ink scheme: the buildings take the scheme's colours by height, low, middle and tall each in its own ink, not all in the darkest; Palette and the true-colour sets draw as before</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <section class="fold" id="fold_pick"><h2>Pick engine<span class="cnt"></span></h2>
@@ -11731,7 +11731,8 @@ const INKSETS = [
       'ochre':'ochre', 'yellow':'ochre', 'orange':'red', 'red':'red', 'dark red':'darkred',
       'pink':'red', 'magenta':'red', 'purple':'darkred', 'lavender':'sepia', 'navy':'black',
       'blue':'cobalt', 'light blue':'cobalt', 'turquoise':'teal', 'teal':'teal', 'dark green':'olive',
-      'green':'olive', 'light green':'olive', 'olive':'olive', 'sand':'ochre' } },
+      'green':'olive', 'light green':'olive', 'olive':'olive', 'sand':'ochre' },
+    body: ['olive', 'sepia', 'cobalt'] },
   { id: 'night',  name: 'Night city',         inks: [
       ['black',   '#111111'],
       ['indigo',  '#24408e'],
@@ -11746,7 +11747,8 @@ const INKSETS = [
       'ochre':'gold', 'yellow':'gold', 'orange':'gold', 'red':'red', 'dark red':'red',
       'pink':'magenta', 'magenta':'magenta', 'purple':'violet', 'lavender':'violet', 'navy':'indigo',
       'blue':'cobalt', 'light blue':'cobalt', 'turquoise':'teal', 'teal':'teal', 'dark green':'teal',
-      'green':'teal', 'light green':'teal', 'olive':'indigo', 'sand':'gold' } },
+      'green':'teal', 'light green':'teal', 'olive':'indigo', 'sand':'gold' },
+    body: ['cobalt', 'indigo', 'violet'] },
   { id: 'print',  name: 'Blueprint plus red', inks: [
       ['navy',      '#1f2f6b'],
       ['blue',      '#2156c7'],
@@ -11761,7 +11763,8 @@ const INKSETS = [
       'ochre':'sepia', 'yellow':'red', 'orange':'red', 'red':'red', 'dark red':'darkred',
       'pink':'red', 'magenta':'red', 'purple':'navy', 'lavender':'lightblue', 'navy':'navy',
       'blue':'blue', 'light blue':'lightblue', 'turquoise':'lightblue', 'teal':'teal', 'dark green':'olive',
-      'green':'teal', 'light green':'olive', 'olive':'olive', 'sand':'sepia' } },
+      'green':'teal', 'light green':'olive', 'olive':'olive', 'sand':'sepia' },
+    body: ['lightblue', 'blue', 'teal'] },
   { id: 'brick',  name: 'Brick and moss',     inks: [
       ['black', '#1a1a1a'],
       ['sepia', '#3f2a18'],
@@ -11776,7 +11779,8 @@ const INKSETS = [
       'ochre':'ochre', 'yellow':'ochre', 'orange':'brick', 'red':'brick', 'dark red':'brick',
       'pink':'rose', 'magenta':'rose', 'purple':'rose', 'lavender':'rose', 'navy':'black',
       'blue':'teal', 'light blue':'teal', 'turquoise':'teal', 'teal':'teal', 'dark green':'moss',
-      'green':'moss', 'light green':'moss', 'olive':'moss', 'sand':'ochre' } },
+      'green':'moss', 'light green':'moss', 'olive':'moss', 'sand':'ochre' },
+    body: ['brick', 'brown', 'sepia'] },
 ];
 /* The knob's range is the table's: GSPEC is written before this table exists. */
 GSPEC.forEach(function(r){ if(r[0]==='inkset') r[3]=INKSETS.length-1; });
@@ -11816,8 +11820,13 @@ function inksetOf(g){
   var k=Math.round((g&&g.inkset)||0);
   if(!(k>0) || !INKSETS[k]) return null;
   var S=INKSETS[k];
-  return {id:S.id, name:S.name, from:S.from||null,
+  return {id:S.id, name:S.name, from:S.from||null, body:S.body||null,
           inks:S.inks.map(function(t){ return Array.isArray(t)?{name:t[0],hex:t[1]}:t; })};
+}
+/* row 445: a set's body ink by name (its first ink if the name is not one of its own) */
+function bodyInkOf(S,nm){
+  for(var k=0;k<S.inks.length;k++) if(S.inks[k].name===nm) return k;
+  return 0;
 }
 /* nearest reference ink to a true colour, ties by `INKS` order */
 function nearestRefInk(hex){
@@ -14977,10 +14986,15 @@ function bandOf(x,y,g,n){
 function penByColour(groups,g){
   var N=Math.max(2,Math.round(g.bands||6));
   var cols=[], wsum={}, i;
+  /* row 445 (town building bodies take the ink scheme): a set with a `body` list sends a stroke tagged `bod` (a
+     building body's height band, set by the corridor draw on `town`) to that list's ink, keyed apart from the true
+     colours. Sets 0 and 1 have no list, so their keys are the colours exactly as before */
+  var SB=inksetOf(g), BODY=SB&&SB.body&&SB.body.length?SB.body:null;
+  function keyOf(pl){ return (BODY && pl.bod!==undefined)?'bod'+Math.max(0,Math.min(BODY.length-1,pl.bod)):(pl.col||'#1a1a1a'); }
   groups.forEach(function(G){
     G.paths.forEach(function(pl){
       if(!pl||pl.length<2) return;
-      var c=pl.col||'#1a1a1a', L=0, j;
+      var c=keyOf(pl), L=0, j;
       for(j=0;j+1<pl.length;j++) L+=Math.hypot(pl[j+1][0]-pl[j][0],pl[j+1][1]-pl[j][1]);
       if(wsum[c]===undefined){ wsum[c]=0; cols.push(c); }
       wsum[c]+=L;
@@ -15000,7 +15014,7 @@ function penByColour(groups,g){
        its set ink to the nearest chosen one. */
     var sOf=[], sw={}, scols=[], sidx=[];
     for(i=0;i<cols.length;i++){
-      var si=inksetInkOf(S,nearestRefInk(cols[i]));
+      var si=/^bod/.test(cols[i])?bodyInkOf(S,BODY[+cols[i].slice(3)]):inksetInkOf(S,nearestRefInk(cols[i]));
       sOf.push(si);
       if(sw[si]===undefined){ sw[si]=0; sidx.push(si); }
       sw[si]+=w[i];
@@ -15020,7 +15034,7 @@ function penByColour(groups,g){
   groups.forEach(function(G){
     G.paths.forEach(function(pl){
       if(!pl||pl.length<2) return;
-      var k=inkOf[pl.col||'#1a1a1a'];
+      var k=inkOf[keyOf(pl)];
       var b=order[k];
       if(b===undefined) b=out.length-1;          /* cannot happen; not a crash */
       out[b].paths.push(pl);
@@ -15276,6 +15290,7 @@ function applyCopies(paths,g){
          Copies 3 plain, at Weight 2 and at Simplify 3, while the other nine
          engines are untouched. That is a real defect and a separate row. */
       if(src.col!==undefined) q.col=src.col;
+      if(src.bod!==undefined) q.bod=src.bod;   /* row 445: the body band rides with the colour, for the same reader */
       gp.push(q);
     }
     if(SRCF){
@@ -31904,6 +31919,8 @@ function townHarbourTheme(K,HB){
    - ARCHLOTS 0 DRAWS NOTHING from salt 683 and hands the Street theme every lot:
      the drawing is the build before, byte for byte. */
 var SALT_ARCHLOT=683, SALT_ZONE=691;
+/* row 445: a town block's body band by its top: under BODLOW m low, under BODMID mid, else tall */
+var BODLOW=10, BODMID=25;
 /* the iso engine's two pens: structure, and accent in its orange */
 var ARCHCOL_K='#1a1a1a', ARCHCOL_ACC='#d9541f';
 /* THE DISTRICTS, ported from isocity.py as constants (that file is not touched):
@@ -47256,6 +47273,8 @@ function corridorDraw(p,plans,THM,camera){
           }
         });
         P.cont=L; P.col='#1a1a1a'; P.kind='block'; L.parts.push(P);
+        /* row 445: on town, the block's height band for the ink scheme's body inks (low, mid, tall) */
+        if(mode==='town'){ var zt=L.shedZ!==undefined?L.shedZ:B.z1; P.bod=zt<BODLOW?0:(zt<BODMID?1:2); }
       });
       if(L.massed) return;
       LOTCT.get(L).dress(L,dn,df);
@@ -47936,7 +47955,7 @@ function corridorDraw(p,plans,THM,camera){
           }
           var A=scr(a), B=scr(b);
           pp.push([[A[0],A[1]],[B[0],B[1]]]);
-          meta.push({pre:gi, iza:1/a[2], izb:1/b[2], A:A, B:B, col:Ln.col||P.col, kind:Ln.kind||'edge'});
+          meta.push({pre:gi, iza:1/a[2], izb:1/b[2], A:A, B:B, col:Ln.col||P.col, kind:Ln.kind||'edge', bod:P.bod});
           if(a[2]>maxz) maxz=a[2]; if(b[2]>maxz) maxz=b[2];
           if(ISO){ if(a[2]<ISOZN) ISOZN=a[2]; if(b[2]<ISOZN) ISOZN=b[2]; }
         });
@@ -47974,7 +47993,7 @@ function corridorDraw(p,plans,THM,camera){
               var t=L2>0?((q[0]-M2.A[0])*dx+(q[1]-M2.A[1])*dy)/L2:0;
               return M2.iza+(M2.izb-M2.iza)*Math.max(0,Math.min(1,t));
             });
-            run.pre=M2.pre; run.part=pid; run.izs=izs; run.col=M2.col; run.kind=M2.kind;
+            run.pre=M2.pre; run.part=pid; run.izs=izs; run.col=M2.col; run.kind=M2.kind; if(M2.bod!==undefined) run.bod=M2.bod;
             out.push(run);
           }
         }
@@ -48028,7 +48047,7 @@ function corridorDraw(p,plans,THM,camera){
         if(cur && cur.length>1){
           cur.z=cz.map(function(iz){ var zc=1/iz; return 1-Math.max(0,Math.min(1,(zc-ZNC)/(FARZ-ZNC))); });
           cur.zc=cz.map(function(iz){ return 1/iz; });
-          cur.pre=run.pre; cur.part=run.part; cur.col=run.col; cur.kind=run.kind;
+          cur.pre=run.pre; cur.part=run.part; cur.col=run.col; cur.kind=run.kind; if(run.bod!==undefined) cur.bod=run.bod;
           if(run.rp!==undefined){ cur.rp=run.rp; cur.pud=run.pud; cur.hero=run.hero; }
           res.push(cur);
         }
