@@ -583,7 +583,7 @@ html.ui-corridors, html.ui-corridors body{margin:0; height:100%; overflow:hidden
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v435</a> &mdash; Corridor city: below Spread 100 a small city's station slides off the core, so the railway keeps off the airfield beside it</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v436</a> &mdash; Corridors: Metropolis, a fifth button in Next to the city, sets the whole city with its airfield, harbour and plant on the outskirts, pulled in to Spread 30, in one redraw; None, Airport, Port and Power plant take the outskirts plant away, and its row is now Plant on the outskirts</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <section class="fold" id="fold_pick"><h2>Pick engine<span class="cnt"></span></h2>
@@ -49950,13 +49950,35 @@ var CORLOOKS=[['paper','Paper','#c2185b','CORRIDORS'],['night','Night shift','#f
               ['cyan','Cyanotype','#ffd166','corridors.'],['kraft','Kraft and pencil','#c2410c','Corridors'],
               ['swiss','Swiss signal','#111111','CORRIDORS']];
 var CORLABEL={town:{site:'Next to the city',tier:'Its size',sitepct:'Its share of the map',sscale:'Its scale',
-                    form:'City shape',water:'Water',proj:'View',rstn:'Train station'}};
+                    form:'City shape',water:'Water',proj:'View',rstn:'Train station',plant:'Plant on the outskirts'}};
 /* value names, read only where a knob runs 0..n-1 in steps of 1 with exactly n names */
 var CORCHOICE={site:['None','Airport','Port','Power plant'],form:['Strip','Around a core'],
                water:['None','Bay','Bridge bay','Waterfront'],proj:['Street','Isometric'],pageor:['Landscape','Portrait']};
 var CORBIG=['site','form','water','proj'];
-var CORALIAS={site:'airport airfield port harbour power plant',rstn:'station',proj:'projection perspective isometric camera',
-              pline:'pylons',hero:'front puddle'};
+var CORALIAS={site:'airport airfield port harbour power plant metropolis whole city all',rstn:'station',proj:'projection perspective isometric camera',
+              pline:'pylons',hero:'front puddle',spread:'closer together collapse pull in distance'};
+/* row 406: Metropolis, the fifth button in Next to the city -- not a `site` value but a set of keys: the whole city with
+   its airfield, harbour and plant on the outskirts, drawn closer together. COR_METRO_SPREAD is row 405's S*, the
+   smallest Spread its tick quotes green */
+var COR_METRO_SPREAD=30;
+function corMetroLit(E){ return !!E && E.form===1 && (E.site===1||E.site===2) && E.water>=1 && E.plant===1; }
+function corMetroKV(E){ var w=E&&E.water>=1&&E.water<=3?E.water:1;
+  return [['form',1],['site',1],['water',w],['harb',3],['plant',1],['spread',COR_METRO_SPREAD],['mscale',0],['sfocus',0]]; }
+/* every key through kSet, no draw between them, then the one draw the panel's press schedules */
+function corMetro(){
+  if(CORREMOTE){ var EV=CORREMOTE.vals; corMetroKV(EV).forEach(function(p){ if(p[0] in EV) EV[p[0]]=p[1]; }); corSync();
+    if(COR && COR.ch) COR.ch.postMessage({type:'metro', eng:CORREMOTE.eng}); return; }
+  if(mode!=='town' || !STATE.eng.town) return;
+  corMetroKV(STATE.eng.town).forEach(function(p){ if(p[0] in STATE.eng.town) kSet('town',p[0],p[1]); });
+  corSync(); sched();
+}
+/* corcheck M1 counts draws: the draw counter, read only, from outside the page's closure */
+window.__corGen=function(){ return BUILDGEN; };
+/* row 406: None, Airport, Port and Power plant each set `site` and take the plant on the outskirts away, through corSet,
+   the one way the panel writes a knob (here or from the panel's own window); the two scheduled draws are one */
+function corSite(v){ var E=CORREMOTE?CORREMOTE.vals:STATE.eng[mode];
+  corSet('site',v); if(E && ('plant' in E)) corSet('plant',0);
+}
 var CORSHORT={paper:'Paper',ess:'Main',plan:'Plan',lines:'Lines',site:'Next to',bld:'Build',life:'Life',wet:'Wet',cam:'Camera',ink:'Ink',other:'Other'};
 /* inline SVG, 24 x 24, stroked: no icon font (a font that fails to load on the LAN shows its ligature words) */
 var CORICON={
@@ -50181,7 +50203,7 @@ function corRow(host,eng,sp,hint,glob){
     var seg=document.createElement('div'); seg.className='corseg';
     names.forEach(function(nm,i){
       var b=document.createElement('button'); b.type='button'; b.textContent=nm; b.setAttribute('data-v',String(mn+i));
-      b.addEventListener('click',function(){ put(k,mn+i); });
+      b.addEventListener('click',function(){ if(!glob && eng==='town' && k==='site') corSite(mn+i); else put(k,mn+i); });
       seg.appendChild(b);
     });
     d.appendChild(seg); R.seg=seg;
@@ -50214,7 +50236,9 @@ function corSync(){
     if(R.g){ corGSync(R,act); return; }
     var v=E[R.k];
     if(R.rg){ if(act!==R.rg) R.rg.value=v; R.show(v); }
-    if(R.seg) [].forEach.call(R.seg.children,function(b){ b.className=(+b.getAttribute('data-v')===+v)?'on':''; });
+    var ML=R.metro?corMetroLit(E):false;
+    if(R.seg) [].forEach.call(R.seg.children,function(b){ if(b.hasAttribute('data-metro')){ b.className=ML?'on':''; return; }
+      b.className=(!ML && +b.getAttribute('data-v')===+v)?'on':''; });
     if(R.big) return;
     var isIdle=(R.k in idle);
     if(COR.q){ R.el.classList.toggle('coridle',isIdle); return; }
@@ -50232,6 +50256,9 @@ function corRenderBig(){
   CORBIG.forEach(function(k){
     var sp=specOf(S,k); if(!sp || !corChoices(sp)) return;
     var R=corRow(host,mode,sp,null); R.big=true; R.el.className='corbig'; R.el.setAttribute('data-k',k);
+    if(k==='site' && mode==='town' && R.seg){ var mb=document.createElement('button'); mb.type='button'; mb.textContent='Metropolis';
+      mb.setAttribute('data-metro',''); mb.title='The whole city with its airfield, harbour and plant, closer together';
+      mb.addEventListener('click',corMetro); R.seg.appendChild(mb); R.metro=mb; }
   });
 }
 function corRenderRows(){
@@ -50461,6 +50488,7 @@ function corOnMsg(e){
   if(!COR) return;
   if(d.type==='hello') corBroadcast();
   else if(d.type==='bye') corPopIn(false);
+  else if(d.type==='metro' && COR.pop && d.eng===mode && mode==='town'){ draftPoke(); corMetro(); }
   else if(d.type==='set' && COR.pop && d.eng===mode && STATE.eng[mode] && (d.k in STATE.eng[mode])){
     var sp=specOf(SPEC[mode][1],d.k), v=+d.v;
     /* a stream of values (a slider dragged over there) builds in draft, and in full once it stops, as here */
