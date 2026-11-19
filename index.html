@@ -548,6 +548,8 @@ html.ui-corridors, html.ui-corridors body{margin:0; height:100%; overflow:hidden
 #cor .corpen input[type=color]::-webkit-color-swatch{border:none; border-radius:50%;}
 #cor .corpen input[type=color]::-moz-color-swatch{border:none; border-radius:50%;}
 #cor .corwells{display:flex; flex-wrap:wrap; gap:6px; flex-basis:100%; padding:2px 0 6px; font-family:var(--mono); font-size:12px; color:var(--dim);}
+#cor .corinkpens{display:flex; align-items:center; gap:8px; flex-basis:100%; padding:0 0 4px;} /* row 427: the Ink row's Pens */
+#cor .corinkpens>span{color:var(--dim); font-size:12px;}
 #cor button.corpenclr{border:0; background:none; padding:2px 4px; font-size:12px; color:var(--dim); text-decoration:underline; cursor:pointer;}
 #cor .cormenu{font:inherit; font-size:12px; color:var(--text); background:var(--field); border:1px solid var(--line2); border-radius:var(--rc); padding:2px 4px; max-width:170px;}
 @media (max-width:820px){ #cor{grid-template-columns:52px 260px minmax(0,1fr);} #corBig{display:none;} }
@@ -581,7 +583,7 @@ html.ui-corridors, html.ui-corridors body{margin:0; height:100%; overflow:hidden
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v431</a> &mdash; Rocket assembly: View is a menu, Isometric or Perspective; any knob can now show its values by name</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v432</a> &mdash; Ink schemes: four new pen boxes (Black plus one, Night city, Blueprint plus red, Brick and moss), and an Ink row in Corridors</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <section class="fold" id="fold_pick"><h2>Pick engine<span class="cnt"></span></h2>
@@ -11713,6 +11715,68 @@ const INKSETS = [
       'navy':'navy', 'blue':'cobalt', 'light blue':'cobalt', 'turquoise':'cobalt',
       'teal':'olive', 'dark green':'olive', 'green':'olive', 'light green':'olive',
       'olive':'olive', 'sand':'mustard' } },
+  /* row 427 (docs/specs/2026-11-18-ink-schemes_v1.md): four more boxes, APPENDED so 0 and 1 keep their index.
+     Reference fineliner hexes, darkest first as written (the order is the tie-break); inks.py has the same four. */
+  { id: 'blk1',   name: 'Black plus one',     inks: [
+      ['black',   '#1a1a1a'],
+      ['sepia',   '#4b3621'],
+      ['red',     '#c8341b'],
+      ['cobalt',  '#1f4fa8'],
+      ['olive',   '#5d6b2a'],
+      ['ochre',   '#b8862b'],
+      ['teal',    '#137a6e'],
+      ['darkred', '#7a1a22'] ],
+    from: {   // reference-ink name -> this set's ink name (row 427)
+      'black':'black', 'dark grey':'sepia', 'grey':'sepia', 'sepia':'sepia', 'brown':'sepia',
+      'ochre':'ochre', 'yellow':'ochre', 'orange':'red', 'red':'red', 'dark red':'darkred',
+      'pink':'red', 'magenta':'red', 'purple':'darkred', 'lavender':'sepia', 'navy':'black',
+      'blue':'cobalt', 'light blue':'cobalt', 'turquoise':'teal', 'teal':'teal', 'dark green':'olive',
+      'green':'olive', 'light green':'olive', 'olive':'olive', 'sand':'ochre' } },
+  { id: 'night',  name: 'Night city',         inks: [
+      ['black',   '#111111'],
+      ['indigo',  '#24408e'],
+      ['cobalt',  '#1f5fd0'],
+      ['magenta', '#c2297e'],
+      ['gold',    '#d9a21b'],
+      ['teal',    '#118a80'],
+      ['violet',  '#5b2d8e'],
+      ['red',     '#c62828'] ],
+    from: {   // reference-ink name -> this set's ink name (row 427)
+      'black':'black', 'dark grey':'indigo', 'grey':'indigo', 'sepia':'black', 'brown':'black',
+      'ochre':'gold', 'yellow':'gold', 'orange':'gold', 'red':'red', 'dark red':'red',
+      'pink':'magenta', 'magenta':'magenta', 'purple':'violet', 'lavender':'violet', 'navy':'indigo',
+      'blue':'cobalt', 'light blue':'cobalt', 'turquoise':'teal', 'teal':'teal', 'dark green':'teal',
+      'green':'teal', 'light green':'teal', 'olive':'indigo', 'sand':'gold' } },
+  { id: 'print',  name: 'Blueprint plus red', inks: [
+      ['navy',      '#1f2f6b'],
+      ['blue',      '#2156c7'],
+      ['lightblue', '#4a8fd6'],
+      ['red',       '#d42a2a'],
+      ['teal',      '#137a6e'],
+      ['sepia',     '#4b3621'],
+      ['darkred',   '#8e1b25'],
+      ['olive',     '#6b7a2a'] ],
+    from: {   // reference-ink name -> this set's ink name (row 427)
+      'black':'navy', 'dark grey':'navy', 'grey':'blue', 'sepia':'sepia', 'brown':'sepia',
+      'ochre':'sepia', 'yellow':'red', 'orange':'red', 'red':'red', 'dark red':'darkred',
+      'pink':'red', 'magenta':'red', 'purple':'navy', 'lavender':'lightblue', 'navy':'navy',
+      'blue':'blue', 'light blue':'lightblue', 'turquoise':'lightblue', 'teal':'teal', 'dark green':'olive',
+      'green':'teal', 'light green':'olive', 'olive':'olive', 'sand':'sepia' } },
+  { id: 'brick',  name: 'Brick and moss',     inks: [
+      ['black', '#1a1a1a'],
+      ['sepia', '#3f2a18'],
+      ['brown', '#7a4a24'],
+      ['brick', '#a33a2a'],
+      ['moss',  '#5a6a2a'],
+      ['teal',  '#2f6f6a'],
+      ['ochre', '#b98a2e'],
+      ['rose',  '#b2566b'] ],
+    from: {   // reference-ink name -> this set's ink name (row 427)
+      'black':'black', 'dark grey':'sepia', 'grey':'brown', 'sepia':'sepia', 'brown':'brown',
+      'ochre':'ochre', 'yellow':'ochre', 'orange':'brick', 'red':'brick', 'dark red':'brick',
+      'pink':'rose', 'magenta':'rose', 'purple':'rose', 'lavender':'rose', 'navy':'black',
+      'blue':'teal', 'light blue':'teal', 'turquoise':'teal', 'teal':'teal', 'dark green':'moss',
+      'green':'moss', 'light green':'moss', 'olive':'moss', 'sand':'ochre' } },
 ];
 /* The knob's range is the table's: GSPEC is written before this table exists. */
 GSPEC.forEach(function(r){ if(r[0]==='inkset') r[3]=INKSETS.length-1; });
@@ -49864,6 +49928,9 @@ var CORGALIAS={paper:'paper sheet size A1 A2 A3 A4 A5 inch portrait landscape', 
                page:'paper sheet size', pagel:'paper sheet size', elay:'pen pens layers', pal:'palette colour color ink pens',
                pmap:'pen pens colour color ink', bands:'colour color pens', inkset:'ink pens colour color palette',
                pw:'pen pens', copies:'pen pens colour color', pens:'pen pens colour color ink palette'};
+/* row 427: Ink, first in Paper and pens -- the Palette, or an ink set at true colour, and its Pens */
+CORGLABEL.ink='Ink';
+CORGALIAS.ink='ink colour color scheme palette pens mr pen night blueprint brick';
 function corGSpec(){ return CORREMOTE?(CORREMOTE.gspec||[]):GSPEC; }
 function corGVals(){ return CORREMOTE?(CORREMOTE.g||{}):STATE.g; }
 function corGLabel(k){ var sp=specOf(corGSpec(),k); return CORGLABEL[k]||(sp?sp[1]:k); }
@@ -49922,6 +49989,7 @@ function corWells(host){
 }
 /* one row of the section: the Paper menu, the pens' wells, or a GSPEC row */
 function corGRow(host,k,hint){
+  if(k==='ink') return corInkRow(host,hint);   /* row 427 */
   if(k!=='paper' && k!=='pens'){ var R=corRow(host,mode,specOf(corGSpec(),k),hint,true); return R; }
   var d=document.createElement('div'); d.className='corrow'; d.setAttribute('data-k',k);
   var lab=document.createElement('label'); lab.textContent=CORGLABEL[k]; lab.title=(k==='paper')?'page, pagel':'PENS'; d.appendChild(lab);
@@ -49943,9 +50011,48 @@ function corGRow(host,k,hint){
   host.appendChild(d); COR.rows.push(R2);
   return R2;
 }
+/* ROW 427: THE INK ROW (docs/specs/2026-11-18-ink-schemes_v1.md §1b). The menu is Palette, then every INKSETS entry by
+   name (read here, so a set appended later is listed with no edit). Palette writes pmap 0; a set writes pmap 3 and
+   inkset. Pens 3 / 5 / 8 / All, shown only at a set, writes bands (All = the set's ink count). Every choice is ONE
+   corGSet -- gSet for each key, then one draw -- and the row reads its state back from pmap / inkset / bands, so a
+   preset or the Sketchpad's own knobs show here. */
+function corInkClamp(k,v){ var sp=specOf(corGSpec(),k); return sp?Math.max(sp[2],Math.min(sp[3],v)):v; }
+function corInkCount(G){ var S=INKSETS[Math.round(G.inkset||0)]||INKSETS[0]; return S.inks.length; }
+function corInkRow(host,hint){
+  var d=document.createElement('div'); d.className='corrow'; d.setAttribute('data-k','ink');
+  var lab=document.createElement('label'); lab.textContent=CORGLABEL.ink; lab.title='pmap, inkset, bands'; d.appendChild(lab);
+  var R={k:'ink', el:d, g:true, ink:true};
+  var sel=document.createElement('select'); sel.className='cormenu';
+  sel.innerHTML='<option value="-1">Palette</option>'+INKSETS.map(function(S,i){ return '<option value="'+i+'">'+S.name+'</option>'; }).join('');
+  sel.addEventListener('change',function(){
+    var i=+sel.value;
+    corGSet(i<0?[['pmap',0]]:[['pmap',3],['inkset',corInkClamp('inkset',i)]]);
+  });
+  d.appendChild(sel); R.sel=sel;
+  var pw=document.createElement('div'); pw.className='corinkpens';
+  var pl=document.createElement('span'); pl.textContent='Pens'; pw.appendChild(pl);
+  var seg=document.createElement('div'); seg.className='corseg';
+  [3,5,8,0].forEach(function(n){
+    var b=document.createElement('button'); b.type='button'; b.textContent=n?String(n):'All'; b.setAttribute('data-n',String(n));
+    b.title=n?n+' pens':'every ink in the set';
+    b.addEventListener('click',function(){ corGSet([['bands',corInkClamp('bands',n||corInkCount(corGVals()))]]); });
+    seg.appendChild(b);
+  });
+  pw.appendChild(seg); d.appendChild(pw); R.inkpens=pw; R.seg2=seg;
+  if(hint){ var h=document.createElement('div'); h.className='corhint'; h.textContent=hint; d.appendChild(h); }
+  host.appendChild(d); COR.rows.push(R);
+  return R;
+}
+function corInkSync(R,G,act){
+  var set=(Math.round(G.pmap)===3), all=corInkCount(G), nb=Math.round(G.bands);
+  if(act!==R.sel) R.sel.value=set?String(Math.round(G.inkset||0)):(Math.round(G.pmap||0)===0?'-1':'');
+  R.inkpens.style.display=set?'':'none';
+  [].forEach.call(R.seg2.children,function(b){ var n=+b.getAttribute('data-n'); b.className=((n||all)===nb)?'on':''; });
+}
 /* a global row's value, its menu, and Page size / Page long shown only at Custom (or a page no menu entry names) */
 function corGSync(R,act){
   var G=corGVals();
+  if(R.ink){ corInkSync(R,G,act); return; }   /* row 427 */
   if(R.paper){ var nm=COR.custom?'':corPaperOf(G); if(act!==R.sel) R.sel.value=nm||'Custom'; return; }
   if(R.pens){ corWells(R.wells); return; }
   var v=G[R.k];
@@ -49974,6 +50081,8 @@ function corSections(eng){
   var GS=corGSpec(), gk=CORGKEYS.filter(function(k){ return specOf(GS,k); });
   if(gk.length) out.push({id:'paper', title:'Paper and pens', g:true,
     keys:(specOf(GS,'page')&&specOf(GS,'pagel')?['paper']:[]).concat(gk).concat(['pens'])});
+  /* row 427: the Ink row first, when the three knobs it writes are here */
+  if(out.length && specOf(GS,'pmap') && specOf(GS,'inkset') && specOf(GS,'bands') && typeof INKSETS!=='undefined') out[0].keys.unshift('ink');
   S.forEach(function(sp){ if(sp[1]!=='\\u2014') have[sp[0]]=1; });
   KGROUPS.forEach(function(g){ var ks=g[2].filter(function(k){ return have[k]; }); if(ks.length) out.push({id:g[0], title:g[1], keys:ks}); });
   var rest=S.filter(function(sp){ return have[sp[0]] && kGroupOf(sp[0])==='other'; }).map(function(sp){ return sp[0]; });
