@@ -588,7 +588,7 @@ html.ui-corridors, html.ui-corridors body{margin:0; height:100%; overflow:hidden
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v441</a> &mdash; Corridors: Metropolis now pulls the city in to Spread 25, the smallest Spread at which every check is green</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v442</a> &mdash; Corridor city: pulled in below Spread 100, the railway keeps off the airfield beside the city; its station moves aside and its lines leave by the rules, and at 100 nothing changes</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <section class="fold" id="fold_pick"><h2>Pick engine<span class="cnt"></span></h2>
@@ -26785,8 +26785,11 @@ function townRailRoute(WC,p){ var G=WC.G, core=WC.core, R=townSub(6,WC.lay,SALT_
      where the river comes in, as near the core as the city's box, and a straight into it leaves its leg no way out */
   /* row 424: under Spread 100 the harbour moves with the airfield beside the city, and the straight could run through its
      apron among the container stacks (the recipe at 25 %): there it keeps off the harbour too, as its legs do */
-  function strOK(c,h){ var HP424=townSpread(p)<1&&WC.hp; if(!WC.po && !HP424) return true; var d=[Math.cos(h),Math.sin(h)], n=[-d[1]*20,d[0]*20], a=[c[0]-d[0]*FR,c[1]-d[1]*FR], b=[c[0]+d[0]*FR,c[1]+d[1]*FR], Q=[[a[0]+n[0],a[1]+n[1]],[b[0]+n[0],b[1]+n[1]],[b[0]-n[0],b[1]-n[1]],[a[0]-n[0],a[1]-n[1]]];
+  /* row 449: and off the airfield beside the city, padded 70 m as the legs keep off it (on the 32 builds L80's MP9
+     measures, what crossed was a leg, and the two guards below hold without this) */
+  function strOK(c,h){ var HP424=townSpread(p)<1&&WC.hp, AIR449=townSpread(p)<1&&WC.out; if(!WC.po && !HP424 && !AIR449) return true; var d=[Math.cos(h),Math.sin(h)], n=[-d[1]*20,d[0]*20], a=[c[0]-d[0]*FR,c[1]-d[1]*FR], b=[c[0]+d[0]*FR,c[1]+d[1]*FR], Q=[[a[0]+n[0],a[1]+n[1]],[b[0]+n[0],b[1]+n[1]],[b[0]-n[0],b[1]-n[1]],[a[0]-n[0],a[1]-n[1]]];
     if(WC.po && WC.polyOverlap(Q,townPad(WC.po,70))) return false;
+    if(AIR449 && WC.polyOverlap(Q,townPad(WC.out,70))) return false;
     return !(HP424 && WC.polyOverlap(Q,townPad(WC.hp,20))); }
   var AVS=best.Qb?AVO.concat([townPad([best.Qb[0],best.Qb[1],best.Qp[2],best.Qp[3]],12)]):AVO;
   var OL={margin:10, minLen:300, avoid:AVS, water:townWaterKind(p)===2, disc:WC.X?[WC.X.c[0],WC.X.c[1],480]:null};
@@ -26813,13 +26816,29 @@ function townRailRoute(WC,p){ var G=WC.G, core=WC.core, R=townSub(6,WC.lay,SALT_
     return !!one(a,h+Math.PI,-1) && (MODE===2 || !!one(b,h,1)); }
   function offAir(c,h){ if(!WC.out) return true; var d=[Math.cos(h),Math.sin(h)], n=[-d[1]*20,d[0]*20], a=[c[0]-d[0]*FR,c[1]-d[1]*FR], b=[c[0]+d[0]*FR,c[1]+d[1]*FR];
     return !WC.polyOverlap([[a[0]+n[0],a[1]+n[1]],[b[0]+n[0],b[1]+n[1]],[b[0]-n[0],b[1]-n[1]],[a[0]-n[0],a[1]-n[1]]],townPad(WC.out,70)); }
+  /* row 449: both legs by the full rules, the disc aside (OL, OLX), never row 424's water fallback */
+  function legsFull(c,h){ var d=[Math.cos(h),Math.sin(h)], a=[c[0]-d[0]*FR,c[1]-d[1]*FR], b=[c[0]+d[0]*FR,c[1]+d[1]*FR], one=function(V,base,su){ return legFrom(V,base,su)||legFrom(V,base,su,OLX); };
+    return !!one(a,h+Math.PI,-1) && (MODE===2 || !!one(b,h,1)); }
   function slideOK(c,h){ return strOK(c,h) && offAir(c,h) && legsOK(c,h); }
-  if(OLW && !best.Qb && !slideOK(best.c,best.h)){ var SL=null;
-    [0,Math.PI/2].some(function(h){ var d=[Math.cos(h),Math.sin(h)];
-      return [0,60,-60,120,-120,180,-180,240,-240,300,-300,400,-400].some(function(du){ return [0,60,-60,120,-120,180,-180].some(function(dv){
-        var c=[core[0]+d[0]*du-d[1]*dv, core[1]+d[1]*du+d[0]*dv]; if(!slideOK(c,h)) return false; SL={c:c, h:h}; return true; }); }); });
-    if(SL){ best=Object.assign({},best,{c:SL.c, h:SL.h, along:SL.h===0}); WC.info.sta.slid=[Math.round(SL.c[0]-core[0]),Math.round(SL.c[1]-core[1]),SL.h?90:0];
-      H=best.h; DIR=[Math.cos(H),Math.sin(H)]; S0=[best.c[0]-DIR[0]*FR,best.c[1]-DIR[1]*FR]; S1=[best.c[0]+DIR[0]*FR,best.c[1]+DIR[1]*FR]; } }
+  /* row 449: under Spread 100 a hall (or the plaza on the core) whose legs find no way out by the rules took the last
+     fallback, which keeps off nothing, across the airfield beside the city (seeds 101, 237, 318): there the hall goes and
+     the platforms alone take the slide below, which only stops where both legs leave by the rules */
+  if(OLW && best.Qb && !legsOK(best.c,best.h)){ best={sc:0, c:best.c, h:best.h, sv:best.sv, Qb:null, Qp:null, PZ:50, art:-1, along:best.along, lb:14, D:124};
+    AVS=AVO; OL.avoid=AVO; OLX.avoid=AVO; OLW.avoid=AVO; WC.info.sta.noHall=1; }
+  if(OLW && !best.Qb && !slideOK(best.c,best.h)){ var SL=null, C6=[], C9=[];
+    [0,Math.PI/2].forEach(function(h){ [0,60,-60,120,-120,180,-180,240,-240,300,-300,400,-400].forEach(function(du){ [0,60,-60,120,-120,180,-180].forEach(function(dv){ C6.push([h,du,dv]); }); }); });
+    /* row 449: and further, nearest the core first, along the grid or either diagonal (seed 1 at 30 and 25 %: 178 of the
+       182 spots above meet the plant or the harbour). Everywhere first where both legs leave by the full rules: a leg from
+       row 424's water fallback can be a few metres long, and the 300 m curve onto it folds the line back on itself
+       beside the airfield (seeds 1, 101, 237 at 30 %); only then a spot whose legs need that fallback */
+    [0,Math.PI/2,Math.PI/4,3*Math.PI/4].forEach(function(h,hi){ for(var du=-900;du<=900;du+=100) for(var dv=-600;dv<=600;dv+=60) C9.push([Math.hypot(du,dv)+hi*0.01,h,du,dv]); });
+    C9.sort(function(a,b){ return a[0]-b[0]; }); C9=C9.map(function(q){ return q.slice(1); });
+    [[C6,legsFull],[C9,legsFull],[C6,legsOK],[C9,legsOK]].some(function(P){ return P[0].some(function(q){ var h=q[0], d=[Math.cos(h),Math.sin(h)], c=[core[0]+d[0]*q[1]-d[1]*q[2], core[1]+d[1]*q[1]+d[0]*q[2]];
+      if(!(strOK(c,h) && offAir(c,h) && P[1](c,h))) return false; SL={c:c, h:h}; return true; }); });
+    if(SL){ best=Object.assign({},best,{c:SL.c, h:SL.h, along:SL.h===0}); WC.info.sta.slid=[Math.round(SL.c[0]-core[0]),Math.round(SL.c[1]-core[1]),Math.round(SL.h*180/Math.PI)];
+      H=best.h; DIR=[Math.cos(H),Math.sin(H)]; S0=[best.c[0]-DIR[0]*FR,best.c[1]-DIR[1]*FR]; S1=[best.c[0]+DIR[0]*FR,best.c[1]+DIR[1]*FR];
+      /* row 449: the legs leave from where the platforms now stand, not from the core (they were found before the slide) */
+      LB=legFrom(S0,H+Math.PI,-1); LA=MODE===2?null:legFrom(S1,H,1); } }
   if(!LB){ bad++; LB=legFrom(S0,H+Math.PI,-1,OLX)||(OLW&&legFrom(S0,H+Math.PI,-1,OLW))||townLegOK(WC,S0,H+Math.PI,{margin:0,minLen:1,avoid:[],water:true})||{E:townRayExit(WC.ext,S0,H+Math.PI).slice(0,2)}; }
   if(!LA && MODE!==2){ bad++; LA=legFrom(S1,H,1,OLX)||(OLW&&legFrom(S1,H,1,OLW))||townLegOK(WC,S1,H,{margin:0,minLen:1,avoid:[],water:true})||{E:townRayExit(WC.ext,S1,H).slice(0,2)}; }
   var pts=MODE===2?[LB.E,S0,[best.c[0]+DIR[0]*(PLAT/2+3),best.c[1]+DIR[1]*(PLAT/2+3)]]:[LB.E,S0,S1,LA.E];
