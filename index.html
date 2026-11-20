@@ -588,7 +588,7 @@ html.ui-corridors, html.ui-corridors body{margin:0; height:100%; overflow:hidden
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v439</a> &mdash; Corridors: every button, menu and slider says what it does to the drawing when you hover it, tab to it or long-press it on a phone, and the sliders turn with the scroll wheel again, a step a notch, ten with Shift</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v440</a> &mdash; Corridor city: pulled in to the smallest Spread, no power pylon stands in a building lot; the lots beside the line keep 4 m off its pylons, and at 100 nothing changes</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <section class="fold" id="fold_pick"><h2>Pick engine<span class="cnt"></span></h2>
@@ -29126,7 +29126,13 @@ function townGridRoute(p,G,plans,J,RIV,VS,SX,FRM,WH){
   function RT0w(T){ var S=subs[T.sub]; return S.Wg/2+3; }
   /* the lots the plots and corridors meet, carved as row 98 carves them (every row and cross street); City
      form's and the river's, dropped */
-  function meets(Q){ var b=bbox2(Q); return plots.some(function(P){ return bbHit(b,P.bb) && polyOverlap(Q,P.poly); }) || corr.some(function(P){ return bbHit(b,P.bb) && polyOverlap(Q,P.poly); }); }
+  /* row 447: under Spread 100, each plot read 4 m wider all round. Row 200 §4 merges a bare street's lots under 2 mm
+     across a gap under 4 m into their bounding box, and on the recipe at Spread 25 a pylon's corner stood in such a gap
+     between two lots it did not meet: the merged box took it in. A carved lot never merges, so no lot is left within
+     4 m of a plot to grow over it */
+  var PW4=townSpread(p)<1?plots.map(function(P){ var c=P.poly.reduce(function(a,q){ return [a[0]+q[0]/P.poly.length,a[1]+q[1]/P.poly.length]; },[0,0]),
+      Q=P.poly.map(function(q){ var dx=q[0]-c[0], dy=q[1]-c[1], l=Math.hypot(dx,dy)||1, f=1+4*Math.SQRT2/l; return [c[0]+dx*f,c[1]+dy*f]; }); return {poly:Q, bb:bbox2(Q)}; }):plots;
+  function meets(Q){ var b=bbox2(Q); return PW4.some(function(P){ return bbHit(b,P.bb) && polyOverlap(Q,P.poly); }) || corr.some(function(P){ return bbHit(b,P.bb) && polyOverlap(Q,P.poly); }); }
   townCarve(G,grid,meets,info,WH?'site':'grid',400000,LOTMIN,bbox2);
   /* where the wire comes down low no street pole stands: the street's own pole rows skip a corridor (KIT poleOut) */
   var WL=corr.map(function(P){ return P.poly; }); grid.forEach(function(PL){ PL.wireLow=(PL.wireLow||[]).concat(WL); });
