@@ -588,7 +588,7 @@ html.ui-corridors, html.ui-corridors body{margin:0; height:100%; overflow:hidden
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v440</a> &mdash; Corridor city: pulled in to the smallest Spread, no power pylon stands in a building lot; the lots beside the line keep 4 m off its pylons, and at 100 nothing changes</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v441</a> &mdash; Corridors: Metropolis now pulls the city in to Spread 25, the smallest Spread at which every check is green</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <section class="fold" id="fold_pick"><h2>Pick engine<span class="cnt"></span></h2>
@@ -49997,9 +49997,9 @@ var CORBIG=['site','form','water','proj'];
 var CORALIAS={site:'airport airfield port harbour power plant metropolis whole city all',rstn:'station',proj:'projection perspective isometric camera',
               pline:'pylons',hero:'front puddle',spread:'closer together collapse pull in distance'};
 /* row 406: Metropolis, the fifth button in Next to the city -- not a `site` value but a set of keys: the whole city with
-   its airfield, harbour and plant on the outskirts, drawn closer together. COR_METRO_SPREAD is row 405's S*, the
-   smallest Spread its tick quotes green */
-var COR_METRO_SPREAD=30;
+   its airfield, harbour and plant on the outskirts, drawn closer together. COR_METRO_SPREAD is S*, the smallest
+   Spread L80's MP2 is green at every step down to (row 405's tick 30; row 447/v440 25, row 455) */
+var COR_METRO_SPREAD=25;
 function corMetroLit(E){ return !!E && E.form===1 && (E.site===1||E.site===2) && E.water>=1 && E.plant===1; }
 function corMetroKV(E){ var w=E&&E.water>=1&&E.water<=3?E.water:1;
   return [['form',1],['site',1],['water',w],['harb',3],['plant',1],['spread',COR_METRO_SPREAD],['mscale',0],['sfocus',0]]; }
