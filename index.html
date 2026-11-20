@@ -565,6 +565,11 @@ html.ui-corridors, html.ui-corridors body{margin:0; height:100%; overflow:hidden
 #cor.cor-panelonly #corBig{flex-wrap:wrap; display:flex;}
 #cor.cor-panelonly #corRail{grid-row:2;}
 #cor.cor-panelonly #corPanel{grid-row:2; border-right:0;}
+/* row 453: the one popover every Corridors control's data-tip opens */
+#corTip{position:fixed; z-index:30; max-width:300px; padding:8px 10px; background:var(--field); color:var(--text);
+     border:1px solid var(--line2); border-radius:var(--rp); box-shadow:var(--shadow); font-size:12px; line-height:1.4; pointer-events:none;}
+#corTip[hidden]{display:none;}
+#corTip b{display:block; margin-bottom:2px; color:var(--acc); font-weight:700;}
 </style>
 </head>
 <body>
@@ -583,7 +588,7 @@ html.ui-corridors, html.ui-corridors body{margin:0; height:100%; overflow:hidden
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v438</a> &mdash; Corridor city: pulling the city in with Spread never pushes its airfield further out than it stands at 100; where the side of the city lies farther out, the airfield stays off the city's end, and at 100 nothing changes</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v439</a> &mdash; Corridors: every button, menu and slider says what it does to the drawing when you hover it, tab to it or long-press it on a phone, and the sliders turn with the scroll wheel again, a step a notch, ten with Shift</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <section class="fold" id="fold_pick"><h2>Pick engine<span class="cnt"></span></h2>
@@ -50091,14 +50096,14 @@ function corWells(host){
       c.appendChild(sw); c.appendChild(num); host.appendChild(c);
     });
     var clr=document.createElement('button'); clr.type='button'; clr.className='corpenclr'; clr.textContent='Reset colours';
-    clr.title='Drop every pen colour set here and go back to the palette';
+    corTip(clr,'Reset colours',corHelp('penreset'));
     clr.addEventListener('click',corPenReset); host.appendChild(clr);
     cells=host.querySelectorAll('label.corpen');
   }
   P.forEach(function(p,i){
     var c=cells[i], sw=c.querySelector('input');
     if(sw!==act && sw.value.toLowerCase()!==p.hex) sw.value=p.hex;
-    c.classList.toggle('set',!!p.set); c.title='Pen '+(i+1)+(p.set?' (set)':' (from the palette)');
+    c.classList.toggle('set',!!p.set); corTip(c,'Pen '+(i+1)+(p.set?', set here':', from the palette'),corHelp('pen'));
   });
 }
 /* one row of the section: the Paper menu, the pens' wells, or a GSPEC row */
@@ -50106,7 +50111,7 @@ function corGRow(host,k,hint){
   if(k==='ink') return corInkRow(host,hint);   /* row 427 */
   if(k!=='paper' && k!=='pens'){ var R=corRow(host,mode,specOf(corGSpec(),k),hint,true); return R; }
   var d=document.createElement('div'); d.className='corrow'; d.setAttribute('data-k',k);
-  var lab=document.createElement('label'); lab.textContent=CORGLABEL[k]; lab.title=(k==='paper')?'page, pagel':'PENS'; d.appendChild(lab);
+  var lab=document.createElement('label'); lab.textContent=CORGLABEL[k]; corTip(lab,CORGLABEL[k],corHelp(k)); d.appendChild(lab);
   var R2={k:k, el:d, g:true};
   if(k==='paper'){
     var sel=document.createElement('select'); sel.className='cormenu';
@@ -50117,7 +50122,7 @@ function corGRow(host,k,hint){
       var P=corPapers().filter(function(P){ return P[0]===sel.value; })[0]; if(!P) return;
       COR.custom=false; corGSet([['page',P[1]],['pagel',P[2]]]);
     });
-    d.appendChild(sel); R2.paper=true; R2.sel=sel;
+    corTip(sel,CORGLABEL[k],corHelp(k)); d.appendChild(sel); R2.paper=true; R2.sel=sel;
   } else {
     var w=document.createElement('div'); w.className='corwells'; d.appendChild(w); R2.pens=true; R2.wells=w;
   }
@@ -50134,7 +50139,7 @@ function corInkClamp(k,v){ var sp=specOf(corGSpec(),k); return sp?Math.max(sp[2]
 function corInkCount(G){ var S=INKSETS[Math.round(G.inkset||0)]||INKSETS[0]; return S.inks.length; }
 function corInkRow(host,hint){
   var d=document.createElement('div'); d.className='corrow'; d.setAttribute('data-k','ink');
-  var lab=document.createElement('label'); lab.textContent=CORGLABEL.ink; lab.title='pmap, inkset, bands'; d.appendChild(lab);
+  var lab=document.createElement('label'); lab.textContent=CORGLABEL.ink; corTip(lab,'Ink',corHelp('ink')); d.appendChild(lab);
   var R={k:'ink', el:d, g:true, ink:true};
   var sel=document.createElement('select'); sel.className='cormenu';
   sel.innerHTML='<option value="-1">Palette</option>'+INKSETS.map(function(S,i){ return '<option value="'+i+'">'+S.name+'</option>'; }).join('');
@@ -50142,13 +50147,13 @@ function corInkRow(host,hint){
     var i=+sel.value;
     corGSet(i<0?[['pmap',0]]:[['pmap',3],['inkset',corInkClamp('inkset',i)]]);
   });
-  d.appendChild(sel); R.sel=sel;
+  corTip(sel,'Ink',corHelp('ink')); d.appendChild(sel); R.sel=sel;
   var pw=document.createElement('div'); pw.className='corinkpens';
   var pl=document.createElement('span'); pl.textContent='Pens'; pw.appendChild(pl);
   var seg=document.createElement('div'); seg.className='corseg';
   [3,5,8,0].forEach(function(n){
     var b=document.createElement('button'); b.type='button'; b.textContent=n?String(n):'All'; b.setAttribute('data-n',String(n));
-    b.title=n?n+' pens':'every ink in the set';
+    corTip(b,'Pens: '+(n?n:'All'),corHelp('inkpens'));
     b.addEventListener('click',function(){ corGSet([['bands',corInkClamp('bands',n||corInkCount(corGVals()))]]); });
     seg.appendChild(b);
   });
@@ -50178,6 +50183,67 @@ function corGSync(R,act){
 function corSvg(k){
   return '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" '+
          'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="'+(CORICON[k]||CORICON.other)+'"/></svg>';
+}
+/* ROW 453: EVERY CORRIDORS CONTROL SAYS WHAT IT DOES (Albert 2026-11-19: "add tooltips to corr"). A knob row reads
+   the HELP entry the classic panel's (i) reads, so there is one text per knob; the chrome reads HELP['cor.*'], or the
+   Sketchpad button's own title where it presses one that has one. The text is a data-tip on the control, shown by one
+   popover (#corTip): on hover after a moment, at once on keyboard focus, and on a long press on a touch screen (the
+   tap that ends a long press does not also press the control). No native title is left, so nothing shows twice. */
+var CORKBD=false;
+function corHelp(k){ return HELP['cor.'+k]||''; }
+function corKnobHelp(eng,k,glob){ return (glob?HELP['_g.'+k]:(HELP[eng+'.'+k]||HELP['_v3.'+k]))||''; }
+function corTip(el,head,txt){
+  if(!el || !txt) return el;
+  el.setAttribute('data-tip',String(txt)); if(head) el.setAttribute('data-tiph',String(head)); else el.removeAttribute('data-tiph');
+  el.removeAttribute('title');
+  return el;
+}
+function corTipShow(el){
+  var t=document.getElementById('corTip'); if(!t || !el || !COR) return;
+  t.textContent='';
+  var h=el.getAttribute('data-tiph'); if(h){ var b=document.createElement('b'); b.textContent=h; t.appendChild(b); }
+  var p=document.createElement('span'); p.textContent=el.getAttribute('data-tip')||''; t.appendChild(p);
+  t.hidden=false;
+  if(COR.tipEl && COR.tipEl!==el) COR.tipEl.removeAttribute('aria-describedby');
+  COR.tipEl=el; el.setAttribute('aria-describedby','corTip');
+  var r=el.getBoundingClientRect(), w=t.offsetWidth||300, hh=t.offsetHeight||60, W=window.innerWidth||1200, H=window.innerHeight||800;
+  var side=!!(el.closest && el.closest('#corRail')), x=side?r.right+8:r.left, y=side?r.top:r.bottom+6;
+  if(!side && y+hh>H-8) y=r.top-hh-6;
+  t.style.left=Math.max(8,Math.min(W-w-8,x))+'px'; t.style.top=Math.max(8,Math.min(H-hh-8,y))+'px';
+}
+function corTipHide(){
+  var t=document.getElementById('corTip'); if(t) t.hidden=true;
+  if(COR && COR.tipEl){ COR.tipEl.removeAttribute('aria-describedby'); COR.tipEl=null; }
+}
+function corTipWire(root){
+  var t=document.createElement('div'); t.id='corTip'; t.setAttribute('role','tooltip'); t.hidden=true; root.appendChild(t);
+  var hov=null, lp=null, eat=false;
+  function at(e){ return e.target && e.target.closest ? e.target.closest('[data-tip]') : null; }
+  root.addEventListener('pointerover',function(e){
+    if(e.pointerType==='touch') return;
+    var el=at(e); clearTimeout(hov); if(!el || el===COR.tipEl) return;
+    hov=setTimeout(function(){ corTipShow(el); },400);
+  });
+  root.addEventListener('pointerout',function(e){
+    if(e.pointerType==='touch') return;
+    var el=at(e); if(!el || (e.relatedTarget && el.contains(e.relatedTarget))) return;
+    clearTimeout(hov); if(COR && COR.tipEl===el && el!==document.activeElement) corTipHide();
+  });
+  root.addEventListener('focusin',function(e){ var el=at(e); if(el && CORKBD) corTipShow(el); });
+  root.addEventListener('focusout',function(e){ var el=at(e); if(el && COR && COR.tipEl===el) corTipHide(); });
+  root.addEventListener('pointerdown',function(e){
+    clearTimeout(lp); clearTimeout(hov);
+    if(e.pointerType!=='touch'){ corTipHide(); return; }
+    var el=at(e); if(!el){ corTipHide(); return; }
+    lp=setTimeout(function(){ corTipShow(el); eat=true; },500);
+  });
+  root.addEventListener('pointerup',function(){ clearTimeout(lp); });
+  root.addEventListener('pointercancel',function(){ clearTimeout(lp); });
+  root.addEventListener('click',function(e){ if(eat){ eat=false; e.preventDefault(); e.stopPropagation(); } },true);
+}
+if(typeof document!=='undefined' && document.addEventListener){
+  document.addEventListener('keydown',function(e){ CORKBD=true; if(e.key==='Escape') corTipHide(); },true);
+  document.addEventListener('pointerdown',function(){ CORKBD=false; },true);
 }
 function corLS(key,val){
   try{ if(val===undefined) return localStorage.getItem(key); localStorage.setItem(key,val); }catch(e){}
@@ -50217,7 +50283,8 @@ function corRow(host,eng,sp,hint,glob){
   var put=glob?function(kk,v){ corGSet([[kk,v]]); }:corSet;
   var dec=(div===1)?(String(st).split('.')[1]||'').length:2, sdec=(String(st).split('.')[1]||'').length;
   var d=document.createElement('div'); d.className='corrow'; d.setAttribute('data-k',k);
-  var lab=document.createElement('label'); lab.textContent=glob?corGLabel(k):corLabel(eng,sp); lab.title=k; d.appendChild(lab);
+  var tl=glob?corGLabel(k):corLabel(eng,sp), tx=corKnobHelp(eng,k,glob);
+  var lab=document.createElement('label'); lab.textContent=tl; corTip(lab,tl,tx); d.appendChild(lab);
   var R={k:k, el:d, sp:sp, g:!!glob};
   var names=corChoices(sp);
   if(sp[7] && sp[7].menu==='inkset' && typeof INKSETS!=='undefined'){
@@ -50225,18 +50292,18 @@ function corRow(host,eng,sp,hint,glob){
     var sel=document.createElement('select'); sel.className='cormenu';
     sel.innerHTML=INKSETS.map(function(S,i){ return '<option value="'+i+'">'+S.name+'</option>'; }).join('');
     sel.addEventListener('change',function(){ put(k,Math.max(mn,Math.min(mx,+sel.value))); });
-    d.appendChild(sel); R.sel=sel;
+    corTip(sel,tl,tx); d.appendChild(sel); R.sel=sel;
   } else if(names){
     d.classList.add('corch');
     var seg=document.createElement('div'); seg.className='corseg';
     names.forEach(function(nm,i){
-      var b=document.createElement('button'); b.type='button'; b.textContent=nm; b.setAttribute('data-v',String(mn+i));
+      var b=document.createElement('button'); b.type='button'; b.textContent=nm; b.setAttribute('data-v',String(mn+i)); corTip(b,tl+': '+nm,tx);
       b.addEventListener('click',function(){ if(!glob && eng==='town' && k==='site') corSite(mn+i); else put(k,mn+i); });
       seg.appendChild(b);
     });
     d.appendChild(seg); R.seg=seg;
   } else {
-    var rg=document.createElement('input'); rg.type='range'; rg.min=mn; rg.max=mx; rg.step=st;
+    var rg=document.createElement('input'); rg.type='range'; rg.min=mn; rg.max=mx; rg.step=st; corTip(rg,tl,tx);
     var val=document.createElement('span'); val.className='corval';
     d.appendChild(rg); d.appendChild(val); R.rg=rg; R.val=val;
     R.show=function(raw){ val.textContent=(raw/div).toFixed(dec)+unit; };
@@ -50251,6 +50318,16 @@ function corRow(host,eng,sp,hint,glob){
       draftPoke(); put(k,raw);
     });
     rg.addEventListener('dblclick',function(){ put(k,sp[5]); });
+    /* row 453: the wheel nudges one step, ten with Shift, as the classic panel's mkRow does: clamped to the knob's range,
+       snapped to the step's decimals, through the row's own write (kSet or gSet, here or from the panel's own window);
+       passive:false so preventDefault holds and the page does not scroll under the slider */
+    rg.addEventListener('wheel',function(e){
+      e.preventDefault();
+      var cur=+(glob?corGVals():corVals())[k], dir=(e.deltaY||e.detail||-e.wheelDelta)<0?1:-1;
+      var raw=Math.max(mn,Math.min(mx,+(Math.round((cur+dir*st*(e.shiftKey?10:1))/st)*st).toFixed(sdec)));
+      if(isNaN(raw) || raw===cur) return;
+      draftPoke(); put(k,raw);
+    },{passive:false});
   }
   if(hint){ var h=document.createElement('div'); h.className='corhint'; h.textContent=hint; d.appendChild(h); }
   host.appendChild(d); COR.rows.push(R);
@@ -50285,7 +50362,7 @@ function corRenderBig(){
     var sp=specOf(S,k); if(!sp || !corChoices(sp)) return;
     var R=corRow(host,mode,sp,null); R.big=true; R.el.className='corbig'; R.el.setAttribute('data-k',k);
     if(k==='site' && mode==='town' && R.seg){ var mb=document.createElement('button'); mb.type='button'; mb.textContent='Metropolis';
-      mb.setAttribute('data-metro',''); mb.title='The whole city with its airfield, harbour and plant, closer together';
+      mb.setAttribute('data-metro',''); corTip(mb,'Metropolis',corHelp('metro'));
       mb.addEventListener('click',corMetro); R.seg.appendChild(mb); R.metro=mb; }
   });
 }
@@ -50320,7 +50397,7 @@ function corRenderRows(){
 function corRenderRail(){
   var rail=document.getElementById('corRail'); rail.innerHTML='';
   corSections(mode).forEach(function(G){
-    var b=document.createElement('button'); b.type='button'; b.setAttribute('data-sec',G.id); b.title=G.title;
+    var b=document.createElement('button'); b.type='button'; b.setAttribute('data-sec',G.id); corTip(b,G.title,corHelp('sec.'+G.id));
     b.innerHTML=corSvg(G.id)+'<span>'+CORSHORT[G.id]+'</span>';
     b.addEventListener('click',function(){ COR.sec=G.id; COR.q=''; document.getElementById('corSearch').value=''; corRenderRows(); });
     rail.appendChild(b);
@@ -50391,7 +50468,7 @@ function corFloat(on){
   if(COR.float){ corClamp(); p.style.position='absolute'; p.style.left=COR.x+'px'; p.style.top=COR.y+'px'; }
   else { p.style.position=''; p.style.left=''; p.style.top=''; p.style.maxHeight=''; }
   var b=document.getElementById('corDetach');
-  b.innerHTML=corSvg(COR.float?'dock':'detach'); b.title=COR.float?'Dock the panel':'Detach the panel: drag it by its header';
+  b.innerHTML=corSvg(COR.float?'dock':'detach'); corTip(b,COR.float?'Dock':'Detach',corHelp(COR.float?'dock':'detach'));
   corPanelSave(); schedPaint();
 }
 function corMount(){
@@ -50406,12 +50483,12 @@ function corMount(){
   var root=document.createElement('div'); root.id='cor';
   root.innerHTML=
     '<div id="corTop"><span id="corMark"></span>'+
-      '<select id="corScene" title="Scene: which corridor engine draws"></select>'+
+      '<select id="corScene"></select>'+
       '<div id="corBig"></div><span class="corgap"></span>'+
-      '<button type="button" class="corib" id="corSeed" title="New seed">'+corSvg('seed')+'</button>'+
-      '<button type="button" class="corib" id="corVari" title="Variations: twelve at once">'+corSvg('grid')+'</button>'+
-      '<button type="button" class="corib" id="corFly" title="Fly through: Scout, a live wireframe to frame a view">'+corSvg('plane')+'</button>'+
-      '<span class="corpm"><button type="button" class="corib" id="corPre" title="Presets">'+corSvg('bookmark')+'</button>'+
+      '<button type="button" class="corib" id="corSeed">'+corSvg('seed')+'</button>'+
+      '<button type="button" class="corib" id="corVari">'+corSvg('grid')+'</button>'+
+      '<button type="button" class="corib" id="corFly">'+corSvg('plane')+'</button>'+
+      '<span class="corpm"><button type="button" class="corib" id="corPre">'+corSvg('bookmark')+'</button>'+
         '<div id="corPresets" hidden>'+
           '<button type="button" data-press="pSave">Save preset</button>'+
           '<button type="button" data-press="pLoad">Load preset / SVG</button>'+
@@ -50422,13 +50499,24 @@ function corMount(){
     '<nav id="corRail"></nav>'+
     '<div id="corPanel"><div id="corHead"><span id="corSecName"></span>'+
       '<button type="button" class="corib" id="corDetach"></button>'+
-      '<button type="button" class="corib" id="corPop" title="Pop out: the panel in its own window">'+corSvg('popout')+'</button></div>'+
+      '<button type="button" class="corib" id="corPop">'+corSvg('popout')+'</button></div>'+
       '<label id="corFind">'+corSvg('search')+'<input type="search" id="corSearch" placeholder="Find a knob" autocomplete="off"></label>'+
       '<div id="corRows"></div><div id="corIdle"></div></div>'+
     '<div id="corChip" hidden>Panel is in its own window · <button type="button" id="corBring">Bring it back</button></div>'+
     '<div id="corSheet"><div id="corMeta"></div><div id="corMsg"></div><div id="corStageHost"></div><div id="corPens"></div></div>';
   document.body.appendChild(root);
   COR={root:root, eng:null, sec:'ess', q:'', rows:[], moved:[], float:false, x:80, y:100, look:'paper'};
+  /* row 453: the top bar, the presets menu, Pop out, the search and the chip */
+  corTipWire(root);
+  var tipBy=function(id){ var b=document.getElementById(id); return (b && b.title)||''; };
+  [['corScene','Scene','scene'],['corSeed','New seed','seed'],['corVari','Variations','vari'],['corFly','Fly through',null,'scout'],
+   ['corPre','Presets','pre'],['corExport','Export SVG','export'],['corPop','Pop out','pop'],['corSearch','Find a knob','search'],
+   ['corBring','Bring it back','bring'],['corBack','Sketchpad','back']].forEach(function(T){
+    corTip(document.getElementById(T[0]),T[1],(T[3]&&tipBy(T[3]))||corHelp(T[2]));
+  });
+  [].forEach.call(root.querySelectorAll('#corPresets button[data-press]'),function(b){
+    var id=b.getAttribute('data-press'); corTip(b,b.textContent,tipBy(id)||corHelp(id));
+  });
   /* the Scene menu: the corridor engines this file has, in KCORR order, by their own names */
   var sc=document.getElementById('corScene');
   KCORR.forEach(function(e){ if(!SPEC[e]) return; var o=document.createElement('option'); o.value=e; o.textContent=SPEC[e][0]; sc.appendChild(o); });
@@ -50451,7 +50539,7 @@ function corMount(){
   var lk=document.getElementById('corLooks');
   CORLOOKS.forEach(function(L){
     var b=document.createElement('button'); b.type='button'; b.setAttribute('data-look',L[0]);
-    b.innerHTML='<i style="background:'+L[2]+'"></i>'+L[1];
+    b.innerHTML='<i style="background:'+L[2]+'"></i>'+L[1]; corTip(b,'Look: '+L[1],corHelp('look'));
     b.addEventListener('click',function(){ corLook(L[0]); });
     lk.appendChild(b);
   });
@@ -50580,6 +50668,7 @@ function corPanelBoot(){
       '<div id="corRows"></div><div id="corIdle"></div></div>';
   document.body.appendChild(root);
   COR={root:root, eng:null, sec:'ess', q:'', rows:[], moved:[], float:false, x:0, y:0, look:'paper'};
+  corTipWire(root); corTip(document.getElementById('corSearch'),'Find a knob',corHelp('search')); corTip(document.getElementById('corScene'),'Scene',corHelp('scene'));   /* row 453 */
   corLook(corLS('corridors.look')||'paper');
   var se=document.getElementById('corSearch');
   se.addEventListener('input',function(){ COR.q=se.value.trim(); if(CORREMOTE) corRenderRows(); });
@@ -50793,6 +50882,38 @@ ENGEXTRA.rkt=function(box){
   box.appendChild(d);
 };
 var HELP={
+/* row 453: the Corridors chrome, read by corHelp(). Every knob row reads its knob's own entry below */
+'cor.scene':'Which drawing you are making: the city, the street, the station, the market and the rest. Each one keeps its own settings, so switching away and back loses nothing.',
+'cor.seed':'Draw it again from a new random seed: the same settings, a different layout of streets, buildings and people.',
+'cor.vari':'Twelve versions of this drawing side by side, each from its own seed. Pick the one you like and carry on from it.',
+'cor.pre':'Presets: save these settings, load some back (or any SVG this page exported, whose recipe restores its drawing), or put every saved slot in one file.',
+'cor.pSave':'Save these settings as a preset file. Load it back here, or on any copy of the page, to get this exact drawing again.',
+'cor.back':'Back to the Sketchpad, the full page with every engine, on this same drawing.',
+'cor.export':'Download the drawing as an SVG to plot. The file carries its recipe, so Load preset / SVG brings this drawing back.',
+'cor.look':'The colours and type of this page only. The drawing and the file you export do not change.',
+'cor.detach':'Lift the panel off the side so it floats over the drawing, and drag it by its header. Press again to dock it.',
+'cor.dock':'Put the floating panel back at the side of the page.',
+'cor.pop':'Move the panel into a window of its own, for a second screen. A change made there redraws the drawing here.',
+'cor.search':'Type a word to find a setting in any section, by its name or by what it does: airport, puddle, station.',
+'cor.bring':'Close the panel’s own window and put the panel back on this page.',
+'cor.metro':'The whole city with its airfield, its harbour and the plant on the outskirts, all pulled closer together. One press sets City shape, Water, the harbour, the plant and Spread.',
+'cor.paper':'The sheet you will plot on. Choosing one sizes the drawing to it; Custom shows Page size and Page long so you can type your own.',
+'cor.pens':'Each pen’s colour as the page shows it. Click a pen to match it to the ink you actually have.',
+'cor.pen':'Click to set this pen’s colour to the ink you have. It changes the colour the page shows and the SVG records, not which lines the pen draws.',
+'cor.penreset':'Drop every pen colour set here and go back to the palette’s colours.',
+'cor.ink':'Which inks draw the picture. Palette colours it the way this page always has; an ink set gives each part of the drawing its own colour from that box of pens.',
+'cor.inkpens':'How many pens of the ink set to plot with. Fewer pens means fewer pen changes; All uses every ink in the set.',
+'cor.sec.paper':'The sheet and the pens: the paper size and which way round, the inks, how many pens and each pen’s colour.',
+'cor.sec.ess':'The settings that change this drawing the most: its layout, its size, the water and the view. Start here.',
+'cor.sec.plan':'The city on the ground: how far it sprawls, its core, the rows of blocks, the cross streets, parks, alleys and zones.',
+'cor.sec.lines':'What runs across the city: the river, the railway with its trains and station, the highway and its interchange, and the powerline.',
+'cor.sec.site':'What stands next to the city: the airfield, the harbour and the power plant, how big they are and how far out.',
+'cor.sec.bld':'The buildings: street width, lot sizes, steps and overhangs, fire escapes and how varied the upper floors are.',
+'cor.sec.life':'Street life in the close-ups: shop windows and signs, neon, cables overhead, cars, graffiti and people.',
+'cor.sec.wet':'A rained-on street: puddles, ripples, water marks and the reflection in the big puddle in front.',
+'cor.sec.cam':'Where you look from: the view, the map scale and what the page centres on, the camera, and extra views on one sheet.',
+'cor.sec.ink':'How it is drawn: the hatching and its direction, the sun for shadows, line detail near and far, and how much the drawing may hold.',
+'cor.sec.other':'This scene’s own settings that belong to none of the sections above.',
 'real.contour':'Contour interval of the ground, in metres. Every fifth contour is drawn as two strokes 0.3 mm apart, so it reads heavier with one pen.',
 'real.isoaz':'Which way the camera faces, in degrees from north (positive turns it left). The tilt runs along this heading: the near edge of the map stays a plan, the far edge stands up.',
 'real.isoel':'The elevation angle where the tilt is complete: 60 looks down steeply, 15 looks across the city. The plan end is always straight down.',
