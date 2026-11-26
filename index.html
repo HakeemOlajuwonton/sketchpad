@@ -608,7 +608,7 @@ html.ui-corridors, html.ui-corridors body{margin:0; height:100%; overflow:hidden
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v447</a> &mdash; Scout writes a heading of 359.5&ndash;360&deg; as 0, not 359</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v448</a> &mdash; Rocket assembly: at 4 Boosters every floor has its access arm, the bridge from an R floor held level over it where it must be</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <section class="fold" id="fold_pick"><h2>Pick engine<span class="cnt"></span></h2>
@@ -24074,7 +24074,13 @@ function buildFactoryOnce(p,DROP){
    v4): C stands d = max(7.5, 6.2 max(-u.n) + 5.85) from the bridge line,
    the hall widens to the narrowest rwid step that holds it (rktFit), the
    access arms go in before the pylons and the pylons slide off them, and
-   Boosters 3-4 by hand write Hall width up (ENGSET.rkt). 0-2 unchanged. */
+   Boosters 3-4 by hand write Hall width up (ENGSET.rkt). 0-2 unchanged.
+
+   ROW 499, AN ACCESS ARM ON EVERY FLOOR AT 4 BOOSTERS (spec v5): an R floor
+   that finds no arm at 3-4 boosters HOLDS ITS OWN BRIDGE over it -- the deck
+   raised 0.3 m at both ends (1.9 m over each floor) and level until its band
+   is 0.3 m past the arm, then falling to B -- and every arm is searched again
+   against the bridges as held (see armFind). */
 var RKTINFO='';
 var RKTSTATS={solids:0,paths:0,points:0};
 var RKTTALLY={cells:[],boxes:[],order:[],tubes:[],polys:[],rkt:null};
@@ -24378,7 +24384,7 @@ function buildRocketOnce(p,DROP){
      there to B. It still starts at A, ends at B and falls one storey (F4). */
   var BRIDGES=[], i, k;
   var DLAND=Math.max(1.0,(12.3-(A[1]-1.6*NRM[1]))/U[1]), TLAND=DLAND/ABL;
-  for(i=3;i<=N;i+=2) BRIDGES.push({i:i, zA:10*i+1.6, zB:10*(i-1)+1.6, tA:TLAND,
+  for(i=3;i<=N;i+=2) BRIDGES.push({i:i, zA:10*i+1.6, zB:10*(i-1)+1.6, tA:TLAND, dl:DLAND,
     plan:[[A[0],A[1]],[A[0]-1.6*NRM[0],A[1]-1.6*NRM[1]],[B[0]-1.6*NRM[0],B[1]-1.6*NRM[1]],[B[0],B[1]]]});
   function bridgeZ(Bg,t){ return t<=Bg.tA?Bg.zA:Bg.zA-(Bg.zA-Bg.zB)*(t-Bg.tA)/(1-Bg.tA); }
   /* A PYLON STOPS AT EACH DECK IT CARRIES. One plain 1.2 m box column per
@@ -24401,7 +24407,9 @@ function buildRocketOnce(p,DROP){
      pylons go in after the arms (placePylons below the arm search), and a pylon slides, by the pad rule's
      steps, at most 0.10 of the span, to the nearest place that also keeps 1 m off every access arm and its
      square 0.3 m off both floors' free edges; with none, it keeps the pad rule alone. At 0-2 boosters the
-     pylons are placed before the arms, as they always were. */
+     pylons are placed before the arms, as they always were. ROW 499, SPEC v5: at 3-4 boosters the slide
+     reaches 0.15 of the span (30 steps): with a held bridge's arm beside floor 1's, the 20 % pylon has no
+     place within 0.10 (measured: no build without a held bridge slides past 0.10). */
   function pylHit(t){
     if(padHit(t)) return true;
     if(NB<3) return false;
@@ -24413,7 +24421,7 @@ function buildRocketOnce(p,DROP){
     if(!BRIDGES.length) return;
     [0.2,0.4,0.6,0.8].forEach(function(t0){
       var t=t0, st3;
-      for(st3=1;st3<=20 && pylHit(t);st3++){ t=Math.round((t0+0.01*Math.ceil(st3/2)*(st3%2?1:-1))*100)/100; }
+      for(st3=1;st3<=(NB>=3?30:20) && pylHit(t);st3++){ t=Math.round((t0+0.01*Math.ceil(st3/2)*(st3%2?1:-1))*100)/100; }
       if(NB>=3 && pylHit(t)){ t=t0; for(st3=1;st3<=20 && padHit(t);st3++){ t=Math.round((t0+0.01*Math.ceil(st3/2)*(st3%2?1:-1))*100)/100; } }
       var px=A[0]+ABx*t, py=A[1]+ABy*t, segs=[], zb=0;
       BRIDGES.forEach(function(Bg){
@@ -24511,7 +24519,7 @@ function buildRocketOnce(p,DROP){
     }
     return true;
   }
-  for(i=1;i<=N;i++){
+  function armFind(i){
     var side=(i%2===1)?'R':'L', s0=side==='R'?3.0:3.2, fl=PLAT[i-1], pick=null, blocked=false, st2;
     for(var pass=0;pass<2 && pick===null;pass++){
       for(st2=0;st2<=180 && pick===null;st2++){
@@ -24520,7 +24528,34 @@ function buildRocketOnce(p,DROP){
       }
       if(pick===null) blocked=true;
     }
-    ARMS.push({i:i, side:side, s:pick, blocked:blocked&&pick!==null, none:pick===null});
+    return {i:i, side:side, s:pick, blocked:blocked&&pick!==null, none:pick===null};
+  }
+  for(i=1;i<=N;i++) ARMS.push(armFind(i));
+  /* ROW 499, SPEC v5: AN R FLOOR WITH NO ARM HOLDS ITS OWN BRIDGE OVER IT. At 4 boosters C stands 12 m
+     from the line, so R floor i's arm crosses bridge i within a few metres of the floor's edge, where the
+     deck is still 1.6 m up or only starting to fall: no offset passes 1.3 m under it or 0.3 m over it,
+     and the boosters' cut-outs take the offsets where it has fallen. There (3-4 boosters only) bridge i
+     is raised 0.3 m at both ends, so its underside clears an arm by 1.4 m, and the arm is searched
+     against it LEVEL the whole way; with an arm found, the deck holds level until its band is 0.3 m past
+     the arm, then falls straight to B (still one storey). Then every floor's arm is searched again
+     against the bridges as they now stand -- the raised deck can let an L arm nearer its offset. With no
+     floor held nothing is searched twice, and 0-2 boosters never reach this. */
+  if(NB>=3){
+    var heldAny=false;
+    ARMS.forEach(function(a){
+      if(a.s!==null || a.side!=='R') return;
+      var Bg=BRIDGES.filter(function(b){ return b.i===a.i; })[0];
+      if(!Bg) return;
+      var was={zA:Bg.zA, zB:Bg.zB, tA:Bg.tA};
+      Bg.zA=was.zA+0.3; Bg.zB=was.zB+0.3; Bg.tA=2;
+      var f2=armFind(a.i);
+      if(f2.s===null){ Bg.zA=was.zA; Bg.zB=was.zB; Bg.tA=was.tA; return; }
+      var Ra=armRect('R',f2.s,10*a.i), X=clip2(rectPts([Ra[0]-0.3,Ra[1]+0.3,Ra[2]-0.3,Ra[3]+0.3]),Bg.plan), tm=-1;
+      X.forEach(function(q){ tm=Math.max(tm,((q[0]-A[0])*ABx+(q[1]-A[1])*ABy)/(ABL*ABL)); });
+      Bg.tA=was.tA; Bg.held=true; heldAny=true;
+      if(tm>was.tA){ Bg.tA=tm; Bg.dl=tm*ABL; }
+    });
+    if(heldAny) for(i=1;i<=N;i++) ARMS[i-1]=armFind(i);
   }
   if(NB>=3) placePylons();
 
@@ -25097,7 +25132,7 @@ function buildRocketOnce(p,DROP){
   }
   /* ---- the transfer bridges, their end piers, the four pylons ----------- */
   BRIDGES.forEach(function(Bg){
-    var P=Bg.plan, j, Lx=DLAND*U[0], Ly=DLAND*U[1];
+    var P=Bg.plan, j, Lx=Bg.dl*U[0], Ly=Bg.dl*U[1];
     var Q4=[P[0],P[1],[P[1][0]+Lx,P[1][1]+Ly],[P[0][0]+Lx,P[0][1]+Ly]];
     var R4=[Q4[3],Q4[2],P[2],P[3]];
     [[Q4,[Bg.zA,Bg.zA,Bg.zA,Bg.zA]],[R4,[Bg.zA,Bg.zA,Bg.zB,Bg.zB]]].forEach(function(pr){
@@ -25417,7 +25452,7 @@ function buildRocketOnce(p,DROP){
   });
 
   T.rkt={W:W, D:D, N:N, H:H, Q:Q, NB:NB, wantW:RWANT, wantNB:RNBW, d:RFIT.d, A:A, B:B, C:C, U:U, NRM:NRM, M:M,
-         bridges:BRIDGES.map(function(Bg){ return {i:Bg.i, zA:Bg.zA, zB:Bg.zB, tA:Bg.tA, plan:Bg.plan}; }), dland:DLAND,
+         bridges:BRIDGES.map(function(Bg){ return {i:Bg.i, zA:Bg.zA, zB:Bg.zB, tA:Bg.tA, plan:Bg.plan, held:!!Bg.held}; }), dland:DLAND,
          pylons:PYL, boosters:BOOST, skin:SKIN, ztop:ZTOP, fbase:FBASE, fhang:FHANG, bzt:BZT,
          plat:PLAT.map(function(fl){ return {i:fl.i, z:fl.z, drop:fl.drop.slice()}; }),
          arms:ARMS.map(function(a){ return {i:a.i, side:a.side, s:a.s, blocked:a.blocked, none:a.none}; }),
@@ -25587,6 +25622,8 @@ function buildRocketOnce(p,DROP){
           W+' × '+D+' m · '+N+' floors · '+Math.round(Q*100)+' % built · '+
           RKTSTATS.boosters+(RKTSTATS.boosters<NB?' of '+NB:'')+' booster'+(NB===1?'':'s')+' · '+
           (nBl?nBl+' access arm'+(nBl===1?'':'s')+' blocked by a booster · ':'')+
+          (function(){ var hb=BRIDGES.filter(function(Bg){ return Bg.held; }).map(function(Bg){ return Bg.i; });
+            return hb.length?(hb.length===1?'bridge ':'bridges ')+hb.join(', ')+' held over an access arm · ':''; })()+
           PARTS.length+' parts · '+NPPL+' people · '+ROBOTS.length+' robot'+(ROBOTS.length===1?'':'s')+
           (ROBOTS.length<NARM*N?' (of '+NARM*N+')':'')+' · '+
           (RKTSTATS.drops.length?'over budget: dropped '+RKTSTATS.drops.join(', ')+(RKTSTATS.over?' (still over)':'')+' · ':'')+
