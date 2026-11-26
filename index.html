@@ -588,7 +588,7 @@ html.ui-corridors, html.ui-corridors body{margin:0; height:100%; overflow:hidden
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v442</a> &mdash; Corridor city: pulled in below Spread 100, the railway keeps off the airfield beside the city; its station moves aside and its lines leave by the rules, and at 100 nothing changes</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v443</a> &mdash; Rocket assembly: at 3 or 4 Boosters the rocket stands clear of the transfer bridges, the hall widens to hold it (Boosters raises Hall width), and the pylons step aside for the access arms</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <section class="fold" id="fold_pick"><h2>Pick engine<span class="cnt"></span></h2>
@@ -24048,7 +24048,13 @@ function buildFactoryOnce(p,DROP){
    clears the bridges, pylons, platforms, robots and the parts they hold.
 
    ROW 413, THE TONE HATCH (§5): MARKS on each solid's own faces, laid out in
-   the drawing's projection so the spacing holds on paper (see hatchOf). */
+   the drawing's projection so the spacing holds on paper (see hatchOf).
+
+   ROW 477, THE BOOSTERS AT 3 AND 4 (spec v3 §1, row 417's option (a), and
+   v4): C stands d = max(7.5, 6.2 max(-u.n) + 5.85) from the bridge line,
+   the hall widens to the narrowest rwid step that holds it (rktFit), the
+   access arms go in before the pylons and the pylons slide off them, and
+   Boosters 3-4 by hand write Hall width up (ENGSET.rkt). 0-2 unchanged. */
 var RKTINFO='';
 var RKTSTATS={solids:0,paths:0,points:0};
 var RKTTALLY={cells:[],boxes:[],order:[],tubes:[],polys:[],rkt:null};
@@ -24071,6 +24077,29 @@ function buildRocket(p){
    in no class and never drop. Declared BETWEEN the two functions so an
    extract.js slice of buildRocket carries it. */
 var RKTDROPS=['sleepers','handrailposts','stringers','rackitems','people','wallrow'];
+/* ROW 477 (docs/specs/2026-11-18-rocket-assembly_v3.md §1; row 417's option (a), Albert 2026-11-26: "a").
+   AT 3 OR 4 BOOSTERS THE ROCKET STANDS FARTHER FROM THE BRIDGE LINE, AND THE HALL WIDENS TO HOLD IT. Three
+   or four boosters evenly round put one within 66° of the line, and at 7.5 m it sat in the bridges. C is
+   M + d n, d = max(7.5, 6.2 max_k(-u_k.n) + 2.0 + 3.0 + 0.85): the booster's reach, R2's 3 m, half the
+   pylon's diagonal. The hall's width is the smallest of rwid, rwid + 4, ... 64 where (F-a) the pad is on
+   the ground with 0.5 m spare, (F-b) the platform clears the crane column by 1 m and (F-c) stays 1 m
+   inside y = D; with none, the build takes 2 boosters. At 0-2 boosters d is 7.5 and the width is rwid.
+   Declared BETWEEN the two functions so an extract.js slice of buildRocket carries it; ENGSET.rkt reads
+   it too, to write Hall width up on a hand move. Returns {W, NB, d}. */
+function rktFit(rwid,NB){
+  function at(W){
+    var D=W-4, A=[W-3.2,8.6], B=[8.6,D-3.2], ABx=B[0]-A[0], ABy=B[1]-A[1], L=Math.hypot(ABx,ABy);
+    var U=[ABx/L,ABy/L], n=[-U[1],U[0]], d=7.5, m=-1, k;
+    if(n[0]+n[1]<0) n=[-n[0],-n[1]];
+    for(k=0;k<NB;k++){ var b=(135+360*k/NB)*Math.PI/180; m=Math.max(m,-(Math.cos(b)*n[0]+Math.sin(b)*n[1])); }
+    d=Math.max(7.5,6.2*m+2.0+3.0+0.85);
+    var C=[(A[0]+B[0])/2+d*n[0], (A[1]+B[1])/2+d*n[1]];
+    return {d:d, ok:C[0]+7.5<=W-0.5 && C[1]+7.5<=D-0.5 && C[0]+6.9+1.0<=W-3.2 && C[1]+6.9+1.0<=D};
+  }
+  if(NB<3) return {W:rwid, NB:NB, d:7.5};
+  for(var W=rwid;W<=64;W+=4){ var f=at(W); if(f.ok) return {W:W, NB:NB, d:f.d}; }
+  return {W:rwid, NB:2, d:7.5};
+}
 function buildRocketOnce(p,DROP){
   var DROPS=(DROP&&DROP.drop)||{};
   /* §6's inks, by INKS name: the darkest for structure and works, blue for
@@ -24082,6 +24111,8 @@ function buildRocketOnce(p,DROP){
   var W=Math.round(knob(p.rwid,56,40,64)/4)*4;
   var D=W-4, H=10*N+22;
   var NB=Math.round(knob(p.rboost,2,0,4));
+  var RFIT=rktFit(W,NB), RWANT=W, RNBW=NB;          /* row 477: the width and booster count that fit */
+  if(NB>=3){ W=RFIT.W; NB=RFIT.NB; D=W-4; }
   var Q=knob(p.rdone,60,0,100)/100;
   var out=[];
   var T={cells:[],boxes:[],order:[],tubes:[],polys:[],rkt:null};
@@ -24316,7 +24347,7 @@ function buildRocketOnce(p,DROP){
   var U=[ABx/ABL, ABy/ABL], NRM=[-U[1],U[0]];
   if(NRM[0]+NRM[1]<0) NRM=[-NRM[0],-NRM[1]];
   var M=[(A[0]+B[0])/2,(A[1]+B[1])/2];
-  var C=[M[0]+7.5*NRM[0], M[1]+7.5*NRM[1]];
+  var C=[M[0]+RFIT.d*NRM[0], M[1]+RFIT.d*NRM[1]];   /* row 477: d is 7.5 at 0-2 boosters */
   var ZTOP=10*N;                                  /* the stack's top: the top floor */
   /* the transfer bridges: from every R floor i >= 3 down to L floor i - 1. The
      deck is the 1.6 m band on the CORNER side of A-B, so the line itself is
@@ -24338,16 +24369,32 @@ function buildRocketOnce(p,DROP){
      another has no exact drawing order) and the wedge under a ramp is a few
      tens of centimetres of air. */
   var PYL=[];
-  if(BRIDGES.length){
-    /* A PYLON KEEPS OFF THE PAD: the pad's corner reaches the bridge line,
-       and at a 40 m hall the 60 % pylon would stand 0.4 m inside it. Such a
-       pylon slides along A-B, 0.01 of the span at a time, to the nearest
-       place its square clears the pad's. */
-    function padHit(t){ var x=A[0]+ABx*t, y=A[1]+ABy*t;
-      return Math.min(x+0.6,C[0]+7.5)-Math.max(x-0.6,C[0]-7.5)>1e-9 && Math.min(y+0.6,C[1]+7.5)-Math.max(y-0.6,C[1]-7.5)>1e-9; }
+  /* A PYLON KEEPS OFF THE PAD: the pad's corner reaches the bridge line,
+     and at a 40 m hall the 60 % pylon would stand 0.4 m inside it. Such a
+     pylon slides along A-B, 0.01 of the span at a time, to the nearest
+     place its square clears the pad's. */
+  function padHit(t){ var x=A[0]+ABx*t, y=A[1]+ABy*t;
+    return Math.min(x+0.6,C[0]+7.5)-Math.max(x-0.6,C[0]-7.5)>1e-9 && Math.min(y+0.6,C[1]+7.5)-Math.max(y-0.6,C[1]-7.5)>1e-9; }
+  /* ROW 477, SPEC v4: AT 3 OR 4 BOOSTERS THE ARMS ARE PLACED FIRST AND THE PYLONS SLIDE OFF THEM. With C
+     11-12 m from the line every access arm crosses A-B, and with pylons 12 m apart it crossed within 1 m of
+     one or where the ramp was still too high (68 floors had no arm at rboost 3, against 9). There the
+     pylons go in after the arms (placePylons below the arm search), and a pylon slides, by the pad rule's
+     steps, at most 0.10 of the span, to the nearest place that also keeps 1 m off every access arm and its
+     square 0.3 m off both floors' free edges; with none, it keeps the pad rule alone. At 0-2 boosters the
+     pylons are placed before the arms, as they always were. */
+  function pylHit(t){
+    if(padHit(t)) return true;
+    if(NB<3) return false;
+    var x=A[0]+ABx*t, y=A[1]+ABy*t, sq=[x-0.6,x+0.6,y-0.6,y+0.6];
+    if(x-0.6<12.3 || y-0.6<12.3) return true;
+    return ARMS.some(function(a){ return a.s!==null && rrDist(armRect(a.side,a.s,10*a.i),sq)<1.0; });
+  }
+  function placePylons(){
+    if(!BRIDGES.length) return;
     [0.2,0.4,0.6,0.8].forEach(function(t0){
       var t=t0, st3;
-      for(st3=1;st3<=20 && padHit(t);st3++){ t=Math.round((t0+0.01*Math.ceil(st3/2)*(st3%2?1:-1))*100)/100; }
+      for(st3=1;st3<=20 && pylHit(t);st3++){ t=Math.round((t0+0.01*Math.ceil(st3/2)*(st3%2?1:-1))*100)/100; }
+      if(NB>=3 && pylHit(t)){ t=t0; for(st3=1;st3<=20 && padHit(t);st3++){ t=Math.round((t0+0.01*Math.ceil(st3/2)*(st3%2?1:-1))*100)/100; } }
       var px=A[0]+ABx*t, py=A[1]+ABy*t, segs=[], zb=0;
       BRIDGES.forEach(function(Bg){
         var lo=1e9, hi=-1e9;
@@ -24360,6 +24407,8 @@ function buildRocketOnce(p,DROP){
       PYL.push({t:t, x:px, y:py, top:segs[segs.length-1][1], segs:segs});
     });
   }
+  var ARMS=[];
+  if(NB<3) placePylons();
   /* the boosters: bearing 135° and evenly round, 6.2 m out; booster k is on
      the stack once q >= (k+1)/(rboost+1) x 0.6 */
   var BZT=0.55*10*N, BNOSE=5.4, BOOST=[];
@@ -24442,7 +24491,6 @@ function buildRocketOnce(p,DROP){
     }
     return true;
   }
-  var ARMS=[];
   for(i=1;i<=N;i++){
     var side=(i%2===1)?'R':'L', s0=side==='R'?3.0:3.2, fl=PLAT[i-1], pick=null, blocked=false, st2;
     for(var pass=0;pass<2 && pick===null;pass++){
@@ -24454,6 +24502,7 @@ function buildRocketOnce(p,DROP){
     }
     ARMS.push({i:i, side:side, s:pick, blocked:blocked&&pick!==null, none:pick===null});
   }
+  if(NB>=3) placePylons();
 
   /* the fairing's profile: §2's ogive, base r 4.2, 14.3 m (the robots read it) */
   var FPROF=[[0,4.2],[4,4.15],[7.5,3.6],[10.5,2.6],[13,1.3],[14.3,0.1]];
@@ -25347,7 +25396,7 @@ function buildRocketOnce(p,DROP){
     pb(0.18,0.1,0,0.85); pb(0.22,0.13,0.85,1.5); pb(0.11,0.11,1.5,1.75);
   });
 
-  T.rkt={W:W, D:D, N:N, H:H, Q:Q, NB:NB, A:A, B:B, C:C, U:U, NRM:NRM, M:M,
+  T.rkt={W:W, D:D, N:N, H:H, Q:Q, NB:NB, wantW:RWANT, wantNB:RNBW, d:RFIT.d, A:A, B:B, C:C, U:U, NRM:NRM, M:M,
          bridges:BRIDGES.map(function(Bg){ return {i:Bg.i, zA:Bg.zA, zB:Bg.zB, tA:Bg.tA, plan:Bg.plan}; }), dland:DLAND,
          pylons:PYL, boosters:BOOST, skin:SKIN, ztop:ZTOP, fbase:FBASE, fhang:FHANG, bzt:BZT,
          plat:PLAT.map(function(fl){ return {i:fl.i, z:fl.z, drop:fl.drop.slice()}; }),
@@ -25513,7 +25562,9 @@ function buildRocketOnce(p,DROP){
   var usedL={};
   out.forEach(function(q){ usedL[q.lay]=1; });
   out.layers=['structure','works','rocket','parts','services','people'].filter(function(t){ return usedL[t]; });
-  RKTINFO=W+' × '+D+' m · '+N+' floors · '+Math.round(Q*100)+' % built · '+
+  RKTINFO=(W!==RWANT?'Hall width '+W+' m (3\u20134 boosters need \u2265 '+W+') · ':'')+
+          (NB!==RNBW?'Boosters 2 (3\u20134 fit no hall width) · ':'')+
+          W+' × '+D+' m · '+N+' floors · '+Math.round(Q*100)+' % built · '+
           RKTSTATS.boosters+(RKTSTATS.boosters<NB?' of '+NB:'')+' booster'+(NB===1?'':'s')+' · '+
           (nBl?nBl+' access arm'+(nBl===1?'':'s')+' blocked by a booster · ':'')+
           PARTS.length+' parts · '+NPPL+' people · '+ROBOTS.length+' robot'+(ROBOTS.length===1?'':'s')+
@@ -50731,6 +50782,16 @@ function corBoot(){
    ONLY from ENGSET: a restored {7,3} + monstera preset keeps its 7 and 3 and
    shows the refusal instead, because a preset that silently rewrites its own
    knobs is worse than one that refuses. Any later hand change clears it. */
+/* ROW 477: BOOSTERS 3 OR 4 BY HAND WRITE HALL WIDTH UP TO THE WIDTH THAT HOLDS THEM (spec v3 §1, "The knob
+   follows"), as Motif 5 writes Sides and Meeting; mkRow's own redraw follows, once. A preset or restore
+   that writes both does not come here: the engine builds at the width that fits and says so. */
+ENGSET.rkt=function(k,v){
+  if(k!=='rboost' || Math.round(v)<3) return;
+  var E=STATE.eng.rkt, w=Math.round(E.rwid/4)*4, f=rktFit(w,Math.round(v));
+  if(f.NB<3 || f.W<=E.rwid) return;
+  E.rwid=f.W;
+  var sp=specOf(SPEC.rkt[1],'rwid'); if(sp) repaintRow('sl_',sp,f.W);
+};
 var POINSNAP='';
 ENGSET.poin=function(k,v){
   POINSNAP='';
@@ -51315,7 +51376,7 @@ var HELP={
 'fact.occ':'How wide a white gap a nearer solid opens in a line passing behind it. The factory hides itself exactly — every solid is cut into 1 m lattice cells and drawn front to back — so this is only the finish. The gap is never opened at a cut, where nothing is drawn, so a belt stays one unbroken line.',
 'rkt.rflr':'How many floors the tower has, 2 to 7, ten metres apart. They alternate up the two back walls -- the first on the right-hand wall, the second on the left, and so on -- so each floor is open to the rocket in the middle, and the hall is 22 m taller than the top floor for the crane.',
 'rkt.rwid':'How wide the hall is along the right-hand back wall, in metres; its depth is 4 m less. The rocket stands 7.5 m out from the line the transfer bridges run on, wherever that falls, so a wider hall gives the floors and the rocket more room rather than moving the rocket into a corner.',
-'rkt.rboost':'How many strap-on boosters the rocket has, 0 to 4, round the core at 135° and evenly from there. Each pierces the ring platforms it passes, which are cut away round it, and an access arm that would land on one is moved along until it lands on clear platform.',
+'rkt.rboost':'How many strap-on boosters the rocket has, 0 to 4, round the core at 135° and evenly from there. Each pierces the ring platforms it passes, which are cut away round it, and an access arm that would land on one is moved along until it lands on clear platform. At 3 or 4 the rocket stands farther from the transfer bridges, and the hall widens to hold it: moving Boosters to 3 or 4 raises Hall width to the narrowest that fits, and the stat line says when the hall is wider than the knob.',
 'rkt.rdone':'How far the rocket has been put together. The core is skinned from the bottom up to this share of its height and is bare ring frames, stringers and a tank above it; the boosters arrive one by one as it rises; at 100 % the fairing sits on top, otherwise it hangs on the crane hook above the stack.',
 'rkt.rarm':'How many robot arms stand on each ring platform, 0 to 3. Each holds a part of its floor’s trade against the rocket, a few centimetres off its surface, posed by the engine’s own reach; they stand beside the part, clear of the boosters, the access arm and each other.',
 'rkt.rpart':'How many of the transfer carts are out with a part on them: the share of the cart places on every floor’s track (the spur to the access arm first) and on the bridges between floors. 0 % leaves the tracks bare; the parts the robots hold and the stored rings and domes stay.',
