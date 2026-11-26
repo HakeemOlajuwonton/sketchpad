@@ -552,6 +552,26 @@ html.ui-corridors, html.ui-corridors body{margin:0; height:100%; overflow:hidden
 #cor .corinkpens>span{color:var(--dim); font-size:12px;}
 #cor button.corpenclr{border:0; background:none; padding:2px 4px; font-size:12px; color:var(--dim); text-decoration:underline; cursor:pointer;}
 #cor .cormenu{font:inherit; font-size:12px; color:var(--text); background:var(--field); border:1px solid var(--line2); border-radius:var(--rc); padding:2px 4px; max-width:170px;}
+/* row 478: the frame strip under the drawing, its help line, the saved views list, the Camera section's fold */
+#corTools{display:flex; align-items:center; gap:8px; padding-top:8px; flex-wrap:wrap; font-size:12px; position:relative;}
+#corTools > button, #corTools .corpm > button{padding:3px 10px; white-space:nowrap;}
+#corTools .corseg button{padding:3px 10px;}
+#corTools #corPens{padding-top:0;}
+#corNameBox[hidden]{display:none;}
+#corViewName{font:inherit; color:var(--text); background:var(--field); border:1px solid var(--acc); border-radius:var(--rc); padding:2px 6px; width:11em;}
+#corViews{position:absolute; left:0; bottom:34px; min-width:240px; max-height:320px; overflow-y:auto; background:var(--field);
+     border:1px solid var(--line2); border-radius:var(--rp); box-shadow:var(--shadow); padding:4px; z-index:6;}
+#corViews[hidden]{display:none;}
+#corViews .corvhead{color:var(--dim); font-size:11px; padding:4px 8px 6px; border-bottom:1px solid var(--line);}
+#corViews .corvrow{display:flex; align-items:center; gap:6px;}
+#corViews button.corvuse{flex:1; border:0; text-align:left; padding:6px 8px; color:var(--text);}
+#corViews .corvdate{color:var(--dim); font-family:var(--mono); font-size:11px;}
+#corViews button.corvdel{border:0; padding:2px 8px; color:var(--dim);}
+#corFrameHelp{font-size:12px; color:var(--dim); padding-top:4px; min-height:16px;}
+#cor[data-tool=frame] #cv{cursor:grab;} #cor[data-tool=frame] #cv:active{cursor:grabbing;} #cor[data-tool=inspect] #cv{cursor:move;}
+#cor .corfold{border-bottom:1px solid var(--line);}
+#cor button.corfoldh{width:100%; border:0; border-radius:0; text-align:left; padding:7px 0; color:var(--dim); font-weight:600;}
+#cor .corfoldb[hidden]{display:none;}
 @media (max-width:820px){ #cor{grid-template-columns:52px 260px minmax(0,1fr);} #corBig{display:none;} }
 /* row 390: the panel in its own window. In the main window the rail and panel give way to a chip; the panel's own
    window is the rail and the panel and the big four, nothing else */
@@ -588,7 +608,7 @@ html.ui-corridors, html.ui-corridors body{margin:0; height:100%; overflow:hidden
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v443</a> &mdash; Rocket assembly: at 3 or 4 Boosters the rocket stands clear of the transfer bridges, the hall widens to hold it (Boosters raises Hall width), and the pylons step aside for the access arms</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v444</a> &mdash; Corridors: frame the view on the sheet -- drag, scroll or walk on the drawing and it builds when you stop; Inspect, Undo view, Nearby views and saved views</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <section class="fold" id="fold_pick"><h2>Pick engine<span class="cnt"></span></h2>
@@ -50429,6 +50449,7 @@ function corSync(){
   });
   var il=document.getElementById('corIdle');
   if(il) il.textContent=COR.q?'':(nIdle?nIdle+' idle':'');
+  corCamFoldSync();   /* row 478 */
 }
 function corRenderBig(){
   var host=document.getElementById('corBig'); host.innerHTML='';
@@ -50444,7 +50465,7 @@ function corRenderBig(){
 }
 function corRenderRows(){
   var host=document.getElementById('corRows'); host.innerHTML='';
-  COR.rows=COR.rows.filter(function(R){ return R.big; });
+  COR.rows=COR.rows.filter(function(R){ return R.big; }); COR.camAdv=null;
   var S=corSpec(), secs=corSections(mode), name=document.getElementById('corSecName');
   [].forEach.call(document.querySelectorAll('#corRail button'),function(b){ b.className=(!COR.q && b.getAttribute('data-sec')===COR.sec)?'on':''; });
   if(COR.q){
@@ -50466,7 +50487,9 @@ function corRenderRows(){
   } else {
     var G=secs.filter(function(g){ return g.id===COR.sec; })[0]||secs[0];
     COR.sec=G.id; name.textContent=G.title;
-    G.keys.forEach(function(k){ if(G.g) corGRow(host,k,null); else corRow(host,mode,specOf(S,k),null); });
+    /* row 478 §5 */
+    if(G.id==='cam' && !G.g && !CORREMOTE && corTool()==='frame') corCamRows(host,G,S);
+    else G.keys.forEach(function(k){ if(G.g) corGRow(host,k,null); else corRow(host,mode,specOf(S,k),null); });
   }
   corSync();
 }
@@ -50482,6 +50505,9 @@ function corRenderRail(){
 /* a new engine (the Scene menu, a tab, a preset): its scene name, big four, rail and rows */
 function corBuildEngine(){
   COR.eng=mode;
+  /* row 478: Undo view is per scene; a gesture the engine change ended (mount's scoutLeave) gives Scout back */
+  if(!CORREMOTE){ COR.undo=[]; clearTimeout(CORF.t); CORF.t=0; CORF.ptrs={}; CORF.keys={};
+    if(!SCOUT.on && SCOUT.host==='cor' && !CORF.pending) SCOUT.host=null; }
   var sc=document.getElementById('corScene'); if(sc) sc.value=mode;
   var secs=corSections(mode);
   if(!secs.some(function(g){ return g.id===COR.sec; })) COR.sec=secs.length?secs[0].id:'';
@@ -50509,6 +50535,7 @@ function corAfterPaint(){
   /* row 404: the strip is the pens' colour wells */
   var pens=document.getElementById('corPens');
   if(pens) corWells(pens);
+  corToolsSync();   /* row 478 */
 }
 /* "Open in Corridors" beside the Pick engine header, in Sketchpad mode on a corridor engine */
 function corLinkSync(){
@@ -50579,9 +50606,22 @@ function corMount(){
       '<label id="corFind">'+corSvg('search')+'<input type="search" id="corSearch" placeholder="Find a knob" autocomplete="off"></label>'+
       '<div id="corRows"></div><div id="corIdle"></div></div>'+
     '<div id="corChip" hidden>Panel is in its own window · <button type="button" id="corBring">Bring it back</button></div>'+
-    '<div id="corSheet"><div id="corMeta"></div><div id="corMsg"></div><div id="corStageHost"></div><div id="corPens"></div></div>';
+    '<div id="corSheet"><div id="corMeta"></div><div id="corMsg"></div><div id="corStageHost"></div>'+
+      /* row 478: the frame strip, one line under the drawing; the pens strip keeps its place at its right end */
+      '<div id="corTools"><div class="corseg" id="corToolSeg"><button type="button" data-cortool="frame">Frame</button>'+
+        '<button type="button" data-cortool="inspect">Inspect</button></div>'+
+        '<div class="corseg" id="corWalkSeg"><button type="button" data-corwalk="0">Orbit</button><button type="button" data-corwalk="1">Walk</button></div>'+
+        '<span class="corpm"><button type="button" id="corViewsBtn">Saved views ▾</button><div id="corViews" hidden></div></span>'+
+        '<button type="button" id="corSaveView">Save view</button>'+
+        '<span id="corNameBox" hidden><input type="text" id="corViewName" maxlength="60" autocomplete="off"></span>'+
+        '<button type="button" id="corUndoView">Undo view</button>'+
+        '<button type="button" id="corNearby">Nearby views</button>'+
+        '<span class="corgap"></span><div id="corPens"></div></div>'+
+      '<div id="corFrameHelp"></div></div>';
   document.body.appendChild(root);
-  COR={root:root, eng:null, sec:'ess', q:'', rows:[], moved:[], float:false, x:80, y:100, look:'paper'};
+  COR={root:root, eng:null, sec:'ess', q:'', rows:[], moved:[], float:false, x:80, y:100, look:'paper', undo:[]};
+  /* row 478: the frame strip and the input on the sheet */
+  corToolsWire(); corFrameWire();
   /* row 453: the top bar, the presets menu, Pop out, the search and the chip */
   corTipWire(root);
   var tipBy=function(id){ var b=document.getElementById(id); return (b && b.title)||''; };
@@ -50599,7 +50639,7 @@ function corMount(){
   sc.addEventListener('change',function(){ var t=document.querySelector('#tabs .tab[data-m="'+sc.value+'"]'); if(t) t.click(); });
   document.getElementById('corSeed').addEventListener('click',function(){ corPress('reroll'); });
   document.getElementById('corVari').addEventListener('click',function(){ corPress('vari'); });
-  document.getElementById('corFly').addEventListener('click',function(){ corPress('scout'); });
+  document.getElementById('corFly').addEventListener('click',function(){ if(corFraming() || CORF.pending) corFrameCancel(); corPress('scout'); });
   document.getElementById('corExport').addEventListener('click',function(){ corPress('dl'); });
   var pm=document.getElementById('corPresets');
   document.getElementById('corPre').addEventListener('click',function(){ pm.hidden=!pm.hidden; });
@@ -50654,6 +50694,7 @@ function corMount(){
 }
 function corUnmount(){
   if(!COR) return;
+  if(corFraming() || CORF.pending) corFrameCancel();   /* row 478 */
   corPopIn(true);
   if(COR.ch){ try{ COR.ch.close(); }catch(e){} }
   if(COR.obs) COR.obs.disconnect();
@@ -50775,6 +50816,298 @@ function corBoot(){
   window.addEventListener('popstate',corApplyMode);
   if(UIMODE==='corridors-panel'){ corPanelBoot(); return; }
   if(UIMODE==='corridors') corMount(); else corLinkSync();
+}
+/* ROW 478: FRAME THE VIEW ON THE SHEET, SAVED VIEWS (docs/specs/2026-11-26-corridors-frame-on-sheet_v1.md §Row NEW).
+   Albert, 2026-11-22: "i still can't understand how to get and frame a passable scene in corridors". In Corridors a drag,
+   a wheel or W A S D on the drawing moves the camera: the first input starts Scout with SCOUT.host='cor' (its bar stays
+   hidden), Scout's own capture-phase handlers take the input, and the sheet shows its wireframe. COR_SETTLE_MS after the
+   last move, wheel or key release, with no pointer down and no key held, the view settles: scoutValues() is written
+   through kSet -- the knob panel's write -- and one mount() builds it. So a frame is Scout's frame and its knobs are
+   Scout's knobs (corcheck F2 exports both). Esc leaves with nothing written and no draw. Inspect (or Space held) is the
+   page's own pan and zoom, as before. Undo view keeps the last 20 cameras in memory; saved views are a camera only,
+   per engine, in localStorage['corridors.views'], never STATE, a preset, the SVG or a filename. No engine changes. */
+var COR_SETTLE_MS=700;
+var CORF={t:0, ptrs:{}, keys:{}, pending:false, cancel:false, vary:false, over:false, space:false, starts:0, settles:0, wired:false};
+var CORFHELP={iso:'Drag: turn and tilt · Shift-drag: pan · Wheel: zoom', orbit:'Drag: circle the target · Shift-drag: pan · Wheel: in and out',
+              fly:'W A S D: move · Q E: down and up · Drag: look · Shift: 4x'};
+var CORFTAIL=' · Space held: Inspect · Esc: cancel';
+var CORFNOCAM='Street framing on the sheet needs Camera placed, which this scene does not have yet. Switch View to Isometric, or open Advanced camera.';
+var CORFINSPECT='Inspect: drag moves the page · Wheel: zoom in on the lines · Double-click: fit the page. The camera stays where it is.';
+var CORCAMMAIN=['proj','mscale','views'];
+/* read only, for corcheck (the page keeps its state in one closure): the page view, and the frame gesture's state */
+window.__corView=function(){ return {s:VIEW.s, ox:VIEW.ox, oy:VIEW.oy}; };
+window.__corFrame=function(){ return {on:corFraming(), pending:!!CORF.pending, starts:CORF.starts, settles:CORF.settles,
+  undo:(COR&&COR.undo)?COR.undo.length:0, mode:SCOUT.mode, vary:!!SCOUT.vary, host:SCOUT.host, lastEye:CORF.lastEye||null}; };
+function corTool(){ return corLS('corridors.tool')==='inspect'?'inspect':'frame'; }
+function corWalk(){ return corLS('corridors.walk')==='1'; }
+function corTyping(){ var a=document.activeElement, t=a&&a.tagName; return t==='INPUT'||t==='SELECT'||t==='TEXTAREA'; }
+function corFraming(){ return !!(SCOUT && SCOUT.on && SCOUT.host==='cor'); }
+function corDown(){ return Object.keys(CORF.ptrs).length>0 || Object.keys(CORF.keys).length>0; }
+/* the sheet moves the camera: Corridors on a corridor engine, Frame, no Space held, no Variations sheet, and no Scout that
+   the plane button opened (that one keeps its own bar and its own Render) */
+function corFrameOn(){
+  return UIMODE==='corridors' && !!COR && !CORREMOTE && KCORR.indexOf(mode)>=0 && !!SPEC[mode] && corTool()==='frame' && !CORF.space &&
+    !VARI.on && !(SCOUT.on && SCOUT.host!=='cor');
+}
+/* Scout's mode for the View the engine holds; null is View Street on an engine without Camera placed */
+function corFrameMode(){
+  var E=STATE.eng[mode]||{};
+  if(Math.round(+E.proj||0)===1) return 'iso';
+  return scoutHas('camabs')?(corWalk()?'fly':'orbit'):null;
+}
+/* the camera the engine holds now: every SCOUTCAM key it has (so `proj` comes with it) */
+function corCamVals(){ var E=STATE.eng[mode]||{}, o={}; SCOUTCAM.forEach(function(k){ if(scoutHas(k)) o[k]=E[k]; }); return o; }
+/* a set of camera values through kSet, each key the engine still has whose value differs; the caller builds once */
+function corCamWrite(vals){
+  var E=STATE.eng[mode];
+  Object.keys(vals||{}).forEach(function(k){ if(scoutHas(k) && vals[k]!==undefined && E[k]!==vals[k]) kSet(mode,k,vals[k]); });
+}
+function corUndoPush(v){ if(!COR || !COR.undo) return; COR.undo.push(v); if(COR.undo.length>20) COR.undo.shift(); }
+/* §2.1: start a gesture. True when Scout is on for Corridors and the input can go to it; false when it is ignored
+   (Street without Camera placed, or the wireframe is still being built -- scoutEnter's own deferral) */
+function corFrameStart(){
+  if(corFraming()) return true;
+  if(SCOUT.on || SCOUT.pending || CORF.pending) return false;
+  var m=corFrameMode();
+  if(!m){ corToolsSync(); return false; }
+  var deferred=!SCOUT.scn || SCOUT.key!==scoutKey();
+  CORF.starts++; CORF.cancel=false; SCOUT.host='cor';
+  if(!scoutEnter()){ SCOUT.host=null; corToolsSync(); return false; }
+  if(deferred || !SCOUT.on){
+    CORF.pending=true; corToolsSync();
+    (function wait(){ setTimeout(function(){
+      if(SCOUT.pending) return wait();
+      CORF.pending=false;
+      if(!SCOUT.on || CORF.cancel || !COR){ if(corFraming()) scoutLeave(); SCOUT.host=null; CORF.vary=false; corToolsSync(); return; }
+      if(m!=='iso' && SCOUT.mode!==m) scoutSetMode(m);
+      if(CORF.vary){ CORF.vary=false; scoutVaryStart(); } else corFrameArm();
+      corToolsSync();
+    },40); })();
+    return false;
+  }
+  if(m!=='iso' && SCOUT.mode!==m) scoutSetMode(m);
+  corToolsSync();
+  return true;
+}
+/* the settle timer: restarted by every move, wheel and key release; held off while a pointer is down or a key held */
+function corFrameArm(){
+  clearTimeout(CORF.t); CORF.t=0;
+  if(!corFraming() || corDown() || SCOUT.vary) return;
+  CORF.t=setTimeout(corFrameSettle,COR_SETTLE_MS);
+}
+/* §2.4: write the view and build it once. `force` settles now (Inspect, Space, a Nearby view taken) */
+function corFrameSettle(force){
+  clearTimeout(CORF.t); CORF.t=0;
+  if(!corFraming()) return;
+  if(force===true){ CORF.ptrs={}; CORF.keys={}; } else if(corDown()) return;
+  var E=STATE.eng[mode], was=corCamVals(), V=scoutValues();
+  var ch=Object.keys(V).filter(function(k){ return scoutHas(k) && E[k]!==V[k]; });
+  CORF.lastEye=SCOUT.mode==='orbit'?scoutOrbitEye():SCOUT.mode==='fly'?SCOUT.C.eye.slice():null;
+  scoutLeave(); SCOUT.host=null; CORF.settles++;
+  /* nothing moved (a click, or a key in Isometric): no build */
+  if(!ch.length){ corToolsSync(); corAfterPaint(); return; }
+  corUndoPush(was);
+  ch.forEach(function(k){ kSet(mode,k,V[k]); });
+  mount();
+}
+/* the plane button, a scene change, leaving Corridors: end a gesture without writing */
+function corFrameCancel(){
+  clearTimeout(CORF.t); CORF.t=0; CORF.ptrs={}; CORF.keys={};
+  if(CORF.pending){ CORF.cancel=true; return; }
+  if(corFraming()){ scoutLeave(); SCOUT.host=null; }
+  corToolsSync();
+}
+function corUndo(){
+  if(!COR || !COR.undo || !COR.undo.length) return;
+  if(corFraming() || CORF.pending) corFrameCancel();
+  corCamWrite(COR.undo.pop()); mount();
+}
+/* §1: Nearby views -- Scout's twelve views round this one, on the sheet; a click takes one and settles */
+function corNearby(){
+  if(corFraming()){ if(SCOUT.vary){ SCOUT.vary=null; scoutKick(); corFrameArm(); } else { clearTimeout(CORF.t); CORF.t=0; scoutVaryStart(); } corToolsSync(); return; }
+  if(!corFrameOn()) return;
+  if(corFrameStart()){ clearTimeout(CORF.t); CORF.t=0; scoutVaryStart(); corToolsSync(); }
+  else if(CORF.pending) CORF.vary=true;
+}
+/* ---- §4: saved views, camera only, per engine, in this browser's storage ---- */
+function corViewsOK(){ try{ return !!window.localStorage; }catch(e){ return false; } }
+function corViews(){
+  try{ var a=JSON.parse(localStorage.getItem('corridors.views')||'[]');
+       return Array.isArray(a)?a.filter(function(v){ return v && typeof v==='object' && v.vals && typeof v.vals==='object'; }):[]; }
+  catch(e){ return []; }
+}
+function corViewsPut(a){ try{ localStorage.setItem('corridors.views',JSON.stringify(a.slice(0,60))); }catch(e){} }
+function corViewSave(name){
+  var a=corViews(), n=a.filter(function(v){ return v.eng===mode; }).length;
+  a.unshift({id:'v'+Date.now().toString(36)+Math.random().toString(36).slice(2,8), name:String(name||'').trim()||('View '+(n+1)),
+             eng:mode, vals:corCamVals(), at:new Date().toISOString()});
+  corViewsPut(a); corToolsSync();
+}
+function corViewApply(id){
+  var v=corViews().filter(function(x){ return x.id===id && x.eng===mode; })[0]; if(!v) return;
+  if(corFraming() || CORF.pending) corFrameCancel();
+  corUndoPush(corCamVals()); corCamWrite(v.vals);
+  document.getElementById('corViews').hidden=true;
+  mount();
+}
+function corViewDel(id){ corViewsPut(corViews().filter(function(x){ return x.id!==id; })); corViewsList(); }
+function corViewsList(){
+  var box=document.getElementById('corViews'); if(!box) return;
+  var L=corViews().filter(function(v){ return v.eng===mode; });
+  box.innerHTML='';
+  var hd=document.createElement('div'); hd.className='corvhead'; hd.textContent=(SPEC[mode]?SPEC[mode][0]:mode)+' · camera only, any seed'; box.appendChild(hd);
+  if(!L.length){ var no=document.createElement('div'); no.className='cornone'; no.textContent='No saved views for this scene yet'; box.appendChild(no); }
+  L.forEach(function(v){
+    var r=document.createElement('div'); r.className='corvrow';
+    var b=document.createElement('button'); b.type='button'; b.className='corvuse'; b.setAttribute('data-view',v.id);
+    b.textContent=v.name; corTip(b,v.name,corHelp('viewuse'));
+    b.addEventListener('click',function(){ corViewApply(v.id); });
+    var x=document.createElement('button'); x.type='button'; x.className='corvdel'; x.setAttribute('data-view',v.id); x.textContent='×';
+    corTip(x,'Delete '+v.name,corHelp('viewdel'));
+    x.addEventListener('click',function(e){ e.stopPropagation(); corViewDel(v.id); });
+    var d=document.createElement('span'); d.className='corvdate'; d.textContent=String(v.at||'').slice(0,10);
+    r.appendChild(b); r.appendChild(d); r.appendChild(x); box.appendChild(r);
+  });
+}
+/* the strip under the drawing and its help line, from the tool, the View and the gesture */
+function corToolsSync(){
+  if(!COR || CORREMOTE || !COR.root) return;
+  var bar=document.getElementById('corTools'); if(!bar) return;
+  var tool=corTool(), kc=KCORR.indexOf(mode)>=0 && !!SPEC[mode], E=STATE.eng[mode]||{};
+  var street=kc && Math.round(+E.proj||0)===0, abs=kc && scoutHas('camabs'), walk=corWalk(), fr=corFraming();
+  COR.root.setAttribute('data-tool',(tool==='inspect' || CORF.space)?'inspect':'frame');
+  [].forEach.call(bar.querySelectorAll('[data-cortool]'),function(b){ b.className=b.getAttribute('data-cortool')===tool?'on':''; });
+  var ws=document.getElementById('corWalkSeg'); ws.style.display=street?'':'none';
+  [].forEach.call(ws.querySelectorAll('[data-corwalk]'),function(b){ b.disabled=!abs; b.className=(abs && (b.getAttribute('data-corwalk')==='1')===walk)?'on':''; });
+  document.getElementById('corUndoView').disabled=!(COR.undo && COR.undo.length);
+  var sv=document.getElementById('corSaveView'), ok=corViewsOK();
+  sv.disabled=!ok || !kc; corTip(sv,'Save view',ok?corHelp('saveview'):'This browser keeps no saved views');
+  document.getElementById('corNearby').disabled=!kc || (!fr && (tool!=='frame' || !corFrameMode()));
+  var h='';
+  if(CORF.pending) h='Building the wireframe…';
+  else if(tool==='inspect' || CORF.space) h=CORFINSPECT;
+  else if(fr && SCOUT.vary) h='Twelve views round this one: click one to take it'+CORFTAIL;
+  else if(kc){ var m=fr?SCOUT.mode:corFrameMode(); h=m?CORFHELP[m]+CORFTAIL:(street && !abs?CORFNOCAM:''); }
+  var hl=document.getElementById('corFrameHelp'); if(hl) hl.textContent=h;
+  if(fr || CORF.pending){ var meta=document.getElementById('corMeta'); if(meta) meta.textContent='Framing — draws when you stop'; }
+}
+function corSetTool(t){
+  corLS('corridors.tool',t);
+  if(t==='inspect' && corFraming()) corFrameSettle(true);
+  if(COR && COR.sec==='cam' && !COR.q) corRenderRows();
+  corToolsSync();
+}
+function corSetWalk(on){
+  if(corFraming()) corFrameSettle(true);
+  corLS('corridors.walk',on?'1':'0'); corToolsSync();
+}
+/* §5: the Camera section in Frame -- View, Map scale and Views, then the rest in a fold, closed by default */
+function corCamRows(host,G,S){
+  G.keys.filter(function(k){ return CORCAMMAIN.indexOf(k)>=0; }).forEach(function(k){ corRow(host,mode,specOf(S,k),null); });
+  var rest=G.keys.filter(function(k){ return CORCAMMAIN.indexOf(k)<0; }); if(!rest.length) return;
+  var fd=document.createElement('div'); fd.className='corfold'; fd.setAttribute('data-fold','camadv');
+  var fb=document.createElement('button'); fb.type='button'; fb.className='corfoldh'; fb.id='corCamAdv';
+  corTip(fb,'Advanced camera',corHelp('camadv'));
+  var body=document.createElement('div'); body.className='corfoldb'; body.hidden=corLS('corridors.camadv')!=='1';
+  fb.setAttribute('aria-expanded',body.hidden?'false':'true');
+  fd.appendChild(fb); fd.appendChild(body); host.appendChild(fd);
+  var n0=COR.rows.length;
+  rest.forEach(function(k){ corRow(body,mode,specOf(S,k),null); });
+  COR.camAdv={btn:fb, body:body, rows:COR.rows.slice(n0)};
+  fb.addEventListener('click',function(){
+    body.hidden=!body.hidden; corLS('corridors.camadv',body.hidden?'0':'1');
+    fb.setAttribute('aria-expanded',body.hidden?'false':'true'); corSync();
+  });
+}
+function corCamFoldSync(){
+  var A=COR && COR.camAdv; if(!A || !A.btn.parentNode) return;
+  var n=A.rows.filter(function(R){ return R.el.style.display!=='none'; }).length;
+  A.btn.textContent='Advanced camera · '+n+(A.body.hidden?' ▸':' ▾');
+}
+/* the input on the sheet, ahead of Scout's own handlers (capture on the canvas's parent fires before the canvas's), and
+   the keys, ahead of Scout's document handler. Wired once; every handler asks corFrameOn() / corFraming() first */
+function corFrameWire(){
+  if(CORF.wired) return; CORF.wired=true;
+  var st=cv.parentElement;
+  st.addEventListener('pointerover',function(){ CORF.over=true; });
+  st.addEventListener('pointerout',function(e){ if(!e.relatedTarget || !st.contains(e.relatedTarget)) CORF.over=false; });
+  st.addEventListener('pointerdown',function(e){
+    if(e.target!==cv) return;
+    if(corFraming()){
+      /* a Nearby view taken: Scout picks it on this press, then it settles */
+      if(SCOUT.vary){ setTimeout(function(){ corFrameSettle(true); },0); return; }
+      CORF.ptrs[e.pointerId]=1; clearTimeout(CORF.t); CORF.t=0; return;
+    }
+    if(!corFrameOn()) return;
+    CORF.ptrs[e.pointerId]=1;
+    if(!corFrameStart()){ e.stopPropagation(); if(e.preventDefault) e.preventDefault(); }
+  },true);
+  st.addEventListener('pointermove',function(e){ if(corFraming() && CORF.ptrs[e.pointerId]){ clearTimeout(CORF.t); CORF.t=0; } },true);
+  function up(e){ if(!(e.pointerId in CORF.ptrs)) return; delete CORF.ptrs[e.pointerId]; if(corFraming()) corFrameArm(); }
+  st.addEventListener('pointerup',up,true); st.addEventListener('pointercancel',up,true);
+  st.addEventListener('wheel',function(e){
+    if(e.target!==cv) return;
+    if(corFraming()){ corFrameArm(); return; }
+    if(!corFrameOn()) return;
+    if(corFrameStart()) corFrameArm();
+    else { e.stopPropagation(); e.preventDefault(); }
+  },{capture:true, passive:false});
+  document.addEventListener('keydown',function(e){
+    if(UIMODE!=='corridors' || !COR || CORREMOTE) return;
+    var k=(e.key||'').toLowerCase();
+    if(k===' ' || k==='spacebar'){
+      if(corTyping() || !CORF.over) return;
+      e.preventDefault();
+      if(!CORF.space){ CORF.space=true; if(corFraming()) corFrameSettle(true); corToolsSync(); }
+      return;
+    }
+    if(k==='escape' && (corFraming() || CORF.pending)){
+      e.preventDefault(); e.stopImmediatePropagation();
+      clearTimeout(CORF.t); CORF.t=0; CORF.ptrs={}; CORF.keys={};
+      if(CORF.pending){ CORF.cancel=true; return; }
+      scoutLeave(); SCOUT.host=null;   /* Esc: no knob written, no draw; the last drawing is shown again */
+      corToolsSync(); corAfterPaint(); return;
+    }
+    if(k.length!==1 || 'wasdqe'.indexOf(k)<0) return;
+    if(corFraming()){ if(!corTyping()){ CORF.keys[k]=1; clearTimeout(CORF.t); CORF.t=0; } return; }
+    if(corTyping()) return;   /* typing into a field never walks the camera */
+    if(!CORF.over || !corFrameOn()) return;
+    if(corFrameStart()) CORF.keys[k]=1;
+  },true);
+  document.addEventListener('keyup',function(e){
+    var k=(e.key||'').toLowerCase();
+    if(k===' ' || k==='spacebar'){ if(CORF.space){ CORF.space=false; corToolsSync(); } return; }
+    if(CORF.keys[k]){ delete CORF.keys[k]; if(corFraming()) corFrameArm(); }
+  },true);
+  window.addEventListener('blur',function(){
+    if(CORF.space){ CORF.space=false; corToolsSync(); }
+    if(Object.keys(CORF.keys).length){ CORF.keys={}; if(corFraming()) corFrameArm(); }
+  });
+}
+/* the strip's own controls, once per mount */
+function corToolsWire(){
+  [].forEach.call(document.querySelectorAll('#corTools [data-cortool]'),function(b){
+    var t=b.getAttribute('data-cortool'); corTip(b,t==='frame'?'Frame':'Inspect',corHelp(t));
+    b.addEventListener('click',function(){ corSetTool(t); }); });
+  [].forEach.call(document.querySelectorAll('#corTools [data-corwalk]'),function(b){
+    var w=b.getAttribute('data-corwalk')==='1'; corTip(b,w?'Walk':'Orbit',corHelp(w?'walk':'orbit'));
+    b.addEventListener('click',function(){ if(!b.disabled) corSetWalk(w); }); });
+  var vb=document.getElementById('corViewsBtn'), vl=document.getElementById('corViews');
+  corTip(vb,'Saved views',corHelp('views'));
+  vb.addEventListener('click',function(){ vl.hidden=!vl.hidden; if(!vl.hidden) corViewsList(); });
+  var sb=document.getElementById('corSaveView'), nb=document.getElementById('corNameBox'), ni=document.getElementById('corViewName');
+  corTip(ni,'View name',corHelp('viewname'));
+  sb.addEventListener('click',function(){
+    if(sb.disabled) return;
+    ni.value='View '+(corViews().filter(function(v){ return v.eng===mode; }).length+1);
+    nb.hidden=false; try{ ni.focus(); ni.select(); }catch(e){}
+  });
+  ni.addEventListener('keydown',function(e){
+    if(e.key==='Enter'){ e.preventDefault(); corViewSave(ni.value); nb.hidden=true; if(!vl.hidden) corViewsList(); try{ ni.blur(); }catch(er){} }
+    else if(e.key==='Escape'){ e.preventDefault(); nb.hidden=true; try{ ni.blur(); }catch(er){} }
+  });
+  var ub=document.getElementById('corUndoView'); corTip(ub,'Undo view',corHelp('undoview')); ub.addEventListener('click',corUndo);
+  var nv=document.getElementById('corNearby'); corTip(nv,'Nearby views',corHelp('nearby')); nv.addEventListener('click',corNearby);
 }
 /* ==== CORRIDORS UI END ==== */
 /* MOTIF 5 SNAPS, BY HAND ONLY (v260). Choosing the monstera at a {p,q} it
@@ -50999,6 +51332,18 @@ var HELP={
 'cor.sec.wet':'A rained-on street: puddles, ripples, water marks and the reflection in the big puddle in front.',
 'cor.sec.cam':'Where you look from: the view, the map scale and what the page centres on, the camera, and extra views on one sheet.',
 'cor.sec.ink':'How it is drawn: the hatching and its direction, the sun for shadows, line detail near and far, and how much the drawing may hold.',
+'cor.frame':'Frame: drag, scroll or walk on the drawing to move the camera. A wireframe follows you, and the drawing builds when you stop.',
+'cor.inspect':'Inspect: drag and scroll on the drawing to look closer at its lines. The camera stays where it is. Holding Space does this too.',
+'cor.orbit':'Orbit: drag to circle round what the camera looks at, Shift-drag to slide it, the wheel to come closer or go back.',
+'cor.walk':'Walk: W A S D move the camera along the street, Q and E down and up, and a drag turns your head. Shift is four times as fast.',
+'cor.views':'The cameras you saved for this scene. Pick one to look from there again, on any seed. Kept in this browser only.',
+'cor.saveview':'Keep this camera under a name, to look from the same place again on another seed. It is kept in this browser only, never in the file.',
+'cor.viewname':'The saved view’s name. Enter keeps it; Esc closes the field without saving.',
+'cor.viewuse':'Look from this saved camera. The seed and every other setting stay as they are; Undo view puts the camera back.',
+'cor.viewdel':'Delete this saved view from this browser. The drawing does not change.',
+'cor.undoview':'Put back the camera you had before the last move, saved view or Nearby view. It remembers the last twenty.',
+'cor.nearby':'Twelve views round this one, drawn as wireframes on the sheet. Click one to take it, or Esc to keep the view you had.',
+'cor.camadv':'Every other camera setting: the numbers behind the view, which follow you as you frame it on the sheet.',
 'cor.sec.other':'This scene’s own settings that belong to none of the sections above.',
 'real.contour':'Contour interval of the ground, in metres. Every fifth contour is drawn as two strokes 0.3 mm apart, so it reads heavier with one pen.',
 'real.isoaz':'Which way the camera faces, in degrees from north (positive turns it left). The tilt runs along this heading: the near edge of the map stays a plan, the far edge stands up.',
@@ -53163,7 +53508,10 @@ var SCOUTCAM=['proj','isoaz','isoel','zoom','panx','pany','camabs','eyex','eyey'
 var SCOUTINK={lot:0, hangar:0, hlhouse:0, stnbld:0, slab:1, junction:1, park:1, field:1, forecourt:1,
   rwy:2, twy:2, stand:2, wsock:2, fence:2, hwater:3, fwater:3, seawall:3, hquay:3, hpier:3, hslip:3, hberth:3, hbreakwater:3, hapron:3};
 var SCOUT={on:false, mode:'iso', scn:null, key:null, builds:0, C:null, V:null, dirty:true, raf:0, ptrs:{}, drag:null,
-           held:{}, speed:60, ms:0, last:0, vary:null, cams:null};
+           held:{}, speed:60, ms:0, last:0, vary:null, cams:null,
+           /* row 478: who opened Scout. null from the plane button (Scout's own bar); 'cor' when Corridors' sheet starts it
+              for a frame gesture, and then scoutBar leaves the bar hidden and empty. scoutBar is the only reader. */
+           host:null};
 /* a knob's value as the slider would hold it: clamped to its range, on its step */
 function scoutSnap(k,v){
   var sp=specOf(SPEC[mode][1],k); if(!sp) return v;
@@ -53329,7 +53677,7 @@ function scoutVaryPick(i){
 /* ---- the bar under the canvas: modes, the readout, Render, Variations ---- */
 function scoutBar(){
   var b=document.getElementById('scoutbar'); if(!b) return;
-  b.hidden=!SCOUT.on; if(!SCOUT.on){ b.innerHTML=''; return; }
+  b.hidden=!SCOUT.on || SCOUT.host==='cor'; if(b.hidden){ b.innerHTML=''; return; }
   var abs=scoutHas('camabs');
   b.innerHTML='<div class="sbmodes">'+
     ['iso','orbit','fly'].map(function(m){ return '<button type="button" data-sm="'+m+'"'+(SCOUT.mode===m?' class="on"':'')+(m!=='iso'&&!abs?' disabled title="This engine has no Camera placed knob, so only an isometric view can be rendered."':'')+'>'+
