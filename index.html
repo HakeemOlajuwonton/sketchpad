@@ -608,7 +608,7 @@ html.ui-corridors, html.ui-corridors body{margin:0; height:100%; overflow:hidden
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v445</a> &mdash; Corridors: Camera placed, Camera x, Camera y and Heading on the other 14 scenes, so Orbit and Walk frame every corridor scene</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v446</a> &mdash; Scout starts from the camera the knobs hold: at Camera placed 1, entering Scout or framing in Corridors starts at Camera x, Camera y and Heading</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <section class="fold" id="fold_pick"><h2>Pick engine<span class="cnt"></span></h2>
@@ -53603,9 +53603,14 @@ function corridorScene(){
   SCOUT.builds++; SCOUT.scn=R; SCOUT.key=key;
   return R;
 }
-/* the build's camera for a set of camera knob values */
+/* the build's camera for a set of camera knob values, over the camera knobs the engine holds now.
+   ROW 500: S.p is the scene build's own knobs, built at Camera placed 0 and cached across every camera
+   change (scoutKey leaves the camera out), so its camera knobs are not the engine's: read alone, Scout
+   started a Street view from the unplaced camera and Render wrote that eye back. */
 function scoutCamera(V){
-  var S=SCOUT.scn, pk=Object.assign({},S.p,V), PL=S.plans[0];
+  var S=SCOUT.scn, E=STATE.eng[mode], K={};
+  SCOUTCAM.forEach(function(k){ if(k in E) K[k]=E[k]; });
+  var pk=Object.assign({},S.p,K,V), PL=S.plans[0];
   return corridorCamera(pk,Object.assign({},PL,corridorCamKnobs(pk)),S.plans,S.THM,S.camArg(pk));
 }
 /* ---- the view: a continuous state C per mode, snapped to knob values V ---- */
