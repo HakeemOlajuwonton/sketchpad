@@ -608,7 +608,7 @@ html.ui-corridors, html.ui-corridors body{margin:0; height:100%; overflow:hidden
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v446</a> &mdash; Scout starts from the camera the knobs hold: at Camera placed 1, entering Scout or framing in Corridors starts at Camera x, Camera y and Heading</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v447</a> &mdash; Scout writes a heading of 359.5&ndash;360&deg; as 0, not 359</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <section class="fold" id="fold_pick"><h2>Pick engine<span class="cnt"></span></h2>
@@ -53622,7 +53622,9 @@ function scoutValues(){
   } else {
     var e=SCOUT.mode==='orbit'?scoutOrbitEye():C.eye;
     V.proj=0; V.camabs=1; V.eyex=scoutSnap('eyex',e[0]); V.eyey=scoutSnap('eyey',e[1]); V.camz=scoutSnap('camz',e[2]);
-    V.hdg=scoutSnap('hdg',((C.hdg%360)+360)%360); V.pitch=scoutSnap('pitch',C.pitch); V.fov=scoutSnap('fov',C.fov);
+    /* ROW 501: Heading is 0..359 in whole degrees, so round first and wrap 360 to 0: snapped as it stood,
+       359.83 was clamped to 359, a turn nobody made */
+    V.hdg=scoutSnap('hdg',Math.round(((C.hdg%360)+360)%360)%360); V.pitch=scoutSnap('pitch',C.pitch); V.fov=scoutSnap('fov',C.fov);
   }
   return V;
 }
