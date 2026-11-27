@@ -608,7 +608,7 @@ html.ui-corridors, html.ui-corridors body{margin:0; height:100%; overflow:hidden
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v448</a> &mdash; Rocket assembly: at 4 Boosters every floor has its access arm, the bridge from an R floor held level over it where it must be</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v449</a> &mdash; Corridor city: building bodies read their height band off the theme, so the engine runs on its own again; Spread&rsquo;s help is shorter</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <section class="fold" id="fold_pick"><h2>Pick engine<span class="cnt"></span></h2>
@@ -47420,8 +47420,9 @@ function corridorDraw(p,plans,THM,camera){
           }
         });
         P.cont=L; P.col='#1a1a1a'; P.kind='block'; L.parts.push(P);
-        /* row 445: on town, the block's height band for the ink scheme's body inks (low, mid, tall) */
-        if(mode==='town'){ var zt=L.shedZ!==undefined?L.shedZ:B.z1; P.bod=zt<BODLOW?0:(zt<BODMID?1:2); }
+        /* row 445: on town, the block's height band for the ink scheme's body inks (low, mid, tall). Row 502: read off
+           THM.key, never the page global `mode`, which the extracted engine (extract.js) has no copy of */
+        if(THM.key==='town'){ var zt=L.shedZ!==undefined?L.shedZ:B.z1; P.bod=zt<BODLOW?0:(zt<BODMID?1:2); }
       });
       if(L.massed) return;
       LOTCT.get(L).dress(L,dn,df);
@@ -52662,7 +52663,7 @@ var HELP={
     sscale:'Multiplies the city’s length and block depth that the site’s Scale sets.',
     ptype:'With Site 3, or Power plant 1 at City form 1, the power plant: 0 coal (boilers, a coal yard, precipitators, stacks), 1 gas (gas turbines with their heat-recovery boilers and stacks; a peaker at Scale 1), 2 nuclear (domed containments; from Scale 2), 3 hydro (a dam across the river: the site is its reservoir, Head above the river below the dam, and River is turned on).',
     plant:'With City form 1 and an airfield or a harbour: 1 puts a power plant on the outskirts, its type and size from Plant, Units, Cooling towers and Stacks. It stands 1.7 to 2.2 km from the core on dry land, clear of the airfield and the harbour, by the water where it can. A substation at the city\u2019s edge takes its line in, and two lines run off the map. Hydro (Plant 3) has no place out there yet.',
-    spread:'With City form 1 and an airfield or harbour beside the city: pulls the airfield, the harbour’s bay and the plant on the outskirts toward the core. 100 % is where they stood before; 50 % halves the distances. Below 100 the airfield also moves to the city’s side — out in the bay with Water Bay, else on dry land — instead of past its far end, so the whole city reads as a block. They never overlap the city or each other.',
+    spread:'With City form 1 and an airfield or harbour beside the city: pulls the airfield, the harbour’s bay and the outskirts plant toward the core. 100 % is where they stood; 50 % halves the distances. Below 100 the airfield also moves to the city’s side (out in the bay with Water Bay, else on dry land) instead of past its far end, so the city reads as a block. They never overlap the city or each other.',
     punits:'How many generating units, up to what the plant’s Scale holds: coal 1/2/4/6, gas 1/1/2/6 gas turbines, nuclear 1/2/4 from Scale 2.',
     towers:'Natural-draft cooling towers, up to what the Scale holds. 0 cools from the river; with no river a plant that has towers keeps one.',
     pstack:'A coal plant’s chimneys, one per unit at most, up to 1/1/2/3 by Scale. Each has red aviation bands. A gas plant has one per gas turbine.',
