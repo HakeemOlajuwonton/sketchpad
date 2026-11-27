@@ -608,7 +608,7 @@ html.ui-corridors, html.ui-corridors body{margin:0; height:100%; overflow:hidden
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v450</a> &mdash; Corridor city: the harbour&rsquo;s spur road runs right up to the access arterial again, square on or at a slant</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v451</a> &mdash; Corridor city: at a Map scale nothing on the sheet is culled as if it were off it</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <section class="fold" id="fold_pick"><h2>Pick engine<span class="cnt"></span></h2>
@@ -45536,8 +45536,11 @@ function corridorDraw(p,plans,THM,camera){
       Q.forEach(function(q){ [0,ZTOPC].forEach(function(z){ var c=cam([q[0],q[1],z]); nt++; if(c[2]<=NEAR){ nb++; return; }
         var u=scr(c); if(u[0]<x0) x0=u[0]; if(u[0]>x1) x1=u[0]; if(u[1]<y0) y0=u[1]; if(u[1]>y1) y1=u[1]; }); });
       if(nb===nt) return true; if(nb) return false;
-      return x1<0 || x0>PGW || y1<0 || y0>PGH; }:function(Q){ var x0=1e18, x1=-1e18, y0=1e18, y1=-1e18;
-      Q.forEach(function(q){ var dx=q[0]-ISOC[0], dy=q[1]-ISOC[1], x=(dx*RT[0]+dy*RT[1])*ISOS, y0k=(dx*UP[0]+dy*UP[1])*ISOS, y1k=(dx*UP[0]+dy*UP[1]+ZTOPC*UP[2])*ISOS;
+      return x1<0 || x0>PGW || y1<0 || y0>PGH; }:function(Q){ var x0=1e18, x1=-1e18, y0=1e18, y1=-1e18, IZC=ISOC[2]||0;
+      /* row 505: the page's centre has a height since v430 (a Map scale centres on its target's planned middle, z
+         included), so a container's ground and top are read from that height, as the drawing projects them. Read from 0,
+         the cull's frame stood above the sheet's and dropped slabs inside its top edge (L72 HV1 D2: 5, D3: 6) */
+      Q.forEach(function(q){ var dx=q[0]-ISOC[0], dy=q[1]-ISOC[1], x=(dx*RT[0]+dy*RT[1])*ISOS, y0k=(dx*UP[0]+dy*UP[1]-IZC*UP[2])*ISOS, y1k=(dx*UP[0]+dy*UP[1]+(ZTOPC-IZC)*UP[2])*ISOS;
         if(x<x0) x0=x; if(x>x1) x1=x; if(y0k<y0) y0=y0k; if(y1k<y0) y0=y1k; if(y0k>y1) y1=y0k; if(y1k>y1) y1=y1k; });
       return x0>HW || x1<-HW || y0>HH || y1<-HH; };
     var CULLK={lot:1, slab:1, junction:1, pjunction:1, field:1};
