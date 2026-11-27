@@ -608,7 +608,7 @@ html.ui-corridors, html.ui-corridors body{margin:0; height:100%; overflow:hidden
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v449</a> &mdash; Corridor city: building bodies read their height band off the theme, so the engine runs on its own again; Spread&rsquo;s help is shorter</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v450</a> &mdash; Corridor city: the harbour&rsquo;s spur road runs right up to the access arterial again, square on or at a slant</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <section class="fold" id="fold_pick"><h2>Pick engine<span class="cnt"></span></h2>
@@ -29982,15 +29982,17 @@ function townForm(p,G,plans,J,BLK,SITE){
           out.forEach(function(PLa){ var gone=new Set(); PLa.lots.forEach(function(L){ if(BS.meets(L.poly)) gone.add(L); }); if(gone.size){ PLa.lots=PLa.lots.filter(function(L){ return !gone.has(L); }); PLa.conts=PLa.conts.filter(function(C){ return !gone.has(C); }); } });
           /* row 374: the spur ends at the arterial's kerb, so its pavements ran on over the arterial's (L78's seed 7: 17, 86 and
              100 m2 at (499, 381), where the harbour lies behind the arterial's start and the spur comes in nearly along it).
-             Each spur slab gives up what lies on the arterial's band, its line from start to end and WA/2 + PA either side,
-             keeping its largest piece; a slab left with nothing is a gap */
-          var uA9=[Math.cos(ALINE.h),Math.sin(ALINE.h)], nA9=[-uA9[1],uA9[0]], OFF9=WA/2+PA, RB9=[[0,-1],[LENa,-1],[LENa,1],[0,1]].map(function(e){ return [ALINE.a[0]+uA9[0]*e[0]+nA9[0]*OFF9*e[1],ALINE.a[1]+uA9[1]*e[0]+nA9[1]*OFF9*e[1]]; }), RB9b=bbox2(RB9);
+             Each spur slab gives up what lies on the arterial's band, its line from start to end and the arterial slab's own
+             half width (KOFF) either side, keeping its largest piece; a slab left with nothing is a gap.
+             Row 503: the band was WA/2 + PA (12.9 m on the whole city), 4.5 m past the arterial's slab (8.4 m), and nothing
+             stands in between, so a spur meeting the arterial square on stopped 4.5 m short of it (L56 E17) */
+          var uA9=[Math.cos(ALINE.h),Math.sin(ALINE.h)], nA9=[-uA9[1],uA9[0]], OFF9=artPlans.reduce(function(m,P){ return Math.max(m,P.KOFF||0); },0)||WA/2+PA, RB9=[[0,-1],[LENa,-1],[LENa,1],[0,1]].map(function(e){ return [ALINE.a[0]+uA9[0]*e[0]+nA9[0]*OFF9*e[1],ALINE.a[1]+uA9[1]*e[0]+nA9[1]*OFF9*e[1]]; }), RB9b=bbox2(RB9);
           SPP.forEach(function(P9){ var gapS={'1':[],'-1':[]};
             P9.conts=P9.conts.filter(function(C){ if(C.kind!=='slab' || !bbHit(C.bb||bbox2(C.poly),RB9b) || !polyOverlap(C.poly,RB9)) return true;
               var keep=townMinus(C.poly,RB9).filter(function(q){ return townArea(q)>=0.05; });
               if(!keep.length){ gapS[C.side].push([C.s0,C.s1]); var cell=P9.slabsBySide[C.side].indexOf(C); if(cell>=0) delete P9.slabsBySide[C.side][cell]; info.spurSlabsGone=(info.spurSlabsGone||0)+1; return false; }
               keep.sort(function(x,y){ return townArea(y)-townArea(x); });
-              C.poly0=C.poly; C.poly=keep[0]; C.bb=bbox2(keep[0]); C.cut=true; info.spurSlabsCut=(info.spurSlabsCut||0)+1; return true; });
+              C.poly0=C.poly; C.poly=keep[0]; C.bb=bbox2(keep[0]); C.cut=true; C.spurEnd=true; info.spurSlabsCut=(info.spurSlabsCut||0)+1; return true; });
             if(gapS['1'].length||gapS['-1'].length){ var SGs=Array.isArray(P9.sGaps)?{'1':P9.sGaps.slice(),'-1':P9.sGaps.slice()}:{'1':(P9.sGaps['1']||[]).slice(),'-1':(P9.sGaps['-1']||[]).slice()};
               SGs['1']=SGs['1'].concat(gapS['1']); SGs['-1']=SGs['-1'].concat(gapS['-1']); P9.sGaps=SGs; P9.hasGap=true; } });
           /* row 424: under Spread 100 the harbour stands where the spur leaves it at a slant (seed 7, tier 2, water 3 at 90 %: a
@@ -45574,6 +45576,13 @@ function corridorDraw(p,plans,THM,camera){
       [1,-1].forEach(function(sd){
         var SL=PLk.conts.filter(function(C){ return C.kind==='slab' && C.side===sd; }).sort(function(a,b){ return a.s0-b.s0; }), run=null;
         SL.forEach(function(C){
+          /* row 503: a town spur's last slabs are cut where they meet the access arterial (C.spurEnd, a slanted end).
+             They join the run when the two make one convex piece; standing alone, 4 m long, the detail cut dropped each
+             one and left a hole at the junction (L56 E17, the spur at 50 degrees) */
+          if(run && (C.spurEnd||run.spurEnd) && (!C.cut||C.spurEnd) && (!run.cut||run.spurEnd) && Math.abs(C.s0-run.s1)<1e-6){
+            var HJ=hull2(run.poly.concat(C.poly));
+            if(HJ && townArea(HJ)<=townArea(run.poly)+townArea(C.poly)+0.01){ run.poly=HJ; run.bb=bbox2(HJ); run.s1=C.s1; run.spurEnd=true; gone2.add(C); return; }
+          }
           if(run && !C.cut && !run.cut && Math.abs(C.s0-run.s1)<1e-6){
             /* a line at an angle runs as its first slab's start and its last's end: a bbox is no run of its slabs */
             if(PLk.ix>=500){ run.poly=[run.poly[0],C.poly[1],C.poly[2],run.poly[3]]; var b5=townBbox(run.poly); run.bb=[b5[0],b5[1],b5[2],b5[3]]; }
@@ -45586,10 +45595,29 @@ function corridorDraw(p,plans,THM,camera){
       conts=conts.filter(function(C){ return !gone2.has(C); });
     });
   }
+  /* row 503: Q (convex) cut to the convex outline K, and the part of segment a-b inside K as [t0,t1] or null. K is
+     either winding; 2 cm of slack so a point on K's edge stays in */
+  function bareWind(K){ var a=0, m; for(m=0;m<K.length;m++){ var qa=K[m], qb=K[(m+1)%K.length]; a+=qa[0]*qb[1]-qa[1]*qb[0]; } return a<0?-1:1; }
+  function bareClip(Q,K){ var w=bareWind(K), out=Q.map(function(q){ return [q[0],q[1]]; }), e;
+    for(e=0;e<K.length&&out.length;e++){ var A=K[e], B=K[(e+1)%K.length], L=Math.hypot(B[0]-A[0],B[1]-A[1])||1, inn=function(q){ return w*((B[0]-A[0])*(q[1]-A[1])-(B[1]-A[1])*(q[0]-A[0]))/L>=-0.02; }, nx=[], m;
+      for(m=0;m<out.length;m++){ var P=out[m], R=out[(m+1)%out.length], ip=inn(P), ir=inn(R); if(ip) nx.push(P);
+        if(ip!==ir){ var dp=w*((B[0]-A[0])*(P[1]-A[1])-(B[1]-A[1])*(P[0]-A[0]))/L+0.02, dr=w*((B[0]-A[0])*(R[1]-A[1])-(B[1]-A[1])*(R[0]-A[0]))/L+0.02, t=dp/(dp-dr); nx.push([P[0]+(R[0]-P[0])*t,P[1]+(R[1]-P[1])*t]); } }
+      out=nx; }
+    return out; }
+  function bareSeg(a,b,K){ var w=bareWind(K), t0=0, t1=1, e;
+    for(e=0;e<K.length;e++){ var A=K[e], B=K[(e+1)%K.length], L=Math.hypot(B[0]-A[0],B[1]-A[1])||1, da=w*((B[0]-A[0])*(a[1]-A[1])-(B[1]-A[1])*(a[0]-A[0]))/L+0.02, db=w*((B[0]-A[0])*(b[1]-A[1])-(B[1]-A[1])*(b[0]-A[0]))/L+0.02;
+      if(da<0&&db<0) return null; if(da<0) t0=Math.max(t0,da/(da-db)); else if(db<0) t1=Math.min(t1,da/(da-db)); }
+    return t1-t0>1e-9?[t0,t1]:null; }
   function bareContent(PLk){ var nop=function(){};
     return {dress:nop, signsFor:nop, cars:[], dots:[], poles:[], furnish:function(){
       PLk.conts.forEach(function(C){ if(C.kind!=='slab') return;
         var P3k=PLk.P3, sd=C.side, HWk=PLk.HALFW, Q=[P3k(C.s0,sd,0,0),P3k(C.s1,sd,0,0),P3k(C.s1,sd,HWk,0),P3k(C.s0,sd,HWk,0)].map(function(v){ return [v[0],v[1]]; });
+        /* row 503: a run ending in a spur's slanted end is drawn inside its own outline (convex), not to the rectangle */
+        if(C.spurEnd){ var Qc=bareClip(Q,C.poly); if(Qc.length<3) return;
+          var Plc=prismN(Qc,-0.02,0); Plc.hides=false; Plc.cont=C; Plc.col='#1a1a1a'; Plc.kind='plate'; Plc.layer='furn'; Plc.lines=[];
+          [[P3k(C.s0,sd,HWk,0),P3k(C.s1,sd,HWk,0),'bareedge']].concat(sd===1?[[P3k(C.s0,1,0.06,0),P3k(C.s1,1,0.06,0),'lane']]:[]).forEach(function(Lc){
+            var tt=bareSeg(Lc[0],Lc[1],C.poly); if(tt) Plc.lines.push({a:[Lc[0][0]+(Lc[1][0]-Lc[0][0])*tt[0],Lc[0][1]+(Lc[1][1]-Lc[0][1])*tt[0],0], b:[Lc[0][0]+(Lc[1][0]-Lc[0][0])*tt[1],Lc[0][1]+(Lc[1][1]-Lc[0][1])*tt[1],0], f0:1, f1:1, kind:Lc[2]}); });
+          C.parts.push(Plc); return; }
         var Pl=prism(Q,-0.02,0); Pl.hides=false; Pl.cont=C; Pl.col='#1a1a1a'; Pl.kind='plate'; Pl.layer='furn';
         Pl.lines=[{a:P3k(C.s0,sd,HWk,0), b:P3k(C.s1,sd,HWk,0), f0:1, f1:1, kind:'bareedge'}];
         if(sd===1) Pl.lines.push({a:P3k(C.s0,1,0.06,0), b:P3k(C.s1,1,0.06,0), f0:1, f1:1, kind:'lane'});
