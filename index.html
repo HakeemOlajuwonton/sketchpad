@@ -608,7 +608,7 @@ html.ui-corridors, html.ui-corridors body{margin:0; height:100%; overflow:hidden
 
 </div>
 <div class="pane-ctl">
-<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v451</a> &mdash; Corridor city: at a Map scale nothing on the sheet is culled as if it were off it</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
+<h1>Plotter Sketchpad <span style="color:var(--dim);font-weight:400"><a href="https://hakeemolajuwonton.github.io/sketchpad/changelog.html" target="_blank" rel="noopener" title="What&rsquo;s new">v452</a> &mdash; Corridor city: Spread shows only where it acts, beside an airfield or a harbour at City form 1</span> <a id="scoutlink" href="https://hakeemolajuwonton.github.io/sketchpad/scout/" target="_blank" rel="noopener" title="Corridor City in the browser: fly round it, then render the view here" style="font-weight:400;font-size:.85em;white-space:nowrap">Fly through Corridor City &#8599;</a></h1>
 <p class="sub">Turn knobs. Reroll. When it looks like something, download the SVG.</p>
 
 <section class="fold" id="fold_pick"><h2>Pick engine<span class="cnt"></span></h2>
@@ -49966,6 +49966,8 @@ var KIDLE={town:[
   {keys:'dam head gates penstocks', par:['site','ptype'], why:'not a hydro plant (Site 3, Plant 3)', on:function(E){ return kR(E,'site')===3 && kR(E,'ptype')===3; }},
   /* row 205 */
   {keys:'plant', par:['form','site'], why:'only beside an airfield or a harbour at City form 1', on:function(E){ return kR(E,'form')===1 && (kR(E,'site')===1 || kR(E,'site')===2); }},
+  /* row 504: Spread (row 405) is read only there too: townSpread() is 1 below City form 1 or at another Site */
+  {keys:'spread', par:['form','site'], why:'only beside an airfield or a harbour at City form 1', on:function(E){ return kR(E,'form')===1 && (kR(E,'site')===1 || kR(E,'site')===2); }},
   /* row 116 */
   {keys:'subs', par:['site','pline','form','plant'], why:'no line: Powerline 0 and no power plant', on:function(E){ return kR(E,'site')===3 || kP(E) || kR(E,'pline')===1; }},
   {keys:'subsz', par:['site','pline','subs','form','plant'], why:'no substation: Substations 0, or no line', on:function(E){ return kR(E,'subs')>0 && (kR(E,'site')===3 || kP(E) || kR(E,'pline')===1); }},
